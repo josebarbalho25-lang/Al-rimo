@@ -457,3 +457,59 @@ describe.skipIf(!temPython || !Object.keys(modulacao).length)('exportarIfc — c
     }, 120000);
   }
 });
+
+// A orientação das peças novas dos gabaritos do Revit (09/10): o 34 e o 54 têm furos de tamanhos diferentes, a ponta
+// direita é a esquerda girada 180°, a haste gira 90° (enterrada) ou 270° (aparente), a canaleta da haste deita em Y.
+// Caixa e volume certos não provam que o furo está do lado certo — o graute no vazio do bloco dono prova.
+describe.skipIf(!temPython || !Object.keys(modulacao).length)('exportarIfc — peça a peça no lugar (modulação de verdade)', () => {
+  const carregar = async () => {
+    const mod = (await Object.values(modulacao)[0]()) as {
+      gerarModelo: (r: Resultado, extras: Record<string, Valor>) => Modelo;
+      padroesDoModelo: () => Record<string, Valor>;
+      caixaGlobal: (p: Modelo['pecas'][number], g: Modelo['geometrias'][string]) => { min: number[]; max: number[] };
+    };
+    return mod;
+  };
+
+  // aula123: 14x39 enterrado com 34 e 54; sorteio11: 14x39 aparente (haste a 270°) com 34
+  for (const cenario of ['aula123', 'sorteio11']) {
+    it(`${cenario}: caixa e volume de cada peça = Modelo; graute no vazio do bloco; canaleta aberta para cima`, async () => {
+      const mod = await carregar();
+      const r = resultadoDoGabarito(cenario);
+      const m = mod.gerarModelo(r, mod.padroesDoModelo());
+      const rel = validar(exportarIfc(m, { ...INFO, resultado: r }), '--geom-tudo', '--furos');
+      expect(rel.erros).toEqual([]);
+      let n = 0;
+      for (const p of m.pecas) {
+        if (p.grupo === 'terreno' || p.grupo === 'drenagem') continue;
+        const g = m.geometrias[p.geometria];
+        const lida = rel.por_tag[p.id];
+        expect(lida, p.id).toBeTruthy();
+        const c = mod.caixaGlobal(p, g);
+        for (let k = 0; k < 3; k++) {
+          expect(lida.caixa[0][k] * 1000, `${p.id} min ${k}`).toBeCloseTo(c.min[k], 1);
+          expect(lida.caixa[1][k] * 1000, `${p.id} max ${k}`).toBeCloseTo(c.max[k], 1);
+        }
+        expect(lida.volume * 1e9 / g.volume_mm3, p.id).toBeCloseTo(1, 4);
+        n++;
+      }
+      const graute = m.pecas.filter((p) => p.tipo === 'GRAUTE_FURO').length;
+      const canaletas = m.pecas.filter((p) => ['CANALETA', 'MEIA_CANALETA', 'CANALETA_CORTADA'].includes(p.tipo)).length;
+      expect(rel.furos).toEqual({ graute, canaletas });
+      expect(n).toBeGreaterThan(300);
+    }, 120000);
+  }
+
+  it('mutação: o 34 da ponta direita sem o giro de 180° (mesma caixa) — o validador TEM de achar o graute na parede', async () => {
+    const mod = await carregar();
+    const r = resultadoDoGabarito('aula123');
+    const m = mod.gerarModelo(r, mod.padroesDoModelo());
+    // o 34 da ponta direita (girado 180°) com os dois furos grauteados: desvirado, o furo de 14,0 cm cai no septo
+    const p = m.pecas.find((x) => x.grupo === 'muro' && x.giro === 180 && m.geometrias[x.geometria].classe === 'bloco34' && m.pecas.some((g) => g.id === x.id + '.g2'))!;
+    expect(p).toBeTruthy();
+    p.giro = 0;
+    const rel = validar(exportarIfc(m, INFO), '--furos');
+    expect(rel.ok).toBe(false);
+    expect(rel.erros.join(' ')).toContain(`cai na parede do bloco ${p.id}`);
+  }, 120000);
+});

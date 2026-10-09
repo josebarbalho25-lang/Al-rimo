@@ -6,6 +6,7 @@
   --regras     roda também as regras WHERE do EXPRESS (CorrectItemsForType, CorrectPredefinedType, GUID...)
   --geom       monta o sólido de uma AMOSTRA de produtos (N por grupo classe:ObjectType, padrão 3)
   --geom-tudo  monta o sólido de todos os produtos e devolve caixa e volume de cada um, por Tag
+  --furos      graute de cada furo no VAZIO do bloco dono (Tag 'peça.gN'); canaleta com fundo cheio e miolo vazio
   --json       imprime o relatório em JSON (UTF-8) para o teste do app ler
 
 Sai com código 0 se não houver erro, 1 se houver, 2 se nem abrir o arquivo.
@@ -20,6 +21,9 @@ O que confere, e por quê (cada item já derrubou um arquivo de verdade — ver 
      ifcopenshell apaga a letra);
   5. geometria: o sólido monta; caixa e volume por grupo; comprimento da diretriz de cada barra (somando retas e
      ARCOS — o volume da malha do IfcSweptDiskSolid com dobra não serve para conferir barra, medido).
+  6. com --furos, a ORIENTAÇÃO das peças: caixa e volume certos não provam que o furo está do lado certo (o bloco de
+     34 e o de 54 têm furos de tamanhos diferentes, a ponta direita é a esquerda girada 180°, a haste gira 90°/270°).
+     O graute de cada furo tem de cair no vazio do bloco dono, e a canaleta tem de abrir para cima.
 """
 import sys, os, json, time, math, logging, collections, types
 
@@ -98,6 +102,73 @@ def disco_da_barra(el):
             if it.is_a('IfcMappedItem'):
                 pilha.append(it.MappingSource.MappedRepresentation)
     return None
+
+
+def dentro_da_malha(np, tri, P):
+    """Ponto dentro de malha fechada: paridade dos cruzamentos de um raio torto (Möller–Trumbore em todos os
+    triângulos de uma vez). Raio fora dos eixos para não passar por aresta de peça alinhada."""
+    v0, e1, e2 = tri
+    d = np.array([0.5773, 0.5012, 0.6448])
+    d = d / np.linalg.norm(d)
+    h = np.cross(d, e2)
+    a = np.einsum('ij,ij->i', e1, h)
+    ok = np.abs(a) > 1e-15
+    f = np.where(ok, 1.0 / np.where(ok, a, 1.0), 0.0)
+    s_ = P - v0
+    u = f * np.einsum('ij,ij->i', s_, h)
+    q = np.cross(s_, e1)
+    w = f * (q @ d)
+    t = f * np.einsum('ij,ij->i', e2, q)
+    return int((ok & (u >= 0) & (u <= 1) & (w >= 0) & (u + w <= 1) & (t > 1e-12)).sum()) % 2 == 1
+
+
+def conferir_furos(f, rel):
+    """Graute do furo no vazio do bloco dono; canaleta com fundo cheio e miolo vazio (ver item 6 do cabeçalho)."""
+    import re
+    import numpy as np
+    import ifcopenshell.geom, ifcopenshell.util.shape as US
+    st = ifcopenshell.geom.settings()
+    st.set('use-world-coords', True)
+    malhas = {}
+    for p in f.by_type('IfcBuildingElementPart'):
+        if not p.Representation or not p.Tag:
+            continue
+        try:
+            sh = ifcopenshell.geom.create_shape(st, p)
+        except Exception as ex:
+            rel['erros'].append('furos: geom falhou em %s: %s' % (p.Tag, ex))
+            continue
+        v = np.array(US.get_vertices(sh.geometry), float)
+        fa = np.array(US.get_faces(sh.geometry), int)
+        if not len(v) or not len(fa):
+            continue
+        T = v[fa]
+        malhas[p.Tag] = (p.ObjectType, v.min(0), v.max(0), (T[:, 0], T[:, 1] - T[:, 0], T[:, 2] - T[:, 0]))
+    n_graute = n_canaleta = 0
+    for tag, (tipo, mn, mx, tri) in malhas.items():
+        if tipo == 'GRAUTE_FURO':
+            m = re.match(r'^(.*)\.g\d+$', tag)
+            dono = malhas.get(m.group(1)) if m else None
+            if not dono:
+                rel['erros'].append('furos: graute %s sem bloco dono' % tag)
+                continue
+            c = (mn + mx) / 2
+            a = (mx - mn) / 2
+            c[2] = (dono[1][2] + dono[2][2]) / 2          # meia altura do bloco (o graute desce a junta de baixo)
+            for dx, dy in ((0, 0), (0.6, 0), (-0.6, 0), (0, 0.6), (0, -0.6)):
+                P = c + np.array([dx * a[0], dy * a[1], 0.0])
+                if dentro_da_malha(np, dono[3], P):
+                    rel['erros'].append('furos: graute %s cai na parede do bloco %s em %s' % (tag, m.group(1), [round(float(x), 4) for x in P]))
+                    break
+            n_graute += 1
+        elif tipo in ('CANALETA', 'MEIA_CANALETA', 'CANALETA_CORTADA'):
+            c = (mn + mx) / 2
+            if not dentro_da_malha(np, tri, np.array([c[0], c[1], mn[2] + 0.01])):
+                rel['erros'].append('furos: canaleta %s sem fundo' % tag)
+            if dentro_da_malha(np, tri, np.array([c[0], c[1], mx[2] - 0.01])):
+                rel['erros'].append('furos: canaleta %s com o miolo cheio (de cabeça para baixo?)' % tag)
+            n_canaleta += 1
+    rel['furos'] = {'graute': n_graute, 'canaletas': n_canaleta}
 
 
 def chave_do_grupo(el):
@@ -286,6 +357,11 @@ def main(argv):
         rel['caixas'] = caixas
         if GEOM_TUDO:
             rel['por_tag'] = por_tag
+
+    if '--furos' in argv:
+        t0 = time.time()
+        conferir_furos(f, rel)
+        rel['furos_s'] = round(time.time() - t0, 3)
 
     return saida(0)
 

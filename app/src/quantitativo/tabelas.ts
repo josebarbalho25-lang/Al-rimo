@@ -9,7 +9,6 @@
   como número; "1.234,5" depende da configuração), UTF-8 com BOM (sem ele o Excel estraga os acentos) e CRLF.
 */
 import type { Quantitativo } from './index';
-import { ROTULO_DO_PAPEL } from './aco';
 import { figuraDaPeca, type FiguraDaPeca } from './pecas';
 
 export type Celula = string | { n: number; casas: number } | null;
@@ -102,7 +101,7 @@ export function tabelasDoQuantitativo(q: Quantitativo): Tabela[] {
     titulo: 'Lista de ferros',
     cabecalho: ['N', 'Elemento', 'Ø (mm)', 'Quant. (un)', 'C. unit. (cm)', 'C. total (m)', 'Massa (kg)'],
     linhas: q.ferros.map((f) => [
-      f.posicao, ROTULO_DO_PAPEL[f.papel] ?? f.papel, bitola(f.diametro), num(f.quantidade, 0),
+      f.posicao, f.elemento, bitola(f.diametro), num(f.quantidade, 0),
       num(f.comprimentoUnit, 0), num(f.comprimentoTotal, 2), num(f.massa, 2),
     ]),
   });

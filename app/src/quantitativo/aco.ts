@@ -41,6 +41,7 @@ export const ROTULO_DO_PAPEL: Readonly<Record<PapelBarra, string>> = {
 export interface PosicaoDeFerro {
   posicao: string;            // 'N1'
   papel: PapelBarra;
+  elemento: string;           // rótulo da coluna "Elemento" (rotuloDaBarra)
   diametro: number;           // mm
   quantidade: number;         // un
   comprimentoUnit: number;    // cm (inteiro)
@@ -53,6 +54,16 @@ export interface ResumoPorBitola {
   massaLinear: number;        // kg/m
   comprimento: number;        // m
   massa: number;              // kg
+}
+
+/**
+ * Rótulo da barra na lista. O papel sozinho não basta: HORIZ COM `contraforte` é a barra da canaleta do contraforte,
+ * dobrada em L dentro da canaleta do muro (modelo/tipos.ts) — com o mesmo rótulo da corrida reta do muro, quem corta
+ * e dobra leria duas barras diferentes como a mesma coisa.
+ */
+export function rotuloDaBarra(b: Pick<Barra, 'papel' | 'contraforte'>): string {
+  if (b.papel === 'HORIZ' && b.contraforte !== undefined) return 'Contraforte · canaleta (L)';
+  return ROTULO_DO_PAPEL[b.papel] ?? b.papel;
 }
 
 /** Ordem natural de prancha: N2 antes de N10. */
@@ -92,7 +103,7 @@ export function listaDeFerros(barras: readonly Barra[]): { linhas: PosicaoDeFerr
     for (const { b, n, cm } of vs) {
       const comprimentoTotal = (n * cm) / 100;
       linhas.push({
-        posicao, papel: b.papel, diametro: b.diametro, quantidade: n, comprimentoUnit: cm,
+        posicao, papel: b.papel, elemento: rotuloDaBarra(b), diametro: b.diametro, quantidade: n, comprimentoUnit: cm,
         comprimentoTotal, massa: comprimentoTotal * massaLinear(b.diametro),
       });
     }

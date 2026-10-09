@@ -232,6 +232,13 @@ e dizer ao Jose o que mudou e por quê.
   NBR 6118 Tab. 9.1; função h_dobra() no build_new; aba Fundação seção 10; memória nos cards de ancoragem/esperas; a malha
   na conta é DEDUÇÃO — com ela o Ø16 não cabe em sapata de 20, como o Jose disse). Trocar h_dobra() quando chegar o nó de
   cachorro do Revit.
+  Revisão IFC/quantitativo com o muro real (09/10 noite): IFC limpo (validador com --furos); quantitativo: avisos que
+  mudam quantidade no CSV, argamassa sob canaleta, rótulo da barra em L. Achados a fazer: GUID do IFC sai do TÍTULO
+  (dois "Sem título" colidem num federado → UUID do projeto no .alrimo); no 3D/IFC a barra vertical atravessa o fundo
+  da canaleta (furar o fundo onde há barra) e a barra em L atravessa a parede do U (T de graute não modelado); graute da
+  canaleta da haste não cobre as juntas de 10 mm; barbacã some sem aviso em muro todo em canaleta. Para o Jose:
+  canaleta cortada na lista de compras (converter cortes em inteiras?); barras iguais em elementos diferentes com N
+  diferentes (painel × contraforte) — é o que ele quer na lista de ferros?
   Faltam: dreno de fundo; deslizamento e posição do dente
   (aguardando resumo da aula do Gilberto); nó de cachorro (Revit dele); detalhes na prancha final; T de graute no 3D
   (parede quebrada da canaleta); "→ 5,99" aparece mesmo com comprimento modular (comparar com o modular?); revisores de

@@ -168,6 +168,49 @@ describe('quantificar — variações', () => {
     expect(quantificar(m).avisos).toEqual(['Armadura longitudinal de torção da sapata não desenhada']);
   });
 
+  it('avisos novos da modulação dos gabaritos (estribo com ramos a menos, barra em L deduzida, balanço) também vêm', () => {
+    const m = modeloAMao();
+    m.avisos = [
+      { codigo: 'ESTRIBO_RAMOS', texto: 'Estribo do contraforte com 4 ramos: desenhado fechado, 2 ramos' },
+      { codigo: 'CANALETA_CF', texto: 'Barra da canaleta do contraforte: perna em L = 30φ (dedução)' },
+      { codigo: 'BALANCO_ALEM_DO_CF', texto: 'Balanço além do contraforte de ponta não desenhado' },
+      { codigo: 'CANALETA_SEM_ESPACAMENTO', texto: 'Canaletas intermediárias: só a cinta do topo' },
+      { codigo: 'D_GEOMETRICO_CF', texto: 'Contraforte: barra a 10 cm da face' },
+    ];
+    expect(quantificar(m).avisos).toEqual(m.avisos.slice(0, 4).map((a) => a.texto));
+  });
+
+  it('canaleta sobre canaleta: a junta horizontal é só a das duas paredes do U de baixo (o miolo é graute)', () => {
+    const m = modeloAMao();
+    m.pecas.push(
+      { id: 'T1.M.f03.p000', tipo: 'CANALETA', grupo: 'muro', geometria: 'canaleta 19x19x39', origem: [0, 0, 610], giro: 0, trecho: 1, fiada: 3 },
+      { id: 'T1.M.f03.p001', tipo: 'CANALETA', grupo: 'muro', geometria: 'canaleta 19x19x39', origem: [400, 0, 610], giro: 0, trecho: 1, fiada: 3 },
+    );
+    // U de baixo: paredes 35 + 35 = 70 de 190 → 390 × 70 × 10 por canaleta; as de baixo (fiada 2) seguem sobre blocos
+    expect(quantificar(m).argamassa.horizontal).toBeCloseTo((2_864_000 + 2 * 390 * 70 * 10) / 1e9, PERTO);
+  });
+
+  it('muro todo em canaleta (sem bloco inteiro): 1ª fiada na área toda (sapata), as de cima nas paredes do U', () => {
+    const m = modeloAMao();
+    m.pecas = m.pecas.filter((p) => p.tipo !== 'BLOCO' && p.tipo !== 'MEIO_BLOCO' && p.tipo !== 'CANALETA');
+    for (const f of [0, 1]) {
+      for (const x of [0, 400]) {
+        m.pecas.push({ id: `T1.M.f0${f}.${x}`, tipo: 'CANALETA', grupo: 'muro', geometria: 'canaleta 19x19x39', origem: [x, 0, 10 + 200 * f], giro: 0, trecho: 1, fiada: f });
+      }
+    }
+    // antes: razão 1 nas duas fiadas (não havia bloco inteiro de onde tirar a razão) → 2 × 2 × 390 × 190 × 10
+    expect(quantificar(m).argamassa.horizontal).toBeCloseTo((2 * 390 * 190 * 10 + 2 * 390 * 70 * 10) / 1e9, PERTO);
+  });
+
+  it('lista de ferros: a barra em L da canaleta do contraforte não se confunde com a corrida reta do muro', () => {
+    const m = modeloAMao();
+    m.barras.push({ id: 'T1.CF1.H.f02', posicao: 'N11', papel: 'HORIZ', diametro: 10, comprimento: 900, trecho: 1, contraforte: 1,
+      eixo: [[95, 560, 470], [95, 160, 470], [135, 120, 470], [600, 120, 470]] });
+    const tab = tabelasDoQuantitativo(quantificar(m)).find((t) => t.id === 'ferros')!;
+    expect(tab.linhas.find((l) => l[0] === 'N10')![1]).toBe('Horizontal na canaleta');
+    expect(tab.linhas.find((l) => l[0] === 'N11')![1]).toBe('Contraforte · canaleta (L)');
+  });
+
   it('junta de controle: peças de trechos diferentes a 10 mm não levam argamassa', () => {
     const m = modeloAMao();
     m.pecas.push({ id: 'T2.M.f00.p000', tipo: 'BLOCO', grupo: 'muro', geometria: 'bloco 19x19x39', origem: [800, 0, 10], giro: 0, trecho: 2, fiada: 0 });
@@ -354,6 +397,71 @@ describe('com a modulação de verdade', () => {
         const dif = Math.max(...[a.x0 - b.min[0], a.y0 - b.min[1], a.z0 - b.min[2], a.x1 - b.max[0], a.y1 - b.max[1], a.z1 - b.max[2]].map(Math.abs));
         expect(dif, `${c} ${p.id}`).toBeLessThan(1e-6);
       }
+    }
+  });
+
+  // Graute pelo CATÁLOGO do Revit do Jose (volume da família → área dos furos e do U), não pelas geometrias do Modelo:
+  // pega furo do 34/54 trocado, a cortada da 19 com o fundo da inteira, e junta de canaleta contada duas vezes.
+  it.skipIf(!carregar)('contrafortes 14x39 (34/54) e 19x39 com junta: graute dos furos e das canaletas pelo catálogo', async (ctx) => {
+    const { gerarModelo, padroesDoModelo } = await carregar!();
+    const { resultadoDoGabarito } = await import('@/motor/resultadoDoGabarito');
+    // família → largura, U da canaleta (inteira e cortada, mm²) e, por comprimento de bloco: parede, furos ao longo da
+    // peça (de, até) e volume do Revit (mm³)
+    const CAT: Record<string, { t: number; U: number; Ucortada: number; blocos: Record<number, [number, [number, number][], number]> }> = {
+      '14x39': { t: 140, U: 5116e3 / 390, Ucortada: 5116e3 / 390,
+        blocos: { 390: [32, [[25, 182.5], [207.5, 365]], 5883e3], 190: [25, [[25, 165]], 2690e3], 340: [32, [[32, 108], [175, 315]], 5975e3], 540: [32, [[25, 175], [232, 308], [375, 515]], 9152e3] } },
+      '19x39': { t: 190, U: 5333e3 / 390, Ucortada: 2864e3 / 190,
+        blocos: { 390: [32, [[35, 177.5], [212.5, 355]], 7288.9e3], 190: [25, [[25, 165]], 3165.3e3] } },
+    };
+    for (const [cenario, extras] of [['aula123', {}], ['sorteio17', { L_total: 12, junta_cada: 6 }]] as const) {
+      let m: Modelo;
+      try {
+        m = gerarModelo(resultadoDoGabarito(cenario), { ...padroesDoModelo(), ...extras });
+      } catch (e) {
+        return ctx.skip(`modulação ainda não gera este cenário: ${(e as Error).message}`);
+      }
+      const c = CAT[m.familia.nome];
+      // comprimento da peça: extensão da canaleta (eixo X); no bloco (eixo Z), o maior u do perfil em planta
+      const comp = (p: Modelo['pecas'][number]): number => {
+        const g = m.geometrias[p.geometria];
+        return g.eixo === 'Z' ? Math.max(...g.perfil.contorno.map(([u]) => u)) : g.extensao;
+      };
+      let furos = 0;
+      for (const p of m.pecas) {
+        if (!p.furosGrauteados?.length) continue;
+        const L = Math.round(comp(p));
+        const [parede, fs, vol] = c.blocos[L];
+        const w = c.t - 2 * parede;
+        const ret = fs.map(([a, b]) => (b - a) * w);
+        // os cantos arredondados tiram a mesma área de cada furo; a soma fecha com o volume do Revit
+        const perda = (ret.reduce((s, x) => s + x, 0) - (c.t * L - vol / 190)) / ret.length;
+        for (const i of p.furosGrauteados) furos += (ret[i] - perda) * 200;
+      }
+      const miolo = (tipo: string) => c.t * 190 - (tipo === 'CANALETA_CORTADA' ? c.Ucortada : c.U);
+      let can = 0;
+      const corridas = new Map<string, Modelo['pecas']>();
+      for (const p of m.pecas) {
+        if (!['CANALETA', 'MEIA_CANALETA', 'CANALETA_CORTADA'].includes(p.tipo)) continue;
+        if (p.grupo === 'contraforte') { can += miolo(p.tipo) * comp(p); continue; }   // haste: o comprimento dela
+        const k = `${p.trecho}|${p.fiada}`;
+        corridas.set(k, [...(corridas.get(k) ?? []), p]);
+      }
+      for (const l of corridas.values()) {
+        l.sort((a, b) => a.origem[0] - b.origem[0]);
+        l.forEach((p, i) => {
+          can += miolo(p.tipo) * comp(p);
+          const prox = l[i + 1];
+          if (prox && Math.abs(prox.origem[0] - p.origem[0] - comp(p) - 10) < 1e-6) can += miolo(p.tipo) * 10;   // a junta vai com a de antes
+        });
+      }
+      const q = quantificar(m);
+      expect(q.graute.furos, cenario).toBeCloseTo(furos / 1e9, 4);
+      expect(q.graute.canaletas, cenario).toBeCloseTo(can / 1e9, 4);
+      // a barra em L tem posição e rótulo próprios, e o aviso de que ela é dedução vai junto para o CSV
+      const emL = q.ferros.filter((f) => f.elemento === 'Contraforte · canaleta (L)');
+      expect(emL.length, cenario).toBeGreaterThan(0);
+      expect(emL.reduce((s, f) => s + f.quantidade, 0), cenario).toBe(m.barras.filter((b) => b.papel === 'HORIZ' && b.contraforte !== undefined).length);
+      expect(q.avisos.some((a) => a.startsWith('Barra da canaleta do contraforte')), cenario).toBe(true);
     }
   });
 
