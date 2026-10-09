@@ -1,7 +1,12 @@
 /*
   O MEMORIAL NO PAPEL — documento que se assina. Ordem (regra do dono no Pró-Viga, 25/ago):
     Rosto → Índice → 1 Glossário → 2 Dados de entrada → 3 Resumo das verificações → 4 Memória de cálculo.
-  O rosto carrega quem assina, a data, a versão da conta e o AVISO DO SOLO da planilha (palavra por palavra).
+  O rosto carrega quem assina, a data, a versão da conta e o AVISO DO SOLO da planilha (palavra por palavra) — e,
+  logo abaixo, o aviso da coesão quando c' > 0 (o texto da célula aviso_coesao, o mesmo do campo e do card).
+  E as três versões que o Termo de Uso manda guardar (itens 2.3 e 12.1): a do app, a da conta e a do termo aceito,
+  com a data do aceite. O app se atualiza sozinho pelo endereço — o mesmo muro pode dar outro número amanhã, e é o
+  papel que prova com que versão saiu este. Lidas aqui dentro, e não pedidas a quem imprime: a tela da memória e a
+  barra de cima chamam a impressão por caminhos diferentes, e nenhum dos dois pode esquecer.
 
   Nada aqui calcula nem redesenha: são os MESMOS cards da tela, com PapelCtx = true (tamanhos em pt, legenda fora).
   A mesma árvore vai para a impressora (imprimirMemorial) e para o Word (exportarWord) — um documento só.
@@ -17,6 +22,9 @@ import { Tex } from './Tex';
 import { glossarioDe } from './glossario';
 import { AVISO_DO_SOLO, ENTRADAS, VERSAO_DA_CONTA } from './metaDaPlanilha';
 import { casasDoFormato, nbr } from './formato';
+import { avisoDaPlanilha } from '@/estado/avisosDaPlanilha';
+import { VERSAO_DO_APP } from '@/estado/versaoDoApp';
+import { aceiteVigente, dataDoAceite, rotuloDaVersao, VERSAO_DO_TERMO } from '@/estado/termo';
 
 export interface InfoDoMemorial {
   projeto?: string;
@@ -65,6 +73,16 @@ function valorDaEntrada(v: unknown, formato: string): string {
   Faixas da aba Entradas que não pesam neste muro (DEDUÇÃO nossa, para não encher o papel de dado morto): as de
   contraforte num muro em balanço.
 */
+/**
+  "versão 1.0 (3fa2c19b), aceito em 09/10/2026 14:32". Sem aceite registrado (só na bancada: o app não abre sem ele),
+  sai a versão do termo de agora, sem data — nunca uma data inventada.
+*/
+function termoNoRosto(): string {
+  const a = aceiteVigente();
+  const versao = `versão ${rotuloDaVersao(VERSAO_DO_TERMO)}`; // o vigente é, por definição, o desta versão
+  return a ? `${versao}, aceito em ${dataDoAceite(a)}` : versao;
+}
+
 function faixaVale(secao: string, r: Resultado): boolean {
   const tipo = r.v('Tipo_muro');
   if (tipo === 'Balanço' && /contraforte/i.test(secao)) return false;
@@ -93,6 +111,7 @@ export function MemorialImpresso({ resultado: r, info = {}, urlDaFigura, cards: 
   );
   const t = r.v('t_bloco');
   const L = r.v('L_bloco');
+  const avisoCoesao = avisoDaPlanilha(r, 'aviso_coesao');
   const indice: { n: string; t: string; sub?: boolean }[] = [
     { n: '1', t: 'Glossário de símbolos' },
     { n: '2', t: 'Dados de entrada' },
@@ -122,7 +141,9 @@ export function MemorialImpresso({ resultado: r, info = {}, urlDaFigura, cards: 
               {linhaRosto('Responsável técnico', info.responsavel)}
               {linhaRosto('CREA', info.crea)}
               {linhaRosto('Emitido em', data)}
+              {linhaRosto('Versão do aplicativo', `Al-rimo ${VERSAO_DO_APP}`)}
               {linhaRosto('Versão da conta', VERSAO_DA_CONTA)}
+              {linhaRosto('Termo de uso', termoNoRosto())}
             </tbody>
           </table>
           {verifs.length > 0 && (
@@ -150,6 +171,16 @@ export function MemorialImpresso({ resultado: r, info = {}, urlDaFigura, cards: 
               style={{ marginTop: '12pt', fontSize: '8.5pt', fontWeight: 700, color: '#C00000', lineHeight: 1.35 }}
             >
               {AVISO_DO_SOLO}
+            </div>
+          )}
+          {/* Coesão é escolha do projetista e o papel assinado tem de dizer que ela entrou na conta: uma linha, na
+              mesma tinta do aviso do solo, porque é o mesmo assunto. */}
+          {avisoCoesao && (
+            <div
+              className="mp-aviso-coesao"
+              style={{ marginTop: '4pt', fontSize: '8.5pt', fontWeight: 700, color: '#C00000', lineHeight: 1.35 }}
+            >
+              {avisoCoesao}
             </div>
           )}
           <table style={{ width: '100%', marginTop: '28pt', borderCollapse: 'collapse' }}>

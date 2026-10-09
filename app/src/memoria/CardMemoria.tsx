@@ -78,6 +78,24 @@ export function CardMemoria({ card, r, numero, urlDaFigura }: PropsDoCard) {
         </div>
       )}
 
+      {card.desenho && (
+        // Figura gerada para ESTE muro (ex.: seção do contraforte cotada): largura cheia, antes da conta — as cotas têm
+        // de ser lidas, e na coluna estreita da figura do acervo o texto do desenho ficaria ilegível.
+        <figure className="mem-desenho" style={{ margin: papel ? '0 0 4pt' : '0 0 12px', maxWidth: papel ? '150mm' : 660 }}>
+          <figcaption style={{ fontSize: R.nota, color: R.apagado, marginBottom: papel ? '2pt' : 4 }}>{card.desenho.titulo}</figcaption>
+          <div
+            role="img"
+            aria-label={card.desenho.titulo}
+            style={{
+              background: papel ? undefined : 'var(--papel, #ffffff)',
+              borderRadius: papel ? undefined : 4,
+              lineHeight: 0,
+            }}
+            dangerouslySetInnerHTML={{ __html: card.desenho.svg }}
+          />
+        </figure>
+      )}
+
       <div
         className="mem-corpo"
         style={{ display: 'flex', gap: papel ? 18 : 30, alignItems: 'flex-start', flexWrap: 'wrap' }}

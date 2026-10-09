@@ -355,7 +355,7 @@ function receitaDo(cat: FamiliaDoCatalogo, no: No, tf: TipoFiada, aparente: bool
  * inteiras começam pela ponta e a cortada fica junto ao muro (gabarito 19x39); com duas fiadas de canaleta seguidas,
  * a de cima inverte, para as juntas não se repetirem.
  */
-function montarHaste(cat: FamiliaDoCatalogo, base: BaseDaArrumacao, r: ReceitaDaFiada, daPonta: boolean): ItemHaste[] {
+export function montarHaste(cat: FamiliaDoCatalogo, base: BaseDaArrumacao, r: ReceitaDaFiada, daPonta: boolean): ItemHaste[] {
   const { m, tenr } = base;
   const t = cat.t;
   const itens: ItemHaste[] = [];

@@ -5,8 +5,8 @@
   Constantes marcadas DEDUÇÃO são valores de obra adotados aqui, não da norma nem da aula: viram aviso quando
   pesam no desenho.
 */
-import type { Aviso, Geometria, Peca, Vec2 } from '@/modelo/tipos';
-import { H_BLOCO, furosDaPeca as furosDoCatalogo, raioDoFundoDaCanaleta, type FuroDaPeca, type PecaDoCatalogo } from './catalogo';
+import type { Aviso, Geometria, Peca, TipoPeca, Vec2 } from '@/modelo/tipos';
+import { H_BLOCO, furosDaPeca as furosDoCatalogo, raioDoFundoDaCanaleta, secaoDaPecaCanaleta, type FuroDaPeca, type PecaDoCatalogo } from './catalogo';
 import type { Parametros } from './leitura';
 import type { Modulo } from './modular';
 import { prisma, retangulo, retanguloArredondado, secaoDaCanaleta } from './perfis';
@@ -63,26 +63,31 @@ export function geoBloco(ctx: Ctx, pc: PecaDoCatalogo): string {
   return chave;
 }
 
-/** Seção da canaleta da família (U e miolo) — a mesma para a canaleta inteira e as cortadas. */
-export function secaoCanaleta(mod: Modulo): { U: Vec2[]; miolo: Vec2[]; parede: number; fundo: number; r: number } {
-  const { parede, fundo } = mod.cat.canaleta;
-  const r = raioDoFundoDaCanaleta(mod.cat);
-  return { ...secaoDaCanaleta(mod.cat.t, H_BLOCO, parede, fundo, r), parede, fundo, r };
+export interface SecaoCanaleta { U: Vec2[]; miolo: Vec2[]; parede: number; fundo: number; r: number; propria: boolean }
+
+/**
+ * Seção da canaleta (U e miolo): a da família, ou a da cortada quando ela é peça própria (19x39: fundo 3,91 —
+ * catalogo.ts). `propria` separa as duas onde a chave da geometria precisa (o graute de uma não é o da outra).
+ */
+export function secaoCanaleta(mod: Modulo, peca?: { tipo: TipoPeca }): SecaoCanaleta {
+  const c = peca ? secaoDaPecaCanaleta(mod.cat, peca) : mod.cat.canaleta;
+  const r = raioDoFundoDaCanaleta(mod.cat, c);
+  return { ...secaoDaCanaleta(mod.cat.t, H_BLOCO, c.parede, c.fundo, r), parede: c.parede, fundo: c.fundo, r, propria: c !== mod.cat.canaleta };
 }
 
 export function geoCanaleta(ctx: Ctx, pc: PecaDoCatalogo): string {
   const { mod, geos } = ctx;
   const chave = `canaleta ${mod.cat.nome} ${pc.chave}`;
   if (!geos[chave]) {
-    geos[chave] = prisma(chave, 'X', secaoCanaleta(mod).U, pc.comprimento, undefined, pc.nome);
+    geos[chave] = prisma(chave, 'X', secaoCanaleta(mod, pc).U, pc.comprimento, undefined, pc.nome);
     geos[chave].classe = pc.classe;
   }
   return chave;
 }
 
-/** Graute que enche o miolo de canaletas seguidas, por `comprimento` (eixo local x). */
-export function geoGrauteCanaleta(ctx: Ctx, comprimento: number): string {
-  const s = secaoCanaleta(ctx.mod);
-  const chave = `graute canaleta ${ctx.mod.cat.nome} L${fmt(comprimento)}`;
+/** Graute que enche o miolo de canaletas seguidas da mesma seção, por `comprimento` (eixo local x). */
+export function geoGrauteCanaleta(ctx: Ctx, comprimento: number, peca?: { tipo: TipoPeca }): string {
+  const s = secaoCanaleta(ctx.mod, peca);
+  const chave = `graute canaleta ${ctx.mod.cat.nome}${s.propria ? ' cortada' : ''} L${fmt(comprimento)}`;
   return geoPrismaReto(ctx, chave, 'X', s.miolo, comprimento);
 }

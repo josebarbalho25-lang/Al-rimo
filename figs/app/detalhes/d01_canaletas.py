@@ -3,40 +3,55 @@
 # O que vem do Jose (fala, 09/10): na obra "os caras têm que quebrar a canaleta para dar certo" e "geralmente ou
 # quebra ou corta pra canaleta fechar um Tzinho" — a parede lateral da canaleta do MURO sai no trecho onde a canaleta
 # do CONTRAFORTE encosta, e as duas calhas viram uma calha só em T (graute e barra passam de uma para a outra).
+# Também dele (09/10): a barra da canaleta do contraforte entra na canaleta do muro DOBRADA EM L, com a perna deitada
+# ao lado da barra da cinta — a forma desenhada aqui é a que ele confirmou, e é a que a modulação do app põe
+# (app/src/modulacao/armaduras.ts, barrasDasCanaletasDosContrafortes).
 #
 # O que vem dos gabaritos medidos no Revit dele (dados/encaixes_revit/*_templates.json, fiada 5 = canaleta):
 #   bloco 19 — contraforte de 59 (T): muro com canaleta cortada 19 + canaleta 39 que passa sobre o T; por fora,
-#              canaleta 39 girada, com junta de 1 cm até a face do muro. Canaleta 19x19x39: paredes 2,5, fundo 2,91.
+#              canaleta 39 girada, com junta de 1 cm até a face do muro. Canaleta 19x19x39: paredes 2,5, fundo 2,91;
+#              a cortada é peça própria, com fundo de 3,91 (Jose, 09/10 — "Canaleta 19 Corte 19cm").
 #   bloco 14 — contraforte de 54 (T): muro com canaletas 39 corridas (a junta entre duas cai DENTRO do canal do
 #              contraforte, por isso o trecho quebrado pega a ponta das duas); por fora, canaleta 14x19x39 girada,
 #              junta de 1 cm. Canaleta 14x19x39: paredes 2,5, fundo 3,91.
 #   A canaleta da família é um U aberto nas pontas (o volume do Revit só fecha assim), então a ponta da canaleta do
 #   contraforte já chega aberta: só a parede do muro precisa sair.
 #
+# Regras do app que o desenho repete (as mesmas da modulação):
+#   - as barras ficam 1,5 cm de graute acima do fundo MAIS ALTO da fiada (COB_GRAUTE) — na 19, o da cortada;
+#   - a barra do contraforte começa a 3 cm da ponta dele (COB_PONTA), tem o Ø da cinta e dobra com o pino da NBR
+#     (5φ: raio do eixo 3φ); a perna, depois da dobra, encosta na barra da cinta do lado do contraforte.
+#
 # DEDUÇÃO (não veio dos gabaritos nem da fala do Jose):
 #   - o trecho removido tem a largura do canal do contraforte (t − 2·parede) e desce até o fundo da canaleta do
 #     muro — é o mínimo que fecha o T sem degrau;
-#   - a barra horizontal da canaleta do contraforte, a dobra em L ao lado da barra da cinta e o comprimento dessa
-#     perna (PERNA) — a modulação do app não põe barra na canaleta do contraforte; está marcada "esquema";
-#   - a altura das barras (fundo + 1,5 cm de graute + Ø/2) é a mesma que a modulação usa na cinta (COB_GRAUTE).
+#   - o comprimento da perna: no app é o ℓb da conta quando o Ø é o da barra vertical, senão 30φ. A cota da figura
+#     diz ℓb; o desenho tem 30φ (PERNA);
+#   - na 19 o muro desenhado ganha um pedaço da canaleta seguinte (cortado pela linha de interrupção) para a perna
+#     caber inteira.
+import math
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from iso import Det, Iso, Caixa, tom  # noqa: E402
-from applib import C, T_TIT, T_PEQ  # noqa: E402
+from applib import C, T_TIT  # noqa: E402
 
 PHI = 1.0          # Ø da barra no desenho (cm)
 COB = 1.5          # graute sob a barra (COB_GRAUTE da modulação)
-PERNA = 22.0       # DEDUÇÃO: perna da dobra da barra do contraforte dentro da canaleta do muro
+COB_PONTA = 3.0    # da ponta do contraforte à ponta da barra (COB_PONTA da modulação)
+R_DOBRA = 3 * PHI  # raio do eixo na dobra: pino 5φ (NBR 6118, φ < 20) → 2,5φ + φ/2
+PERNA = 30 * PHI   # DEDUÇÃO: perna da dobra, trecho reto depois dela (30φ — o app usa o ℓb da conta quando pode)
 SOBRA = 7.0        # quanto a barra da cinta passa das pontas do trecho desenhado (mostra que continua)
 
 VARIANTES = {
-    # muro: peças da fiada 5 em volta do T (x0, x1); yw: faces do muro; cf_*: canaleta girada do contraforte
-    'b19': dict(t=19, par=2.5, fundo=2.91, h=19.0, muro=[(-223.6, -204.6), (-203.6, -164.6)], yw=(-27.1, -8.1),
-                cf_x=(-203.6, -184.6), cf_y=(-67.1, -28.1)),
-    'b14': dict(t=14, par=2.5, fundo=3.91, h=19.0, muro=[(-1592.1, -1553.1), (-1552.1, -1513.1)], yw=(-22.1, -8.1),
-                cf_x=(-1562.1, -1548.1), cf_y=(-62.1, -23.1)),
+    # muro: peças da fiada 5 em volta do T (x0, x1, fundo); yw: faces do muro; cf_*: canaleta girada do contraforte
+    # (inteira, fundo = 'fundo'). Na 19 a 1ª peça é a cortada (fundo 3,91) e a última é um pedaço da canaleta
+    # seguinte, para caber a perna.
+    'b19': dict(t=19, par=2.5, fundo=2.91, h=19.0, muro=[(-223.6, -204.6, 3.91), (-203.6, -164.6, 2.91), (-163.6, -151.6, 2.91)],
+                yw=(-27.1, -8.1), cf_x=(-203.6, -184.6), cf_y=(-67.1, -28.1)),
+    'b14': dict(t=14, par=2.5, fundo=3.91, h=19.0, muro=[(-1592.1, -1553.1, 3.91), (-1552.1, -1513.1, 3.91)],
+                yw=(-22.1, -8.1), cf_x=(-1562.1, -1548.1), cf_y=(-62.1, -23.1)),
 }
 
 COR = C['blockfill']
@@ -68,20 +83,21 @@ def geometria(v):
     cy0, cy1 = v['cf_y']
     nx0, nx1 = cx0 + par, cx1 - par                  # canal do contraforte = trecho que sai da parede do muro
     xc, yc = (cx0 + cx1) / 2, (yw0 + yw1) / 2
-    zb = fundo + COB + PHI / 2
+    # as barras correm retas por cima de canaletas de fundos diferentes: ficam no mais alto (regra do app)
+    zb = max([fundo] + [f for _, _, f in v['muro']]) + COB + PHI / 2
     X0, X1 = v['muro'][0][0], v['muro'][-1][1]
-    # trechos ao longo do muro: peças e juntas entre elas
+    # trechos ao longo do muro: peças e juntas entre elas (a argamassa da junta é a face comum: o fundo mais fino)
     trechos = []
-    for i, (a, b) in enumerate(v['muro']):
-        trechos.append((a, b, COR))
+    for i, (a, b, f) in enumerate(v['muro']):
+        trechos.append((a, b, f, COR))
         if i + 1 < len(v['muro']):
-            trechos.append((b, v['muro'][i + 1][0], ARG))
+            trechos.append((b, v['muro'][i + 1][0], min(f, v['muro'][i + 1][2]), ARG))
     cx = []
-    for a, b, cor in trechos:
-        cx.append(Caixa(a, b, yw0, yw1, 0, fundo, cor))                                   # fundo
+    for a, b, f, cor in trechos:
+        cx.append(Caixa(a, b, yw0, yw1, 0, f, cor))                                       # fundo
         for p0, p1 in _menos(a, b, [(nx0, nx1)]):                                         # parede do lado do contraforte
-            cx.append(Caixa(p0, p1, yw0, yw0 + par, fundo, h, cor))
-        cx.append(Caixa(a, b, yw1 - par, yw1, fundo, h, cor, opac={'esq': GHOST}))       # parede da frente
+            cx.append(Caixa(p0, p1, yw0, yw0 + par, f, h, cor))
+        cx.append(Caixa(a, b, yw1 - par, yw1, f, h, cor, opac={'esq': GHOST}))           # parede da frente
     # canaleta do contraforte (corre em Y) e a junta de 1 cm até a face do muro
     for ya, yb, cor in ((cy0, cy1, COR), (cy1, yw0, ARG)):
         if yb - ya < 1e-6:
@@ -89,14 +105,16 @@ def geometria(v):
         cx.append(Caixa(cx0, cx1, ya, yb, 0, fundo, cor))
         cx.append(Caixa(cx0, cx0 + par, ya, yb, fundo, h, cor))
         cx.append(Caixa(cx1 - par, cx1, ya, yb, fundo, h, cor, opac={'dir': GHOST}))
-    # barras: cinta do muro contínua; barra do contraforte entra pelo trecho aberto e dobra ao lado da cinta
+    # barras: cinta do muro contínua; barra do contraforte entra pelo trecho aberto e dobra em L ao lado da cinta.
+    # Na perspectiva a dobra fica em canto vivo (caixas); a planta mostra o raio.
     aco = dict(borda=tom(C['steel'], -0.35), sw=0.5, tons=(0.25, 0.0, -0.3))
     aco2 = dict(borda=tom(C['barra2'], -0.4), sw=0.5, tons=(0.25, 0.0, -0.3))
     cx.append(Caixa(X0 - SOBRA, X1 + SOBRA, yc - PHI / 2, yc + PHI / 2, zb - PHI / 2, zb + PHI / 2, C['steel'], **aco))
     yl = yc - 1.5 * PHI                                       # perna encostada na cinta, do lado do contraforte
-    cx.append(Caixa(xc - PHI / 2, xc + PHI / 2, cy0 + 3, yl, zb - PHI / 2, zb + PHI / 2, C['barra2'], **aco2))
-    cx.append(Caixa(xc - PHI / 2, xc + PERNA, yl, yl + PHI, zb - PHI / 2, zb + PHI / 2, C['barra2'], **aco2))
-    return dict(cx=cx, nx=(nx0, nx1), xc=xc, yc=yc, zb=zb, X=(X0, X1), yl=yl)
+    xf = xc + R_DOBRA + PERNA                                 # fim da perna
+    cx.append(Caixa(xc - PHI / 2, xc + PHI / 2, cy0 + COB_PONTA, yl, zb - PHI / 2, zb + PHI / 2, C['barra2'], **aco2))
+    cx.append(Caixa(xc - PHI / 2, xf, yl, yl + PHI, zb - PHI / 2, zb + PHI / 2, C['barra2'], **aco2))
+    return dict(cx=cx, nx=(nx0, nx1), xc=xc, yc=yc, zb=zb, X=(X0, X1), yl=yl, xf=xf)
 
 
 def perspectiva(s, v, g, ox, oy, S):
@@ -126,7 +144,6 @@ def perspectiva(s, v, g, ox, oy, S):
     e = P(g['xc'], cy0 + 7, g['zb'])
     cor2 = tom(C['barra2'], -0.3)
     s.chamada(e[0], e[1], bb[2] + 18, e[1] + 4, 'barra do contraforte', color=cor2, anchor='start')
-    s.text(bb[2] + 18, e[1] + 26, '(esquema)', size=T_PEQ, color=cor2, anchor='start')
     return bb
 
 
@@ -147,7 +164,7 @@ def planta(s, v, g, ox, oy, S):
     def ret(x0, y0, x1, y1, **kw):
         (a, b), (c, d) = Q(x0, y0), Q(x1, y1)
         s.rect(min(a, c), min(b, d), abs(c - a), abs(d - b), **kw)
-    for a, b in v['muro']:
+    for a, b, _ in v['muro']:
         for p0, p1 in _menos(a, b, [(nx0, nx1)]):
             ret(p0, yw0, p1, yw0 + par, fill=C['blockfill'], stroke=C['line'], sw=1.1)
         ret(a, yw1 - par, b, yw1, fill=C['blockfill'], stroke=C['line'], sw=1.1)
@@ -169,8 +186,14 @@ def planta(s, v, g, ox, oy, S):
     # barras
     zl = Q(X0 - SOBRA, yc), Q(X1 + SOBRA, yc)
     s.line(zl[0][0], zl[0][1], zl[1][0], zl[1][1], stroke=C['steel'], sw=max(2.6, PHI * S * 0.8))
+    # barra do contraforte: eixo com a dobra de raio R_DOBRA (centro recuado R no trecho do contraforte e R na perna)
     yl = yc - PHI
-    s.pline([Q(xc, cy0 + 3), Q(xc, yl), Q(xc + PERNA, yl)], stroke=C['barra2'], sw=max(2.6, PHI * S * 0.8))
+    R = R_DOBRA
+    arco = [Q(xc + R - R * math.cos(k * math.pi / 16), yl - R + R * math.sin(k * math.pi / 16)) for k in range(9)]
+    s.pline([Q(xc, cy0 + COB_PONTA)] + arco + [Q(g['xf'], yl)], stroke=C['barra2'], sw=max(2.6, PHI * S * 0.8))
+    # perna: o trecho reto depois da dobra, cotado embaixo do muro (o valor é o da conta — lista de ferros)
+    yq = Q(0, yw1 + 6)[1]
+    s.dim_h(Q(xc + R, 0)[0], Q(g['xf'], 0)[0], yq, 'ℓ_{b}', off_text=22, ext_from=(Q(0, yl)[1] + 4, Q(0, yl)[1] + 4))
     # rótulos: à esquerda o que é da alvenaria/graute, à direita as barras
     xe = Q(X0 - SOBRA, 0)[0] - 10
     xd = Q(cx1, 0)[0] + 70
@@ -181,7 +204,6 @@ def planta(s, v, g, ox, oy, S):
     d = Q(xc, cy0 + 16)
     cor2 = tom(C['barra2'], -0.3)
     s.chamada(d[0], d[1], xd, d[1] + 6, 'barra do contraforte', color=cor2, anchor='start')
-    s.text(xd, d[1] + 28, '(esquema)', size=T_PEQ, color=cor2, anchor='start')
     c = Q(X1 + SOBRA - 1, yc)
     s.chamada(c[0], c[1], c[0] + 16, Q(0, yw1 + 11)[1], 'barra da cinta', color=C['steel'], anchor='start')
 

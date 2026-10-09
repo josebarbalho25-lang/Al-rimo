@@ -2,7 +2,7 @@
 //  App.tsx — a concha
 // ---------------------------------------------------------------------------
 //   ┌──────────────────────────────────────────────────────────────┐
-//   │ TOPBAR  nome •  │ novo abrir salvar │ IFC imprimir │ ⚙  tema  │
+//   │ TOPBAR  nome •  │ novo abrir salvar │ IFC imprimir │ § ⚙  tema│
 //   ├──────────────────┬───────────────────────────────────────────┤
 //   │ ENTRADAS         │ 3D │ Vista frontal │ Corte │ … │ Memória │  │
 //   │ ▾ GEOMETRIA      ├───────────────────────────────────────────┤
@@ -18,17 +18,30 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { abrirProjeto, salvarProjeto } from '@/estado/acoesDeArquivo';
 import { CHAVES, guardar, lembrarLarguraDoPainel } from '@/estado/lembrete';
+import { aceiteVigente } from '@/estado/termo';
 import { usePreferencias } from '@/estilo/preferenciasDaInterface';
 import { BarraDeEstado } from '@/ui/BarraDeEstado';
 import { AbasDoPalco, Palco } from '@/ui/Palco';
 import { PainelDeEntradas } from '@/ui/PainelDeEntradas';
+import { PortaDoTermo } from '@/ui/TermoDeUso';
 import { TopBar } from '@/ui/TopBar';
 
 /** Faixa da largura do painel ao arrastar, em px de TELA. */
 const LARGURA_MIN = 300;
 const LARGURA_MAX = 720;
 
+/*
+  Sem o aceite do termo vigente, a casca NEM MONTA (item 2.1: o uso só é
+  liberado depois do aceite). Não basta pôr a janela por cima: com a casca
+  montada embaixo, o Ctrl+O e o Ctrl+S continuariam abrindo e salvando muro.
+*/
 export function App() {
+  const [liberado, setLiberado] = useState(() => aceiteVigente() !== null);
+  if (!liberado) return <PortaDoTermo aoLiberar={() => setLiberado(true)} />;
+  return <Casca />;
+}
+
+function Casca() {
   useAtalhos();
   const { escala } = usePreferencias();
   // Em px na escala 100%: a tela multiplica pela escala, e o painel que ele

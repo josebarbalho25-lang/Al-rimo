@@ -2,14 +2,15 @@
   O GERADOR: entradas + conta → o muro peça a peça (Modelo).
 
   Ordem: lê a conta → modula (regra única, modular.ts) → arruma as fiadas (fiadas.ts, com os encaixes da tabela)
-  → põe as barras procurando o furo de verdade de cada fiada (armaduras.ts + cavidades.ts) → grauteia (parcial:
+  → põe as barras procurando o furo de verdade de cada fiada (armaduras.ts + cavidades.ts; nas fiadas de canaleta,
+  a corrida do muro e a barra em L de cada contraforte) → grauteia (parcial:
   furo com barra; total: todos; contraforte: sempre todos) → sapata, drenagem e terreno (entorno.ts).
 
   Tudo em mm, X ao longo do muro, Y = 0 na face aparente e +Y para o solo, Z = 0 no topo da sapata (contrato em
   modelo/tipos.ts). Determinístico: a mesma entrada dá o mesmo JSON (sem Map/Set na saída, sem relógio).
 */
 import type { Resultado, Valor } from '@/motor/tipos';
-import type { Aviso, Modelo, Peca } from '@/modelo/tipos';
+import type { Aviso, Modelo, Peca, TipoPeca } from '@/modelo/tipos';
 import { H_FIADA, JUNTA, pecaDoCatalogo } from './catalogo';
 import { ENCAIXES } from './encaixes';
 import { lerParametros } from './leitura';
@@ -19,10 +20,10 @@ import { MapaDeCavidades, type Cavidade } from './cavidades';
 import { arred, prisma, retanguloArredondado } from './perfis';
 import { numerarPosicoes } from './barras';
 import { fmt, furosDaPeca, geoBloco, geoCanaleta, geoGrauteCanaleta, pad, secaoCanaleta, zTopoBarra, type Ctx } from './contexto';
-import { barrasDoBalanco, barrasDoPainel, barrasDosContrafortes, esperas, horizontais, type Vertical } from './armaduras';
+import { barrasDasCanaletasDosContrafortes, barrasDoBalanco, barrasDoPainel, barrasDosContrafortes, esperas, horizontais, type Vertical } from './armaduras';
 import { conferenciasGerais, drenagem, sapata, temDente, terreno } from './entorno';
 
-export const VERSAO_MODULACAO = 'modulacao 3';
+export const VERSAO_MODULACAO = 'modulacao 4';
 export { ESPESSURA_MANTA, COB_GRAUTE } from './contexto';
 
 export function gerarModelo(r: Resultado, extras: Record<string, Valor> = {}): Modelo {
@@ -62,6 +63,7 @@ export function gerarModelo(r: Resultado, extras: Record<string, Valor> = {}): M
     }
     esperas(ctx, tr, mapa, verticais, Ype, YbA);
     horizontais(ctx, tr, fiadas, canaleta);
+    barrasDasCanaletasDosContrafortes(ctx, tr, fiadas, canaleta);
     graute(ctx, tr, fiadas, mapa, verticais, inicioAlvenaria);
     sapata(ctx, tr, Ype, YbA);
     drenagem(ctx, tr, mapa);
@@ -222,14 +224,15 @@ function graute(ctx: Ctx, tr: TrechoModulado, fiadas: FiadaMontada[], mapa: Mapa
     }
   }
   const fim = pecas.length;
-  const { parede, fundo } = secaoCanaleta(mod);
   for (let ip = ini; ip < fim; ip++) {
     const host = pecas[ip];
-    // canaleta deitada na haste (fiada de canaleta): o miolo dela, do comprimento dela
+    // canaleta deitada na haste (fiada de canaleta): o miolo dela, do comprimento dela, com a seção DELA (a cortada
+    // da 19 tem fundo mais grosso)
     if (host.grupo === 'contraforte' && ctx.geos[host.geometria]?.eixo === 'X') {
       const comp = ctx.geos[host.geometria].extensao;
+      const { parede, fundo } = secaoCanaleta(mod, host);
       const g: Peca = {
-        id: `${host.id}.gc`, tipo: 'GRAUTE_CANALETA', grupo: 'contraforte', geometria: geoGrauteCanaleta(ctx, comp),
+        id: `${host.id}.gc`, tipo: 'GRAUTE_CANALETA', grupo: 'contraforte', geometria: geoGrauteCanaleta(ctx, comp, host),
         origem: [arred(host.origem[0] + parede), host.origem[1], arred(host.origem[2] + fundo)], giro: host.giro, trecho: tr.indice, fiada: host.fiada,
       };
       if (host.contraforte !== undefined) g.contraforte = host.contraforte;
@@ -257,31 +260,38 @@ function graute(ctx: Ctx, tr: TrechoModulado, fiadas: FiadaMontada[], mapa: Mapa
     }
   }
 
-  // canaleta: um prisma de graute por corrida contínua de canaletas (inclui as juntas verticais), com a seção do
-  // miolo da canaleta da família (o vazio do U — o graute do quantitativo sai daqui)
+  // canaleta: um prisma de graute por corrida contínua de canaletas da MESMA seção (inclui as juntas verticais), com
+  // o miolo dela (o vazio do U — o graute do quantitativo sai daqui). Onde a seção muda (a cortada da 19 tem fundo
+  // mais grosso), o prisma fecha no começo da peça seguinte: a junta entre as duas fica com o prisma de antes.
   for (const f of fiadas) {
     let ini0: number | null = null;
     let fimC = 0;
+    let secao: { tipo: TipoPeca } | null = null;
     let k = 0;
-    const fecha = (): void => {
-      if (ini0 === null) return;
+    const fecha = (ate = fimC): void => {
+      if (ini0 === null || !secao) return;
+      const s = secaoCanaleta(mod, secao);
       pecas.push({
-        id: `T${tr.indice}.GC.f${pad(f.i, 2)}.${++k}`, tipo: 'GRAUTE_CANALETA', grupo: 'muro', geometria: geoGrauteCanaleta(ctx, fimC - ini0),
-        origem: [arred(ini0), arred(parede), arred(f.i * H_FIADA + JUNTA + fundo)], giro: 0, trecho: tr.indice, fiada: f.i,
+        id: `T${tr.indice}.GC.f${pad(f.i, 2)}.${++k}`, tipo: 'GRAUTE_CANALETA', grupo: 'muro', geometria: geoGrauteCanaleta(ctx, ate - ini0, secao),
+        origem: [arred(ini0), arred(s.parede), arred(f.i * H_FIADA + JUNTA + s.fundo)], giro: 0, trecho: tr.indice, fiada: f.i,
       });
       ini0 = null;
     };
     for (const it of f.linha) {
-      const canal = pecaDoCatalogo(mod.cat, it.chave).forma === 'canaleta';
-      if (canal && ini0 !== null && it.x - fimC <= JUNTA + 1e-6) {
-        fimC = it.x + it.comp;
-      } else if (canal) {
+      const pc = pecaDoCatalogo(mod.cat, it.chave);
+      if (pc.forma !== 'canaleta') {
         fecha();
-        ini0 = it.x;
-        fimC = it.x + it.comp;
-      } else {
-        fecha();
+        continue;
       }
+      const seguida = ini0 !== null && it.x - fimC <= JUNTA + 1e-6;
+      if (seguida && secaoCanaleta(mod, pc).propria === secaoCanaleta(mod, secao!).propria) {
+        fimC = it.x + it.comp;
+        continue;
+      }
+      fecha(seguida ? it.x : fimC);
+      ini0 = it.x;
+      fimC = it.x + it.comp;
+      secao = { tipo: pc.tipo };
     }
     fecha();
   }

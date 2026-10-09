@@ -5,13 +5,15 @@
   (d) e o furo não deixa (graute < 15 mm, ou a barra sai do furo), o desenho mostra onde ela cabe e avisa. O
   desenho não esconde o que a conta não viu — mas também não desenha barra dentro do bloco.
 */
-import { H_FIADA, JUNTA } from './catalogo';
+import { H_FIADA, JUNTA, pecaDoCatalogo, secaoDaPecaCanaleta } from './catalogo';
 import type { MapaDeCavidades } from './cavidades';
 import { br, type TrechoModulado } from './modular';
 import { COB_GRAUTE, COB_PONTA, RECUO_ESTRIBO, RECUO_ESTRIBO_LATERAL, pad, zTopoBarra, type Ctx } from './contexto';
-import { corrida, espera, estribo, pontaGancho90, raioDoEixo, reta, type BarraNova } from './barras';
-import type { Vec3 } from '@/modelo/tipos';
+import { corrida, emL, espera, estribo, pontaGancho90, raioDoEixo, reta, type BarraNova } from './barras';
+import type { FiadaMontada } from './fiadas';
 import { arred } from './perfis';
+import { arrumarGrupo, type Arranjo } from './arranjo';
+import { cDaMontagem } from './secaoDoContraforte';
 
 export interface Vertical {
   barra: BarraNova;
@@ -132,47 +134,14 @@ export function barrasDoPainel(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidad
 
 // ── contraforte ──────────────────────────────────────────────────────────────
 
-interface Arranjo { barras: [number, number][]; esperas: [number, number][]; folga: number }
-
-/**
- * Grupo de n barras num furo, cada uma com a sua espera AO LADO (emenda por contato), arrumadas em linhas:
- * ao longo da linha, passo 2φ (folga livre φ); entre linhas, passo 3φ (o par barra + espera ocupa 2φ). A linha
- * corre ao longo de `eixo`; o centro das BARRAS fica no alvo nas duas direções — é o que preserva o d da conta —
- * e a espera vai para o lado que couber. Tenta 1 linha, 2, 3...: fica a 1ª arrumação com 15 mm de graute; senão
- * a 1ª que cabe; senão a de maior folga.
- */
+/** O grupo no muro: a barra tem de caber em todas as fiadas que atravessa; a espera, nas do traspasse. */
 function arranjar(ctx: Ctx, mapa: MapaDeCavidades, cx: number, cy: number, n: number, phi: number, eixo: 'X' | 'Y', l0: number): Arranjo {
   const z1 = zTopoBarra(ctx);
-  let melhor: Arranjo | null = null;
-  let primeiroQueCabe: Arranjo | null = null;
-  for (let linhas = 1; linhas <= n; linhas++) {
-    for (const [e, lado] of [[eixo, 1], [eixo, -1], [eixo === 'X' ? 'Y' : 'X', 1], [eixo === 'X' ? 'Y' : 'X', -1]] as const) {
-      const porLinha = Math.ceil(n / linhas);
-      if (linhas > 1 && Math.ceil(n / (linhas - 1)) === porLinha) continue;   // mesma arrumação com uma linha vazia
-      const barras: [number, number][] = [];
-      const esperas: [number, number][] = [];
-      let resta = n;
-      for (let L = 0; L < linhas && resta > 0; L++) {
-        const nesta = Math.min(porLinha, resta);
-        resta -= nesta;
-        const atravessa = (L - (linhas - 1) / 2) * 3 * phi;
-        for (let k = 0; k < nesta; k++) {
-          const ao = (k - (nesta - 1) / 2) * 2 * phi;
-          const pe = atravessa + lado * phi;
-          barras.push(e === 'Y' ? [cx + atravessa, cy + ao] : [cx + ao, cy + atravessa]);
-          esperas.push(e === 'Y' ? [cx + pe, cy + ao] : [cx + ao, cy + pe]);
-        }
-      }
-      let folga = Infinity;
-      for (const [x, y] of barras) folga = Math.min(folga, mapa.folga(x, y, phi / 2, 0, z1));
-      for (const [x, y] of esperas) if (folga > -Infinity) folga = Math.min(folga, mapa.folga(x, y, phi / 2, 0, l0));
-      const a: Arranjo = { barras, esperas, folga };
-      if (folga >= COB_GRAUTE) return a;
-      if (folga >= 0 && !primeiroQueCabe) primeiroQueCabe = a;
-      if (!melhor || folga > melhor.folga) melhor = a;
-    }
-  }
-  return primeiroQueCabe ?? melhor!;
+  return arrumarGrupo(
+    (x, y, raio) => mapa.folga(x, y, raio, 0, z1),
+    (x, y, raio) => mapa.folga(x, y, raio, 0, l0),
+    cx, cy, n, phi, eixo,
+  );
 }
 
 /**
@@ -221,14 +190,22 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
   const t = cat.t;
   const enterrado = p.enterrado;
   const yDe = (eta: number): number => (enterrado ? eta : t - eta);
-  // c da conta (Entradas ou eenr/2); o centro do furo da ponta fica a (m − 10)/2 — brief Q10
-  const cCf = p.c_cf ?? t / 2;
-  const cGeo = (m - JUNTA) / 2;
-  if (Math.abs(cCf - cGeo) > 5) {
-    ctx.avisos.push({ codigo: 'D_GEOMETRICO_CF', texto: `Contraforte: barra a ${br(cCf / 10, 1)} cm da ponta; centro do furo a ${br(cGeo / 10, 1)} cm` });
+  // c da conta (planilha: o da montagem do Revit, ou o digitado nas Entradas). O furo onde a barra passa reta é o
+  // trecho comum às fiadas P e I (secaoDoContraforte.ts) — a mesma conta que a planilha tabelou; só avisa se o c
+  // digitado tirar a barra do centro dele.
+  const meioCelula = (m - JUNTA) / 2;
+  let cGeo = meioCelula;
+  try {
+    cGeo = cDaMontagem(cat.nome, mod.tenr, enterrado ? 'enterrado' : 'aparente');
+  } catch {
+    /* contraforte sem furo reconhecível na ponta: fica o centro da célula */
+  }
+  const cCf = p.c_cf ?? cGeo;
+  if (Math.abs(cCf - cGeo) > 0.5) {
+    ctx.avisos.push({ codigo: 'D_GEOMETRICO_CF', texto: `Contraforte: barra a ${br(cCf / 10, 1)} cm da ${enterrado ? 'ponta' : 'face do solo'}; centro do furo a ${br(cGeo / 10, 1)} cm` });
   }
   // furos do contraforte ao longo de η: o do muro (t/2) e os da haste (centro de cada célula)
-  const celulas = Array.from({ length: mod.n_haste }, (_, j) => t + JUNTA + j * m + cGeo);
+  const celulas = Array.from({ length: mod.n_haste }, (_, j) => t + JUNTA + j * m + meioCelula);
   // tracionada: enterrado → da ponta para o muro; aparente → do muro (junto ao solo) para a ponta (Fig. 12)
   const furosTracao = enterrado ? [...celulas].reverse().concat([t / 2]) : [t / 2, ...celulas];
   const furosCompressao = [...furosTracao].reverse();
@@ -354,24 +331,135 @@ export function esperas(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidades, vs:
 
 // ── horizontais nas canaletas ────────────────────────────────────────────────
 
-export function horizontais(ctx: Ctx, tr: TrechoModulado, fiadas: { i: number }[], canaleta: boolean[]): void {
+/** A barra da canaleta do muro numa fiada: Ø, eixo (y, z) e o desvio das barras emendadas (lado a lado, em y). */
+export interface BarraDaCanaleta { phi: number; y: number; z: number; lado: number }
+
+/** Lado da haste dos contrafortes em Y: enterrado +Y (solo), aparente −Y (frente). */
+const ladoDaHaste = (ctx: Ctx): 1 | -1 => (ctx.p.enterrado ? 1 : -1);
+
+/** O eixo da barra cabe no miolo da canaleta com o graute mínimo dos dois lados? */
+function cabeNoMiolo(ctx: Ctx, y: number, phi: number): boolean {
+  const { parede } = ctx.mod.cat.canaleta;
+  const t = ctx.mod.cat.t;
+  return y - phi / 2 >= parede + COB_GRAUTE - 1e-6 && y + phi / 2 <= t - parede - COB_GRAUTE + 1e-6;
+}
+
+export function barraDaCanaletaDoMuro(ctx: Ctx, f: FiadaMontada): BarraDaCanaleta {
   const { mod, p } = ctx;
   const t = mod.cat.t;
-  // parede e fundo da canaleta da família (na 14x39, a do Revit: fundo de 39 mm)
-  const { parede, fundo } = mod.cat.canaleta;
+  const { parede } = mod.cat.canaleta;
+  // canaleta da conta (espaçamento s): Ø e posição da conta; só cinta: Ø da cinta, centralizada — DEDUÇÃO no
+  // balanço, que não tem Ø de barra horizontal nas Entradas (a aula usou Ø10)
+  const daConta = mod.s_can > 0 && ((f.i + 1) * H_FIADA) % mod.s_can === 0;
+  const phi = p.contrafortes && daConta ? p.phi_ph : p.phi_cinta;
+  const y = p.contrafortes && daConta && !p.phCentralizada ? p.c_pv : t / 2;
+  // a barra é reta e corre por canaletas de fundos diferentes (a cortada da 19 tem 1 cm a mais): fica no mais alto,
+  // para ter o graute mínimo em cima de todas — também nas da haste, onde corre a barra do contraforte (mesmo z)
+  let fundo = mod.cat.canaleta.fundo;
+  const pecas = [...f.linha.map((it) => it.chave), ...f.hastes.flatMap((h) => h.map((it) => it.chave))];
+  for (const ch of pecas) {
+    const pc = pecaDoCatalogo(mod.cat, ch);
+    if (pc.forma === 'canaleta') fundo = Math.max(fundo, secaoDaPecaCanaleta(mod.cat, pc).fundo);
+  }
+  const z = f.i * H_FIADA + JUNTA + fundo + COB_GRAUTE + phi / 2;
+  // barras emendadas: a 2ª encosta ao lado da 1ª. No muro com contrafortes, do lado OPOSTO à haste quando cabe —
+  // do lado da haste fica a perna em L da barra do contraforte (barrasDasCanaletasDosContrafortes)
+  let lado = y + 1.5 * phi <= t - parede ? phi : -phi;
+  if (p.contrafortes) {
+    const longe = -ladoDaHaste(ctx) * phi;
+    if (cabeNoMiolo(ctx, y + longe, phi)) lado = longe;
+  }
+  return { phi, y, z, lado };
+}
+
+export function horizontais(ctx: Ctx, tr: TrechoModulado, fiadas: FiadaMontada[], canaleta: boolean[]): void {
   for (const f of fiadas) {
     if (!canaleta[f.i]) continue;
-    // canaleta da conta (espaçamento s): Ø e posição da conta; só cinta: Ø da cinta, centralizada — DEDUÇÃO no
-    // balanço, que não tem Ø de barra horizontal nas Entradas (a aula usou Ø10)
-    const daConta = mod.s_can > 0 && ((f.i + 1) * H_FIADA) % mod.s_can === 0;
-    const phi = p.contrafortes && daConta ? p.phi_ph : p.phi_cinta;
-    const y = p.contrafortes && daConta && !p.phCentralizada ? p.c_pv : t / 2;
-    const z = f.i * H_FIADA + JUNTA + fundo + COB_GRAUTE + phi / 2;
-    const lado: Vec3 = [0, y + 1.5 * phi <= t - parede ? phi : -phi, 0];
-    const barras = corrida(`T${tr.indice}.H.f${pad(f.i, 2)}.`, 'HORIZ', phi, tr.x0 + COB_PONTA, tr.x1 - COB_PONTA, y, z, traspasse(ctx, phi), lado, tr.indice);
+    const { phi, y, z, lado } = barraDaCanaletaDoMuro(ctx, f);
+    const barras = corrida(`T${tr.indice}.H.f${pad(f.i, 2)}.`, 'HORIZ', phi, tr.x0 + COB_PONTA, tr.x1 - COB_PONTA, y, z, traspasse(ctx, phi), [0, lado, 0], tr.indice);
     if (barras.length > 1) avisarTraspasseProporcional(ctx);
     ctx.barras.push(...barras);
   }
+}
+
+/** Perna da barra do contraforte dentro da canaleta do muro: ℓb da conta se for do mesmo Ø; senão 30φ (DEDUÇÃO). */
+export function pernaDaCanaletaDoContraforte(ctx: Ctx, phi: number): { perna: number; daConta: boolean } {
+  const { p } = ctx;
+  if (p.lb !== null && p.lb > 0 && Math.abs(phi - p.phi_v) < 1e-9) return { perna: p.lb, daConta: true };
+  return { perna: 30 * phi, daConta: false };
+}
+
+/**
+ * Barra horizontal da canaleta do CONTRAFORTE (Jose, 09/10 — Detalhe 1): em cada fiada de canaleta (intermediárias e
+ * cinta) e em cada contraforte, da ponta do contraforte até dentro da canaleta do muro, onde dobra em L e deita ao
+ * lado da barra do muro, do lado da haste. A parede da canaleta do muro é quebrada ali e o graute vira um T.
+ * Papel HORIZ com `contraforte` preenchido: é o que separa esta barra da corrida do muro (contrato em modelo/tipos.ts).
+ * Ø: o da barra da canaleta do muro na mesma fiada — a planilha não dimensiona a canaleta do contraforte (DEDUÇÃO).
+ * Perna: ℓb da conta se o Ø for o da barra vertical do balanço, senão 30φ (DEDUÇÃO, vira aviso).
+ * Ponta direita: a perna vai para −X (para dentro do vão); ponta esquerda e T: +X.
+ * A perna encosta na barra do muro que passa na dobra. Se o lado da haste não tem graute para ela (barra do muro
+ * encostada na face da haste) ou é onde fica a outra barra da emenda do muro, a barra do contraforte sobe e passa
+ * por cima da barra do muro, deitando sobre ela.
+ */
+export function barrasDasCanaletasDosContrafortes(ctx: Ctx, tr: TrechoModulado, fiadas: FiadaMontada[], canaleta: boolean[]): void {
+  if (!tr.nos.length) return;
+  const { mod, p } = ctx;
+  const t = mod.cat.t;
+  const sY = ladoDaHaste(ctx);
+  const yPonta = p.enterrado ? mod.tenr - COB_PONTA : t - (mod.tenr - COB_PONTA);
+  let usouConta = false;
+  let usouDeducao = false;
+  const curtas: string[] = [];
+  for (const f of fiadas) {
+    if (!canaleta[f.i]) continue;
+    const bm = barraDaCanaletaDoMuro(ctx, f);
+    const phi = bm.phi;
+    const R = raioDoEixo(phi);
+    const contato = (bm.phi + phi) / 2;
+    const { perna, daConta } = pernaDaCanaletaDoContraforte(ctx, phi);
+    if (daConta) usouConta = true;
+    else usouDeducao = true;
+    // as barras do muro desta fiada já postas (horizontais): com emenda são duas, lado a lado, alternando
+    const prefixo = `T${tr.indice}.H.f${pad(f.i, 2)}.`;
+    const doMuro = ctx.barras.filter((b) => b.id.startsWith(prefixo)).map((b) => ({
+      x0: Math.min(b.eixo[0][0], b.eixo[1][0]), x1: Math.max(b.eixo[0][0], b.eixo[1][0]), y: b.eixo[0][1], z: b.eixo[0][2],
+    }));
+    const nos = tr.nos;
+    const sentido = nos.map((no) => (no.tipo === 'L1' ? -1 : 1));
+    nos.forEach((no, k) => {
+      const sx = sentido[k];
+      // até onde a perna pode ir: a ponta do trecho; antes do eixo do contraforte seguinte quando a perna dele vai
+      // para o mesmo lado (a dele começa ali); a meio caminho quando as duas vêm uma contra a outra (o último vão,
+      // onde a da ponta direita volta). Vão curto encurta a perna e avisa.
+      const viz = nos[k + sx];
+      const limite = !viz
+        ? (sx > 0 ? tr.x1 - COB_PONTA : tr.x0 + COB_PONTA)
+        : sentido[k + sx] === sx ? viz.xc - sx * phi : (no.xc + viz.xc) / 2 - (sx * phi) / 2;
+      const l = Math.min(perna, Math.max(0, (limite - no.xc) * sx - R));
+      const id = `T${tr.indice}.CF${no.cf}.H.f${pad(f.i, 2)}`;
+      if (l < perna - 0.5) curtas.push(id);
+      const xa = Math.min(no.xc, no.xc + sx * (R + l));
+      const xb = Math.max(no.xc, no.xc + sx * (R + l));
+      // a barra do muro onde a perna encosta: a que passa na dobra
+      const xd = no.xc + sx * R;
+      const base = doMuro.find((b) => b.x0 <= xd + 1e-6 && b.x1 >= xd - 1e-6) ?? { x0: xa, x1: xb, y: bm.y, z: bm.z };
+      // ao lado dela, do lado da haste — se ali não há graute, ou se a outra barra da emenda está desse lado, sobe e
+      // deita por cima dela
+      let y = base.y + sY * contato;
+      let z = base.z;
+      const ocupado = doMuro.some((b) => b !== base && b.x0 < xb && b.x1 > xa && (b.y - base.y) * sY > 1e-6);
+      if (!cabeNoMiolo(ctx, y, phi) || ocupado) {
+        y = base.y;
+        z = base.z + contato;
+      }
+      ctx.barras.push(emL(id, 'HORIZ', phi, [no.xc, yPonta, z], [no.xc, y, z], [sx, 0], l, tr.indice, no.cf));
+    });
+  }
+  if (usouConta || usouDeducao) {
+    const perna = !usouDeducao ? 'ℓb da conta' : usouConta ? 'ℓb da conta ou 30φ' : '30φ';
+    ctx.avisos.push({ codigo: 'CANALETA_CF', texto: `Barra da canaleta do contraforte: Ø da canaleta do muro, perna em L = ${perna} (dedução)` });
+  }
+  if (curtas.length) ctx.avisos.push({ codigo: 'CANALETA_CF_PERNA', texto: 'Perna em L da barra da canaleta do contraforte encurtada (vão curto)', ids: curtas });
 }
 
 export function avisarTraspasseProporcional(ctx: Ctx): void {

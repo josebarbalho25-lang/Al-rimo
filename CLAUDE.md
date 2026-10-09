@@ -143,11 +143,27 @@ e dizer ao Jose o que mudou e por quê.
   **Aguardando o Jose:** resumo da aula do Gilberto sobre deslizamento ("coeficiente de
   atrito") e a POSIÇÃO DO DENTE (não é sempre centralizado: distância à borda aterrada → tombamento e deslizamento);
   "nó de cachorro" da armadura que entra na sapata (ele modela no Revit).
+- **Respostas do Jose (09/10, fim do dia):** limites 3,0/4,0 valem para a altura do MURO; **bitola da espera em LISTA
+  dependente da altura da sapata** (só as que a dobra cabe: pino 5φ até Ø16, 8φ a partir de Ø20 — NBR 6118 Tab. 9.1;
+  "nó de cachorro" com Ø20 não cabe em sapata de 20 cm) — FAZER depois da seção real; barra do contraforte na
+  canaleta do muro **dobrada em L**; canaleta cortada de 19 é **peça própria** (fundo 3,91); comprimento do muro em
+  múltiplos do bloco ("o calculista se vira com o corte"); termo: mesmos dados do Pró-Viga, foro Uberaba/MG.
+- **Detalhes típicos det01–det05 prontos** (`figs/app/detalhes/`, `app/public/detalhes/`; ainda não entram na prancha).
+  Pontos para o Jose: cor da espera (Fig. 9 × Fig. 18 invertidas — seguiu a 9); impermeabilização até a altura de
+  solo (quantitativo) × topo do muro (Fig. 17); barra vertical subindo até 3 cm do topo atravessa o fundo da canaleta
+  da cinta (furar o fundo? o detalhe não mostra); junta: o app interrompe toda a barra da cinta (ABCP fala em "parte").
+- **A FAZER (Jose, 09/10): DRENO DE FUNDO** além dos barbacãs — tubo correndo na longitudinal, no pé do tardoz, envolto
+  por bidim (geotêxtil), areia e brita. Entra no 3D, no corte, no quantitativo (m de tubo, m² de bidim, m³ de areia e
+  brita), no IFC e nas entradas de Drenagem (Ø do tubo, dimensões do envelope). Fácil; ficou para depois.
 - **Cores por tipo de bloco** (como ele faz no Revit para a obra entender): inteiro #787878, meio #004080, canaleta
   #ffff80, bloco 34 #ff8040, bloco 54 #ff0000 (`dados/encaixes_revit/cores_jose.json`) — 3D e vista frontal com legenda.
 - **Ele confere pela MEMÓRIA, não pela planilha.** Parte a caprichar: **inércia e braço de alavanca da seção real** de cada
   modulação (furo grauteado com a barra → d; mesa; I bruta/fissurada). A conta simplificada (d = tenr − eenr/2, seção T por
   bm) não enxerga a peça: a seção do contraforte deve sair cotada da modulação e ir passo a passo para a memória.
+  **FEITO (09/10, noite):** c da barra = centro do trecho comum aos furos das fiadas P e I (onde a barra passa reta),
+  tabela na aba Referências (colunas AT–BA, nomes `mont_*`, linha `c_mont`) conferida pelo teste contra
+  `app/src/modulacao/secaoDoContraforte.ts`; seção desenhada e cotada nos cards de flexão e ELS do contraforte
+  (`app/src/memoria/desenhoDaSecaoCf.ts`). Furo comum + barras que cabem (15 mm, espera ao lado) e taxa de 8% só informam.
 
 ## Convenções de cálculo
 
@@ -163,7 +179,9 @@ e dizer ao Jose o que mudou e por quê.
 - ELS: seção I (mesas = paredes do bloco), Branson, heq = (12·Ieq/b)^(1/3); δ∞ = δ0·(1 + Δξ), Δξ = 1; balanço 2L/250; placa menor vão/250.
 - Espessura efetiva com enrijecedores: te = δ·t só para esbeltez (δ por lenr/eenr × tenr/t, limitado à tabela).
 - Contraforte: largura de influência (intermediário l; extremidade l/2 + balanço). Enterrado → seção T (bm ≤ bw + 2·6t,
-  ≤ h/3), fpk vazado; aparente → retangular, fpk*. d = tenr − eenr/2.
+  ≤ h/3), fpk vazado; aparente → retangular, fpk*. d = tenr − c da montagem (templates do Revit: enterrado, da ponta,
+  9,5 no bloco 14 e 10,0 no 19; aparente, da face do solo, 7,0 e 10,0 — espelho, dedução); c_cf_dir digitado manda.
+  Seção bruta como no curso (alma toda grauteada; mesa com fpk bruto) — a novidade é só o d.
 - Painel: Libânio Tipo 21 (laterais apoiadas) / 22 (engastadas), triangular + uniforme (Tipos 9/10). γ = h/l, l = menor vão.
   Mdx ← μy; Mdxb ← μyb; Mdy ← μx; Mdyei ← μ'x; Mdxe ← μ'y. Flecha a = α/100·p·l⁴/(E·t³) com o heq de cada direção; vale a pior.
 - Painel não armado entre barras e canaletas: caso 13, βf interpolado (planilha 11), fd = 1,4·σh médio do subpainel de baixo.
@@ -204,9 +222,16 @@ e dizer ao Jose o que mudou e por quê.
   conferida nos 61 cenários); δ∞ do painel "—" sem heq (era falso OK); 3D com estilos Cores/Realista/Opaco; pranchas com
   as cores e legenda (folha branca no tema escuro); detalhes típicos `figs/app/detalhes/` (canaletas em T, amarração P×I);
   `TERMO_DE_USO.md` (falta: foro, licenciante, e-mail; tela de aceite no app). Suíte: 3108 testes, tsc limpo.
-  Faltam: SEÇÃO REAL do contraforte por modulação (inércia, d) na planilha + memória; planilha oferecer só 34/54 no 14x39
-  e eixo a eixo só par de meios módulos; Ag da conta pelo bloco desenhado (decidir); revisores de IFC/quantitativo com o
-  muro real; detalhes 3–5; tela de aceite do termo; padrão l_cf 1,50 → 1,60 no bloco 19 (pôr l_cf=1,5 no VAL123).
+  09/10 noite (subido no GitHub): SEÇÃO REAL do contraforte (c da ponta medido nos templates: 14·34/54 → 9,5; 19·59/79
+  → 10,0; d real na planilha e na memória com a seção desenhada e cotada) — **achado: com o d real, contraforte de 34 em
+  h 2,6 / vão 1,35 deixa de passar (x/d 0,56 > 0,45; δ∞ 21,7 > 20,8); passava só pelo d simplificado**; VAL123 (14·54)
+  foi a 4Ø10. Entradas travadas, cerâmico removido, altura solo × muro, argila, calculadora da Fig. 22, tela de aceite
+  do termo + versões no rosto do memorial, aviso de coesão no app, barra do contraforte em L na canaleta, canaleta
+  cortada 19 própria, detalhes det01–det05, catálogo de peças no quantitativo. Suíte: 3351 testes, tsc limpo.
+  Faltam: bitola da espera em lista pela altura da sapata (decidido); dreno de fundo; deslizamento e posição do dente
+  (aguardando resumo da aula do Gilberto); nó de cachorro (Revit dele); detalhes na prancha final; T de graute no 3D
+  (parede quebrada da canaleta); "→ 5,99" aparece mesmo com comprimento modular (comparar com o modular?); revisores de
+  IFC/quantitativo com o muro real; Ag da conta pelo bloco desenhado (decidir).
   Relatórios dos agentes: `_trabalho/` (fora do git).
 
 - Receber a NBR 16868-1 em PDF: conferir numeração de itens, Anexo E (βf) e os contornos do ábaco do ELS (lidos do slide).

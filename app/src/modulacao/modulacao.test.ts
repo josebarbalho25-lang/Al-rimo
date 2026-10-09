@@ -195,6 +195,90 @@ function barrasForaDoGraute(m: Modelo): string[] {
   return out;
 }
 
+/**
+ * Barra da canaleta do contraforte (Jose, 09/10 — Detalhe 1): uma por contraforte em cada fiada de canaleta, Ø da
+ * barra da canaleta do muro, da ponta do contraforte (cobrimento 3 cm) até a canaleta do muro, dobrada em L e
+ * encostada na barra do muro (ao lado ou por cima), com a perna = ℓb da conta (mesmo Ø da vertical) ou 30φ.
+ * Mesma forma ⇒ mesma posição, também espelhada (a ponta direita é a esquerda virada).
+ */
+function canaletasDosContrafortes(m: Modelo, r: Resultado): string[] {
+  const out: string[] = [];
+  const t = m.familia.t;
+  const fiadasC = [...new Set(m.pecas.filter((p) => p.grupo === 'muro' && CANALETAS.has(p.tipo)).map((p) => p.fiada!))];
+  const doCf = m.barras.filter((b) => b.papel === 'HORIZ' && b.contraforte !== undefined);
+  if (!m.dims.contrafortes.length) return doCf.length ? ['barra de canaleta de contraforte num muro sem contraforte'] : [];
+  const cfPecas = m.pecas.filter((p) => p.grupo === 'contraforte' && ALVENARIA.has(p.tipo)).map((p) => caixa(m, p));
+  const enterrado = cfPecas.some((c) => c.max[1] > t + 0.5);
+  const tenr = enterrado ? Math.max(...cfPecas.map((c) => c.max[1])) : t - Math.min(...cfPecas.map((c) => c.min[1]));
+  const yPonta = enterrado ? tenr - 30 : t - tenr + 30;
+  const lb = r.num('lb_adot');
+  const phiV = r.num('phi_v');
+  const curtas = new Set(m.avisos.filter((a) => a.codigo === 'CANALETA_CF_PERNA').flatMap((a) => a.ids ?? []));
+  const parede = CATALOGO[m.familia.nome].canaleta.parede;
+  const posPorForma = new Map<string, Set<string>>();
+  m.dims.contrafortes.forEach((c, k) => {
+    for (const i of fiadasC) {
+      const bs = doCf.filter((b) => b.contraforte === k + 1 && Math.floor(b.eixo[0][2] / 200) === i);
+      if (bs.length !== 1) {
+        out.push(`C${k + 1} fiada ${i}: ${bs.length} barras de canaleta`);
+        continue;
+      }
+      const b = bs[0];
+      const e = b.eixo;
+      const [a, z] = [e[0], e[0][2]];
+      const fim = e[e.length - 1];
+      const antes = e[e.length - 2];
+      // barras do muro da fiada que a perna alcança; a da dobra é onde ela encosta
+      const xa = Math.min(a[0], fim[0]);
+      const xb = Math.max(a[0], fim[0]);
+      const muro = m.barras.filter((q) => q.papel === 'HORIZ' && q.contraforte === undefined && q.trecho === c.trecho
+        && Math.floor(q.eixo[0][2] / 200) === i && Math.min(q.eixo[0][0], q.eixo[1][0]) < xb && Math.max(q.eixo[0][0], q.eixo[1][0]) > xa);
+      const naDobra = muro.find((q) => Math.min(q.eixo[0][0], q.eixo[1][0]) <= antes[0] + 1e-6 && Math.max(q.eixo[0][0], q.eixo[1][0]) >= antes[0] - 1e-6);
+      if (!naDobra) {
+        out.push(`${b.id}: sem barra do muro na dobra`);
+        continue;
+      }
+      if (muro.some((q) => q.diametro !== b.diametro)) out.push(`${b.id}: Ø ${b.diametro} ≠ Ø da canaleta do muro`);
+      if (Math.abs(a[0] - c.x) > 1e-6 || Math.abs(a[1] - yPonta) > 1e-6) out.push(`${b.id}: não começa na ponta do contraforte`);
+      if (e.some((q) => Math.abs(q[2] - z) > 1e-6)) out.push(`${b.id}: não é plana`);
+      // perna: reta, ao longo de X, para dentro do trecho, encostada na barra do muro
+      if (Math.abs(fim[1] - antes[1]) > 1e-6) out.push(`${b.id}: perna fora de X`);
+      const perna = Math.abs(fim[0] - antes[0]);
+      const esperada = lb !== null && phiV !== null && Math.abs(b.diametro - phiV) < 1e-9 ? lb * 10 : 30 * b.diametro;
+      if (Math.abs(perna - esperada) > 0.01 && !curtas.has(b.id)) out.push(`${b.id}: perna ${perna} ≠ ${esperada}`);
+      const contato = (b.diametro + naDobra.diametro) / 2;
+      const dist = Math.hypot(naDobra.eixo[0][1] - fim[1], naDobra.eixo[0][2] - fim[2]);
+      if (Math.abs(dist - contato) > 0.01) out.push(`${b.id}: perna a ${dist} da barra do muro (encostada = ${contato})`);
+      const bate = muro.filter((q) => Math.hypot(q.eixo[0][1] - fim[1], q.eixo[0][2] - fim[2]) < contato - 0.01);
+      if (bate.length) out.push(`${b.id}: perna dentro de ${bate.map((q) => q.id).join(', ')}`);
+      // ao lado da barra do muro, o graute mínimo dos dois lados; por cima dela, herda o y dela
+      const aoLado = Math.abs(naDobra.eixo[0][1] - fim[1]) > 0.01;
+      if (aoLado && (fim[1] - b.diametro / 2 < parede + 15 - 1e-6 || fim[1] + b.diametro / 2 > t - parede - 15 + 1e-6)) out.push(`${b.id}: perna sem graute`);
+      // comprimento desenvolvido: o da polilinha com a dobra de arco (a polilinha é corda, um pouco menor)
+      let L = 0;
+      for (let j = 1; j < e.length; j++) L += Math.hypot(e[j][0] - e[j - 1][0], e[j][1] - e[j - 1][1], e[j][2] - e[j - 1][2]);
+      if (b.comprimento < L - 0.01 || b.comprimento > L * 1.01) out.push(`${b.id}: comprimento ${b.comprimento} × polilinha ${L}`);
+      const forma = `${b.diametro}|${Math.round(b.comprimento)}`;
+      (posPorForma.get(forma) ?? posPorForma.set(forma, new Set()).get(forma)!).add(b.posicao);
+    }
+  });
+  if (doCf.length !== m.dims.contrafortes.length * fiadasC.length) out.push(`${doCf.length} barras de canaleta de contraforte`);
+  // duas pernas no mesmo lugar (vão curto: a da ponta direita volta contra a do vizinho)
+  const pernas = doCf.map((b) => {
+    const [u, v] = [b.eixo[b.eixo.length - 2], b.eixo[b.eixo.length - 1]];
+    return { b, x0: Math.min(u[0], v[0]), x1: Math.max(u[0], v[0]), y: v[1], z: v[2] };
+  });
+  for (let i = 0; i < pernas.length; i++) {
+    for (let j = i + 1; j < pernas.length; j++) {
+      const [a, c] = [pernas[i], pernas[j]];
+      const perto = Math.hypot(a.y - c.y, a.z - c.z) < (a.b.diametro + c.b.diametro) / 2 - 0.01;
+      if (perto && a.x0 < c.x1 - 0.01 && c.x0 < a.x1 - 0.01) out.push(`${a.b.id} × ${c.b.id}: pernas sobrepostas`);
+    }
+  }
+  for (const [f, ps] of posPorForma) if (ps.size > 1) out.push(`barra ${f} em ${ps.size} posições (${[...ps].join(', ')})`);
+  return out;
+}
+
 function conferirTudo(m: Modelo, r: Resultado, nome: string): void {
   // ids únicos e geometria existente
   const ids = new Set<string>();
@@ -213,6 +297,7 @@ function conferirTudo(m: Modelo, r: Resultado, nome: string): void {
   expect(sobreposicoes(m), `${nome}: blocos sobrepostos`).toEqual([]);
   expect(juntasAPrumo(m), `${nome}: junta a prumo`).toEqual([]);
   expect(barrasForaDoGraute(m), `${nome}: barra fora do graute`).toEqual([]);
+  expect(canaletasDosContrafortes(m, r), `${nome}: barra da canaleta do contraforte`).toEqual([]);
 
   // graute do furo = área do furo da peça × altura; no inteiro e no meio, área = a do bloco desenhado (decisão do Jose,
   // 09/10): a do Revit (volume da família) na 14x39 e na 19x39 — e NÃO o Ag da conta
@@ -433,6 +518,117 @@ describe('regra modular', () => {
   });
 });
 
+describe('canaleta cortada da 19: peça própria (Jose, 09/10)', () => {
+  const r19 = trocar(resultadoDoGabarito('aula123'), { t_bloco: 19, L_bloco: 39, eenr: 19, Ag_furo: 170, hf_bl: 3.5 });
+  const secao = (m: Modelo, p: Peca): number => m.geometrias[p.geometria].volume_mm3 / m.geometrias[p.geometria].extensao;
+  it('19x39: fundo 3,91 e o volume do Revit (2864 cm³ em 19 cm); o graute dela é o miolo dela', () => {
+    const m = gerarModelo(r19, { L_total: 6 });
+    const cortadas = m.pecas.filter((p) => p.tipo === 'CANALETA_CORTADA');
+    expect(cortadas.length).toBeGreaterThan(0);
+    for (const p of cortadas) expect(Math.abs(secao(m, p) / (2864e3 / 190) - 1), p.id).toBeLessThan(1e-3);
+    const inteira = m.pecas.find((p) => p.tipo === 'CANALETA')!;
+    expect(Math.abs(secao(m, inteira) / (5333e3 / 390) - 1)).toBeLessThan(1e-3);
+    // o fundo: o miolo começa 39,1 mm acima da base da peça (e o da inteira, 29,1)
+    const fundo = (p: Peca): number => {
+      const g = m.geometrias[p.geometria];
+      const t = m.familia.t;
+      const no = g.perfil.contorno.filter(([u]) => u > 30 && u < t - 30).map(([, v]) => v);
+      return Math.min(...no.filter((v) => v > 1));
+    };
+    expect(fundo(cortadas[0])).toBeCloseTo(39.1, 6);
+    expect(fundo(inteira)).toBeCloseTo(29.1, 6);
+    // graute: U + miolo = seção cheia, peça a peça na haste; na linha do muro o prisma muda de seção junto com a peça
+    const t = m.familia.t;
+    for (const g of m.pecas.filter((p) => p.tipo === 'GRAUTE_CANALETA' && p.grupo === 'contraforte')) {
+      const host = m.pecas.find((p) => p.id === g.id.replace(/\.gc$/, ''))!;
+      expect(secao(m, host) + secao(m, g), g.id).toBeCloseTo(t * 190, 3);
+    }
+    expect(Object.keys(m.geometrias).some((k) => k.startsWith('graute canaleta 19x39 cortada'))).toBe(true);
+    // o graute das canaletas da linha do muro cobre a fiada de ponta a ponta, sem buraco nem sobreposição
+    for (const i of [...new Set(m.pecas.filter((p) => p.tipo === 'GRAUTE_CANALETA' && p.grupo === 'muro').map((p) => p.fiada!))]) {
+      for (const tr of m.dims.trechos) {
+        const gs = m.pecas.filter((p) => p.tipo === 'GRAUTE_CANALETA' && p.grupo === 'muro' && p.fiada === i && caixa(m, p).min[0] >= tr.x0 - 1e-6 && caixa(m, p).max[0] <= tr.x1 + 1e-6)
+          .map((p) => caixa(m, p)).sort((a, b) => a.min[0] - b.min[0]);
+        expect(gs[0].min[0]).toBeCloseTo(tr.x0, 6);
+        expect(gs[gs.length - 1].max[0]).toBeCloseTo(tr.x1, 6);
+        for (let k = 1; k < gs.length; k++) expect(gs[k].min[0]).toBeCloseTo(gs[k - 1].max[0], 6);
+      }
+    }
+    // a barra da canaleta passa por cima do fundo mais alto da fiada, com o graute mínimo
+    for (const b of m.barras.filter((q) => q.papel === 'HORIZ' && q.contraforte === undefined)) {
+      const i = Math.floor(b.eixo[0][2] / 200);
+      expect(b.eixo[0][2] - b.diametro / 2 - (i * 200 + 10 + 39.1), b.id).toBeCloseTo(15, 6);
+    }
+  });
+  it('14x39: a cortada continua com a seção da inteira (os cortes do Revit têm o volume proporcional)', () => {
+    const m = gerarModelo(resultadoDoGabarito('aula123'), { L_total: 2.9 });
+    const cortadas = m.pecas.filter((p) => p.tipo === 'CANALETA_CORTADA');
+    expect(cortadas.length).toBeGreaterThan(0);
+    for (const p of cortadas) expect(Math.abs(secao(m, p) / (5116e3 / 390) - 1), p.id).toBeLessThan(1e-3);
+    // e os cortes do gabarito (19, 20 e 24 cm) batem com o volume do Revit
+    for (const [L, v] of [[190, 2492e3], [200, 2624e3], [240, 3148e3]]) expect(Math.abs((secao(m, cortadas[0]) * L) / v - 1)).toBeLessThan(2e-3);
+  });
+});
+
+describe('barra da canaleta do contraforte (Jose, 09/10)', () => {
+  it('vão curto: as pernas não se atropelam (encurtam, com aviso)', () => {
+    const base = trocar(resultadoDoGabarito('aula123'), { t_bloco: 19, L_bloco: 39, eenr: 19, Ag_furo: 170, hf_bl: 3.5 });
+    for (const vao of [0.4, 0.6]) {
+      const r = trocar(base, { l_cf: vao, l_cf_adot: vao });
+      const m = gerarModelo(r, { L_total: 3 });
+      expect(m.dims.contrafortes[1].x - m.dims.contrafortes[0].x).toBe(vao * 1000);
+      expect(canaletasDosContrafortes(m, r), `vão ${vao}`).toEqual([]);
+      if (vao === 0.4) expect(m.avisos.map((a) => a.codigo)).toContain('CANALETA_CF_PERNA');
+    }
+  });
+  it('a ponta direita é a esquerda espelhada: uma posição só na lista de ferros', () => {
+    const r = resultadoDoGabarito('aula123');
+    const m = gerarModelo(r, { L_total: 6 });
+    const cf = m.barras.filter((b) => b.papel === 'HORIZ' && b.contraforte !== undefined);
+    const fiada = (b: (typeof cf)[number]) => Math.floor(b.eixo[0][2] / 200);
+    const topo = Math.max(...cf.map(fiada));
+    const daCinta = cf.filter((b) => fiada(b) === topo);
+    const n = m.dims.contrafortes.length;
+    expect(daCinta.length).toBe(n);
+    // pernas para dentro do muro: a 1ª para +X, a última para −X
+    const dx = (b: (typeof cf)[number]) => b.eixo[b.eixo.length - 1][0] - b.eixo[0][0];
+    expect(dx(daCinta.find((b) => b.contraforte === 1)!)).toBeGreaterThan(0);
+    expect(dx(daCinta.find((b) => b.contraforte === n)!)).toBeLessThan(0);
+    expect(new Set(daCinta.map((b) => b.posicao)).size).toBe(1);
+  });
+});
+
+describe('comprimento do muro no módulo (Jose, 09/10)', () => {
+  // 19 balanço, 14 balanço, 14 contrafortes, 19 contrafortes, 19 contrafortes aparente
+  const cenarios = ['aula122', 'sorteio02', 'aula123', 'sorteio00', 'sorteio16'];
+  it('nenhuma peça cortada fora das canaletas; o comprimento cai no módulo e a tela recebe o ajuste', () => {
+    for (const c of cenarios) {
+      const r = resultadoDoGabarito(c);
+      for (let L = 1; L <= 25; L += 0.73) {
+        const Lt = Math.round(L * 100) / 100;
+        const m = gerarModelo(r, { L_total: Lt });
+        const nome = `${c} L=${Lt}`;
+        const alv = m.pecas.filter((p) => ALVENARIA.has(p.tipo));
+        // bloco nunca é cortado: só inteiro, meio e as peças de amarração do catálogo
+        expect(alv.filter((p) => !CANALETAS.has(p.tipo) && !['BLOCO', 'MEIO_BLOCO', 'BLOCO_JUNCAO'].includes(p.tipo)).map((p) => p.id), nome).toEqual([]);
+        if (!m.dims.contrafortes.length) {
+          // balanço: nem a canaleta é cortada, e cada trecho é um nº inteiro de meios módulos
+          expect(alv.some((p) => p.tipo === 'CANALETA_CORTADA'), nome).toBe(false);
+          for (const tr of m.dims.trechos) expect((tr.x1 - tr.x0 + 10) % m.familia.m, nome).toBe(0);
+        } else {
+          // contrafortes: cada trecho é um nº inteiro de vãos (eixo a eixo) + a largura do contraforte
+          const xs = m.dims.contrafortes.map((k) => k.x);
+          const vao = xs[1] - xs[0];
+          m.dims.trechos.forEach((tr) => expect((tr.x1 - tr.x0 - m.familia.t) % vao, nome).toBe(0));
+        }
+        const aj = m.ajustes.find((a) => a.nome === 'L_total');
+        if (Math.abs(Lt - m.dims.L_real / 1000) > 1e-6) expect(aj, nome).toEqual({ nome: 'L_total', de: Lt, para: Math.round(m.dims.L_real / 10) / 100, unidade: 'm' });
+        else expect(aj, nome).toBeUndefined();
+      }
+    }
+  }, 120_000);
+});
+
 describe('aulas (brief §8)', () => {
   it('aula 12.2, 5 m: o mesmo arranjo do protótipo', () => {
     const m = gerarModelo(resultadoDoGabarito('aula122'), { L_total: 5 });
@@ -470,7 +666,9 @@ describe('aulas (brief §8)', () => {
     const xs = [...new Set(m.barras.filter((b) => b.papel === 'VERT_MURO').map((b) => b.eixo[0][0]))];
     expect(xs).toEqual([445, 845, 1245, 1795, 2195, 2595]);
     expect(m.barras.filter((b) => b.papel === 'VERT_MURO').length).toBe(12);
-    expect(m.barras.filter((b) => b.papel === 'CF_PRINCIPAL').length).toBe(9);
+    // 3 contrafortes × 4Ø10: desde 09/10 (noite) o d é o da montagem (44,5, furo da ponta a 9,5 cm), e não 47 — o As
+    // sobe de 2,28 para 2,42 cm² e passa de 3 para 4 barras
+    expect(m.barras.filter((b) => b.papel === 'CF_PRINCIPAL').length).toBe(12);
     expect(m.barras.filter((b) => b.papel === 'CF_ESTRIBO').length).toBe(3 * 13);
     expect(m.familia.provisoria).toBeUndefined();
     expect(m.avisos.map((a) => a.codigo)).not.toContain('ENCAIXE_PROVISORIO');

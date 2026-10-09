@@ -32,7 +32,7 @@
 
 ### 2. ACEITE
 
-2.1. Na primeira abertura, o aplicativo apresenta este Termo e só libera o uso depois que o USUÁRIO marca **"Li e aceito"** e confirma.
+2.1. Na primeira abertura, o aplicativo apresenta este Termo e só libera o uso depois que o USUÁRIO clica em **"Li e aceito"**.
 
 2.2. O aceite fica guardado no próprio navegador do USUÁRIO, com data, hora e versão deste Termo. Em outro navegador, em outro computador, em janela anônima ou depois de limpar os dados do navegador, o Termo é apresentado de novo.
 
@@ -55,7 +55,7 @@
    a) copiar, extrair, descompilar, desofuscar, aplicar engenharia reversa ou reaproveitar o código, o motor de cálculo, as tabelas, as figuras ou os modelos de montagem do aplicativo, no todo ou em parte;
    b) hospedar cópia do aplicativo, disponibilizá-lo por outro endereço, embuti-lo em outro site ou programa, ou oferecê-lo como serviço a terceiros;
    c) vender, alugar, sublicenciar ou cobrar pelo acesso ao aplicativo;
-   d) remover ou alterar avisos de direito autoral, a identificação do aplicativo e os avisos de responsabilidade exibidos na tela;
+   d) remover ou alterar avisos de direito autoral, a identificação do aplicativo e os avisos de responsabilidade do aplicativo e do memorial de cálculo;
    e) contornar, por qualquer meio, os limites de uso da Cláusula 5;
    f) usar o aplicativo para fim ilícito ou para criar, a partir dele, programa concorrente.
 
@@ -87,16 +87,16 @@
 
 5.1. **O que o aplicativo calcula:** muro de arrimo em alvenaria estrutural de **blocos de concreto**, em duas configurações — **muro em balanço** e **muro com contrafortes** —, apoiado em **sapata corrida** de concreto armado, com empuxo ativo pelo coeficiente Ka (Rankine ou valor informado pelo USUÁRIO), **terreno horizontal no topo** e **sobrecarga uniforme**.
 
-5.2. **Limites de altura.** O aplicativo só calcula até:
+5.2. **Limites de altura.** O aplicativo só trabalha com altura de MURO de até:
 
-   a) **3,0 m de altura de solo**, no muro em balanço;
-   b) **4,0 m de altura de solo**, no muro com contrafortes.
+   a) **3,0 m**, no muro em balanço;
+   b) **4,0 m**, no muro com contrafortes;
 
-   Fora desses valores, o aplicativo não calcula e mostra o limite. **Os limites marcam o alcance do aplicativo; não significam que qualquer muro dentro deles seja viável ou seguro.**
+   sempre em fiadas inteiras, com a altura de solo contido menor ou igual à altura do muro. As entradas ficam restritas a esses limites. **Os limites marcam o alcance do aplicativo; não significam que qualquer muro dentro deles seja viável ou seguro.**
 
-5.3. **Montagens fechadas.** O aplicativo trabalha só com as montagens de bloco pré-definidas em cada versão (família de blocos, amarração, encaixes, posição das barras e das canaletas). Na versão atual, o bloco de 14 cm é usado só no muro em balanço, e o contraforte é feito só com bloco de 19 cm. **Qualquer outra montagem, material, geometria ou detalhe é escolha do engenheiro e conta própria dele, fora do aplicativo.**
+5.3. **Montagens fechadas.** O aplicativo trabalha só com as montagens de bloco pré-definidas em cada versão (família de blocos, amarração, encaixes, posição das barras e das canaletas). Na versão atual: blocos de concreto da família 39 (14x19x39 e 19x19x39 e suas peças complementares); contraforte de 34 ou 54 cm com bloco de 14 e de 59 ou 79 cm com bloco de 19, com a largura do bloco; eixo a eixo dos contrafortes, espaçamentos e bitolas restritos às listas do aplicativo. **Qualquer outra montagem, material, geometria ou detalhe é escolha do engenheiro e conta própria dele, fora do aplicativo.**
 
-5.4. **Modo validação.** O modo que admite bloco cerâmico existe apenas para reproduzir o exemplo numérico do material de referência. **É vedado usá-lo em projeto real.**
+5.4. **Só bloco de concreto.** O aplicativo não calcula muro de arrimo em bloco cerâmico nem em outro material.
 
 5.5. **O que o aplicativo NÃO faz.** Entre outros, o aplicativo **não executa, não verifica e não substitui**:
 
@@ -257,7 +257,7 @@
 
 15.6. **Lei aplicável.** Aplica-se a lei brasileira.
 
-15.7. **Foro.** Fica eleito o foro da Comarca de **[cidade/UF]**, com renúncia a qualquer outro, por mais privilegiado que seja.
+15.7. **Foro.** Fica eleito o foro da Comarca de **Uberaba/MG**, com renúncia a qualquer outro, por mais privilegiado que seja.
 
 ---
 

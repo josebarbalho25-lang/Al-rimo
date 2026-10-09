@@ -9,6 +9,7 @@
 import type { AutorDeCards, Card, Expr } from '../tipos';
 import { cte, div, max, min, mul, nome, par, pot, rad, raiz, soma, sub, tan } from '../expr';
 import { memoriaDe, secao } from '../passo';
+import { avisoDaPlanilha } from '@/estado/avisosDaPlanilha';
 
 const ABA = 'Solo e Empuxo';
 // A tabela de pressões da aba (40 fatias): linha 44 = topo do solo (z = 0), linha 84 = base do muro (z = h solo).
@@ -140,7 +141,9 @@ function cardEmpuxo(r: Parameters<AutorDeCards>[0]): Card {
     ref: AULA_121,
     figura: 'Fig. 11',
     secoes: [dados, coef, secPressoes, empuxo],
-    avisos: [],
+    // c' > 0 (Jose, 08/10: "coesão liberada, com aviso"): o texto e a condição são os da célula aviso_coesao — a
+    // mesma placa do campo e da barra de estado. Aqui não se escreve aviso próprio.
+    avisos: [avisoDaPlanilha(r, 'aviso_coesao')].filter((a): a is string => a !== null),
     aplicavel: true,
   };
 }

@@ -35,12 +35,13 @@ import {
   type Opcao,
   type Secao,
 } from '@/estado/campos';
+import { avisoDoCampo } from '@/estado/avisosDaPlanilha';
 import { CHAVES, ehMapaDeBooleanos, guardar, lembrar } from '@/estado/lembrete';
 import { escreverNoCampo } from '@/estado/numeros';
 import { CAMPOS, leitorDoEstado, SECOES, useApp } from '@/estado/store';
 import { figuraDaEntrada } from '@/figuras/mapa';
 import { CampoNumero, Escolha, Lista } from './controles';
-import { Chevron, IconeFigura } from './icones';
+import { Chevron, IconeAlerta, IconeFigura } from './icones';
 import { ModalDaFigura, type FiguraDaEntrada } from './ModalDaFigura';
 
 const existeCampo = (nome: string) => CAMPOS.has(nome);
@@ -51,6 +52,7 @@ export function PainelDeEntradas() {
   const ajustes = useApp((s) => s.modelo?.ajustes);
   const ajustesDeLista = useApp((s) => s.ajustesDeLista);
   const resultado = useApp((s) => s.resultado);
+  const avisosDaConta = useApp((s) => s.avisosDaConta);
   const definir = useApp((s) => s.definir);
 
   const ler = useMemo(() => leitorDoEstado({ alteracoes, extras }), [alteracoes, extras]);
@@ -134,6 +136,7 @@ export function PainelDeEntradas() {
                       travado={valorTravado(c.meta.nome, ler) !== undefined}
                       ativa={entradaAtiva(c.meta.nome, ler)}
                       ajuste={ajustePorNome.get(c.meta.nome)}
+                      aviso={avisoDoCampo(avisosDaConta, c.meta.nome)}
                       figura={figuraDaEntrada(c.meta.nome)?.titulo ?? null}
                       figuraAberta={aberta?.nome === c.meta.nome}
                       definir={definir}
@@ -162,6 +165,7 @@ const LinhaDeEntrada = memo(function LinhaDeEntrada({
   travado,
   ativa,
   ajuste,
+  aviso,
   figura,
   figuraAberta,
   definir,
@@ -175,6 +179,8 @@ const LinhaDeEntrada = memo(function LinhaDeEntrada({
   travado: boolean;
   ativa: boolean;
   ajuste: Ajuste | undefined;
+  /** O aviso curto que a planilha publicou para esta entrada (c' > 0…), ou null. Texto só no pairar. */
+  aviso: string | null;
   /** Título da figura de referência, ou null quando a entrada não tem figura. */
   figura: string | null;
   figuraAberta: boolean;
@@ -214,6 +220,12 @@ const LinhaDeEntrada = memo(function LinhaDeEntrada({
             title={`${escreverNoCampo(ajuste.de, campo.meta.formato)} → ${escreverNoCampo(ajuste.para, campo.meta.formato)} ${ajuste.unidade}`.trim()}
           >
             → {escreverNoCampo(ajuste.para, campo.meta.formato)}
+          </span>
+        )}
+        {/* Só a placa, como o "→" do ajuste: a frase da planilha fica no pairar (painel não explica a si mesmo). */}
+        {aviso && (
+          <span className="aviso" role="img" aria-label={aviso} title={aviso}>
+            <IconeAlerta tamanho={14} />
           </span>
         )}
       </div>

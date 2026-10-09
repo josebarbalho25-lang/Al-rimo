@@ -299,7 +299,8 @@ def desenhar(fam, arq):
     if pc['forma'] == 'bloco':
         desenhar_bloco(s, iso, L, t, h, pc['furos'], cor)
     else:
-        k = F['canaleta']
+        # a canaleta cortada tem a seção dela (na 19 é peça própria, fundo 3,91); catalogo.json antigo: a da inteira
+        k = F.get('canaleta_cortada', F['canaleta']) if arq == 'canaleta_cortada' else F['canaleta']
         p, f, r = k['parede'] / 10, k['fundo'] / 10, k['r'] / 10
         desenhar_canaleta(s, iso, L, t, h, p, f, r, cor)
         if Lmax > L:

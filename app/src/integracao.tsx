@@ -14,9 +14,17 @@ import { Memoria } from '@/memoria/Memoria';
 import { Visor3D } from '@/visor/Visor3D';
 import { Desenhos } from '@/desenhos/Desenhos';
 import { Quantitativo } from '@/quantitativo/Quantitativo';
+import type { Resultado } from '@/motor/tipos';
 
 // A memória pede a figura do card por número ('Fig. 11'); o acervo é o mesmo do botão das entradas.
 const urlDaFigura = (figura: string) => figuraDoCard(figura)?.url ?? null;
+
+// A aba recebe só modelo e resultado; o nome do projeto vem do estado — sem isso o Imprimir/Word da própria aba
+// saía "Projeto sem nome" enquanto o da barra de cima saía certo.
+function MemoriaDoProjeto({ resultado }: { resultado: Resultado }) {
+  const projeto = useApp((s) => s.titulo);
+  return <Memoria resultado={resultado} info={{ projeto }} urlDaFigura={urlDaFigura} />;
+}
 
 export function ligarAsFrentes(): void {
   useApp.getState().ligar({
@@ -30,7 +38,7 @@ export function ligarAsFrentes(): void {
       corte: (c) => c.modelo && <Desenhos modelo={c.modelo} vista="corte" selecionado={c.selecionado} onSelecionar={c.selecionar} />,
       planta: (c) => c.modelo && <Desenhos modelo={c.modelo} vista="planta" selecionado={c.selecionado} onSelecionar={c.selecionar} />,
       iso: (c) => c.modelo && <Desenhos modelo={c.modelo} vista="iso" selecionado={c.selecionado} onSelecionar={c.selecionar} />,
-      memoria: (c) => c.resultado && <Memoria resultado={c.resultado} urlDaFigura={urlDaFigura} />,
+      memoria: (c) => c.resultado && <MemoriaDoProjeto resultado={c.resultado} />,
       quantitativo: (c) => c.modelo && <Quantitativo modelo={c.modelo} />,
     },
   });

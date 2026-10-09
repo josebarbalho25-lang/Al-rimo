@@ -21,10 +21,11 @@
 import dados from '@/motor/planilha.gerada.json';
 import type { PlanilhaExportada } from '@/motor/tipos';
 import type { AutorDeCards, Card, Expr, Passo, Ref } from '../tipos';
-import { arredCima, avaliar, cbrt, celulasDoIntervalo, cte, div, max, min, mul, neg, pi, pot, raiz, soma, sub } from '../expr';
+import { arredCima, avaliar, cbrt, celulasDoIntervalo, cte, div, inteiro, max, min, mul, neg, pi, pot, raiz, soma, sub } from '../expr';
 import { lerValor, memoriaDe, secao, type Memoria, type OpcoesDoPasso, type PedidoDeVerificacao } from '../passo';
 import { casasDaEntrada } from '../metaDaPlanilha';
 import { passoDaSomaDaFlecha } from './painelEls';
+import { desenhoDaSecaoDoContraforte } from '../desenhoDaSecaoCf';
 
 /*
   Grafias que outro grupo já descreve (uma letra, um significado no glossário): ℓcf, tenr, eenr em
@@ -50,7 +51,8 @@ export const SIMBOLOS_CONTRAFORTE: Readonly<Record<string, string>> = {
   // ── seção e materiais ──
   'h_{cf}': 'altura da seção do contraforte (= tenr)',
   'b_{w,cf}': 'largura da alma do contraforte (= eenr)',
-  'c_{cf}': 'distância da ponta do contraforte ao eixo das barras',
+  'c_{cf}': 'distância da face tracionada ao eixo das barras (enterrado: da ponta)',
+  'c_{mont}': 'c medido no template do Revit: centro do furo comum às fiadas P e I',
   'd_{cf}': 'altura útil do contraforte',
   '0{,}5\\,d_{cf}': 'limite da espessura da mesa: metade da altura útil',
   'b_{f,1}': 'aba colaborante do lado do vão',
@@ -80,6 +82,9 @@ export const SIMBOLOS_CONTRAFORTE: Readonly<Record<string, string>> = {
   'A_{s,m\\acute{a}x,cf}': 'armadura máxima no furo da ponta do contraforte',
   'n_{tr}': 'fator de traspasse no furo (2 barras na região de traspasse)',
   'A_{s,furo,cf}': 'armadura no furo da ponta, contando o traspasse',
+  'A_{furo,cf}': 'área do furo comum às fiadas P e I, onde a barra passa reta',
+  'n_{cabe,cf}': 'barras do Ø adotado que cabem no furo comum (graute de 15 mm)',
+  'n_{8\\%,cf}': 'barras do Ø adotado pela taxa de 8% do furo comum, com traspasse',
   // ── cisalhamento ──
   '\\rho_{cf}': 'taxa de armadura longitudinal do contraforte',
   'f_{vk,cf}': 'resistência característica ao cisalhamento do contraforte',
@@ -130,6 +135,8 @@ const P = dados as unknown as PlanilhaExportada;
 const AULA_123: Ref = { fonte: 'Aula 12.3' };
 const NBR = (item: string): Ref => ({ fonte: 'NBR 16868-1', item });
 const ABCP_34: Ref = { fonte: 'ABCP', item: '3.4' };
+/** A montagem atual nos templates do Revit do Jose: "14×39 · contraforte de 54". */
+const revit = (m: Memoria): Ref => ({ fonte: 'Template do Revit', item: `${m.num('t_bloco') ?? '—'}×39 · contraforte de ${m.num('tenr_adot') ?? '—'}` });
 
 /** LEFT(texto;n)="X" do Excel: compara o começo, sem diferenciar maiúscula. */
 const comeca = (texto: string, prefixo: string) => texto.slice(0, prefixo.length).toLowerCase() === prefixo.toLowerCase();
@@ -401,12 +408,19 @@ function cardFlexao(r: Parameters<AutorDeCards>[0]): Card {
 
   // ── seção ──
   const cDigitado = m.num('c_cf_dir') !== null;
+  // A posição da barra é da MONTAGEM: centro do trecho comum aos furos das fiadas P e I, medido no template do Revit
+  // (célula c_mont, tabela da aba Referências). Seção própria para a FONTE aparecer na tela e no papel — é o número
+  // que o Jose vai querer conferir primeiro (a figura do card mostra de onde ele sai: a + ℓ/2).
+  const montagem = secao('Barra na montagem', [
+    ps('c_mont', 'c_{mont}', null, { casas: 1, unidade: 'cm', origem: 'tabela' }),
+  ], revit(m));
   const secaoT = secao(T ? 'Seção T (contraforte enterrado)' : 'Seção retangular (contraforte aparente)', [
     ps('h_cf', 'h_{cf}', tenr, { casas: 1, unidade: 'cm' }),
     ps('bw_cf', 'b_{w,cf}', eenr, { casas: 1, unidade: 'cm' }),
+    // c digitado nas Entradas manda; em branco, o da montagem
     cDigitado
       ? ps('c_cf', 'c_{cf}', null, { casas: 1, unidade: 'cm', origem: 'entrada' })
-      : ps('c_cf', 'c_{cf}', div(eenr, cte(2, 0)), { casas: 1, unidade: 'cm' }),
+      : ps('c_cf', 'c_{cf}', m.g('c_mont', 'c_{mont}', 1, 'cm'), { casas: 1, unidade: 'cm' }),
     ps('d_cf', 'd_{cf}', sub(hcf, c), { casas: 1, unidade: 'cm' }),
     T && ps('bf_a', 'b_{f,1}', min(mul(cte(6, 0), t), div(sub(lenrCm, bw), cte(2, 0))), { casas: 1, unidade: 'cm', ref: NBR('10.1.3') }),
     T && ps('bf_b', 'b_{f,2}', intermediario ? bfa : min(mul(cte(6, 0), t), balCm), { casas: 1, unidade: 'cm', ref: NBR('10.1.3') }),
@@ -467,7 +481,7 @@ function cardFlexao(r: Parameters<AutorDeCards>[0]): Card {
   const xNum = m.valor(TT ? 'x_cfw' : 'x_cfr') !== null;
   const secLN = secao('Linha neutra', passosLN, ABCP_34);
 
-  const secoes = [secaoT, materiais, secLN];
+  const secoes = [montagem, secaoT, materiais, secLN];
   if (xNum) {
     // ── armadura ── (a seção que não resiste para em "não resiste": As, nº de barras e As,máx ficam de fora)
     const md = m.num('Md_cf');
@@ -509,14 +523,24 @@ function cardFlexao(r: Parameters<AutorDeCards>[0]): Card {
         verif: verifica(m, 'Asmax', { chave: 'contraforte.Asmax', rotulo: 'As no furo ≤ As,máx', limite: Asmax, relacao: '<=' }),
       }),
     ], NBR('12.3'));
-    secoes.push(armadura, furo);
+    // O furo REAL da barra (montagem do Revit): só informa — a régua do As,máx é a do curso (linha de cima). Decisão do
+    // Jose (09/10): nenhuma verificação nova; por isso nenhuma destas linhas leva verif.
+    const real = secao('Furo da barra na montagem', [
+      ps('A_fcm', 'A_{furo,cf}', null, { casas: 2, unidade: 'cm²', origem: 'tabela' }),
+      ps('nb_cab', 'n_{cabe,cf}', null, { casas: 0, origem: 'tabela', ref: NBR('12.1') }),
+      ps('nb_tx', 'n_{8\\%,cf}', inteiro(div(mul(m.g('pAs_max', 'p_{m\\acute{a}x}', 2), m.g('A_fcm', 'A_{furo,cf}', 2, 'cm²')),
+        mul(m.g('f_trasp', 'n_{tr}', 0), aPhi))), { casas: 0 }),
+    ], revit(m));
+    secoes.push(armadura, furo, real);
   }
 
+  const desenho = desenhoDaSecaoDoContraforte(r);
   return {
     id: 'contraforte.flexao',
     titulo: 'Contraforte · flexão',
     ref: ABCP_34,
     figura: 'Fig. 12',
+    ...(desenho ? { desenho } : {}),
     secoes,
     avisos: [],
     aplicavel: aplicavel(m),
@@ -738,11 +762,14 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
     ps('dadm_cf', '\\delta_{adm,cf}', div(vao2h ? mul(dois, hMm) : hMm, nAdm), { casas: 2, unidade: 'mm', ref: AULA_123 }),
   ], AULA_123);
 
+  // a mesma seção cotada da flexão: A, yG e I são desta figura (mesa bm × t + alma bw × tenr, bruta como no curso)
+  const desenho = desenhoDaSecaoDoContraforte(r);
   return {
     id: 'contraforte.els',
     titulo: 'Contraforte · ELS',
     ref: AULA_123,
     figura: 'Fig. 21',
+    ...(desenho ? { desenho } : {}),
     secoes: [bruta, fissurada, flecha],
     avisos: [],
     aplicavel: aplicavel(m),

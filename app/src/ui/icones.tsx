@@ -120,6 +120,24 @@ export const IconeFigura = (p: PropsDoIcone) => (
   </Svg>
 );
 
+/** O Termo de Uso: a folha com o visto. Folha como o "Novo", para ser da mesma família. */
+export const IconeTermo = (p: PropsDoIcone) => (
+  <Svg {...p}>
+    <path d="M6 3.5h9l3 3v14H6z" />
+    <path d="M9 8.5h5M9 11.5h6" />
+    <path d="M9 16l2 2 4-4.5" />
+  </Svg>
+);
+
+/** O aviso ao lado do campo (c' > 0…): a placa triangular de obra com o ponto de exclamação. */
+export const IconeAlerta = (p: PropsDoIcone) => (
+  <Svg {...p}>
+    <path d="M12 3.75L21 19.5H3z" />
+    <path d="M12 9.5v4.5" />
+    <path d="M12 16.75v.01" strokeWidth={2.4} />
+  </Svg>
+);
+
 export const IconeFechar = (p: PropsDoIcone) => (
   <Svg {...p}>
     <path d="M6 6l12 12M18 6L6 18" />

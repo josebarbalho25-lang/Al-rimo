@@ -22,6 +22,7 @@ REF2 = [
     ('Ábaco simplificado do ELS', 'NBR 16868-1 (slide da aula 12.3)', 'Alvenaria armada: borda engastada considerada apoiada. Borda superior livre: h/t ≤ 80 até l/t = 40; cai a 60; reta até (55; 20); reta até (120; 15). Leitura do gráfico do slide — conferir na norma.'),
     ('Painel não armado entre armaduras', 'Aula 12.3', 'Subpainel l = espaçamento das verticais × h = espaçamento das canaletas, caso 13; fd = 1,4·σh médio do subpainel de baixo.'),
     ('Reações por charneiras', 'NBR 6118 14.7.6.1 (critério de reações de laje)', '60° a partir do apoio engastado quando o vizinho é apoiado; 45° entre apoios do mesmo tipo; borda livre não recebe. Usado só para estimar a carga horizontal na sapata corrida (dedução nossa, a aula não detalhou).'),
+    ('Posição da barra principal do contraforte', 'Templates do Revit do Jose (09/10)', 'Centro do trecho comum aos furos das fiadas P e I (onde a barra passa reta). Enterrado, da ponta: 9,5 cm no bloco 14 (contrafortes de 34 e 54) e 10,0 cm no 19 (59 e 79) → d = 24,5 / 44,5 / 49,0 / 69,0. Aparente, da face do solo: 7,0 / 10,0 cm (espelho do template — dedução). Tabela nas colunas AT–BA.'),
 ]
 R['A82'] = 'Aula 12.3 — muro com contrafortes'; R['A82'].font = fB
 header(R, 83, ['Item', 'Fonte', 'O que diz / como foi usado'])
@@ -41,6 +42,49 @@ for i, row_ in enumerate([(6, 1.0, 1.4, 2.0), (8, 1.0, 1.3, 1.7), (10, 1.0, 1.2,
 R['A110'] = '20 ou mais → 1,0. Fora da tabela, a planilha limita lenr/eenr a 6–20 e tenr/t a 1–3 (a aula usou a coluna 3 com tenr/t = 4,2).'; R['A110'].font = fS
 wb.defined_names['delta_le'] = DefinedName('delta_le', attr_text="'Referências'!$A$105:$A$109")
 wb.defined_names['delta_tab'] = DefinedName('delta_tab', attr_text="'Referências'!$B$105:$D$109")
+
+# Montagens do contraforte (colunas AT–BA, linhas 2–19, ao lado das listas das Entradas). POR QUE UMA TABELA: a barra
+# principal não fica "no meio do bloco" (eenr/2) — fica onde há furo nas DUAS fiadas que ela atravessa (P: o muro
+# passa; I: o contraforte atravessa o muro), e a peça da ponta muda de uma fiada para a outra. O centro desse trecho
+# comum foi medido nos templates do Revit do Jose (09/10): bloco 14 → furo comum de 2,5 a 16,5 cm da ponta (c = 9,5);
+# bloco 19 → de 3,5 a 16,5 (c = 10,0). Quem calcula a tabela é a seção do contraforte do app
+# (app/src/modulacao/secaoDoContraforte.ts, com o catálogo de peças medido no Revit); o teste do app confere estas
+# células contra ela — se o catálogo mudar, o teste acusa e a tabela é refeita. Aparente = espelho do template (a
+# barra fica na célula do muro junto ao solo) — DEDUÇÃO, o Jose só modelou o enterrado.
+# Barras que cabem: 15 mm de graute até o bloco (curso, item 12.1 — a regra do d sugerido) e a espera ao lado (é a
+# seção da base, na emenda), arrumadas como o 3D arruma, no T e na ponta ao mesmo tempo. Só INFORMA: a régua do
+# As,máx continua a do curso (Ag da tabela da aula), sem verificação nova (decisão do Jose, 09/10).
+MONT_CF = [  # chave, t, tenr, c enterrado (da ponta), c aparente (da face do solo), furo comum E / A (cm²), barras E, barras A
+    ('14x34', 14, 34, 9.5, 7.0, 105.08, 56.44, (20, 12, 6, 4, 2, 1), (8, 3, 2, 2, 0, 0)),
+    ('14x54', 14, 54, 9.5, 7.0, 105.57, 56.44, (20, 12, 6, 4, 2, 1), (8, 3, 2, 2, 0, 0)),
+    ('19x59', 19, 59, 10.0, 10.0, 163.29, 150.78, (40, 24, 15, 8, 6, 3), (35, 24, 15, 8, 6, 2)),
+    ('19x79', 19, 79, 10.0, 10.0, 163.29, 150.78, (40, 24, 15, 8, 6, 3), (35, 24, 15, 8, 6, 2)),
+]
+MONT_PHI = (6.3, 8, 10, 12.5, 16, 20)   # = LST_PHI das Entradas (Ø de furo)
+R['AT2'] = 'Contraforte: furo da barra principal nas montagens do Revit (templates do Jose, 09/10)'; R['AT2'].font = fB
+R['AT3'] = ('c = da face tracionada ao eixo das barras (enterrado: da ponta; aparente: da face do solo) = centro do trecho '
+            'comum aos furos das fiadas P e I. Aparente = espelho do template (dedução).'); R['AT3'].font = fS
+for j, h_ in enumerate(['Montagem', 't (cm)', 'tenr (cm)', 'c enterrado (cm)', 'c aparente (cm)', 'Furo comum enterrado (cm²)', 'Furo comum aparente (cm²)']):
+    c = R.cell(row=4, column=46 + j, value=h_); c.font = fH; c.fill = NAVY; c.border = BOX
+    c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+for i, (ch, tt, te, cE, cA, AE, AA, nE, nA) in enumerate(MONT_CF):
+    for j, (v, fm) in enumerate([(ch, None), (tt, '0'), (te, '0'), (cE, '0.0'), (cA, '0.0'), (AE, '0.00'), (AA, '0.00')]):
+        c = R.cell(row=5 + i, column=46 + j, value=v); c.font = fN; c.border = BOX; c.alignment = Alignment(horizontal='center')
+        if fm: c.number_format = fm
+    for blk, ns in ((12, nE), (16, nA)):
+        R.cell(row=blk + i, column=46, value=ch).font = fN
+        R.cell(row=blk + i, column=47, value='enterrado' if blk == 12 else 'aparente').font = fN
+        for k, v in enumerate(ns):
+            c = R.cell(row=blk + i, column=48 + k, value=v); c.font = fN; c.border = BOX; c.alignment = Alignment(horizontal='center')
+R['AT10'] = 'Barras que cabem no furo comum: 15 mm de graute até o bloco, espera ao lado (emenda), eixo no c da montagem. Só informa.'; R['AT10'].font = fB
+for j, h_ in enumerate(['Montagem', 'Posição'] + list(MONT_PHI)):
+    c = R.cell(row=11, column=46 + j, value=h_); c.font = fH; c.fill = NAVY; c.border = BOX; c.alignment = Alignment(horizontal='center')
+for nm_, rg in (('mont_ch', '$AT$5:$AT$8'), ('mont_t', '$AU$5:$AU$8'), ('mont_cE', '$AW$5:$AW$8'), ('mont_cA', '$AX$5:$AX$8'),
+                ('mont_AE', '$AY$5:$AY$8'), ('mont_AA', '$AZ$5:$AZ$8'), ('mont_phi', '$AV$11:$BA$11'),
+                ('mont_nE', '$AV$12:$BA$15'), ('mont_nA', '$AV$16:$BA$19')):
+    wb.defined_names[nm_] = DefinedName(nm_, attr_text=f"'Referências'!{rg}")
+for _cc, _w in (('AT', 10), ('AU', 9), ('AV', 9), ('AW', 11), ('AX', 11), ('AY', 13), ('AZ', 13), ('BA', 9)):
+    R.column_dimensions[_cc].width = _w
 
 # Libânio (rows 112-149)
 R['A112'] = 'Libânio (Bares 1972, adaptado por L. M. Pinheiro) — copiado da planilha 11 do curso (aba Ábacos Lib). γ = h/l (h = vertical, direção em que a carga varia). m = μ·p·l²/100; flecha a = α/100·p·l⁴/(E·t³). Laranja = suspeita de digitação na fonte (mantido como está).'
@@ -121,7 +165,13 @@ Lc('Tipo de seção', '=IF(LEFT(pos_cf,4)="Ente","T — muro comprimido (contraf
 Lc('Seção T? (1 = sim)', '=IF(LEFT(pos_cf,4)="Ente",1,0)', '', '', 'res', '0', 'cf_T')
 Lc('h = tenr (comprimento do contraforte, com o muro)', '=tenr_adot', 'cm', '', 'res', '0.0', 'h_cf')
 Lc('bw = eenr', '=eenr', 'cm', '', 'res', '0.0', 'bw_cf')
-Lc('Cobrimento ao eixo das barras (da ponta)', '=IF(ISNUMBER(c_cf_dir),c_cf_dir,eenr/2)', 'cm', 'Em branco = eenr/2 (barra no meio do furo da ponta).', 'res', '0.0', 'c_cf')
+# Posição da barra pela MONTAGEM (templates do Revit, tabela nas colunas AT–BA das Referências), não mais eenr/2: no
+# bloco 14 o furo da ponta fica a 9,5 cm do fim, e "barra no meio do bloco" dava d 2,5 cm maior do que a peça permite
+# (contraforte de 34: 27 × 24,5). Contraforte fora das montagens do Revit (só por valor digitado fora da lista): a 1ª
+# linha do mesmo bloco — com a regra da haste (inteiros a partir do muro, meio na ponta) o furo da ponta é o mesmo.
+Lc('Linha da montagem (Referências, colunas AT–BA)', '=IFERROR(MATCH(t_bloco&"x"&tenr_adot,mont_ch,0),MATCH(t_bloco,mont_t,0))', '', 'Bloco × comprimento do contraforte.', 'res', '0', 'k_mont')
+Lc('c da montagem (face tracionada → eixo das barras)', '=IF(cf_T=1,INDEX(mont_cE,k_mont),INDEX(mont_cA,k_mont))', 'cm', 'Medido no template do Revit: centro do trecho comum aos furos das fiadas P e I. Enterrado: da ponta; aparente: da face do solo (espelho do template — dedução).', 'key', '0.0', 'c_mont', 'Templates do Revit (09/10)')
+Lc('Cobrimento ao eixo das barras (da face tracionada)', '=IF(ISNUMBER(c_cf_dir),c_cf_dir,c_mont)', 'cm', 'Entradas; em branco = c da montagem.', 'res', '0.0', 'c_cf')
 Lc('d', '=h_cf-c_cf', 'cm', '', 'key', '0.0', 'd_cf')
 Lc('Aba de cada lado bf ≤ 6t', '=MIN(6*t_bloco,(l_cf_adot*100-bw_cf)/2)', 'cm', 'Lado do vão (limitada à metade do vão livre).', 'res', '0.0', 'bf_a')
 Lc('Aba do outro lado', '=IF(LEFT(tipo_cf,5)="Inter",bf_a,MIN(6*t_bloco,bal_cf*100))', 'cm', 'Extremidade: limitada ao balanço do muro.', 'res', '0.0', 'bf_b')
@@ -154,16 +204,23 @@ Lc('Nº de barras', '=IF(ISNUMBER(n_cf_dir),n_cf_dir,MAX(2,ROUNDUP(As_cfc/a_cf-0
 Lc('As efetiva', '=n_cf*a_cf', 'cm²', '', 'res', '0.00', 'As_cfe')
 Lc('As,máx no furo da ponta', '=pAs_max*Ag_furo', 'cm²', '8% da área de graute, contando o traspasse.', 'res', '0.00', 'As_cfx', 'Aula 12.3 / NBR 16868-1')
 Lc('As no furo para comparar (com traspasse no concreto)', '=As_cfe*f_trasp', 'cm²', '2× (região de traspasse).', 'res', '0.00', 'As_cfx2')
+# O furo REAL onde a barra passa (montagem do Revit): só INFORMA. A régua do As,máx continua a do curso (linha acima,
+# com o Ag da tabela da aula, e a verificação da seção 15) — decisão do Jose (09/10): nenhuma verificação nova.
+Lc('Furo comum da barra (fiadas P e I): área', '=IF(cf_T=1,INDEX(mont_AE,k_mont),INDEX(mont_AA,k_mont))', 'cm²', 'Template do Revit. Só informa.', 'res', '0.00', 'A_fcm', 'Templates do Revit (09/10)')
+Lc('Barras do Ø das Entradas que cabem no furo comum', '=IF(cf_T=1,INDEX(mont_nE,k_mont,MATCH(phi_cf,mont_phi,0)),INDEX(mont_nA,k_mont,MATCH(phi_cf,mont_phi,0)))', '', '15 mm de graute até o bloco, espera ao lado (emenda). Só informa.', 'res', '0', 'nb_cab', 'Curso, item 12.1 (graute 15 mm)')
+Lc('Barras do Ø das Entradas pela taxa de 8% do furo comum, com traspasse', '=INT(pAs_max*A_fcm/(f_trasp*a_cf))', '', 'Só informa.', 'res', '0', 'nb_tx')
 r += 1
 _hyp_r = r
-C.cell(row=r, column=1, value='Hipóteses de bitola (nº de barras para o As de cálculo)').font = fB; r += 1
-header(C, r, ['Ø (mm)', 'As nec. (cm²)', 'Nº barras', 'As efetiva (cm²)']); r += 1
+C.cell(row=r, column=1, value='Hipóteses de bitola (nº de barras para o As de cálculo; o que cabe no furo comum só informa)').font = fB; r += 1
+header(C, r, ['Ø (mm)', 'As nec. (cm²)', 'Nº barras', 'As efetiva (cm²)', 'Cabem no furo comum (15 mm)', 'Pela taxa de 8% do furo comum']); r += 1
 for ph in (10, 12.5, 16, 20):
     C.cell(row=r, column=1, value=ph)
     C.cell(row=r, column=2, value='=IFERROR(As_cfc,"—")')
     C.cell(row=r, column=3, value=f'=IFERROR(MAX(2,ROUNDUP(B{r}/(PI()*A{r}^2/400)-0.005,0)),"—")')
     C.cell(row=r, column=4, value=f'=IFERROR(C{r}*PI()*A{r}^2/400,"—")')
-    for cc, fm in zip('ABCD', ['0.0', '0.00', '0', '0.00']):
+    C.cell(row=r, column=5, value=f'=IFERROR(IF(cf_T=1,INDEX(mont_nE,k_mont,MATCH(A{r},mont_phi,0)),INDEX(mont_nA,k_mont,MATCH(A{r},mont_phi,0))),"—")')
+    C.cell(row=r, column=6, value=f'=IFERROR(INT(pAs_max*A_fcm/(f_trasp*PI()*A{r}^2/400)),"—")')
+    for cc, fm in zip('ABCDEF', ['0.0', '0.00', '0', '0.00', '0', '0']):
         c = C[f'{cc}{r}']; c.number_format = fm; c.font = fN; c.border = BOX; c.alignment = Alignment(horizontal='center'); c.fill = RES
     r += 1
 r += 1
@@ -403,7 +460,7 @@ Lc('Momento da base do painel (engaste na sapata)', '=Mdyei_p', 'kN·cm/m', 'De 
 Lc('Md e Vd na base do contraforte', '=FIXED(Md_cf,2)&" kN·m  /  "&FIXED(Vd_cf,2)&" kN"', '', '', 'res')
 r += 1
 section(C, r, '14. Detalhamento (resumo)'); r += 1
-Lc('Contraforte', '=n_cf&"Ø"&'+fphi('phi_cf')+'&" na ponta (d = "&FIXED(d_cf,0)&" cm) + "&n_cc&"Ø"&'+fphi('phi_cc')+'&" construtivas; estribos Ø"&'+fphi('phi_est')+'&" c/"&FIXED(s_est,0)&" ("&ramos_est&" ramos) nas juntas"', '', '', 'key')
+Lc('Contraforte', '=n_cf&"Ø"&'+fphi('phi_cf')+'&" na ponta (d = "&FIXED(d_cf,1)&" cm) + "&n_cc&"Ø"&'+fphi('phi_cc')+'&" construtivas; estribos Ø"&'+fphi('phi_est')+'&" c/"&FIXED(s_est,0)&" ("&ramos_est&" ramos) nas juntas"', '', '', 'key')
 Lc('Painel — vertical', '=IF(nb_pv=2,"Ø"&'+fphi('phi_pv')+'&" c/"&FIXED(s_pv,0)&" em CADA face (2 barras por furo, a "&'+fphi('c_pv')+'&" cm das faces)","Ø"&'+fphi('phi_pv')+'&" c/"&FIXED(s_pv,0)&" centralizada")', '', '', 'key')
 Lc('Painel — horizontal', '="Ø"&'+fphi('phi_ph')+'&" c/"&FIXED(s_ph,0)&" em canaleta grauteada, "&IF(LEFT(pos_ph,4)="Cent","centralizada","encostada na face externa")', '', '', 'key')
 r += 1

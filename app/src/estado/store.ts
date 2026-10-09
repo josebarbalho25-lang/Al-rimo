@@ -24,6 +24,7 @@ import {
   type Campo,
   type LerValor,
 } from './campos';
+import type { AvisoDaPlanilha } from './avisosDaPlanilha';
 import { CHAVES, ehObjeto, guardarNaAba, lembrarDaAba } from './lembrete';
 import { SEM_LIGACOES, type IdAba, type Ligacoes, type Veredito } from './ligacoes';
 import { desserializarProjeto, recadoDeAbertura, serializarProjeto, type Projeto } from './projeto';
@@ -68,6 +69,8 @@ export interface EstadoDoApp {
 
   resultado: Resultado | null;
   erroConta: string | null;
+  /** Os avisos curtos que a planilha publicou nesta conta (c' > 0…). Ver estado/avisosDaPlanilha.ts. */
+  avisosDaConta: AvisoDaPlanilha[];
   modelo: Modelo | null;
   erroModelo: string | null;
   veredito: Veredito | null;

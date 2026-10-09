@@ -70,7 +70,11 @@ export function barrasNoCorte(m: Modelo, x0: number): BarrasNoCorte {
       const k = b.posicao || `${b.papel}|${b.diametro}`;
       planas.set(k, [...(planas.get(k) ?? []), b]);
     } else {
-      for (const p of cruzamentos(b.eixo, 'X', x0)) pontos.push({ barra: b, p });
+      // barra que corre DENTRO do plano do corte num trecho (a da canaleta do contraforte, que vem pelo eixo dele e
+      // dobra em L na canaleta do muro): o trecho no plano aparece como linha; o resto, como ponto onde atravessa
+      const noPlano = trechoNoPlano(b.eixo, x0);
+      if (noPlano.length >= 2) linhas.push({ barra: b, pts: projetarPontos(noPlano, 'X'), fechada: false });
+      else for (const p of cruzamentos(b.eixo, 'X', x0)) pontos.push({ barra: b, p });
     }
   }
   for (const grupo of planas.values()) {
@@ -85,6 +89,18 @@ export function barrasNoCorte(m: Modelo, x0: number): BarrasNoCorte {
     }
   }
   return { linhas, pontos };
+}
+
+/** A maior sequência de pontos seguidos da polilinha que está no plano X = x0 (meio milímetro de folga). */
+function trechoNoPlano(eixo: Barra['eixo'], x0: number): Barra['eixo'] {
+  let melhor: Barra['eixo'] = [];
+  let atual: Barra['eixo'] = [];
+  for (const p of eixo) {
+    if (Math.abs(p[0] - x0) <= 0.5) atual.push(p);
+    else atual = [];
+    if (atual.length > melhor.length) melhor = [...atual];
+  }
+  return melhor;
 }
 
 export function estiloDaSecao(s: Solido, pr: Prancha): Estilo | null {

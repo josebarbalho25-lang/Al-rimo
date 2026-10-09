@@ -61,6 +61,31 @@ export function espera(id: string, phi: number, x: number, y: number, zPe: numbe
   return out;
 }
 
+/**
+ * Barra dobrada em L num plano horizontal (z de `ponta`): reta de `ponta` até perto de `canto` (o encontro dos dois
+ * eixos), dobra 90° com o pino da NBR e segue `perna` em linha reta na direção `dir` (±X ou ±Y). A perna conta só o
+ * trecho reto depois da dobra — é ele que fica encostado na barra vizinha e transmite a força.
+ */
+export function emL(id: string, papel: PapelBarra, phi: number, ponta: Vec3, canto: Vec3, dir: [number, number], perna: number, trecho: number, contraforte?: number): BarraNova {
+  const R = raioDoEixo(phi);
+  const L1 = Math.hypot(canto[0] - ponta[0], canto[1] - ponta[1]);
+  const d1: [number, number] = [(canto[0] - ponta[0]) / L1, (canto[1] - ponta[1]) / L1];
+  const z = ponta[2];
+  const ini: [number, number] = [canto[0] - d1[0] * R, canto[1] - d1[1] * R];
+  // centro da dobra: recua R no 1º trecho e anda R para o lado da perna
+  const c: [number, number] = [ini[0] + dir[0] * R, ini[1] + dir[1] * R];
+  const eixo: Vec3[] = [p3(ponta[0], ponta[1], z), p3(ini[0], ini[1], z)];
+  for (let k = 1; k <= SEG_DOBRA; k++) {
+    const f = (k / SEG_DOBRA) * (Math.PI / 2);
+    eixo.push(p3(c[0] - dir[0] * R * Math.cos(f) + d1[0] * R * Math.sin(f), c[1] - dir[1] * R * Math.cos(f) + d1[1] * R * Math.sin(f), z));
+  }
+  eixo.push(p3(canto[0] + dir[0] * (R + perna), canto[1] + dir[1] * (R + perna), z));
+  const comprimento = L1 - R + (Math.PI / 2) * R + perna;
+  const out: BarraNova = { id, papel, diametro: phi, eixo, comprimento: arred(comprimento), trecho };
+  if (contraforte !== undefined) out.contraforte = contraforte;
+  return out;
+}
+
 /** Retângulo fechado (estribo) dado por 4 cantos do eixo, em ordem. */
 export function estribo(id: string, papel: PapelBarra, phi: number, cantos: [Vec3, Vec3, Vec3, Vec3], trecho: number, contraforte?: number): BarraNova {
   let per = 0;
@@ -106,12 +131,39 @@ export function distribuir(a: number, b: number, s: number): number[] {
   return Array.from({ length: n + 1 }, (_, k) => a + ((b - a) * k) / n);
 }
 
+/*
+  As 8 simetrias do quadrado no plano XY (giros de 90° e espelhos). A barra é a mesma peça de aço virada: o L da
+  canaleta do contraforte da ponta direita é o da esquerda espelhado, a espera com o gancho para o solo é a do gancho
+  para a frente girada. Na prancha de armação é UMA posição — a forma não depende de para onde a barra aponta. Não
+  há barra torcida no espaço (que o espelho trocaria por outra) — todas são planas ou retas.
+*/
+const SIMETRIAS: ((x: number, y: number) => [number, number])[] = [
+  (x, y) => [x, y], (x, y) => [-y, x], (x, y) => [-x, -y], (x, y) => [y, -x],
+  (x, y) => [-x, y], (x, y) => [x, -y], (x, y) => [y, x], (x, y) => [-y, -x],
+];
+
+/** A forma da barra sem a orientação: a menor das leituras (8 simetrias × os dois sentidos do eixo). */
+function formaDaBarra(eixo: Vec3[], fechada: boolean): string {
+  const r = (v: number): number => Math.round(v) || 0;
+  let melhor: string | null = null;
+  for (const s of fechada ? [eixo] : [eixo, [...eixo].reverse()]) {
+    const o = s[0];
+    for (const T of SIMETRIAS) {
+      const k = s.map((q) => {
+        const [x, y] = T(q[0] - o[0], q[1] - o[1]);
+        return `${r(x)},${r(y)},${r(q[2] - o[2])}`;
+      }).join(';');
+      if (melhor === null || k < melhor) melhor = k;
+    }
+  }
+  return melhor ?? '';
+}
+
 /** N1, N2... — mesma forma, mesmo Ø e mesmo papel = mesma posição da lista de ferros (como prancha de armação). */
 export function numerarPosicoes(barras: BarraNova[]): Barra[] {
   const mapa = new Map<string, string>();
   return barras.map((b) => {
-    const o = b.eixo[0];
-    const forma = b.eixo.map((q) => `${Math.round(q[0] - o[0])},${Math.round(q[1] - o[1])},${Math.round(q[2] - o[2])}`).join(';');
+    const forma = formaDaBarra(b.eixo, !!b.fechada);
     const chave = `${b.papel}|${b.diametro}|${b.fechada ? 'F' : ''}|${Math.round(b.comprimento)}|${forma}`;
     let pos = mapa.get(chave);
     if (!pos) {

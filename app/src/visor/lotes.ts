@@ -70,7 +70,8 @@ export function categoriasDaPeca(p: Peca): Categoria[] {
 }
 
 export function categoriasDaBarra(b: Barra): Categoria[] {
-  if (b.papel.startsWith('CF_')) return ['armadura', 'contrafortes'];
+  // HORIZ com contraforte = a barra da canaleta do contraforte (dobrada em L): some junto com o contraforte
+  if (b.papel.startsWith('CF_') || (b.papel === 'HORIZ' && b.contraforte !== undefined)) return ['armadura', 'contrafortes'];
   if (b.papel.startsWith('SAP_')) return ['armadura', 'fundacao'];
   return ['armadura'];
 }

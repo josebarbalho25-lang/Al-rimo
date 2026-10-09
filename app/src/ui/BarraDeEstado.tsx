@@ -6,12 +6,16 @@
 //  veredictos de "spam de anúncio". Clicar leva à memória.
 //  No meio, o recado de ação ("Salvo em…"), que vive uns segundos; recado ruim
 //  se pinta de ruim (RECADO_RUIM), nunca na cor de "salvo".
-//  À direita: tipo de muro e bloco; a versão da conta só quando o arquivo
-//  aberto foi salvo com outra (o código da versão, "81137a03", não diz nada a
-//  quem projeta — fica no pairar do tipo de muro, para quem for dar suporte).
+//  À direita: os avisos ("2 avisos" — os da planilha, como c' > 0, e os da
+//  modulação; o texto no pairar); tipo de muro e bloco; a versão da conta só
+//  quando o arquivo aberto foi salvo com outra (o código da versão,
+//  "81137a03", não diz nada a quem projeta — fica no pairar do tipo de muro,
+//  para quem for dar suporte).
 //  O que está errado aparece como alarme e some sozinho quando se resolve.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import { useMemo } from 'react';
+import { textosDosAvisos } from '@/estado/avisosDaPlanilha';
 import { VERSAO_DESCONHECIDA } from '@/estado/projeto';
 import { ehRuim } from '@/estado/recadoRuim';
 import { leitorDoEstado, useApp, VERSAO_DA_CONTA } from '@/estado/store';
@@ -52,7 +56,7 @@ export function BarraDeEstado() {
       </span>
 
       <span className="direita">
-        <AvisosDoModelo />
+        <Avisos />
         <TipoEBloco />
         <VersaoDaConta />
       </span>
@@ -60,12 +64,16 @@ export function BarraDeEstado() {
   );
 }
 
-/** Os avisos que a modulação deixou no modelo: o número na barra, os textos no pairar. */
-function AvisosDoModelo() {
-  const avisos = useApp((s) => s.modelo?.avisos);
-  if (!avisos?.length) return null;
+/** Os avisos da conta (planilha) e os que a modulação deixou no modelo: o número na barra, os textos no pairar. */
+function Avisos() {
+  const daConta = useApp((s) => s.avisosDaConta);
+  const doModelo = useApp((s) => s.modelo?.avisos);
+  // Cada seletor devolve a referência guardada no estado; a lista juntada nasce aqui, só quando uma das duas muda
+  // (juntar dentro do seletor faria um array novo a cada leitura e o React redesenharia sem parar).
+  const avisos = useMemo(() => textosDosAvisos(daConta, doModelo), [daConta, doModelo]);
+  if (!avisos.length) return null;
   return (
-    <span className="campo-estado aviso" title={avisos.map((a) => a.texto).join('\n')}>
+    <span className="campo-estado aviso" title={avisos.join('\n')}>
       <span className="valor">{avisos.length}</span> {avisos.length === 1 ? 'aviso' : 'avisos'}
     </span>
   );

@@ -246,7 +246,7 @@ line(E, r, 'Balanço do muro além do contraforte de extremidade', 0, 'm', 'Só 
 line(E, r, 'Ø da armadura principal do contraforte', 10, 'mm', 'Na ponta do contraforte (furo da ponta). Aula 12.3: 3Ø10.', 'inp', '0.0', 'phi_cf'); r += 1
 lista(LST_PHI, f'B{r-1}')
 line(E, r, 'Nº de barras do contraforte — opcional', None, '', 'Em branco = automático.', 'inp', '0', 'n_cf_dir'); r += 1
-line(E, r, 'Cobrimento ao eixo das barras (da ponta) — opcional', None, 'cm', 'Em branco = eenr/2 (barra no meio do furo). Aula 12.3: d = 59 − 7 = 52.', 'inp', '0.0', 'c_cf_dir'); r += 1
+line(E, r, 'Cobrimento ao eixo das barras (da face tracionada) — opcional', None, 'cm', 'Em branco = medido na montagem do Revit (furo onde a barra passa reta): da ponta, 9,5 cm no bloco 14 e 10,0 no 19.', 'inp', '0.0', 'c_cf_dir'); r += 1
 line(E, r, 'K do contraforte — opcional', 1.0, '', 'Em branco = NBR (1,5 sem graute; 2,0 grauteado). Aula 12.3: K = 1.', 'inp', '0.00', 'K_cf'); r += 1
 line(E, r, 'Barras construtivas (lado comprimido): Ø', 10, 'mm', 'Aula 12.3: 2Ø10 construtivas.', 'inp', '0.0', 'phi_cc'); r += 1
 lista(LST_PHI, f'B{r-1}')

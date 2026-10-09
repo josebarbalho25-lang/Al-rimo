@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //  estado/recalculo.ts — a ordem das coisas a cada entrada mudada
 // ---------------------------------------------------------------------------
-//  Uma tecla no formulário refaz, NESTA ordem: a conta (planilha) → o muro
-//  peça a peça (modulação) → o veredito. A ordem é a do contrato do modelo:
+//  Uma tecla no formulário refaz, NESTA ordem: a conta (planilha) → os
+//  avisos que ela publica → o muro peça a peça (modulação) → o veredito. A ordem é a do contrato do modelo:
 //  quem modula lê os valores já ajustados pela conta, então a conta vem antes.
 //
 //  Cada etapa pode falhar sem derrubar a anterior: conta com erro não gera
@@ -13,11 +13,14 @@
 
 import type { Alteracoes, EntradaMeta, Resultado, Valor } from '@/motor/tipos';
 import type { Modelo } from '@/modelo/tipos';
+import { avisosDaPlanilha, type AvisoDaPlanilha } from './avisosDaPlanilha';
 import type { GeradorDoModelo, JuizDoVeredito, Veredito } from './ligacoes';
 
 export interface Recalculado {
   resultado: Resultado | null;
   erroConta: string | null;
+  /** Os avisos curtos da planilha (c' > 0…): a marca ao lado do campo e o "N avisos" da barra leem daqui. */
+  avisosDaConta: AvisoDaPlanilha[];
   modelo: Modelo | null;
   erroModelo: string | null;
   veredito: Veredito | null;
@@ -48,7 +51,16 @@ export function recalcular(
   try {
     resultado = dep.calcular(alteracoes);
   } catch (e) {
-    return { resultado: null, erroConta: mensagem(e), modelo: null, erroModelo: null, veredito: null };
+    return { resultado: null, erroConta: mensagem(e), avisosDaConta: [], modelo: null, erroModelo: null, veredito: null };
+  }
+
+  // Lidos uma vez por conta, aqui, e não a cada desenho do painel: o painel e a barra recebem a MESMA lista.
+  // Célula de aviso que sumiu da planilha não derruba a conta (o teste dos avisos acusa o nome antes).
+  let avisosDaConta: AvisoDaPlanilha[] = [];
+  try {
+    avisosDaConta = avisosDaPlanilha(resultado);
+  } catch {
+    avisosDaConta = [];
   }
 
   let modelo: Modelo | null = null;
@@ -72,5 +84,5 @@ export function recalcular(
     }
   }
 
-  return { resultado, erroConta: null, modelo, erroModelo, veredito };
+  return { resultado, erroConta: null, avisosDaConta, modelo, erroModelo, veredito };
 }

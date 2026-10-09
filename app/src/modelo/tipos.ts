@@ -91,6 +91,11 @@ export interface Peca {
   furosGrauteados?: number[];    // índices dos furos da geometria que levam graute
 }
 
+/**
+ * HORIZ = barra horizontal de canaleta. Sem `contraforte`: a corrida reta da canaleta do muro. COM `contraforte`
+ * (acrescentado pela modulação, 09/10): a barra da canaleta do contraforte, que entra na canaleta do muro dobrada em
+ * L e deita ao lado da barra dele (Detalhe 1) — o eixo dela não é reto.
+ */
 export type PapelBarra =
   | 'VERT_MURO' | 'ESPERA' | 'HORIZ'
   | 'CF_PRINCIPAL' | 'CF_CONSTRUTIVA' | 'CF_ESTRIBO'

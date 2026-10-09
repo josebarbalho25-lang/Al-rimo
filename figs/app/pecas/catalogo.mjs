@@ -33,7 +33,7 @@ registerHooks({
 });
 
 const cat = await import(pathToFileURL(path.join(SRC, 'modulacao', 'catalogo.ts')).href);
-const { CATALOGO, CORES_DO_JOSE, H_BLOCO, furosDaPeca, raioDoFundoDaCanaleta } = cat;
+const { CATALOGO, CORES_DO_JOSE, H_BLOCO, furosDaPeca, raioDoFundoDaCanaleta, secaoDaPecaCanaleta } = cat;
 
 // As cores por classe vêm junto: são as do Revit do Jose (código de obra), as mesmas do 3D e da paginação.
 const saida = {
@@ -45,6 +45,11 @@ for (const nome of ['14x39', '19x39']) {
   saida.familias[nome] = {
     t: f.t, L: f.L, Lm: f.Lm, h: H_BLOCO,
     canaleta: { parede: f.canaleta.parede, fundo: f.canaleta.fundo, r: raioDoFundoDaCanaleta(f) },
+    // a cortada pode ser peça própria, com outro fundo (19x39: 3,91) — a figura dela usa esta seção
+    canaleta_cortada: (() => {
+      const c = secaoDaPecaCanaleta(f, { tipo: 'CANALETA_CORTADA' });
+      return { parede: c.parede, fundo: c.fundo, r: raioDoFundoDaCanaleta(f, c) };
+    })(),
     pecas: f.pecas.map((pc) => ({
       chave: pc.chave, classe: pc.classe, tipo: pc.tipo, forma: pc.forma, comprimento: pc.comprimento, nome: pc.nome,
       furos: furosDaPeca(f, pc),

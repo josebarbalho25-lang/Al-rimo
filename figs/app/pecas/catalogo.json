@@ -19,6 +19,11 @@
     "fundo": 39.1,
     "r": 14.876805391385039
    },
+   "canaleta_cortada": {
+    "parede": 25,
+    "fundo": 39.1,
+    "r": 14.876805391385039
+   },
    "pecas": [
     {
      "chave": "inteiro",
@@ -137,6 +142,11 @@
     "parede": 25,
     "fundo": 29.1,
     "r": 14.98244538551984
+   },
+   "canaleta_cortada": {
+    "parede": 25,
+    "fundo": 39.1,
+    "r": 14.931993182792805
    },
    "pecas": [
     {

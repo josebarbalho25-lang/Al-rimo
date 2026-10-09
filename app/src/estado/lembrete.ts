@@ -19,6 +19,8 @@ export const CHAVES = {
   /** Largura do painel em px na escala 100% (ver lembrarLarguraDoPainel). */
   largura: 'alrimo.largura.v2',
   ultimoProjeto: 'alrimo.ultimo.v1',
+  /** Registro do aceite do Termo de Uso (estado/termo.ts). */
+  termo: 'alrimo.termo.v1',
 } as const;
 
 export function lembrar<T>(chave: string, padrao: T, valido: (x: unknown) => x is T): T {

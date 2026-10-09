@@ -15,7 +15,9 @@ import type { Resultado } from '@/motor/tipos';
 /** Como a fonte é desenhada: "NBR 16868-1 · 11.2" / "ABCP · Tab. 3.2" / "Aula 12.3". */
 export interface Ref {
   fonte: 'NBR 16868-1' | 'NBR 6118' | 'NBR 6122' | 'NBR 11682' | 'ABCP' | 'Aula 12.1' | 'Aula 12.2' | 'Aula 12.3'
-    | 'Libânio' | 'Gilberto' | 'Curso' | 'Dedução';
+    | 'Libânio' | 'Gilberto' | 'Curso' | 'Dedução'
+    // medida tirada dos templates de montagem que o Jose modelou no Revit (dados/encaixes_revit/)
+    | 'Template do Revit';
   item?: string;
 }
 
@@ -68,6 +70,9 @@ export interface Card {
   titulo: string;                // 'Flexão · muro em balanço'
   ref?: Ref;
   figura?: string;               // 'Fig. 4' — o mesmo acervo do botão das entradas
+  // (opcional) figura GERADA para o muro atual — ex.: a seção do contraforte da montagem, cotada com os números das
+  // células. SVG em texto (o autor continua puro e testável); vai para a tela, o papel e o Word como as outras.
+  desenho?: { svg: string; titulo: string };
   secoes: Secao[];
   avisos: string[];              // curtos
   aplicavel: boolean;            // ex.: cards de contraforte com Tipo_muro = Balanço → false (não aparece)

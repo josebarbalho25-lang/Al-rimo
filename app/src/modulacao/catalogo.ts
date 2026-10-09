@@ -11,10 +11,13 @@
     - Canaleta 14x39 (paredes 25, fundo 39,1) e 19x39 (paredes 25, fundo 29,1 — medida no Revit em 09/10): o volume
       do Revit tem ~1 cm² de seção a mais que o U reto — os dois cantos do fundo são arredondados por dentro ("2 faces
       curvas" na família), e o raio sai do volume, como nos furos.
-    - Canaleta cortada: o Jose corta a canaleta inteira na obra (19, 20, 24 cm nos gabaritos). Comprimento livre:
-      chave 'canaleta@<mm>' — não é linha da tabela, é a inteira serrada, com a MESMA seção. (Na 19, a família
-      "Canaleta 19 Corte 19cm" do Revit tem fundo de 3,91 — 1 cm mais grosso que a inteira, o que não sai de uma
-      inteira serrada; o app fica com a seção da inteira e o recado foi para o Jose.)
+    - Canaleta cortada: comprimento livre, chave 'canaleta@<mm>' (19, 20, 24 cm nos gabaritos) — não é linha da
+      tabela. A SEÇÃO depende da família:
+        14x39 — a inteira serrada, mesma seção (conferido no Revit: os cortes de 19, 20 e 24 cm têm 2492, 2624 e
+                3148 cm³, o volume da inteira proporcional ao comprimento, ±0,02 %);
+        19x39 — peça PRÓPRIA (Jose, 09/10): a família "Canaleta 19 Corte 19cm" tem fundo de 3,91 (a inteira, 2,91),
+                paredes 2,5 e 2864 cm³ com 19 cm. Vale para todo comprimento cortado da 19 (o Revit só tem o de 19;
+                os outros comprimentos que a modulação corta levam a mesma seção — DEDUÇÃO). Cantos pelo volume.
 
   ORDEM DOS FUROS NAS PEÇAS ASSIMÉTRICAS (34 e 54): o perfil aqui está no referencial do APP, que é o do Revit girado
   180° (no Revit o contraforte sai para −Y; no app, para +Y). Por isso o 34 aparece lido de trás para frente: no app
@@ -76,6 +79,11 @@ export interface FamiliaDoCatalogo {
   hf: number;       // parede da tabela da aula (a da conta)
   agFuro: number;   // área de graute de UM furo do inteiro na tabela da aula, mm² (117 / 170 cm²) — só peça sem medida do Revit desenha com ela
   canaleta: CanaletaDaFamilia;
+  /**
+   * Seção da canaleta CORTADA quando ela é peça própria, com outro fundo (19x39). Sem isto, a cortada tem a seção da
+   * inteira. As paredes têm de ser as da inteira: o graute e a barra correm de uma para a outra na mesma calha.
+   */
+  canaletaCortada?: CanaletaDaFamilia;
   pecas: PecaDoCatalogo[];
 }
 
@@ -108,6 +116,8 @@ export const CATALOGO: Record<NomeFamilia, FamiliaDoCatalogo> = {
   '19x39': {
     nome: '19x39', t: 190, L: 390, Lm: 190, hf: 35, agFuro: 17000,
     canaleta: { parede: 25, fundo: 29.1, medida: { comprimento: 390, volume: 5333e3 } },
+    // "Canaleta 19 Corte 19cm" do Revit (Al-rimo Templates, 09/10)
+    canaletaCortada: { parede: 25, fundo: 39.1, medida: { comprimento: 190, volume: 2864e3 } },
     pecas: [
       // paredes 3,2; septos 3,5 nas pontas e no meio; 2 furos 12,6 × 14,25
       { chave: 'inteiro', classe: 'inteiro', tipo: 'BLOCO', forma: 'bloco', comprimento: 390, nome: 'bloco 19x19x39',
@@ -204,9 +214,16 @@ export function furosDaPeca(f: FamiliaDoCatalogo, pc: PecaDoCatalogo): FuroDaPec
   return out;
 }
 
+/**
+ * Seção de uma peça de canaleta (pelo tipo): a da cortada quando ela é peça própria (19x39), senão a da família.
+ * Recebe só o tipo para servir tanto à peça do catálogo quanto à Peca do modelo (o graute da haste sai da Peca).
+ */
+export function secaoDaPecaCanaleta(f: FamiliaDoCatalogo, pc: { tipo: TipoPeca }): CanaletaDaFamilia {
+  return pc.tipo === 'CANALETA_CORTADA' && f.canaletaCortada ? f.canaletaCortada : f.canaleta;
+}
+
 /** Raio dos cantos do fundo da canaleta (por dentro) que fecha a seção com o volume do Revit. 0 sem medida. */
-export function raioDoFundoDaCanaleta(f: FamiliaDoCatalogo): number {
-  const c = f.canaleta;
+export function raioDoFundoDaCanaleta(f: FamiliaDoCatalogo, c: CanaletaDaFamilia = f.canaleta): number {
   if (!c.medida) return 0;
   const secao = c.medida.volume / c.medida.comprimento;
   const reta = f.t * H_BLOCO - (f.t - 2 * c.parede) * (H_BLOCO - c.fundo);
@@ -221,6 +238,9 @@ export function conferirCatalogo(): string[] {
   const erros: string[] = [];
   for (const f of Object.values(CATALOGO)) {
     const m = meioModulo(f);
+    const cc = f.canaletaCortada;
+    if (cc && cc.parede !== f.canaleta.parede) erros.push(`${f.nome}: canaleta cortada com parede ${cc.parede} ≠ ${f.canaleta.parede} da inteira`);
+    if (cc?.medida && cc.medida.volume >= f.t * cc.medida.comprimento * H_BLOCO) erros.push(`${f.nome}: canaleta cortada com volume maior que a peça cheia`);
     for (const pc of f.pecas) {
       if (pc.forma !== 'bloco') continue;
       const soma = celulasDaPeca(pc, m).reduce((a, b) => a + b, 0);

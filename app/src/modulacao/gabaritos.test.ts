@@ -20,9 +20,6 @@
       montagem pretendida, a mesma das pontas e do de 79.
     - Casa R (contraforte de 39): é muro de casa, de 08/10, com o T montado de outro jeito (os dois contrafortes I na
       mesma fiada e o inteiro passando sobre o T na fiada P). Confere-se a ponta (L) e a haste de 39.
-    - Volume da canaleta 19 CORTADA: a família "Canaleta 19 Corte 19cm" do Revit tem fundo de 3,91 (2864 cm³), 1 cm
-      mais grosso que a inteira (2,91) — não sai de uma inteira serrada. O app corta a inteira (mesma seção); a
-      inteira confere com o volume do Revit (5333 cm³), a cortada não entra na conferência de volume.
     - Contraforte dobrado (19x39_dobrado.json e o de 79 parcial): fora do app por decisão do Jose (09/10) — risco de
       execução errada, e a inércia vem do comprimento, não da largura. O gabarito fica só como arquivo.
 */
@@ -111,8 +108,8 @@ function doRevit(pecas: PecaRevit[], fam: '14x39' | '19x39', xMax: number, yFace
     const out: Peca = {
       chave, fiada: Math.round((p.z0 - zMin) / 20), x0: X(p.x1), x1: X(p.x0), y0: Y(p.y1), y1: Y(p.y0), id: `Revit ${p.id}`,
     };
-    // canaleta 19 cortada: a família do Revit tem outro fundo (ver cabeçalho) — fica fora da conferência de volume
-    if (p.vol_cm3 && !(fam === '19x39' && chave.startsWith('canaleta@'))) out.volume = p.vol_cm3 * 1000;
+    // inclusive a canaleta 19 cortada: peça própria, fundo 3,91 (catalogo.ts, Jose 09/10) — o volume é o da família dela
+    if (p.vol_cm3) out.volume = p.vol_cm3 * 1000;
     const d = descricao(fam, chave);
     if (d) {
       // furo no Revit: ao longo da peça a partir da ponta local x = 0, que o giro leva para o mundo

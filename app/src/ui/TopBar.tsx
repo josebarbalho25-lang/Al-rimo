@@ -5,7 +5,8 @@
 //  arquivo, as duas saídas (IFC e memória impressa), a engrenagem das
 //  configurações e o tema. Só ícones: o nome do comando e o atalho moram no
 //  `title`, como no A-PORT. Engrenagem e tema lado a lado, nessa ordem, como
-//  no pé do trilho do A-PORT — a mão dele já sabe onde fica.
+//  no pé do trilho do A-PORT — a mão dele já sabe onde fica. O Termo de Uso
+//  entra ANTES da engrenagem, e não entre ela e o tema, para não separar o par.
 //
 //  Comando cuja peça ainda não foi ligada (IFC, impressão) aparece apagado e
 //  não responde — melhor do que sumir e o botão mudar de lugar depois.
@@ -22,6 +23,7 @@ import {
 import { useApp } from '@/estado/store';
 import { definirPreferencia, NOME_DO_TEMA, proximoTema, usePreferencias } from '@/estilo/preferenciasDaInterface';
 import { Configuracoes } from './Configuracoes';
+import { JanelaDoTermo } from './TermoDeUso';
 import {
   IconeAbrir,
   IconeEngrenagem,
@@ -30,6 +32,7 @@ import {
   IconeNovo,
   IconeSalvar,
   IconeTema,
+  IconeTermo,
 } from './icones';
 
 export function TopBar() {
@@ -41,6 +44,8 @@ export function TopBar() {
   const { tema } = usePreferencias();
   const [config, setConfig] = useState(false);
   const fecharConfig = useCallback(() => setConfig(false), []);
+  const [termo, setTermo] = useState(false);
+  const fecharTermo = useCallback(() => setTermo(false), []);
 
   return (
     <header className="topbar">
@@ -81,6 +86,9 @@ export function TopBar() {
       </div>
 
       <div className="direita">
+        <button className={`btn-icone${termo ? ' on' : ''}`} title="Termo de uso" onClick={() => setTermo(true)}>
+          <IconeTermo tamanho={16} />
+        </button>
         <button className={`btn-icone${config ? ' on' : ''}`} title="Configurações" onClick={() => setConfig(true)}>
           <IconeEngrenagem tamanho={16} />
         </button>
@@ -94,6 +102,7 @@ export function TopBar() {
       </div>
 
       {config && <Configuracoes aoFechar={fecharConfig} />}
+      {termo && <JanelaDoTermo modo="leitura" aoFechar={fecharTermo} />}
     </header>
   );
 }
