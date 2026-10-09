@@ -1,0 +1,515 @@
+// ═══════════════════════════════════════════════════════════════════════════
+//  visor/cena3d.ts — o muro montado em objetos do three, fora do React
+// ---------------------------------------------------------------------------
+//  Monta TUDO o que se desenha (um InstancedMesh por lote, o traço instanciado
+//  de cada lote, um tubo juntado por Ø) e guarda o mapa clique → peça. Fica
+//  fora do React de propósito: o Visor3D só pendura o grupo na cena e chama
+//  aplicarX(); e o teste no Node monta a mesma cena, conta as chamadas de
+//  desenho e dispara o raio de verdade, sem WebGL.
+//
+//  ⚠️ COR DA INSTÂNCIA CRIADA ANTES DO 1º QUADRO. O three decide o shader
+//  pelo `instanceColor !== null` (WebGLPrograms.js); se a cor nascer só no
+//  primeiro clique, a seleção não aparece até recompilar. Por isso todas as
+//  instâncias ganham a cor de base aqui, e o material fica BRANCO (a cor
+//  final é material × instância: com o material branco, o azul da seleção
+//  sai exato).
+//
+//  ⚠️ O RAIO DO three NÃO RESPEITA O CORTE NEM O `visible`. Quem filtra é o
+//  `pegar`: só entra no raio o que está aceso, e o acerto do lado cortado é
+//  descartado (o clique atravessa o que não se vê).
+//
+//  ⚠️ O ESTILO (Cores, Realista, Opaco — `estiloVisual.ts`) TROCA SÓ MATERIAL
+//  E COR. A malha, a matriz e o mapa do clique são os mesmos: por isso a
+//  seleção, o Raio-X e o corte valem nos três sem nenhum caso especial.
+// ═══════════════════════════════════════════════════════════════════════════
+
+import * as THREE from 'three';
+import type { Barra, ClassePeca, Modelo, Peca, Vec3 } from '@/modelo/tipos';
+import { barraDoTriangulo, montarBarras, type LoteDeBarras } from './barras3d';
+import { corDaPeca, corDoAco, ESTILO_PADRAO, opacidadeDoTerreno, tracoDoEstilo, type EstiloVisual } from './estiloVisual';
+import { materialDoAcabamento, materialDoAco } from './materiaisDoEstilo';
+import { caixaDaPeca, caixaLocal, MM, arestasDoMolde, moldeDaGeometria, type Caixa } from './perfil3d';
+import { emMetro, montarLotes, unirCaixas, visivel, type Acabamento, type Categoria, type Lote } from './lotes';
+import type { PaletaVisor } from './tema3d';
+
+/** Opacidade do Raio-X: o bloco vira vidro fosco, e graute e barra aparecem dentro. */
+const OPACIDADE_RAIO_X = 0.14;
+/**
+ * O graute no Raio-X fica MEIO transparente: a barra vertical mora dentro dele,
+ * e com o graute cheio o Raio-X mostrava o pilar mas escondia o aço — que é o
+ * que se quer ver (visto na bancada).
+ */
+const OPACIDADE_GRAUTE_RAIO_X = 0.45;
+
+/** Acabamentos que levam traço. Graute (empilhado por fiada) riscaria o pilar de linhas a cada 20 cm. */
+const COM_ARESTA: ReadonlySet<Acabamento> = new Set(['alvenaria', 'concreto']);
+/** Acabamentos que o Raio-X deixa translúcidos: o bloco e a sapata (para ver a armadura dela). */
+const NO_RAIO_X: ReadonlySet<Acabamento> = new Set(['alvenaria', 'concreto']);
+
+export type Pego = { tipo: 'peca'; peca: Peca } | { tipo: 'barra'; barra: Barra };
+
+type MaterialDaPeca = THREE.MeshLambertMaterial | THREE.MeshBasicMaterial | THREE.MeshStandardMaterial;
+
+interface MalhaDoLote {
+  lote: Lote;
+  malha: THREE.InstancedMesh;
+  traco: THREE.LineSegments | null;
+  /** Só alvenaria: a classe do bloco (pinta no estilo Cores e entra na legenda). */
+  classe: ClassePeca | undefined;
+}
+
+interface MalhaDeBarras {
+  lote: LoteDeBarras;
+  malha: THREE.Mesh;
+}
+
+export interface Cena3D {
+  /** Pendurar na cena (`<primitive object={grupo} />`). */
+  grupo: THREE.Group;
+  lotes: readonly MalhaDoLote[];
+  barras: readonly MalhaDeBarras[];
+  /** Peças sem geometria no modelo (defeito da modulação): não desenhadas. */
+  semGeometria: readonly string[];
+  /** O que o id é: peça ou barra. */
+  achar(id: string): Pego | null;
+  aplicarPaleta(p: PaletaVisor): void;
+  /** Troca material e cor de tudo (seleção, Raio-X, corte e o que está oculto continuam como estavam). */
+  aplicarEstilo(e: EstiloVisual): void;
+  aplicarVisibilidade(ocultas: ReadonlySet<Categoria>): void;
+  aplicarRaioX(ligado: boolean): void;
+  aplicarCorte(planos: readonly THREE.Plane[]): void;
+  pintarSelecao(id: string | null): void;
+  /** O id do primeiro acerto VISÍVEL do raio (respeita ocultar, Raio-X e corte). */
+  pegar(raio: THREE.Raycaster): string | null;
+  /** Envoltória do que está aceso (sem o terreno), metro. */
+  caixaVisivel(): Caixa;
+  /** Envoltória de tudo, terreno junto (a câmera da sombra cobre o chão também), metro. */
+  caixaTotal(): Caixa;
+  /**
+   * As classes de bloco que ficam acesas com estes grupos ocultos — a legenda do
+   * Cores mostra só estas. Recebe o conjunto (em vez de ler o `visible` das
+   * malhas) porque o React pergunta ANTES de a visibilidade nova ser aplicada.
+   */
+  classesVisiveis(ocultas: ReadonlySet<Categoria>): Set<ClassePeca>;
+  /** Centro da peça ou barra, metro — o pivô do giro com Shift. */
+  centroDe(id: string): Vec3 | null;
+  /**
+   * O traço das peças desbota quando o bloco fica miúdo na tela: de longe, 5.000
+   * blocos com aresta viram um tecido de linhas (moiré) que esconde o muro.
+   * Recebe pixels por metro (o zoom da câmera ortográfica).
+   */
+  aplicarZoom(pxPorMetro: number): void;
+  /** Objetos que viram chamada de desenho agora (malhas e traços acesos). */
+  chamadasDeDesenho(): number;
+  dispose(): void;
+}
+
+/*
+  ⚠️ O TRAÇO É INSTANCIADO, COMO O SÓLIDO. As arestas de cada FORMA são tiradas
+  uma vez (`arestasDoMolde`) e a placa de vídeo as repete em cada peça com a
+  MESMA matriz da instância do sólido (o atributo é literalmente o mesmo
+  objeto: um buffer só na placa). Antes o traço era juntado — as arestas de
+  todas as 7.000 peças copiadas num buffer só, refeito a cada muro novo; no
+  Opaco, em que o traço é o desenho, isso pesava na memória e na montagem.
+  O three não tem "LineSegments instanciado" pronto: a linha usa geometria
+  instanciada e o material liga o trecho de instância do shader dele mesmo
+  (`USE_INSTANCING`, o mesmo que o InstancedMesh liga).
+*/
+function materialDoTraco(): THREE.LineBasicMaterial {
+  const m = new THREE.LineBasicMaterial({ transparent: true });
+  m.defines = { USE_INSTANCING: '' };
+  return m;
+}
+
+function tracoInstanciado(arestas: THREE.BufferAttribute, malha: THREE.InstancedMesh, material: THREE.LineBasicMaterial): THREE.LineSegments {
+  const g = new THREE.InstancedBufferGeometry();
+  g.setAttribute('position', arestas);
+  g.setAttribute('instanceMatrix', malha.instanceMatrix);
+  g.instanceCount = malha.count;
+  const traco = new THREE.LineSegments(g, material);
+  // A caixa da geometria é a de UMA peça na origem: o corte por enquadramento apagaria o traço do muro inteiro.
+  traco.frustumCulled = false;
+  traco.renderOrder = 2;
+  return traco;
+}
+
+export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInicial: EstiloVisual = ESTILO_PADRAO): Cena3D {
+  const grupo = new THREE.Group();
+  grupo.name = 'muro';
+  const { lotes: brutos, semGeometria } = montarLotes(modelo);
+  const pecaPorId = new Map<string, Peca>();
+  for (const p of modelo.pecas) pecaPorId.set(p.id, p);
+  const barraPorId = new Map<string, Barra>();
+  for (const b of modelo.barras) barraPorId.set(b.id, b);
+
+  // ── Estado aplicado ──
+  let estilo = estiloInicial;
+  let paletaAtual = paleta;
+  let ocultas: ReadonlySet<Categoria> = new Set();
+  let raioX = false;
+  let planos: readonly THREE.Plane[] = [];
+  let selecionado: string | null = null;
+
+  /*
+    ── Materiais: um por estilo × acabamento, criados na primeira vez que o
+    estilo aparece e guardados (voltar a um estilo não recompila nada). Quem
+    nasce depois já nasce com o Raio-X e o corte do momento.
+  */
+  const materiais = new Map<EstiloVisual, Map<Acabamento, MaterialDaPeca>>();
+  const acos = new Map<EstiloVisual, MaterialDaPeca>();
+  /** O véu do terreno (do estilo) e o vidro do Raio-X: os dois únicos jeitos de uma peça ficar transparente. */
+  const ajustarTransparencia = (m: MaterialDaPeca, a: Acabamento, e: EstiloVisual) => {
+    if (a === 'terreno') {
+      // O terreno é só referência: nunca tapa o muro, em estilo nenhum. (A opacidade é a do estilo DONO do
+      // material, não a do estilo na tela: o Raio-X passa por todos os materiais já criados.)
+      m.transparent = true;
+      m.opacity = opacidadeDoTerreno(e);
+      m.depthWrite = false;
+      return;
+    }
+    if (!NO_RAIO_X.has(a) && a !== 'graute') return;
+    m.transparent = raioX;
+    m.opacity = raioX ? (a === 'graute' ? OPACIDADE_GRAUTE_RAIO_X : OPACIDADE_RAIO_X) : 1;
+    // Sem gravar profundidade: o graute e a barra lá dentro passam pelo vidro.
+    m.depthWrite = !raioX;
+    m.needsUpdate = true;
+  };
+  const material = (e: EstiloVisual, a: Acabamento): MaterialDaPeca => {
+    let doEstilo = materiais.get(e);
+    if (!doEstilo) materiais.set(e, (doEstilo = new Map()));
+    let m = doEstilo.get(a);
+    if (!m) {
+      doEstilo.set(a, (m = materialDoAcabamento(e, a)));
+      m.clippingPlanes = planos.length ? [...planos] : null;
+      ajustarTransparencia(m, a, e);
+    }
+    return m;
+  };
+  const aco = (e: EstiloVisual): MaterialDaPeca => {
+    let m = acos.get(e);
+    if (!m) {
+      acos.set(e, (m = materialDoAco(e)));
+      m.clippingPlanes = planos.length ? [...planos] : null;
+    }
+    return m;
+  };
+  const tracoComum = materialDoTraco();
+  const tracoRaioX = materialDoTraco();
+
+  // ── Moldes: um por Geometria usada (o sólido e as arestas dele) ──
+  const moldes = new Map<string, { geo: THREE.BufferGeometry; arestas: THREE.BufferAttribute }>();
+  const molde = (chave: string) => {
+    let m = moldes.get(chave);
+    if (!m) {
+      const geo = moldeDaGeometria(modelo.geometrias[chave]!);
+      moldes.set(chave, (m = { geo, arestas: new THREE.BufferAttribute(arestasDoMolde(geo), 3) }));
+    }
+    return m;
+  };
+
+  const cor = new THREE.Color();
+  const indicePorId = new Map<string, { malha: MalhaDoLote; i: number }>();
+  const lotes: MalhaDoLote[] = brutos.map((lote) => {
+    const m = molde(lote.geometria);
+    const n = lote.ids.length;
+    const malha = new THREE.InstancedMesh(m.geo, material(estilo, lote.acabamento), n);
+    malha.instanceMatrix.array.set(lote.matrizes);
+    malha.instanceMatrix.needsUpdate = true;
+    // A cor nasce aqui (ver o cabeçalho); o tom certo vem no `aplicarEstilo` logo abaixo.
+    for (let i = 0; i < n; i++) malha.setColorAt(i, cor);
+    malha.computeBoundingSphere();
+    malha.computeBoundingBox();
+    malha.name = lote.chave;
+    const traco = COM_ARESTA.has(lote.acabamento) && m.arestas.count ? tracoInstanciado(m.arestas, malha, tracoComum) : null;
+    if (traco) traco.name = `${lote.chave} traço`;
+    const classe = lote.acabamento === 'alvenaria' ? modelo.geometrias[lote.geometria]?.classe : undefined;
+    const ml: MalhaDoLote = { lote, malha, traco, classe };
+    lote.ids.forEach((id, i) => indicePorId.set(id, { malha: ml, i }));
+    grupo.add(malha);
+    if (traco) grupo.add(traco);
+    return ml;
+  });
+
+  const faixaPorId = new Map<string, { malha: MalhaDeBarras; ini: number; fim: number }>();
+  const barras: MalhaDeBarras[] = montarBarras(modelo.barras).map((lote) => {
+    const nv = lote.geometria.getAttribute('position').count;
+    lote.geometria.setAttribute('color', new THREE.BufferAttribute(new Float32Array(nv * 3), 3));
+    const malha = new THREE.Mesh(lote.geometria, aco(estilo));
+    malha.name = `barras ${lote.chave}`;
+    const mb: MalhaDeBarras = { lote, malha };
+    for (const f of lote.faixas) faixaPorId.set(f.id, { malha: mb, ini: f.vIni, fim: f.vFim });
+    grupo.add(malha);
+    return mb;
+  });
+
+  const corDoLote = (l: MalhaDoLote) => corDaPeca(estilo, paletaAtual, l.lote.acabamento, l.classe);
+
+  const pintarBarra = (id: string, hex: string) => {
+    const f = faixaPorId.get(id);
+    if (!f) return;
+    const a = f.malha.lote.geometria.getAttribute('color') as THREE.BufferAttribute;
+    cor.set(hex);
+    for (let v = f.ini; v < f.fim; v++) a.setXYZ(v, cor.r, cor.g, cor.b);
+    a.needsUpdate = true;
+  };
+  const pintarPeca = (id: string, hex: string) => {
+    const k = indicePorId.get(id);
+    if (!k) return;
+    cor.set(hex);
+    k.malha.malha.setColorAt(k.i, cor);
+    k.malha.malha.instanceColor!.needsUpdate = true;
+  };
+  const corBaseDe = (id: string): string | null => {
+    const k = indicePorId.get(id);
+    if (k) return corDoLote(k.malha);
+    return faixaPorId.has(id) ? corDoAco(estilo) : null;
+  };
+  const pintar = (id: string, hex: string) => {
+    if (indicePorId.has(id)) pintarPeca(id, hex);
+    else pintarBarra(id, hex);
+  };
+
+  /** Repinta TODA a cena com as cores do estilo e da paleta atuais (a seleção volta por cima). */
+  const repintar = () => {
+    for (const l of lotes) {
+      cor.set(corDoLote(l));
+      for (let i = 0; i < l.lote.ids.length; i++) l.malha.setColorAt(i, cor);
+      l.malha.instanceColor!.needsUpdate = true;
+    }
+    cor.set(corDoAco(estilo));
+    for (const b of barras) {
+      const a = b.lote.geometria.getAttribute('color') as THREE.BufferAttribute;
+      for (let v = 0; v < a.count; v++) a.setXYZ(v, cor.r, cor.g, cor.b);
+      a.needsUpdate = true;
+    }
+    const t = tracoDoEstilo(estilo, paletaAtual);
+    if (t) {
+      tracoComum.color.set(t.cor);
+      tracoRaioX.color.set(t.cor);
+    }
+    if (selecionado) pintar(selecionado, paletaAtual.selecionado);
+  };
+
+  /*
+    ⚠️ A SOMBRA É SÓ DO REALISTA, e só de quem é sólido de verdade: o terreno é
+    véu (não faz sombra, só a recebe) e, no Raio-X, o bloco e a sapata viram
+    vidro — vidro fazendo sombra cheia escureceria justo o graute e a barra que
+    o Raio-X existe para mostrar.
+  */
+  const ajustarSombras = () => {
+    const comSombra = estilo === 'realista';
+    for (const l of lotes) {
+      const a = l.lote.acabamento;
+      l.malha.receiveShadow = comSombra;
+      l.malha.castShadow = comSombra && a !== 'terreno' && !(raioX && NO_RAIO_X.has(a));
+    }
+    for (const b of barras) b.malha.castShadow = b.malha.receiveShadow = comSombra;
+  };
+
+  let ultimoZoom: number | null = null;
+  const aplicarEstilo = (e: EstiloVisual) => {
+    estilo = e;
+    for (const l of lotes) l.malha.material = material(e, l.lote.acabamento);
+    for (const b of barras) b.malha.material = aco(e);
+    const t = tracoDoEstilo(e, paletaAtual);
+    for (const l of lotes) if (l.traco) l.traco.visible = !!t && l.malha.visible;
+    repintar();
+    ajustarSombras();
+    // O traço desbota em outra faixa de zoom em cada estilo: refaz com o último zoom visto (antes do
+    // primeiro quadro, ainda sem zoom, nasce inteiro).
+    fatorDoTraco = -1;
+    aplicarZoom(ultimoZoom ?? Infinity);
+  };
+
+  const aplicarPaleta = (p: PaletaVisor) => {
+    paletaAtual = p;
+    repintar();
+  };
+
+  const aplicarVisibilidade = (o: ReadonlySet<Categoria>) => {
+    ocultas = o;
+    const comTraco = !!tracoDoEstilo(estilo, paletaAtual);
+    for (const l of lotes) {
+      const v = visivel(l.lote.categorias, o);
+      l.malha.visible = v;
+      if (l.traco) l.traco.visible = v && comTraco;
+    }
+    for (const b of barras) b.malha.visible = visivel(b.lote.categorias, o);
+  };
+
+  const aplicarRaioX = (ligado: boolean) => {
+    raioX = ligado;
+    for (const [e, doEstilo] of materiais) for (const [a, m] of doEstilo) ajustarTransparencia(m, a, e);
+    for (const l of lotes) if (l.traco && NO_RAIO_X.has(l.lote.acabamento)) l.traco.material = ligado ? tracoRaioX : tracoComum;
+    ajustarSombras();
+  };
+
+  const todosOsMateriais = (): THREE.Material[] => {
+    const ms: THREE.Material[] = [tracoComum, tracoRaioX, ...acos.values()];
+    for (const doEstilo of materiais.values()) ms.push(...doEstilo.values());
+    return ms;
+  };
+  const aplicarCorte = (ps: readonly THREE.Plane[]) => {
+    const mudouQuantidade = ps.length !== planos.length;
+    planos = ps;
+    for (const m of todosOsMateriais()) {
+      m.clippingPlanes = ps.length ? [...ps] : null;
+      // ⚠️ Mudar QUANTOS planos exige recompilar o shader (lição do A-PORT,
+      // `MassaDaPeca.tsx`). Arrastar o mesmo plano, não: o three lê a posição a cada quadro.
+      if (mudouQuantidade) m.needsUpdate = true;
+    }
+  };
+
+  let fatorDoTraco = 1;
+  const aplicarZoom = (pxPorMetro: number) => {
+    if (Number.isFinite(pxPorMetro)) ultimoZoom = pxPorMetro;
+    const t = tracoDoEstilo(estilo, paletaAtual);
+    if (!t) return;
+    // Fiada de 20 cm: o traço some abaixo de `some` px por fiada e volta inteiro a partir de `cheio`.
+    const f = Math.min(1, Math.max(0, (pxPorMetro * 0.2 - t.some) / (t.cheio - t.some)));
+    if (f === fatorDoTraco) return;
+    fatorDoTraco = f;
+    tracoComum.opacity = t.opacidade * f;
+    tracoRaioX.opacity = t.opacidade * 0.6 * f;
+    // Traço apagado não é desenhado (economiza a chamada de desenho de longe).
+    tracoComum.visible = tracoRaioX.visible = f > 0;
+  };
+
+  const pintarSelecao = (id: string | null) => {
+    if (selecionado && selecionado !== id) {
+      const base = corBaseDe(selecionado);
+      if (base) pintar(selecionado, base);
+    }
+    selecionado = id && corBaseDe(id) ? id : null;
+    if (selecionado) pintar(selecionado, paletaAtual.selecionado);
+  };
+
+  const pegavel = (l: MalhaDoLote) =>
+    l.malha.visible && l.lote.acabamento !== 'terreno' && !(raioX && NO_RAIO_X.has(l.lote.acabamento));
+
+  const pegar = (raio: THREE.Raycaster): string | null => {
+    const alvos: THREE.Object3D[] = [];
+    for (const l of lotes) if (pegavel(l)) alvos.push(l.malha);
+    for (const b of barras) if (b.malha.visible) alvos.push(b.malha);
+    if (!alvos.length) return null;
+    for (const h of raio.intersectObjects(alvos, false)) {
+      // O lado cortado não existe para o clique (meio milímetro de tolerância, a folga do corte).
+      if (planos.some((p) => p.distanceToPoint(h.point) < -5e-4)) continue;
+      if (h.object instanceof THREE.InstancedMesh) {
+        const l = lotes.find((x) => x.malha === h.object);
+        const id = l && h.instanceId !== undefined ? l.lote.ids[h.instanceId] : undefined;
+        if (id) return id;
+      } else {
+        const b = barras.find((x) => x.malha === h.object);
+        const f = b && h.faceIndex != null ? barraDoTriangulo(b.lote.faixas, h.faceIndex) : null;
+        if (f) return f.id;
+      }
+    }
+    return null;
+  };
+
+  const caixaDasBarras = (b: MalhaDeBarras): Caixa | null => {
+    const bb = b.lote.geometria.boundingBox;
+    return bb ? { min: [bb.min.x, bb.min.y, bb.min.z], max: [bb.max.x, bb.max.y, bb.max.z] } : null;
+  };
+
+  const caixaVisivel = (): Caixa => {
+    const acesas = (comTerreno: boolean): Caixa[] => {
+      const cs: Caixa[] = [];
+      for (const l of lotes) if (l.malha.visible && (comTerreno || l.lote.acabamento !== 'terreno')) cs.push(l.lote.caixa);
+      for (const b of barras) {
+        const c = caixaDasBarras(b);
+        if (b.malha.visible && c) cs.push(c);
+      }
+      return cs;
+    };
+    // Sem nada aceso (ou só terreno), enquadra o modelo inteiro: a tela não pode ficar mirando o vazio.
+    return (
+      unirCaixas(acesas(false)) ??
+      unirCaixas(acesas(true)) ??
+      unirCaixas(lotes.map((l) => l.lote.caixa)) ?? { min: [0, 0, 0], max: [1, 1, 1] }
+    );
+  };
+
+  const caixaTotal = (): Caixa => {
+    const cs: Caixa[] = lotes.map((l) => l.lote.caixa);
+    for (const b of barras) {
+      const c = caixaDasBarras(b);
+      if (c) cs.push(c);
+    }
+    return unirCaixas(cs) ?? { min: [0, 0, 0], max: [1, 1, 1] };
+  };
+
+  const classesVisiveis = (o: ReadonlySet<Categoria>): Set<ClassePeca> => {
+    const s = new Set<ClassePeca>();
+    for (const l of lotes) if (l.classe && visivel(l.lote.categorias, o)) s.add(l.classe);
+    return s;
+  };
+
+  const centroDe = (id: string): Vec3 | null => {
+    const p = pecaPorId.get(id);
+    const g = p && modelo.geometrias[p.geometria];
+    if (p && g) {
+      const c = emMetro(caixaDaPeca(p, caixaLocal(g)));
+      return [(c.min[0] + c.max[0]) / 2, (c.min[1] + c.max[1]) / 2, (c.min[2] + c.max[2]) / 2];
+    }
+    const b = barraPorId.get(id);
+    if (b && b.eixo.length) {
+      const s = b.eixo.reduce<Vec3>((a, q) => [a[0] + q[0], a[1] + q[1], a[2] + q[2]], [0, 0, 0]);
+      const n = b.eixo.length;
+      return [(s[0] / n) * MM, (s[1] / n) * MM, (s[2] / n) * MM];
+    }
+    return null;
+  };
+
+  const achar = (id: string): Pego | null => {
+    const p = pecaPorId.get(id);
+    if (p) return { tipo: 'peca', peca: p };
+    const b = barraPorId.get(id);
+    return b ? { tipo: 'barra', barra: b } : null;
+  };
+
+  const chamadasDeDesenho = () => {
+    let n = 0;
+    grupo.traverse((o) => {
+      if ((o instanceof THREE.Mesh || o instanceof THREE.LineSegments) && o.visible && (o.material as THREE.Material).visible) n++;
+    });
+    return n;
+  };
+
+  const dispose = () => {
+    for (const { geo } of moldes.values()) geo.dispose();
+    for (const l of lotes) {
+      l.malha.dispose();
+      l.traco?.geometry.dispose();
+    }
+    for (const b of barras) b.lote.geometria.dispose();
+    for (const m of todosOsMateriais()) m.dispose();
+  };
+
+  // Estado inicial coerente: nada oculto, sem Raio-X, sem corte, no estilo pedido.
+  aplicarVisibilidade(ocultas);
+  aplicarEstilo(estilo);
+
+  return {
+    grupo,
+    lotes,
+    barras,
+    semGeometria,
+    achar,
+    aplicarPaleta,
+    aplicarEstilo,
+    aplicarVisibilidade,
+    aplicarRaioX,
+    aplicarCorte,
+    aplicarZoom,
+    pintarSelecao,
+    pegar,
+    caixaVisivel,
+    caixaTotal,
+    classesVisiveis,
+    centroDe,
+    chamadasDeDesenho,
+    dispose,
+  };
+}

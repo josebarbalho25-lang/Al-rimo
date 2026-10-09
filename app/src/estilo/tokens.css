@@ -1,0 +1,313 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   tokens.css — os 3 temas e as 3 densidades
+   ---------------------------------------------------------------------------
+   COPIADO DO A-PORT (src/estilo/tokens.css), que por sua vez foi portado do
+   Pró-Viga 3D sem inventar cor. É a régua visual da família: o Al-rimo tem de
+   parecer irmão dos dois, lado a lado na tela. Saíram só os tokens que eram
+   de peça do A-PORT (laje, casca, nó, casos de carga); entraram as cores de
+   MATERIAL do muro (as que o 3D lê) e o papel das pranchetas.
+
+   Regra que vem junto e continua valendo: NÃO nasce hex novo na UI. Cor nova
+   é token nos três temas.
+
+   REGRA DOS CARDS DE CONTINUIDADE: --line/--line-2 são SUAVES de propósito
+   (superfície contínua não ganha moldura). Moldura forte é papel de card e
+   tabela (--line-strong) e de controle (--control-stroke).
+
+   O tema escuro é o PADRÃO aqui — este app é um palco 3D, e no preto fosco a
+   ênfase é ACROMÁTICA: luz, não cor. Cor fica reservada para os DADOS
+   (status, casos de carga, diagramas).
+
+   ⚠️ O palco é WebGL e WebGL não aceita filtro de inversão. A cena lê estes
+   tokens por `themeColor()` e se repinta quando body[data-theme] muda.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   O QUE NÃO É TEMA fica aqui, e só aqui.
+   ---------------------------------------------------------------------------
+   Tamanho da interface, degraus de texto e medidas não mudam com o tema — o
+   escuro e o claro têm a mesma régua. Estavam junto com as cores, dentro de
+   `:root, body[data-theme='dark']`, e isso tinha um efeito escondido: o
+   seletor agrupado declara tudo DUAS vezes, na raiz e no corpo. Escrever a
+   escala na raiz então não pegava no tema escuro — o corpo redeclarava por
+   cima —, e pegava nos claros. Um botão que funciona em dois temas de três é
+   pior do que um botão que não funciona.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ═══════════════════════════════════════════════════════════════════
+     TAMANHO DA INTERFACE — um multiplicador só, e tudo acompanha.
+     ───────────────────────────────────────────────────────────────────
+     1 = a interface como ela é. A seção Interface das configurações mexe
+     daqui, e nada mais precisa saber que ela existe.
+
+     ⚠️ O DESENHO NÃO PASSA POR AQUI, E NÃO PODE PASSAR. Cota, etiqueta,
+     marca de elevação e nota têm tamanho de PAPEL × escala da vista
+     (`anotacao/estiloTexto.ts`). Se crescessem junto com a interface, o
+     texto sairia de tamanho errado na prancha impressa — e erraria calado,
+     que é o pior jeito. A fronteira entre os dois mundos é esta linha.
+
+     ⚠️ E não pode envolver o `<canvas>`: `metrosPorPixel` mede pixel de
+     tela do palco. Escalar o canvas faria essa conta mentir, e com ela toda
+     a mira do lançamento. Quem cresce é `.palco-overlay`, ao lado.
+
+     Nota de campo: o Revit NÃO tem este botão. A interface dele herda o
+     dimensionamento de tela do Windows — para aumentar o Revit, aumenta-se
+     o Windows inteiro. Aqui é ajuste do app. */
+  --escala-ui: 1;
+
+  /* Os DEGRAUS de texto.
+
+     Eram DOZE tamanhos entre 8,5 e 17px, seis deles a meio pixel um do
+     outro — desenho acidental, não escolhido. Viram seis, e o PISO SOBE de
+     8,5 para 10,5px.
+
+     A calibração é contra o Revit, medida na mesma tela de 1920 sem
+     dimensionamento: lá a interface inteira usa praticamente UM tamanho
+     (~12px) e faz hierarquia com PESO e COR, não com tamanho. O nosso texto
+     miúdo — legenda de grupo, contador — estava na METADE disso, e ainda
+     por cima na tinta de menor contraste. Por isso "ligeiramente menor" na
+     fita e ilegível no resto: eram duas queixas, não uma.
+
+     O crescimento é de propósito DESIGUAL: +24% no miúdo, +6% no grande.
+     Multiplicar tudo por 1,25 teria levado o título do modal a 21px sem
+     resolver o contador. */
+  --fs-micro: calc(10.5px * var(--escala-ui));
+  --fs-nota: calc(11.5px * var(--escala-ui));
+  --fs-rotulo: calc(12.5px * var(--escala-ui));
+  --fs-corpo: calc(13px * var(--escala-ui));
+  --fs-destaque: calc(15px * var(--escala-ui));
+  --fs-titulo: calc(18px * var(--escala-ui));
+
+  /* Medidas. --params-w agora é a coluna da ESQUERDA (propriedades + navegador).
+     Passam pela escala junto com o texto: fonte maior em caixa do mesmo
+     tamanho é texto espremido, e o rótulo com reticências corta. */
+  --rail-w: calc(56px * var(--escala-ui));
+  --params-w: calc(324px * var(--escala-ui));
+  --row: calc(26px * var(--escala-ui));
+  --pad: calc(10px * var(--escala-ui));
+  --gap-1: calc(4px * var(--escala-ui));
+  --gap-2: calc(8px * var(--escala-ui));
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --topbar-h: calc(42px * var(--escala-ui));
+  --fita-h: calc(106px * var(--escala-ui));
+  --abas-h: calc(28px * var(--escala-ui));
+  --status-h: calc(26px * var(--escala-ui));
+
+  /* A coluna das ENTRADAS do Al-rimo. Própria, e não o --params-w do A-PORT:
+     lá a coluna mostra rótulo | valor; aqui cada linha tem rótulo, campo,
+     unidade e o botão da figura, e com 348 px o rótulo ficava com ~140 px —
+     "Comprimento do contraforte" já não cabia. A alça na borda muda isto. */
+  --entradas-w: calc(392px * var(--escala-ui));
+
+  --peca-aco: #7f8489;
+
+  /* AS CORES DE MATERIAL DO MURO — iguais nos três temas, de propósito: são a
+     cor do bloco, do graute, do aço e do solo, e não tinta de tela (mesmo
+     precedente das cores de enchimento do A-PORT). O 3D lê estes nomes
+     (visor/tema3d.ts, `themeColor('--peca-…')`); os valores são os que o
+     visor já usava como reserva, para nada mudar de cor quando os tokens
+     chegaram:
+       · bloco, aço e solo — paleta das figuras do Jose (figs/figlib.py);
+       · sapata — o concreto do tema "papel" do A-PORT (--peca-viga);
+       · graute (mais escuro que o bloco), brita, manta e tubo — DEDUÇÃO do
+         visor, a conferir com o Jose. */
+  --peca-bloco: #d9d9d9;
+  --peca-graute: #7f7f7f;
+  --peca-aco-barra: #c00000;
+  --peca-sapata: #a9a69e;
+  --peca-brita: #9a948a;
+  --peca-manta: #e9e6dc;
+  --peca-tubo: #f0f0f0;
+  --peca-solo: #8d6e3f;
+
+  /* O PAPEL das pranchetas (figuras e vistas 2D): o branco e a tinta de linha
+     das figuras (figlib.py). Não é cor de tema — no escuro a folha inteira é
+     invertida por filtro (`.prancheta`, componentes.css), não repintada. */
+  --papel: #ffffff;
+  --papel-tinta: #262626;
+}
+
+:root,
+body[data-theme='dark'] {
+  color-scheme: dark;
+
+  --font-ui: 'Segoe UI Variable Text', 'Segoe UI', 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Cascadia Mono', ui-monospace, monospace;
+  --font-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+
+  --bg: #121216;
+  --surface: #17171b;
+  --surface-2: #1d1d23;
+  --line: #26262d;
+  --line-2: #222228;
+  --line-strong: #3a3a45;
+  --control-stroke: #3c3c49;
+  --control-stroke-2: #5a5a6c;
+  --ink: #e8e8ee;
+  --ink-2: #c8c8d3;
+  --muted: #969aa8;
+  --muted-2: #818595;
+  --rail-bg: #0a0a0d;
+  --rail-fg: #85889b;
+  --rail-fg-2: #ffffff;
+  --rail-active: #f2f3f7;
+
+  /* O ativo ACENDE em branco-gelo, e o botão primário é branco com TINTA
+     preta por cima — o cromo da interface segue acromático.
+
+     Mas a ÊNFASE DO PALCO (`--accent-3`) é AZUL, e igual nos três temas:
+     seleção, cota temporária, realce do Alinhar. Era acromática aqui, e no
+     escuro a peça selecionada ficava branca — sem dizer "escolhida", só
+     "clara". Decisão dele: um azul só, para tudo.
+
+     `--accent-pre` é a PRÉ-SELEÇÃO: o que está sob o cursor e ainda não foi
+     pego. Nasceu do painel de Cores do Revit, que separa "Seleção" de
+     "Pré-seleção" — e no tema escuro pinta as duas de cores diferentes, de
+     propósito. Sem esta gaveta o Alinhar ia buscar a cor mais próxima que
+     achava, que era o VERMELHO DE ALERTA: uma candidata sob o cursor, que
+     não é erro nenhum, pintada com a cor de erro.
+     ⚠️ Vai virar campo de configuração; por enquanto é este. */
+  --accent: #e4e5ea;
+  --accent-2: #b9bdc9;
+  --accent-3: #3d8bfd;
+  --accent-pre: #48c9e0;
+  --on-accent: #101014;
+
+  --teal: #3eb5c0;
+
+  /* A TINTA DA ARESTA do sólido. Escura nos três temas de propósito: a
+     silhueta já se lê pelo contraste da massa contra o fundo, e o traço existe
+     para os VINCOS — a quina de duas faces da mesma peça, e a peça que passa
+     por trás da outra. Com a tinta do texto (clara no escuro) o vinco sumia na
+     massa clara: medido, #e8e8ee contra #c8c8d3 dá 1,36:1. */
+  --aresta: #1b1d22;
+
+  --rust: #e8794a;
+  --warn: #e08a3c;
+  --err: #e0685a;
+  --ok: #55b87d;
+  --ok-bg: rgba(85, 184, 125, 0.13);
+  --ok-line: rgba(85, 184, 125, 0.4);
+  --warn-bg: rgba(224, 138, 60, 0.13);
+  --warn-line: rgba(224, 138, 60, 0.42);
+  --err-bg: rgba(224, 104, 90, 0.14);
+  --err-line: rgba(224, 104, 90, 0.42);
+
+  --sel-bg: rgba(61, 139, 253, 0.16);
+  --scrim: rgba(0, 0, 0, 0.6);
+  --shadow-soft: rgba(0, 0, 0, 0.5);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 24px 60px rgba(0, 0, 0, 0.65);
+
+  /* Textura "caneca": grão fino + manchas, branco em alpha baixa. */
+  --speckle: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.06 0'/></filter><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='0.07' numOctaves='3' seed='7' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.035 0'/></filter><rect width='200' height='200' filter='url(%23g)'/><rect width='200' height='200' filter='url(%23m)'/></svg>");
+  --speckle-soft: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.03 0'/></filter><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='0.07' numOctaves='3' seed='7' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.018 0'/></filter><rect width='200' height='200' filter='url(%23g)'/><rect width='200' height='200' filter='url(%23m)'/></svg>");
+
+}
+
+body[data-theme='modern'] {
+  /* Modern — Fluent 2 sobre base editorial, denso, cara de desktop nativo. */
+  color-scheme: light;
+  --bg: #e9edf4;
+  --surface: #ffffff;
+  --surface-2: #f6f8fb;
+  --line: #dde2eb;
+  --line-2: #e8ecf3;
+  --line-strong: #c8cfdb;
+  --control-stroke: #c6cdd9;
+  --control-stroke-2: #8f99ac;
+  --ink: #0e1424;
+  --ink-2: #2a3247;
+  --muted: #5d6780;
+  --muted-2: #677187;
+  --rail-bg: #0d1b4b;
+  --rail-fg: #6f7da8;
+  --rail-fg-2: #ffffff;
+  --rail-active: #0080ff;
+  --accent: #0d1b4b;
+  --accent-2: #1565c0;
+  --accent-3: #0080ff;
+  --accent-pre: #0aa5c8;
+  --on-accent: #ffffff;
+  --teal: #0e7c86;
+
+  --aresta: #33383f;
+  --rust: #c2410c;
+  --warn: #b07a1a;
+  --err: #b33a2c;
+  --ok: #2f7a4a;
+  --ok-bg: #e4f1e9;
+  --ok-line: #a9cdb6;
+  --warn-bg: #f7edd8;
+  --warn-line: #dcc08a;
+  --err-bg: #f9e5e1;
+  --err-line: #e2afa7;
+  --sel-bg: rgba(0, 128, 255, 0.08);
+  --scrim: rgba(13, 27, 75, 0.32);
+  --shadow-soft: rgba(13, 27, 75, 0.1);
+  --shadow-1: 0 1px 2px rgba(13, 27, 75, 0.06);
+  --shadow-2: 0 24px 60px rgba(13, 27, 75, 0.25);
+  --speckle: none;
+  --speckle-soft: none;
+}
+
+body[data-theme='paper'] {
+  /* Paper — creme editorial, para memorial e impressão. */
+  color-scheme: light;
+  --bg: #e6e0ce;
+  --surface: #f6f1e1;
+  --surface-2: #f1ebd9;
+  --line: #c9c0a8;
+  --line-2: #d8d0ba;
+  --line-strong: #afa284;
+  --control-stroke: #b3a78a;
+  --control-stroke-2: #837857;
+  --ink: #15224a;
+  --ink-2: #2b375a;
+  --muted: #635e4a;
+  --muted-2: #6f6855;
+  --rail-bg: #0d1b4b;
+  --rail-fg: #6f7da8;
+  --rail-fg-2: #f6f1e1;
+  --rail-active: #0080ff;
+  --accent: #15224a;
+  --accent-2: #1f3170;
+  --accent-3: #1565c0;
+  --accent-pre: #0f7f9c;
+  --on-accent: #ffffff;
+  --teal: #0e6e77;
+
+  --aresta: #2b2822;
+  --rust: #a83a0c;
+  --warn: #8f5a0e;
+  --err: #8e2c20;
+  --ok: #1f5235;
+  --ok-bg: #e0e8d4;
+  --ok-line: #a9bc96;
+  --warn-bg: #f0e2c2;
+  --warn-line: #cdb07e;
+  --err-bg: #edd8ce;
+  --err-line: #cfa090;
+  --sel-bg: rgba(21, 101, 192, 0.1);
+  --scrim: rgba(43, 38, 17, 0.34);
+  --shadow-soft: rgba(59, 48, 17, 0.12);
+  --shadow-1: 0 1px 2px rgba(59, 48, 17, 0.08);
+  --shadow-2: 0 24px 60px rgba(59, 48, 17, 0.3);
+  --speckle: none;
+  --speckle-soft: none;
+}
+
+/* Densidade: o PADRÃO já é denso (26/10). */
+body[data-density='compact'] {
+  --row: calc(24px * var(--escala-ui));
+  --pad: calc(8px * var(--escala-ui));
+  --params-w: calc(304px * var(--escala-ui));
+}
+body[data-density='cozy'] {
+  --row: calc(30px * var(--escala-ui));
+  --pad: calc(14px * var(--escala-ui));
+  --params-w: calc(348px * var(--escala-ui));
+}

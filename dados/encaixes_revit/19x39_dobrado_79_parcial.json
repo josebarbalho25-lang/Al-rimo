@@ -1,0 +1,28 @@
+{
+ "fonte": "Revit do Jose, 'Al-rimo Templates.rvt', 15 elementos selecionados por ele (308734...308842), lidos em 09/10/2026 — MODELO PARCIAL, ele vai completar",
+ "o_que_e": "Contraforte DOBRADO 19x39 com tenr = 79 (largura 39), amarrado alternando a posição dos blocos deitados",
+ "fiadas_lidas": {
+  "Z121 (muro passa)": "meio bloco no muro (X 1213,8-1232,8); por fora: par de inteiros girados (Y -67,1 a -28,1) + inteiro deitado fechando a ponta (Y -87,1 a -68,1)",
+  "Z141 (contraforte atravessa)": "par de inteiros girados atravessando o muro (Y -47,1 a -8,1) + DOIS inteiros deitados em seguida (Y -67,1 a -48,1 e -87,1 a -68,1)",
+  "Z161 (muro passa)": "meio bloco no muro; inteiro deitado ENCOSTADO no muro (Y -47,1 a -28,1) + par de inteiros girados por fora (Y -87,1 a -48,1)",
+  "Z181 (canaleta)": "par de canaletas giradas por fora (Y -67,1 a -28,1) + meia canaleta no muro (só parte selecionada)"
+ },
+ "pecas": [
+  [308762,"Meio Bloco","19x19x19",90,1213.8,1232.8,-27.1,-8.1,121.0,140.0],
+  [308841,"Blocos Padrão","19x19x39",180,1193.8,1232.8,-87.1,-68.1,121.0,140.0],
+  [308755,"Blocos Padrão","19x19x39",90,1213.8,1232.8,-67.1,-28.1,121.0,140.0],
+  [308740,"Blocos Padrão","19x19x39",90,1193.8,1212.8,-67.1,-28.1,121.0,140.0],
+  [308754,"Blocos Padrão","19x19x39",90,1213.8,1232.8,-47.1,-8.1,141.0,160.0],
+  [308735,"Blocos Padrão","19x19x39",90,1193.8,1212.8,-47.1,-8.1,141.0,160.0],
+  [308842,"Blocos Padrão","19x19x39",180,1193.8,1232.8,-87.1,-68.1,141.0,160.0],
+  [308750,"Blocos Padrão","19x19x39",180,1193.8,1232.8,-67.1,-48.1,141.0,160.0],
+  [308763,"Meio Bloco","19x19x19",90,1213.8,1232.8,-27.1,-8.1,161.0,180.0],
+  [308734,"Blocos Padrão","19x19x39",180,1193.8,1232.8,-47.1,-28.1,161.0,180.0],
+  [308821,"Blocos Padrão","19x19x39",90,1213.8,1232.8,-87.1,-48.1,161.0,180.0],
+  [308820,"Blocos Padrão","19x19x39",90,1193.8,1212.8,-87.1,-48.1,161.0,180.0],
+  [308742,"Canaleta","19x19x39",90,1193.8,1212.8,-67.1,-28.1,181.0,200.0],
+  [308759,"Canaleta","19x19x39",90,1213.8,1232.8,-67.1,-28.1,181.0,200.0],
+  [308765,"Canaleta","19x19x19",180,1213.8,1232.8,-27.1,-8.1,181.0,200.0]
+ ],
+ "colunas": "id, familia, tipo, giro, x0, x1, y0, y1, z0, z1 (cm)"
+}

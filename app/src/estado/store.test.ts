@@ -1,0 +1,165 @@
+// O estado do app sem tela: os três defeitos que a revisão reproduziu no store
+// (Salvar no meio da digitação, aviso de conta antiga sumindo no F5, lembrete
+// estragado no navegador). Cada teste "recarrega a página" (módulos novos) com
+// um localStorage de mentira, que sobrevive à recarga como o de verdade.
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+function armazenamento(m: Map<string, string>) {
+  return {
+    getItem: (k: string) => (m.has(k) ? m.get(k)! : null),
+    setItem: (k: string, v: string) => void m.set(k, String(v)),
+    removeItem: (k: string) => void m.delete(k),
+    clear: () => m.clear(),
+    key: (i: number) => [...m.keys()][i] ?? null,
+    get length() {
+      return m.size;
+    },
+  };
+}
+
+async function abrirApp(m: Map<string, string>) {
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: armazenamento(m) });
+  vi.resetModules();
+  const store = await import('./store');
+  const lembrete = await import('./lembrete');
+  return { ...store, ...lembrete };
+}
+
+afterEach(() => {
+  delete (globalThis as Record<string, unknown>).localStorage;
+});
+
+describe('salvar', () => {
+  it('o que se digita enquanto o disco grava continua marcado como não salvo', async () => {
+    const app = await abrirApp(new Map());
+    const s = app.useApp.getState();
+    s.definir('H_muro', 2.2);
+    const gravado = app.projetoAtual(app.useApp.getState());
+    app.useApp.getState().definir('H_muro', 3); // o disco ainda não respondeu
+    app.useApp.getState().marcarSalvo('Muro A.alrimo', 'Muro A', gravado);
+    const d = app.useApp.getState();
+    expect(d.arquivo).toBe('Muro A.alrimo');
+    expect(d.sujo).toBe(true);
+  });
+
+  it('sem nada digitado no meio, fica salvo', async () => {
+    const app = await abrirApp(new Map());
+    app.useApp.getState().definir('H_muro', 2.2);
+    app.useApp.getState().marcarSalvo('Muro A.alrimo', 'Muro A', app.projetoAtual(app.useApp.getState()));
+    expect(app.useApp.getState().sujo).toBe(false);
+  });
+});
+
+describe('o último projeto no navegador', () => {
+  it('o aviso "salvo com outra versão da conta" sobrevive ao F5', async () => {
+    const m = new Map<string, string>();
+    let app = await abrirApp(m);
+    app.lembrarUltimoProjeto();
+    app.useApp.getState().carregar({ titulo: 'Muro A', alteracoes: { H_muro: 2.2 }, extras: {} }, 'Muro A.alrimo', {
+      contaDoArquivo: 'conta-antiga-0001',
+    });
+    app = await abrirApp(m);
+    const s = app.useApp.getState();
+    expect(s.arquivo).toBe('Muro A.alrimo');
+    expect(s.alteracoes).toEqual({ H_muro: 2.2 });
+    expect(s.contaDoArquivo).toBe('conta-antiga-0001');
+  });
+
+  it('volta com a conta refeita, a aba e o sujo', async () => {
+    const m = new Map<string, string>();
+    let app = await abrirApp(m);
+    app.lembrarUltimoProjeto();
+    app.useApp.getState().definir('H_muro', 2.2);
+    app.useApp.getState().definir('Tipo_muro', 'Contrafortes');
+    app.useApp.getState().escolherAba('memoria');
+    app = await abrirApp(m);
+    const s = app.useApp.getState();
+    expect(s.alteracoes).toEqual({ H_muro: 2.2, Tipo_muro: 'Contrafortes' });
+    expect(s.sujo).toBe(true);
+    expect(s.aba).toBe('memoria');
+    expect(s.resultado?.num('H_muro')).toBe(2.2);
+  });
+
+  it('lembrete estragado no navegador vira o padrão, sem derrubar nada', async () => {
+    const m = new Map([
+      ['alrimo.grupos.v1', 'null'],
+      ['alrimo.aba.v1', '"aba-que-nao-existe"'],
+      ['alrimo.largura.v2', '"larga"'],
+      ['alrimo.ultimo.v1', '{"texto":42}'],
+    ]);
+    const app = await abrirApp(m);
+    expect(app.lembrar(app.CHAVES.grupos, {}, app.ehMapaDeBooleanos)).toEqual({});
+    expect(app.lembrarLarguraDoPainel()).toBeNull();
+    const s = app.useApp.getState();
+    expect(s.aba).toBe('3d');
+    expect(s.alteracoes).toEqual({});
+    expect(s.resultado).not.toBeNull();
+  });
+
+  it('valor estragado dentro do último projeto não chega à conta', async () => {
+    const m = new Map<string, string>();
+    let app = await abrirApp(m);
+    const texto = JSON.stringify({
+      formato: 'alrimo',
+      versaoDoArquivo: 1,
+      versaoDaConta: app.VERSAO_DA_CONTA,
+      titulo: 'x',
+      alteracoes: { H_muro: '2,6', t_bloco: 17 },
+      extras: {},
+    });
+    m.set('alrimo.ultimo.v1', JSON.stringify({ texto, arquivo: null, sujo: true }));
+    app = await abrirApp(m);
+    // arquivo v1 (uma altura só, a do solo): o solo vai para a mesma altura (estado/projeto.ts)
+    expect(app.useApp.getState().alteracoes).toEqual({ H_muro: 2.6, H_solo: 2.6 });
+    expect(app.useApp.getState().resultado?.num('H_muro')).toBe(2.6);
+    expect(app.useApp.getState().resultado?.num('H_solo')).toBe(2.6);
+  });
+});
+
+describe('largura do painel', () => {
+  it('a da v1 (px de tela a 110%) vira px na escala 100%, uma vez, e a velha some', async () => {
+    const m = new Map([['alrimo.largura.v1', '495']]);
+    const app = await abrirApp(m);
+    expect(app.lembrarLarguraDoPainel()).toBe(450);
+    expect(m.has('alrimo.largura.v1')).toBe(false);
+    expect(m.get('alrimo.largura.v2')).toBe('450');
+    expect(app.lembrarLarguraDoPainel()).toBe(450);
+  });
+
+  it('a de fábrica (null, duplo clique) continua de fábrica', async () => {
+    const app = await abrirApp(new Map([['alrimo.largura.v2', 'null']]));
+    expect(app.lembrarLarguraDoPainel()).toBeNull();
+  });
+});
+
+describe('listas que dependem de outra entrada (montagens fechadas)', () => {
+  it('trocar o bloco leva contraforte e vão para a opção mais próxima, e o "→" fica até mexer no campo', async () => {
+    const app = await abrirApp(new Map());
+    app.useApp.getState().definir('Tipo_muro', 'Contrafortes');
+    app.useApp.getState().definir('t_bloco', 14);
+    let s = app.useApp.getState();
+    // padrões do bloco 19 (contraforte 59, vão 1,60) fora das listas do 14 (34/54; 0,95 … 3,75)
+    expect(s.alteracoes).toMatchObject({ t_bloco: 14, tenr_: 54, l_cf: 1.75 });
+    expect(s.ajustesDeLista.tenr_).toEqual({ nome: 'tenr_', de: 59, para: 54 });
+    expect(s.ajustesDeLista.l_cf).toEqual({ nome: 'l_cf', de: 1.6, para: 1.75 });
+    expect(s.resultado?.v('tenr_adot')).toBe(54);
+    app.useApp.getState().definir('tenr_', 34);
+    s = app.useApp.getState();
+    expect(s.ajustesDeLista.tenr_).toBeUndefined();
+    expect(s.ajustesDeLista.l_cf).toBeDefined();
+    // de volta ao 19: 34 → 59 (o mais perto, e o padrão: a chave sai), 1,75 → 1,80
+    app.useApp.getState().definir('t_bloco', 19);
+    s = app.useApp.getState();
+    expect(app.leitorDoEstado(s)('tenr_')).toBe(59);
+    expect(s.alteracoes.l_cf).toBe(1.8);
+  });
+
+  it('arquivo salvo com valor fora da lista abre ajustado e marcado como alterado', async () => {
+    const app = await abrirApp(new Map());
+    app.useApp.getState().carregar({ titulo: 'Antigo', alteracoes: { Tipo_muro: 'Contrafortes', l_cf: 1.5 }, extras: {} }, 'Antigo.alrimo');
+    const s = app.useApp.getState();
+    expect(app.leitorDoEstado(s)('l_cf')).toBe(1.6);
+    expect(s.sujo).toBe(true);
+    expect(s.ajustesDeLista.l_cf).toEqual({ nome: 'l_cf', de: 1.5, para: 1.6 });
+  });
+});

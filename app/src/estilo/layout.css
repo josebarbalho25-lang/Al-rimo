@@ -1,0 +1,301 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   layout.css — a concha do Al-rimo
+   ---------------------------------------------------------------------------
+   A concha do A-PORT (src/estilo/layout.css) sem o trilho e sem a fita: aqui a
+   modelagem é toda por entradas. Barra de cima, painel de entradas à esquerda,
+   abas + palco à direita, barra de estado embaixo. As peças (topbar, abas,
+   barra de estado, cabeça de painel) são cópias das de lá, para os dois
+   programas lado a lado parecerem do mesmo fabricante.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.app {
+  display: grid;
+  grid-template-columns: var(--entradas-w) minmax(0, 1fr);
+  grid-template-rows: var(--topbar-h) var(--abas-h) minmax(0, 1fr) var(--status-h);
+  /* A linha das ABAS cobre só a coluna do palco — o painel sobe por baixo dela,
+     como no Revit: a aba pertence ao DESENHO, não à janela. */
+  grid-template-areas:
+    'topbar topbar'
+    'esq    abas'
+    'esq    palco'
+    'status status';
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+}
+
+/* ── TOPBAR ─────────────────────────────────────────────────────────────── */
+
+.topbar {
+  grid-area: topbar;
+  background: var(--surface);
+  background-image: var(--speckle-soft);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 12px 0 14px;
+  z-index: 3;
+}
+.topbar .titulo {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  max-width: 40%;
+}
+.topbar .titulo h1 {
+  font-size: var(--fs-destaque);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Os ícones da barra de cima: 18 px, na escala da interface. */
+.topbar .btn-icone > svg {
+  width: calc(18px * var(--escala-ui));
+  height: calc(18px * var(--escala-ui));
+}
+.topbar .separador {
+  width: 1px;
+  height: calc(24px * var(--escala-ui));
+  background: var(--line);
+}
+.topbar .grupo-botoes {
+  display: flex;
+  gap: 2px;
+}
+.topbar .direita {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── PAINEL DE ENTRADAS ─────────────────────────────────────────────────── */
+
+.coluna-entradas {
+  grid-area: esq;
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  z-index: 2;
+}
+.painel-entradas {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  background-image: var(--speckle-soft);
+  border-right: 1px solid var(--line);
+}
+.painel-cabeca {
+  height: calc(30px * var(--escala-ui));
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 var(--pad);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.painel-cabeca .rotulo {
+  font-size: var(--fs-nota);
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.painel-corpo {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Alça de largura, na borda direita do painel (a `.doca-redim` do A-PORT). */
+.alca-largura {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -3px;
+  width: calc(6px * var(--escala-ui));
+  cursor: col-resize;
+  z-index: 6;
+  touch-action: none;
+}
+.alca-largura:hover {
+  background: var(--accent-3);
+}
+
+/* ── PALCO ──────────────────────────────────────────────────────────────── */
+
+.palco {
+  grid-area: palco;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg);
+  overflow: hidden;
+}
+.palco canvas {
+  display: block;
+  outline: none;
+}
+
+/* Enquanto a peça da aba não chega: o nome dela, no meio, apagado. */
+.marcador-de-lugar {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted-2);
+  font-size: var(--fs-rotulo);
+  letter-spacing: 0.02em;
+}
+
+/* ── ABAS DO PALCO ──────────────────────────────────────────────────────── */
+
+.abas-vista {
+  grid-area: abas;
+  display: flex;
+  align-items: stretch;
+  gap: 1px;
+  min-width: 0;
+  padding: 0 0 0 var(--gap-1);
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.abas-vista::-webkit-scrollbar {
+  height: 0;
+}
+.aba-vista {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 0 12px 0 10px;
+  color: var(--muted);
+  font-size: var(--fs-rotulo);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.aba-vista:hover {
+  color: var(--ink-2);
+  background: var(--surface);
+}
+/* O ícone da aba: 15 px, na escala da interface. */
+.aba-vista > svg {
+  width: calc(15px * var(--escala-ui));
+  height: calc(15px * var(--escala-ui));
+  flex: none;
+}
+/* A da vez sobe: o fio de baixo apagado, para ela parecer contínua com o desenho. */
+.aba-vista.on {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--line-strong);
+  margin-bottom: -1px;
+  padding-bottom: 1px;
+  font-weight: 600;
+}
+.aba-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── BARRA DE ESTADO ────────────────────────────────────────────────────── */
+
+.statusbar {
+  grid-area: status;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 12px;
+  font-size: var(--fs-rotulo);
+  color: var(--muted);
+  z-index: 3;
+  min-width: 0;
+}
+.statusbar .campo-estado {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.statusbar .valor {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+/* O ALARME: some sozinho quando se resolve, e quando aparece se lê sem ser
+   procurado — fundo, e não só cor de letra. */
+.statusbar .campo-estado.alarme {
+  color: var(--err);
+  background: var(--err-bg);
+  border: 1px solid var(--err-line);
+  border-radius: var(--radius-md);
+  padding: 1px 7px;
+}
+/* O AVISO (âmbar): avisar, não travar. */
+.statusbar .aviso,
+.statusbar .aviso .valor,
+.statusbar .valor.aviso {
+  color: var(--warn);
+}
+.statusbar .direita {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* O veredito: o selo passa / não passa do A-PORT (`.laje-situacao`), na barra. */
+.statusbar .situacao {
+  flex: none;
+  padding: 0 8px;
+  line-height: calc(18px * var(--escala-ui));
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-rotulo);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.statusbar .situacao.passa {
+  color: var(--ok);
+  background: var(--ok-bg);
+  border: 1px solid var(--ok-line);
+}
+.statusbar .situacao.naoPassa {
+  color: var(--err);
+  background: var(--err-bg);
+  border: 1px solid var(--err-line);
+}
+.statusbar button.situacao:hover {
+  filter: brightness(1.12);
+}
+
+/* ⚠️ VALOR NO PALCO NÃO TEM FUNDO NEM MOLDURA — decisão dele no A-PORT
+   (12/09/2026). Vale para todo valor escrito sobre o desenho: halo fino da
+   cor do fundo, não caixa. */
+.halo-do-palco {
+  text-shadow:
+    0 0 2px var(--bg),
+    0 0 2px var(--bg),
+    0 0 3px var(--bg);
+}

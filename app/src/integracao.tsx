@@ -1,0 +1,37 @@
+// ═══════════════════════════════════════════════════════════════════════════
+//  integracao.tsx — liga as peças das frentes nas tomadas da casca
+// ---------------------------------------------------------------------------
+//  A casca (ui/, estado/) nasceu sem importar ninguém; aqui é o único lugar
+//  que conhece todo mundo. Se uma frente mudar de assinatura, quebra AQUI, na
+//  compilação — e não espalhado pelas telas.
+// ═══════════════════════════════════════════════════════════════════════════
+
+import { useApp } from '@/estado/store';
+import { gerarModelo } from '@/modulacao';
+import { exportarIfc } from '@/ifc';
+import { imprimirMemorial, vereditoDaMemoria, figuraDoCard } from '@/memoria';
+import { Memoria } from '@/memoria/Memoria';
+import { Visor3D } from '@/visor/Visor3D';
+import { Desenhos } from '@/desenhos/Desenhos';
+import { Quantitativo } from '@/quantitativo/Quantitativo';
+
+// A memória pede a figura do card por número ('Fig. 11'); o acervo é o mesmo do botão das entradas.
+const urlDaFigura = (figura: string) => figuraDoCard(figura)?.url ?? null;
+
+export function ligarAsFrentes(): void {
+  useApp.getState().ligar({
+    gerador: gerarModelo,
+    exportarIfc,
+    veredito: (r) => vereditoDaMemoria(r),
+    imprimirMemoria: (r, i) => imprimirMemorial(r, { info: { projeto: i.projeto }, urlDaFigura }),
+    abas: {
+      '3d': (c) => c.modelo && <Visor3D modelo={c.modelo} selecionado={c.selecionado} onSelecionar={c.selecionar} />,
+      frontal: (c) => c.modelo && <Desenhos modelo={c.modelo} vista="frontal" selecionado={c.selecionado} onSelecionar={c.selecionar} />,
+      corte: (c) => c.modelo && <Desenhos modelo={c.modelo} vista="corte" selecionado={c.selecionado} onSelecionar={c.selecionar} />,
+      planta: (c) => c.modelo && <Desenhos modelo={c.modelo} vista="planta" selecionado={c.selecionado} onSelecionar={c.selecionar} />,
+      iso: (c) => c.modelo && <Desenhos modelo={c.modelo} vista="iso" selecionado={c.selecionado} onSelecionar={c.selecionar} />,
+      memoria: (c) => c.resultado && <Memoria resultado={c.resultado} urlDaFigura={urlDaFigura} />,
+      quantitativo: (c) => c.modelo && <Quantitativo modelo={c.modelo} />,
+    },
+  });
+}

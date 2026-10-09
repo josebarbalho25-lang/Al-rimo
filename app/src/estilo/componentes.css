@@ -1,0 +1,633 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   componentes.css — peças reutilizáveis
+   ---------------------------------------------------------------------------
+   Copiadas do A-PORT (src/estilo/componentes.css e janelasDeCarga.css) as que
+   o Al-rimo usa: grupo recolhível, campo, combo, escolha, botões, modal,
+   tabela densa. Foco/hover/borda seguem o padrão do Pró-Viga: controle com
+   "lábio" inferior mais escuro, e foco = sublinhado interno de 2 px, nunca
+   contorno do sistema. Novas aqui: a LINHA DE ENTRADA (quatro colunas), o
+   botão da figura, o modal da figura e a prancheta que inverte no escuro.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── GRUPO RECOLHÍVEL ───────────────────────────────────────────────────── */
+
+.grupo {
+  border-bottom: 1px solid var(--line-2);
+}
+.grupo-cabeca {
+  height: var(--row);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 var(--pad);
+  cursor: pointer;
+  color: var(--ink-2);
+  user-select: none;
+}
+.grupo-cabeca:hover {
+  background: var(--surface-2);
+}
+.grupo-cabeca:focus-visible {
+  box-shadow: inset 2px 0 0 0 var(--accent-3);
+}
+.grupo-cabeca .titulo {
+  font-size: var(--fs-nota);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.grupo-cabeca .chevron {
+  transition: transform 0.15s ease;
+  color: var(--muted);
+  flex: none;
+}
+.grupo[data-aberto='false'] .grupo-cabeca .chevron {
+  transform: rotate(-90deg);
+}
+.grupo[data-aberto='false'] .grupo-corpo {
+  display: none;
+}
+.grupo-corpo {
+  padding: 4px var(--pad) 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* ── A LINHA DE ENTRADA ─────────────────────────────────────────────────────
+   Quatro colunas fixas: rótulo | controle | unidade | figura. Os valores numa
+   coluna só (cara de diálogo de engenharia, pedido dele no A-PORT), a unidade
+   FORA do campo ("o número fica só com o número"), e a coluna da figura
+   sempre presente, vazia quando não há figura — o botão nunca muda de lugar. */
+.entrada {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    calc(108px * var(--escala-ui))
+    calc(40px * var(--escala-ui))
+    calc(22px * var(--escala-ui));
+  align-items: center;
+  gap: var(--gap-1) var(--gap-2);
+  min-height: var(--row);
+}
+.entrada > label {
+  font-size: var(--fs-rotulo);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+.entrada > .unidade {
+  font-size: var(--fs-nota);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.entrada-controle {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--gap-1);
+}
+.entrada-controle.largo {
+  grid-column: span 2;
+}
+.entrada-controle > .campo,
+.entrada-controle > select.campo,
+.entrada-controle > .cad-escolha {
+  flex: 1;
+  min-width: 0;
+}
+/* O valor que a modulação ajustou: "→ 1,60", ao lado do campo, sem frase. */
+.entrada-controle > .ajuste {
+  flex: none;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-nota);
+  color: var(--warn);
+  white-space: nowrap;
+}
+/* A entrada que a conta ignora na situação atual (αv sem travamento, NA sem
+   água…): apagada, mas continua editável — a planilha deixa digitar antes de
+   ligar a chave, e o app também. */
+.entrada.apagada > label,
+.entrada.apagada > .unidade {
+  opacity: 0.45;
+}
+.entrada.apagada .entrada-controle {
+  opacity: 0.45;
+}
+.entrada.apagada .entrada-controle:focus-within {
+  opacity: 1;
+}
+
+/* ── CAMPOS ─────────────────────────────────────────────────────────────── */
+
+.campo,
+select.campo {
+  width: 100%;
+  height: var(--row);
+  background-color: var(--surface-2);
+  border: 1px solid var(--control-stroke);
+  border-bottom-color: var(--control-stroke-2);
+  border-radius: var(--radius-md);
+  padding: 0 7px;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-corpo);
+}
+.campo:hover:not(:focus) {
+  background-color: var(--surface);
+}
+.campo:focus {
+  background-color: var(--surface);
+  border-color: var(--control-stroke);
+  border-bottom-color: transparent;
+  box-shadow: inset 0 -2px 0 0 var(--accent-3);
+}
+.campo:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.campo.texto {
+  font-family: var(--font-ui);
+  font-size: var(--fs-rotulo);
+}
+/* Opcional em branco: "auto", apagado — é a planilha que vai escolher. */
+.campo::placeholder {
+  color: var(--muted-2);
+  opacity: 1;
+  font-family: var(--font-ui);
+  font-size: var(--fs-rotulo);
+}
+/* Entrada inválida: a borda acusa, e a conta fica com o último valor bom. */
+.campo.errado,
+.campo.errado:focus {
+  border-color: var(--err);
+  box-shadow: inset 0 -2px 0 0 var(--err);
+}
+/* ⚠️ background-COLOR, nunca o atalho `background`: o atalho apagaria a seta
+   desenhada por `background-image` (comentário do A-PORT e do Pró-Viga). */
+select.campo {
+  appearance: none;
+  cursor: pointer;
+  padding-right: 22px;
+  text-overflow: ellipsis;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 12px) calc(50% + 1px),
+    calc(100% - 8px) calc(50% + 1px);
+  background-size:
+    4px 4px,
+    4px 4px;
+  background-repeat: no-repeat;
+}
+/* ⚠️ O menu que abre de um <select> é desenhado pelo SISTEMA: sem cor própria,
+   no tema escuro sai texto branco em fundo branco. Vale para todo <select>. */
+select option {
+  background-color: var(--surface);
+  color: var(--ink);
+}
+select optgroup {
+  background-color: var(--surface);
+  color: var(--muted);
+}
+
+/* ── ESCOLHA: botões lado a lado, um aceso (`.cad-escolha` do A-PORT) ─────
+   Caixa, não pílula. É também o Sim/Não. */
+.cad-escolha {
+  display: flex;
+  min-width: 0;
+  height: var(--row);
+}
+.cad-escolha > button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 calc(5px * var(--escala-ui));
+  margin-left: -1px;
+  background: var(--surface-2);
+  border: 1px solid var(--control-stroke);
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-rotulo);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.cad-escolha > button:first-child {
+  margin-left: 0;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.cad-escolha > button:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.cad-escolha > button:only-child {
+  border-radius: var(--radius-sm);
+}
+.cad-escolha > button:hover:not(:disabled):not(.on) {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent-3) 10%, var(--surface-2));
+}
+.cad-escolha > button:focus-visible {
+  box-shadow: inset 0 -2px 0 0 var(--accent-3);
+}
+.cad-escolha > button.on {
+  position: relative;
+  color: var(--accent-3);
+  border-color: var(--accent-3);
+  background: var(--sel-bg);
+}
+.cad-escolha > button:disabled {
+  color: var(--muted-2);
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* ── BOTÕES ─────────────────────────────────────────────────────────────── */
+
+.btn-icone {
+  width: calc(30px * var(--escala-ui));
+  height: calc(30px * var(--escala-ui));
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  color: var(--muted);
+}
+.btn-icone:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.btn-icone.on {
+  color: var(--accent-3);
+  background: var(--sel-bg);
+}
+/* Comando cuja peça ainda não foi ligada: fica no lugar, apagado. */
+.btn-icone:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+.btn-icone:focus-visible {
+  box-shadow: inset 0 -2px 0 0 var(--accent-3);
+}
+
+/* O botão da figura: só ícone, sem moldura, na última coluna da linha. */
+.btn-figura {
+  width: calc(22px * var(--escala-ui));
+  height: calc(22px * var(--escala-ui));
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  color: var(--muted-2);
+}
+.btn-figura > svg {
+  width: calc(16px * var(--escala-ui));
+  height: calc(16px * var(--escala-ui));
+}
+.btn-figura:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+.btn-figura.on {
+  color: var(--accent-3);
+  background: var(--sel-bg);
+}
+.btn-figura:focus-visible {
+  box-shadow: inset 0 -2px 0 0 var(--accent-3);
+}
+
+/* O botão-caixa dos diálogos: retângulo com borda, sem pílula; o único destaque
+   é a borda do que responde ao Enter. */
+.btn-caixa {
+  min-height: calc(26px * var(--escala-ui));
+  padding: 0 calc(12px * var(--escala-ui));
+  background: var(--surface-2);
+  border: 1px solid var(--control-stroke);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-rotulo);
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+.btn-caixa:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent-3) 12%, var(--surface-2));
+  border-color: var(--control-stroke-2);
+}
+.btn-caixa.principal {
+  border-color: var(--accent-3);
+}
+.btn-caixa:disabled {
+  color: var(--muted-2);
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* ── PÍLULA (a cor vem toda de currentColor — serve nos 3 temas) ─────────── */
+
+.pilula {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: calc(17px * var(--escala-ui));
+  padding: 0 7px;
+  border-radius: 99px;
+  font-size: var(--fs-nota);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+  background: color-mix(in srgb, currentColor 9%, transparent);
+}
+
+/* ── MODAL ──────────────────────────────────────────────────────────────── */
+
+.modal-fundo {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  z-index: 60;
+}
+.modal-caixa {
+  outline: none;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  animation: entrarModal 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+@keyframes entrarModal {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+}
+.modal-cabeca {
+  height: calc(44px * var(--escala-ui));
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+.modal-cabeca h3 {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-serif);
+  font-size: var(--fs-titulo);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── O MODAL DA FIGURA ──────────────────────────────────────────────────────
+   As figuras têm viewBox de ~1100–1220 de largura: cabem sem rolagem num
+   1920×1080. Sem rodapé, sem legenda. */
+.modal-caixa.figura {
+  width: min(calc(1240px * var(--escala-ui)), 94vw);
+  max-height: 92vh;
+}
+.figura-corpo {
+  min-height: 0;
+  overflow: auto;
+  padding: calc(12px * var(--escala-ui));
+}
+.figura-placa {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+}
+/* O desenho cabe na tela sem rolar. `object-fit: contain` porque, quando a
+   altura bate no teto, a largura continua 100%: sem ele a <img> esticaria o
+   desenho na horizontal; com ele sobra papel dos lados, e a placa já é papel. */
+.figura-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: calc(92vh - 44px * var(--escala-ui) - 40px);
+  object-fit: contain;
+}
+
+/* A calculadora de consulta da Fig. 22 (solos): duas linhas embaixo do desenho,
+   rótulo | campo | unidade | resultados. A figura encolhe o que as duas linhas
+   ocupam, para o modal continuar sem rolagem. */
+.figura-corpo:has(.calc-solo) .figura-img {
+  max-height: calc(92vh - 44px * var(--escala-ui) - 40px - 2 * (var(--row) + 14px));
+}
+.calc-solo {
+  display: grid;
+  gap: calc(6px * var(--escala-ui));
+  margin-top: calc(10px * var(--escala-ui));
+}
+.calc-linha {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  min-height: calc(var(--row) + 4px);
+  flex-wrap: wrap;
+}
+.calc-linha > label {
+  flex: 0 0 calc(96px * var(--escala-ui));
+  font-size: var(--fs-rotulo);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.calc-linha > .campo {
+  flex: 0 0 calc(72px * var(--escala-ui));
+  width: calc(72px * var(--escala-ui));
+}
+.calc-linha .unidade {
+  font-size: var(--fs-nota);
+  color: var(--muted);
+}
+.calc-res {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-left: calc(10px * var(--escala-ui));
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-corpo);
+  color: var(--ink);
+}
+.calc-rot {
+  font-family: var(--font-ui);
+  font-size: var(--fs-rotulo);
+  color: var(--muted);
+}
+
+/* ── A JANELA DE CONFIGURAÇÕES ──────────────────────────────────────────────
+   Página só, linha = rótulo | controle (a mesma grade do painel de entradas).
+   Tudo na escala: quando ele troca o tamanho, a janela cresce junto — é a
+   prévia do que acabou de escolher. */
+.modal-caixa.cfg {
+  width: min(calc(600px * var(--escala-ui)), 94vw);
+  max-height: 92vh;
+}
+.cfg-corpo {
+  min-height: 0;
+  overflow: auto;
+  padding: calc(6px * var(--escala-ui)) calc(18px * var(--escala-ui)) calc(18px * var(--escala-ui));
+}
+/* Título de seção com a cara do título de grupo do painel. */
+.cfg-corpo h4 {
+  font-size: var(--fs-nota);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: calc(14px * var(--escala-ui)) 0 calc(4px * var(--escala-ui));
+}
+.cfg-linha {
+  display: grid;
+  grid-template-columns: calc(110px * var(--escala-ui)) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gap-2);
+  min-height: calc(var(--row) + 6px);
+}
+.cfg-rotulo {
+  font-size: var(--fs-rotulo);
+  color: var(--muted);
+  white-space: nowrap;
+}
+/* A escolha da janela: cada botão do tamanho do nome, e não repartida por
+   igual como no painel — "Confortável" e "90%" não têm a mesma largura. */
+.cfg-linha > .cad-escolha {
+  justify-self: start;
+}
+.cfg-linha > .cad-escolha > button {
+  flex: none;
+  padding: 0 calc(10px * var(--escala-ui));
+}
+.cfg-linha > .btn-caixa {
+  justify-self: start;
+}
+/* Amostra de cor (do A-PORT). O <input type="color"> do sistema vem com
+   moldura e recuo próprios; zerados, sobra o quadrado de cor puro — como o
+   Revit mostra. */
+.cfg-cor {
+  width: calc(40px * var(--escala-ui));
+  height: calc(22px * var(--escala-ui));
+  padding: 0;
+  border: 1px solid var(--control-stroke);
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: pointer;
+}
+.cfg-cor::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.cfg-cor::-webkit-color-swatch {
+  border: 0;
+  border-radius: 1px;
+}
+
+/* ── PRANCHETA: desenho autorado CLARO ──────────────────────────────────────
+   As figuras e as vistas 2D são desenhadas em papel branco. No tema escuro a
+   folha inteira inverte — receita do Pró-Viga que o Jose aprovou ("tudo
+   prancheta escura"): invert(0.88) leva o branco a ~#1f1f1f e o hue-rotate
+   devolve cada cor ao seu matiz (o aço continua vermelho, o graute azul).
+   ⚠️ Não vale para o 3D: WebGL não aceita filtro; o 3D lê os tokens. */
+.prancheta {
+  background: var(--papel);
+  color: var(--papel-tinta);
+}
+body[data-theme='dark'] .prancheta {
+  filter: invert(0.88) hue-rotate(180deg);
+}
+/* Exceção: as pranchas dos desenhos do muro (desenhos/Desenhos.tsx) ficam em
+   papel branco também no escuro. As peças vão pintadas com as cores do Jose no
+   Revit (código de obra, com legenda), e a inversão trocava o amarelo da
+   canaleta por verde-oliva e o azul do meio bloco por azul-claro. */
+body[data-theme='dark'] .prancheta.prancheta-cores {
+  filter: none;
+}
+
+/* A folha de uma vista 2D no palco: o desenho centrado, com margem. */
+.folha {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  padding: calc(16px * var(--escala-ui));
+  display: grid;
+  place-items: center;
+}
+.folha-desenho {
+  max-width: 100%;
+  border: 1px solid var(--line-strong);
+}
+.folha-desenho > svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABELA DE DADOS — cara de software técnico, não de site
+   ───────────────────────────────────────────────────────────────────────────
+   Copiada do A-PORT (ordem dele, 31/08/2026: "tem de ser denso e técnico"):
+   linha de 22 px, grade em toda célula, número em monoespaçada, zero canto
+   arredondado, zero sombra. Para o quantitativo e as tabelas da memória.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.tabela-dados {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-rotulo);
+  background: var(--surface);
+}
+.tabela-dados th {
+  height: calc(20px * var(--escala-ui));
+  padding: 0 5px;
+  text-align: left;
+  font-weight: 500;
+  font-size: var(--fs-nota);
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.tabela-dados td {
+  height: calc(22px * var(--escala-ui));
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+}
+.tabela-dados td.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.tabela-dados tr:hover td {
+  background: var(--surface-2);
+}
+.tabela-dados tr.ativa td {
+  background: var(--sel-bg);
+  color: var(--ink);
+}
+.tabela-caixa {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+}

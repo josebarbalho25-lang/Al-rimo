@@ -1,0 +1,201 @@
+{
+ "fonte": "app/src/modulacao/catalogo.ts (gerado por figs/app/pecas/catalogo.mjs — não editar)",
+ "unidade": "mm",
+ "cores": {
+  "inteiro": "#787878",
+  "meio": "#004080",
+  "canaleta": "#ffff80",
+  "bloco34": "#ff8040",
+  "bloco54": "#ff0000"
+ },
+ "familias": {
+  "14x39": {
+   "t": 140,
+   "L": 390,
+   "Lm": 190,
+   "h": 190,
+   "canaleta": {
+    "parede": 25,
+    "fundo": 39.1,
+    "r": 14.876805391385039
+   },
+   "pecas": [
+    {
+     "chave": "inteiro",
+     "classe": "inteiro",
+     "tipo": "BLOCO",
+     "forma": "bloco",
+     "comprimento": 390,
+     "nome": "bloco 14x19x39",
+     "furos": [
+      {
+       "c": 103.75,
+       "l": 157.5,
+       "w": 76,
+       "r": 13.01994176341042
+      },
+      {
+       "c": 286.25,
+       "l": 157.5,
+       "w": 76,
+       "r": 13.01994176341042
+      }
+     ]
+    },
+    {
+     "chave": "meio",
+     "classe": "meio",
+     "tipo": "MEIO_BLOCO",
+     "forma": "bloco",
+     "comprimento": 190,
+     "nome": "meio bloco 14x19x19",
+     "furos": [
+      {
+       "c": 95,
+       "l": 140,
+       "w": 90,
+       "r": 13.288422417128354
+      }
+     ]
+    },
+    {
+     "chave": "340",
+     "classe": "bloco34",
+     "tipo": "BLOCO_JUNCAO",
+     "forma": "bloco",
+     "comprimento": 340,
+     "nome": "bloco 14x19x34 (amarração em L)",
+     "furos": [
+      {
+       "c": 70,
+       "l": 76,
+       "w": 76,
+       "r": 12.135465794944013
+      },
+      {
+       "c": 245,
+       "l": 140,
+       "w": 76,
+       "r": 12.135465794944013
+      }
+     ]
+    },
+    {
+     "chave": "540",
+     "classe": "bloco54",
+     "tipo": "BLOCO_JUNCAO",
+     "forma": "bloco",
+     "comprimento": 540,
+     "nome": "bloco 14x19x54 (amarração em T)",
+     "furos": [
+      {
+       "c": 100,
+       "l": 150,
+       "w": 76,
+       "r": 11.971058489050618
+      },
+      {
+       "c": 270,
+       "l": 76,
+       "w": 76,
+       "r": 11.971058489050618
+      },
+      {
+       "c": 445,
+       "l": 140,
+       "w": 76,
+       "r": 11.971058489050618
+      }
+     ]
+    },
+    {
+     "chave": "canaleta",
+     "classe": "canaleta",
+     "tipo": "CANALETA",
+     "forma": "canaleta",
+     "comprimento": 390,
+     "nome": "canaleta 14x19x39",
+     "furos": []
+    },
+    {
+     "chave": "meia_canaleta",
+     "classe": "canaleta",
+     "tipo": "MEIA_CANALETA",
+     "forma": "canaleta",
+     "comprimento": 190,
+     "nome": "meia canaleta 14x19x19",
+     "furos": []
+    }
+   ]
+  },
+  "19x39": {
+   "t": 190,
+   "L": 390,
+   "Lm": 190,
+   "h": 190,
+   "canaleta": {
+    "parede": 25,
+    "fundo": 29.1,
+    "r": 14.98244538551984
+   },
+   "pecas": [
+    {
+     "chave": "inteiro",
+     "classe": "inteiro",
+     "tipo": "BLOCO",
+     "forma": "bloco",
+     "comprimento": 390,
+     "nome": "bloco 19x19x39",
+     "furos": [
+      {
+       "c": 106.25,
+       "l": 142.5,
+       "w": 126,
+       "r": 9.82504892865004
+      },
+      {
+       "c": 283.75,
+       "l": 142.5,
+       "w": 126,
+       "r": 9.82504892865004
+      }
+     ]
+    },
+    {
+     "chave": "meio",
+     "classe": "meio",
+     "tipo": "MEIO_BLOCO",
+     "forma": "bloco",
+     "comprimento": 190,
+     "nome": "meio bloco 19x19x19",
+     "furos": [
+      {
+       "c": 95,
+       "l": 140,
+       "w": 140,
+       "r": 13.354699249305485
+      }
+     ]
+    },
+    {
+     "chave": "canaleta",
+     "classe": "canaleta",
+     "tipo": "CANALETA",
+     "forma": "canaleta",
+     "comprimento": 390,
+     "nome": "canaleta 19x19x39",
+     "furos": []
+    },
+    {
+     "chave": "meia_canaleta",
+     "classe": "canaleta",
+     "tipo": "MEIA_CANALETA",
+     "forma": "canaleta",
+     "comprimento": 190,
+     "nome": "meia canaleta 19x19x19",
+     "furos": []
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,58 @@
+/* Memória de cálculo — tela. O papel não usa esta folha: ele nasce inline, em pt (estilos.ts). */
+
+.memoria .katex-display { margin: 0.35em 0; text-align: left; }
+.memoria .katex-display > .katex { text-align: left; white-space: normal; }
+.memoria .katex { font-size: 1.04em; color: inherit; }
+/* linha longa que quebra: sem esta folga a fração de uma linha encosta na de baixo (medido na bancada) */
+.mem-linha .katex .base { margin: 0.2em 0; }
+
+.mem-tela {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  background: var(--bg, #ffffff);
+}
+.mem-indice {
+  border-right: 1px solid var(--line, #d9dee4);
+  overflow: auto;
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+}
+.mem-indice button.mem-item {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: var(--fs-rotulo, 12.5px);
+  color: var(--ink-2, #3a4450);
+}
+.mem-indice button.mem-item:hover { background: color-mix(in srgb, var(--ink, #1d232b) 5%, transparent); }
+.mem-indice button.mem-item[aria-current='true'] { color: var(--ink, #1d232b); font-weight: 600; background: var(--sel-bg, rgba(0, 0, 0, 0.06)); }
+.mem-ponto { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 7px; }
+.mem-acoes { margin-top: auto; display: flex; gap: 8px; padding: 12px 14px 4px; }
+.mem-acoes button {
+  font: inherit;
+  font-size: var(--fs-rotulo, 12.5px);
+  padding: 5px 12px;
+  border: 1px solid var(--line, #d9dee4);
+  background: var(--surface-2, #f6f7f9);
+  color: var(--ink, #1d232b);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.mem-acoes button:disabled { opacity: 0.5; cursor: default; }
+.mem-folha { overflow: auto; padding: 18px 26px 60px; min-width: 0; }
+.mem-folha > .mem-bloco { max-width: 1080px; margin: 0 auto 30px; padding-bottom: 26px; border-bottom: 1px solid var(--line, #d9dee4); }
+.mem-folha > .mem-bloco:last-child { border-bottom: none; }
+
+@media (max-width: 760px) {
+  .mem-tela { grid-template-columns: minmax(0, 1fr); }
+  .mem-indice { display: none; }
+  .mem-folha { padding: 12px 16px 40px; }
+}

@@ -1,0 +1,216 @@
+# Al-rimo — muro de arrimo em alvenaria estrutural
+
+Planilha (e, depois, app gratuito) de muro de arrimo em **bloco de concreto**, montada a partir do curso de alvenaria
+estrutural do Prof. Matheus Carini (aulas 12.1 a 12.3), do manual da ABCP (Parsekian & Medeiros, "Parâmetros de Projeto
+de Alvenaria Estrutural") e da NBR 16868-1:2020. A fundação segue o roteiro da aba "Fundação Sapata Corrida p muro" da
+planilha do Eng. Gilberto, adaptado.
+
+Objetivo final: app gratuito (3D, quantitativo, vista frontal, corte lateral, isométrico, memória de cálculo editável e
+auditável citando item de norma e fórmula) para atrair público para o Pró-Viga 3D. **Fica separado do A-PORT.**
+
+## Como trabalhar com o Jose
+
+- Português do Brasil, tom casual. Ele é engenheiro estrutural (domina a NBR 6118), não programador.
+- **Planilha primeiro.** Ele audita planilha, não código. O app só vem depois da planilha validada.
+- Separar sempre o que foi **medido** (print, fórmula, número da aula) do que foi **deduzido** — marcar dedução como tal.
+- Fluxo "se bater a gente pula": ele assiste a aula e manda prints; a gente prevê os números antes, ele confere no vídeo.
+- Não explicar o básico de engenharia; explicar conceitos especializados fora do domínio dele quando aparecerem.
+- Em conta que ele vai assinar, ele faz à mão e usa o Claude como conferente.
+
+## Estrutura
+
+```
+tools/build_new.py      gerador (openpyxl). Abas: Entradas, Solo e Empuxo, Muro em balanço, Arranjos,
+                        Painel não armado, ELS, Contrafortes, Fundação, Referências, Ilustrações
+tools/contrafortes.py   aba Contrafortes (aula 12.3) — executado dentro do build_new (mesmo namespace)
+tools/fundacao.py       aba Fundação (sapata corrida) — idem
+tools/cenarios.py       VAL123 = contrafortes em concreto 14x39 com a geometria da aula 12.3 (regressão); aplicar()/ler()
+                        por nome definido; OPCOES + sortear() = sorteio da varredura e do golden (só valores das listas)
+tools/gerar.py          gera planilha/ (só a base, aula 12.2)
+tools/testar.py         regressão: reconstrói, recalcula, confere a aula 12.2 e a última versão (base e VAL123);
+                        --atualizar regrava a regressão do VAL123
+tools/varredura.py      N cenários aleatórios procurando #DIV/0!, #VALOR! etc.
+tools/recalc_lo.py      recálculo headless pelo LibreOffice
+figs/                   figlib.py + figNN_*.py (SVG) → render.py (PNG, Playwright) → make_pdf.py (índice em PDF)
+dados/lib_tabs.json     tabelas de Libânio (Bares/Pinheiro) copiadas da planilha 11 do curso
+dados/transcricao_aula_12.3.md   transcrição de todos os prints da aula 12.3
+dados/referencia_regressao.json  valores da última versão validada (o testar.py compara com eles: base e VAL123)
+planilha/               a planilha entregue (base, aula 12.2)
+```
+
+Comandos: `python tools/gerar.py` · `python tools/testar.py` (precisa do LibreOffice) · `python tools/varredura.py 20`.
+Figuras: `cd figs && python fig15_sapata.py && python render.py fig15_sapata.svg && python make_pdf.py`.
+**Depois de mudar o gerador: rodar `testar.py`.** Se um valor mudar de propósito, atualizar `dados/referencia_regressao.json`
+e dizer ao Jose o que mudou e por quê.
+
+## Regras do gerador (lições já aprendidas)
+
+- Tudo por **nome definido** (`line(..., nm='nome')`). Nunca criar nome que pareça célula (`br3`, `tab13`, `cf1`, `R1C1`) —
+  o Excel apaga ao "reparar". O build tem um assert que pega isso.
+- Excel em PT-BR: listas de validação com vírgula decimal quebram → usar intervalo (ex.: `'Referências'!$L$5:$L$10`).
+  Itens de lista não podem ter vírgula. Não usar `TEXT(x;"0.00")` → usar `FIXED`. Matriz inline `{13,18,11}` funciona.
+- Listas que dependem de outra entrada (altura × tipo de muro; vão, contraforte, espaçamentos × bloco): intervalo com
+  FÓRMULA na aba Referências (colunas AJ em diante, dicionário `LST` no build_new), valores como n·20/100 (mesmo double
+  que o digitado). `allow_blank=False` em todas (com "ignorar em branco" e célula vazia no intervalo o Excel aceita
+  qualquer coisa). O Excel só confere ao digitar: a linha `lim_lst` ("Entradas nas listas") acusa o que ficou fora
+  depois de trocar bloco/tipo. O exportar_motor manda intervalo com fórmula como `opcoesRef` (o app lê as opções da
+  conta atual e troca valor fora da lista pela opção mais próxima, mostrando "→"); intervalo só de constantes vai fixo
+  (`opcoes`; célula vazia = null = "auto").
+- Fórmulas de resultado nas abas ELS, Painel, Contrafortes e Fundação são embrulhadas em `IFERROR(...;"—")` no pós-processamento.
+- `finalize.py` liga `fullCalcOnLoad` (Excel recalcula ao abrir).
+- Cores: amarelo = entrada, verde = sugestão, azul = resultado. Coluna E das Entradas = link para a figura.
+
+## Decisões do projeto
+
+- **Só bloco de concreto, família 39 (14×39 e 19×39).** Motivo do Jose: cerâmico em arrimo satura mais e tem aderência
+  ruim ao graute. O "modo validação" (cerâmico 14×29, só para reproduzir a aula 12.3) SAIU em 09/10 com todo ramo de
+  cerâmico (fsd reduzido do furo liso, Em 600·fpk, As,máx 4%, família 14×29 e peça de 44 na modulação). `L_bloco` = 39
+  fixo (não é mais entrada; o nome fica porque a conta usa); `eenr` = t (não é mais entrada).
+- **Aviso do solo** no topo das Entradas: parâmetros do solo e empuxo são escolha do projetista; recomendar ensaio
+  (cisalhamento direto/triaxial); ferramenta só auxilia; o engenheiro é o responsável e valida a memória.
+  O Jose despreza a coesão (mesmo com argila coesiva na região, Uberaba/MG).
+- **Posição da barra explícita no projeto**: no balanço, barra encostada do lado do solo (Fig. 4); no painel entre
+  contrafortes, uma barra vertical em CADA face a 5 cm (Fig. 14); horizontal centralizada na canaleta.
+- Contrafortes no mesmo arquivo. **Fundação: só sapata corrida** (ela é o engaste, sem viga), dimensionada a flexão,
+  cortante e torção. Não aprofundar em outros modelos.
+- Fundação (escolhas do Jose): sobrecarga sobre o talão **estabiliza** (padrão Sim, como o Gilberto; o seletor permite rodar
+  a combinação sem ela); deslizamento só com atrito N·tg δ (δ = 2/3·φ padrão), **adesão opcional = 0**; tombamento com
+  **FS em torno do pé ≥ 2,0 E |e| ≤ B/4 (Gilberto), vale o pior**.
+
+## App (começou em 08/10/2026) — `app/` (Vite + React + TS + three, como o A-PORT)
+
+- **A conta do app É a planilha.** `tools/exportar_motor.py` exporta as fórmulas para `app/src/motor/planilha.gerada.json`;
+  o avaliador em TS (`app/src/motor/excel/`) calcula como o Excel. O `build_new.py` segue sendo o ÚNICO lugar da conta.
+  `tools/golden.py` roda N cenários no Excel (COM) → `dados/golden/`; o teste do app confere célula a célula.
+  **Mudou o gerador: `exportar_motor.py` + `golden.py` + `npx vitest run` no app.**
+- Sem LibreOffice nesta máquina: `recalc_lo.recalc()` cai sozinho no Excel (`tools/recalc_excel.py`).
+- Contratos entre frentes: `motor/tipos.ts` (conta), `modelo/tipos.ts` (muro peça a peça: quem fabrica é `modulacao/`;
+  3D, IFC, desenhos e quantitativo só leem), `memoria/tipos.ts` (cada linha é uma expressão que desenha o TeX e é
+  conferida contra a célula), `modelo/entradasDoModelo.ts` (entradas que só o modelo usa: comprimento, juntas, drenagem).
+- 3D é só visualização + IFC; toda a modelagem é por entradas. Toda entrada tem botão de figura (modal).
+- Decisões do Jose (08/10): ~~**altura** — a conta usa a altura de solo digitada; o muro desenhado sobe até fechar a fiada
+  (folga no topo)~~ (substituída em 09/10: duas alturas, ver abaixo). **Contraforte nas duas pontas**, junta de controle configurável (0 = sem). **Cinta (canaleta) no topo
+  nos dois tipos**, canaleta passando direto pelo contraforte. **Drenagem** (barbacã, dreno, manta, impermeabilização) no
+  3D e no quantitativo, toda configurável. Os demais valores que não fecham no módulo (eixo a eixo e comprimento do
+  contraforte, espaçamento das barras) são ajustados NA PLANILHA (nomes `*_adot`) e a conta usa o ajustado.
+- **Contraforte em bloco 14×39**: modelado pelo Jose no Revit (09/10) com as peças de 34 e 54; só amarra com nº par de
+  meios módulos no vão. A família 19 está ok pela regra. (Era provisório até 09/10.)
+- **App gratuito = básico e com limites** (Jose, 08/10, noite): poucos métodos de montagem, fechados; quem quiser montar
+  diferente faz a própria conta. Decidido: ~~bloco 14 só muro em balanço~~ (liberado em 09/10 com o 34/54 do Revit; a
+  linha lim_cf saiu); **altura de solo: balanço ≤ 3,0 m, contrafortes ≤ 4,0 m** (a lista da altura para aí);
+  **coesão liberada, com aviso** quando c' > 0 (aviso curto, não prosa: ao lado do campo/barra de estado e no memorial —
+  "o app é ferramenta; a responsabilidade é do engenheiro"). **Em aberto, para ele modelar no Revit (09/10):** os TEMPLATES de montagem básicos
+  — amarração direta com meio bloco (o exemplo do Revit, `dados/encaixes_revit/19x39_casaR.json`), grampo é outra forma
+  possível, e ele quer **contraforte de dois blocos** também. A modulação lê os encaixes de uma tabela: template novo = linha nova.
+
+- **A régua é o curso do Carini** (Jose, 09/10): flecha da aula (vão/250, balanço 2L/250), armadura mínima do contraforte
+  como está, nenhuma verificação nova tirada do livro/rascunho da NBR. Divergências com o livro ficam anotadas em
+  `_trabalho/fontes/indice.md`, sem perguntar a ele. **Área de graute do furo sai da geometria do bloco desenhada**
+  (o engenheiro usa o bloco que acha no mercado): paredes/septos do bloco como entrada, com o curso de padrão.
+
+- **Templates de montagem do Jose** (Revit, 09/10, `dados/encaixes_revit/`): 14x39 contraforte 34 e 54 (T e L); 19x39
+  contraforte 39 (Casa R), 59 e 79 (T e L); 19x39 DOBRADO 59 (completo) e 79 (parcial). Todos amarram, **exceto o dobrado:
+  os blocos da frente não ficam amarrados → precisa de GRAMPO**, conta a desenvolver (o curso usou modulações simples com
+  junta a prumo + grampo). A modulação lê os encaixes de uma tabela; o teste-selo confere peça a peça contra os gabaritos.
+  **Decisão (09/10): o DOBRADO SAI do app** — "o pessoal acha que é festa do bloco" e executa errado; o ganho de inércia vem
+  do comprimento do contraforte, não da largura; montagem simples (que já não é fácil). Altura ~4 m no máximo, confirmado.
+- **Montagens finais (Jose, 09/10 tarde):** bloco 19 → contraforte 59 ou 79; bloco 14 (14x39) → contraforte 34 ou 54; sem
+  dobrado, sem o 39 da Casa R; 14x29 saiu junto com o cerâmico; bloco 19 só existe 19x39. **Entradas TRAVADAS** em lista
+  na planilha (o app herda; FEITO 09/10): altura em múltiplos de 20 cm (0,60–3,00 balanço / –4,00 contrafortes — solo =
+  muro, fiadas inteiras); tenr 59/79 (19) e 34/54 (14); eenr = t; eixo a eixo que amarra (19×39: t + 1 + n·20, 0,80 a
+  4,00 m; 14×39: só n par, 0,95 a 3,75 m — abaixo de ~0,8 o vão livre vira 2–3 blocos, acima de 4,0 a tabela de δ satura
+  e o Libânio só cobre h ≥ 1,2 m); barras do balanço e do painel vertical em múltiplos de m até 6t (+ auto); canaletas
+  0,20–1,60 m no balanço e 20–160 cm nos contrafortes (+ auto); Ø comerciais (furo/canaleta 6,3–20; estribo do
+  contraforte 5/6,3; sapata 6,3–25; secundária e torção 5–12,5). **d real do contraforte (Revit):** 19·59 → 49,0; 19·79 → 69,0; 14·34 → 24,5 (planilha 27, −9%); 14·54 →
+  44,5 (planilha 47, −5%) — no 14 o furo da ponta fica a 9,5 cm do fim, não t/2. Levar para a planilha e a memória.
+- **Altura do solo × altura do muro (Jose, 09/10 fim de tarde):** INDEPENDENTES, solo ≤ muro sempre (substitui o
+  "solo = muro" de horas antes). Solo carrega o empuxo; muro entra em peso próprio, esbeltez, vão da flecha.
+  Classe de solo (Gerscovich) não se aplica a argila → "Não se aplica" automático. Tabela de argila por consistência
+  (γ, c', φ') como sugestão, com fonte. Mini-calculadora de Ka/Kp e coesão no modal da Fig. 22 — só consulta, o
+  usuário preenche à mão. **FEITO (09/10, noite):** `H_muro` = altura do muro (lista de fiadas), `H_solo` = altura de
+  solo (livre, 0 < h solo ≤ h muro; validação por fórmula no Excel, linha `lim_Hs`; no app o solo desce ao topo do muro
+  com "→"). SOLO: perfil de 40 fatias (z, braço), Mk/Vk, painel não armado (z e índice no perfil), solo do talão,
+  subpressão, NA da sapata. MURO: he/esbeltez, Nd/σsg, δadm, bm ≤ h/3, nº de estribos, placa de Libânio, h/t do ábaco,
+  peso da parede e do contraforte, limites 3,0/4,0, fiadas. Modelo: flecha no topo S = ΣV·a²(3hs − a)/6 +
+  ΣV·a²/2·(hm − hs) (colunas M e N do perfil); Libânio com h = h muro e o triângulo esticado até o topo do muro
+  (dedução, ≥ a carga real); painel/subpainel mais alto que o solo → z = 0 (dedução, a favor). Com h solo = h muro o
+  gabarito antigo inteiro bate. Memória: grafia `h_{solo}` e `h_{muro}` (h_s é a sapata). Arquivo .alrimo v2 (v1 abre
+  com o solo na altura gravada). Classe_G com Argila → "Não se aplica" (planilha: "—" na sugestão; app: campo travado).
+  Argila por consistência (Solo e Empuxo N23:S29, fontes na aba Referências a partir da linha 154): c', φ' = faixa das
+  três argilas de Joppert Jr. (2007, conferido em 3 reproduções; original não visto), su = 10·NSPT (Teixeira & Godoy
+  1996, não drenada), γ de Godoy. Sugestões `cons_arg`, `c_arg`, `phi_arg`, `su_arg`; a calculadora da Fig. 22
+  (`app/src/figuras/calculadoraDoSolo.ts`) lê esses nomes e Ka_/Kp_ pelo motor — não tem conta própria.
+  **Aguardando o Jose:** resumo da aula do Gilberto sobre deslizamento ("coeficiente de
+  atrito") e a POSIÇÃO DO DENTE (não é sempre centralizado: distância à borda aterrada → tombamento e deslizamento);
+  "nó de cachorro" da armadura que entra na sapata (ele modela no Revit).
+- **Cores por tipo de bloco** (como ele faz no Revit para a obra entender): inteiro #787878, meio #004080, canaleta
+  #ffff80, bloco 34 #ff8040, bloco 54 #ff0000 (`dados/encaixes_revit/cores_jose.json`) — 3D e vista frontal com legenda.
+- **Ele confere pela MEMÓRIA, não pela planilha.** Parte a caprichar: **inércia e braço de alavanca da seção real** de cada
+  modulação (furo grauteado com a barra → d; mesa; I bruta/fissurada). A conta simplificada (d = tenr − eenr/2, seção T por
+  bm) não enxerga a peça: a seção do contraforte deve sair cotada da modulação e ir passo a passo para a memória.
+
+## Convenções de cálculo
+
+- fk = 0,7·fpk; γm = 2,0; Kfd = K·0,7·fpk/γm. K do curso = 1,0 (planilha 04). Horizontal do painel K = 0,5
+  (fk,horizontal = 0,5·fk se a seção horizontal não for toda grauteada — manual ABCP).
+- **fpk acompanha a geometria**: seção líquida (I) → fpk/(Aliq/Abr); seção bruta → fpk bruto; prisma cheio → fpk*.
+  Em = 800·fpk.
+- As,mín do curso = 0,15%·b·d (b = bw no contraforte; b = faixa no painel). NBR = 0,10%·b·t (opção).
+- fsd = fyd (todo Ø).
+- As,máx = 8% do graute contando traspasse (2×).
+- Cisalhamento: fvk = 0,35 + 17,5ρ ≤ 0,7; Va = fvd·b·d; Vrd2 = Va + 0,4·b·d·√fpk/γm (MPa); Asw/s = (Vsd − Va)/(0,75·fywd·d);
+  Asw,mín = ρ·b, ρ 0,07% (fgk 15) a 0,14% (fgk 40).
+- ELS: seção I (mesas = paredes do bloco), Branson, heq = (12·Ieq/b)^(1/3); δ∞ = δ0·(1 + Δξ), Δξ = 1; balanço 2L/250; placa menor vão/250.
+- Espessura efetiva com enrijecedores: te = δ·t só para esbeltez (δ por lenr/eenr × tenr/t, limitado à tabela).
+- Contraforte: largura de influência (intermediário l; extremidade l/2 + balanço). Enterrado → seção T (bm ≤ bw + 2·6t,
+  ≤ h/3), fpk vazado; aparente → retangular, fpk*. d = tenr − eenr/2.
+- Painel: Libânio Tipo 21 (laterais apoiadas) / 22 (engastadas), triangular + uniforme (Tipos 9/10). γ = h/l, l = menor vão.
+  Mdx ← μy; Mdxb ← μyb; Mdy ← μx; Mdyei ← μ'x; Mdxe ← μ'y. Flecha a = α/100·p·l⁴/(E·t³) com o heq de cada direção; vale a pior.
+- Painel não armado entre barras e canaletas: caso 13, βf interpolado (planilha 11), fd = 1,4·σh médio do subpainel de baixo.
+- Fundação: módulo = espaçamento entre contrafortes (balanço: 1 m); empuxo até a base da sapata; solo sobre o talão sai da
+  posição (distância da borda aterrada ao eixo); contraforte enterrado exige talão ≥ tenr − t, aparente exige ponta ≥ tenr − t.
+  Flexão/cortante da ponta e do talão (NBR 6118, VRd1 sem estribo). Torção: TSd = Md do contraforte/2 (modelo simplificado,
+  dedução nossa) pela NBR 6118 17.5.
+
+## Validação (o `testar.py` confere)
+
+- Aula 12.2 (balanço, h 1,6, bloco 19, fbk 8, Ka 0,4, γ 19, q 2): arranjos 0,30/0,61/0,91/1,22 → Ø10 c/40; Mr 42,45;
+  Ieq 2687; heq 9,3 (Ftool 40 × 9,3, E 8889); δadm 12,8; painel βf 0,118, 26,2/13,1 kN·cm/m.
+- Aula 12.3 (contrafortes) — REGISTRO HISTÓRICO: validado em 08/10 com o modo cerâmico, já removido; planilhas da
+  validação guardadas em _trabalho/validacao_aula123/. Batia com o professor: δ 1,371; λ 27,1; bm 86,7; As 2,30 → 3Ø10;
+  Vrd2 59,92; Asw 2,48 → Ø6,3 c/20; Mr 290,5; heq 33,43; δ∞ 9,8; Libânio 265,6/182,6/107,7/518,7; painel vertical Ø10 c/45
+  (cada face); horizontal Ø12,5 c/80; não armado βf 0,1136; heq 7,0 / 8,9; δ∞ 4,0 ≤ 6,0. Diferenças pequenas explicadas na
+  época: aula arredondou bm = 86,7 (Ieq 269.849 × 269.479); planilha 06 do curso usa n − 1 na 2ª barra (III 1274 × 1277);
+  aula digitou As 1,23 e M 265,1 na horizontal.
+- VAL123 (testar.py, só REGRESSÃO): a geometria da aula 12.3 em concreto 14×39 — h 2,6, Ka 0,4, γ 20, fbk 10, vão 1,35
+  (o da lista mais perto de 1,50), contraforte 54, sapata do exemplo. Passa em todas as verificações.
+
+## Inconsistências do material do curso (já anotadas na planilha)
+
+- Planilha 05 com fpk 4,8 esquecido (12.2) e fgk 15 × caderno 20; As,mín bw·d (planilha) × bm·d (caderno).
+- 12.3: flexão horizontal calculada com d = 9, mas detalhada com barra centralizada (d = 7 → As 1,09; Ø12,5 ainda passa).
+- Tabelas de Libânio: 4 valores suspeitos de digitação (em laranja na aba Referências), mantidos como na fonte.
+
+## Pendências
+
+- **App — onde paramos (08/10, noite; PC desligado com agentes no meio):** motor pronto (bate com o Excel em 65.090 células,
+  e o conserto também fechou: 61 cenários, 86.315 células iguais ao Excel, entrada em texto "19"/"1,6" vira número como
+  no Excel, aritmética do x87 no último dígito; ver `_trabalho/relatorios/consertar_motor.md`). Frentes construídas: ui/estado/estilo, visor, ifc, figuras (23, mapa em
+  `dados/figuras.json`), memoria (núcleo + 2 cards piloto), quantitativo, desenhos; modulacao parcial (interrompida).
+  09/10: app ligado (`app/src/integracao.tsx`, `ABRIR.bat`); letra 120% + janela de Configurações; grupos fechados; figura
+  sem destaque. Etapa da planilha rodada 1 FEITA (m_mod, s no módulo + teto 6t, l_cf_adot/tenr_adot, H_muro_des/n_fiadas,
+  he da torção pela 6118 17.5.1.4.1, Kp protegido, lim_H/lim_cf, aviso_coesao, FIG_OF lendo dados/figuras.json).
+  09/10 tarde: modulação com os templates do Revit (teste-selo `modulacao/gabaritos.test.ts`); memória completa (7 grupos,
+  conferida nos 61 cenários); δ∞ do painel "—" sem heq (era falso OK); 3D com estilos Cores/Realista/Opaco; pranchas com
+  as cores e legenda (folha branca no tema escuro); detalhes típicos `figs/app/detalhes/` (canaletas em T, amarração P×I);
+  `TERMO_DE_USO.md` (falta: foro, licenciante, e-mail; tela de aceite no app). Suíte: 3108 testes, tsc limpo.
+  Faltam: SEÇÃO REAL do contraforte por modulação (inércia, d) na planilha + memória; planilha oferecer só 34/54 no 14x39
+  e eixo a eixo só par de meios módulos; Ag da conta pelo bloco desenhado (decidir); revisores de IFC/quantitativo com o
+  muro real; detalhes 3–5; tela de aceite do termo; padrão l_cf 1,50 → 1,60 no bloco 19 (pôr l_cf=1,5 no VAL123).
+  Relatórios dos agentes: `_trabalho/` (fora do git).
+
+- Receber a NBR 16868-1 em PDF: conferir numeração de itens, Anexo E (βf) e os contornos do ábaco do ELS (lidos do slide).
+- Confirmar os FS da NBR 11682 (tombamento 2,0, deslizamento 1,5 — "pelo que sei").
+- Fundação: o mínimo de estribo de torção com bw = B fica alto em sapata larga (avaliar); peso do contraforte grauteado é estimativa.
+- Cisalhamento do painel não armado: hipótese Vsd = fd·l/2 nunca confirmada no vídeo.
+- Depois da planilha: app (3D, quantitativo, desenhos, memória auditável). Reaproveitar os SVG de `figs/`.

@@ -1,0 +1,37 @@
+{
+  "fonte": "Revit do Jose, arquivo 'Casa R - A', vista 'ANIM 07 - Paineis 2', elementos 922996..923230 (lidos pelo conector em 08/10/2026)",
+  "familias_revit": {
+    "Blocos Padrão 19x19x39": "corpo 39 x 19 x 19 cm; paredes longitudinais 3,2 cm; septos 3,5 cm (pontas e meio); 2 furos 12,6 x 14,25 cm com cantos arredondados; volume 7288,9 cm3 (Aliq/Abr = 0,518)",
+    "Meio Bloco 19x19x19": "corpo 19 x 19 x 19 cm; paredes 2,5 cm; 1 furo 14 x 14 cm com cantos arredondados; volume 3165,3 cm3",
+    "outros tipos no arquivo": "Blocos Padrão 14x19x39; Meio Bloco 14x19x19 e 14x19x19.5 (sem exemplo de contraforte em 14 neste arquivo)"
+  },
+  "observacao": "O furo do bloco do Revit (parede 3,2 cm) é um pouco maior que o da tabela do curso (hf 3,5 cm, Ag 170 cm2). O app segue a tabela do curso, porque é ela que a conta usa.",
+  "unidade": "cm, coordenadas do Revit; muro ao longo de X, espessura em Y entre 2477,2 e 2496,2 (t = 19); contrafortes saem para -Y até 2457,2 (tenr = 39 = t + 20); juntas de 1 cm",
+  "fiadas": [
+    {
+      "z": [111.0, 130.0],
+      "tipo": "I (o contraforte atravessa o muro)",
+      "pecas": [
+        { "id": 922996, "peca": "bloco 19x19x39", "x": [-148.5, -109.5], "y": [2477.2, 2496.2] },
+        { "id": 923021, "peca": "bloco 19x19x39", "x": [-108.5, -69.5], "y": [2477.2, 2496.2] },
+        { "id": 923027, "peca": "bloco 19x19x39 girado 90 (contraforte intermediário, atravessa)", "x": [-68.5, -49.5], "y": [2457.2, 2496.2] },
+        { "id": 923057, "peca": "bloco 19x19x39", "x": [-48.5, -9.5], "y": [2477.2, 2496.2] },
+        { "id": 923058, "peca": "bloco 19x19x39", "x": [-8.5, 30.5], "y": [2477.2, 2496.2] },
+        { "id": 923141, "peca": "bloco 19x19x39 girado 90 (contraforte de ponta, atravessa, rente ao fim do muro)", "x": [31.5, 50.5], "y": [2457.2, 2496.2] }
+      ]
+    },
+    {
+      "z": [131.0, 150.0],
+      "tipo": "P (o muro passa corrido; o contraforte encosta)",
+      "pecas": [
+        { "id": 923151, "peca": "bloco 19x19x39", "x": [-128.5, -89.5], "y": [2477.2, 2496.2] },
+        { "id": 923152, "peca": "bloco 19x19x39 (passa sobre o contraforte)", "x": [-88.5, -49.5], "y": [2477.2, 2496.2] },
+        { "id": 923200, "peca": "meio bloco 19x19x19 (contraforte intermediário, encostado do lado de fora)", "x": [-68.5, -49.5], "y": [2457.2, 2476.2] },
+        { "id": 923192, "peca": "meio bloco 19x19x19 (no muro, logo depois do T, refaz a meia amarração)", "x": [-48.5, -29.5], "y": [2477.2, 2496.2] },
+        { "id": 923170, "peca": "bloco 19x19x39", "x": [-28.5, 10.5], "y": [2477.2, 2496.2] },
+        { "id": 923216, "peca": "bloco 19x19x39 (passa sobre o contraforte de ponta, termina no fim do muro)", "x": [11.5, 50.5], "y": [2477.2, 2496.2] },
+        { "id": 923230, "peca": "meio bloco 19x19x19 (contraforte de ponta, encostado do lado de fora)", "x": [31.5, 50.5], "y": [2457.2, 2476.2] }
+      ]
+    }
+  ]
+}

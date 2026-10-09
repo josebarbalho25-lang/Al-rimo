@@ -1,0 +1,76 @@
+/* base.css — reset, tipografia e barras de rolagem. Nada de layout aqui.
+   Cópia fiel do A-PORT (src/estilo/base.css): a mesma letra, o mesmo número
+   monoespaçado e a mesma barra de rolagem nos programas da família. */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#raiz {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-corpo);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  /* O palco é 3D: seleção de texto arrastando atrapalha mais do que ajuda. */
+  user-select: none;
+}
+
+/* Números sempre monoespaçados e de largura fixa — coluna de tabela não dança. */
+.mono,
+input[type='number'],
+input[type='text'].mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+::-webkit-scrollbar {
+  width: calc(10px * var(--escala-ui));
+  height: calc(10px * var(--escala-ui));
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--control-stroke-2);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* Foco: sublinhado interno, nunca contorno do sistema. */
+:focus-visible {
+  outline: none;
+}

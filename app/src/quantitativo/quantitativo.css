@@ -1,0 +1,117 @@
+/* Painel do quantitativo. Só tokens do estilo/tokens.css (regra da casa: não nasce hex novo na UI) — assim o
+   painel acompanha os três temas e as densidades sem ninguém lembrar dele. */
+
+.qtd {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-2);
+  padding: var(--pad);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-corpo);
+  user-select: text;          /* aqui o engenheiro copia número para a planilha dele */
+}
+
+.qtd-barra { display: flex; justify-content: flex-end; }
+
+.qtd-barra button {
+  height: var(--row);
+  padding: 0 var(--pad);
+  border: 1px solid var(--control-stroke);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.qtd-barra button:hover { border-color: var(--control-stroke-2); }
+
+.qtd-avisos {
+  list-style: none;
+  color: var(--warn);
+  font-size: var(--fs-nota);
+}
+
+/* Tabela larga (lista de ferros) rola de lado dentro do painel em vez de cortar a coluna da massa. */
+.qtd-rolagem { overflow-x: auto; }
+
+.qtd-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+}
+
+.qtd-tabela caption {
+  caption-side: top;
+  text-align: left;
+  padding: var(--gap-1) 0;
+  color: var(--ink-2);
+  font-size: var(--fs-rotulo);
+  font-weight: 600;
+}
+
+.qtd-tabela th,
+.qtd-tabela td {
+  height: var(--row);
+  padding: 0 var(--gap-2);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.qtd-tabela th {
+  color: var(--muted);
+  font-size: var(--fs-nota);
+  font-weight: 500;
+}
+
+.qtd-tabela .qtd-dir { text-align: right; }
+
+.qtd-tabela .qtd-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.qtd-tabela tfoot td {
+  border-top: 1px solid var(--line-strong);
+  font-weight: 600;
+}
+
+/* Figura da peça à esquerda do nome. Caixa fixa (as peças da família vêm na mesma escala dentro do recorte
+   '#icone' do SVG, então o meio bloco aparece menor que o inteiro, como é). Sem moldura até o mouse passar:
+   é botão, mas na tabela o que se lê é a peça. */
+.qtd-com-peca {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-2);
+}
+
+.qtd-peca {
+  flex: none;
+  display: block;
+  width: calc(52px * var(--escala-ui));
+  height: calc(46px * var(--escala-ui));
+  margin: 2px 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: zoom-in;
+}
+.qtd-peca:hover { border-color: var(--control-stroke-2); }
+/* Sem object-fit: com ele o Chrome mede a imagem pelo width/height do <svg> (a figura inteira, larga) e o recorte
+   '#icone' encolhia dentro dessa proporção. Esticada na caixa, o próprio SVG centra o recorte. */
+.qtd-peca img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.qtd-peca-vazia { cursor: default; }
+
+/* A figura da peça vai pintada com as cores do Jose (código de obra, as mesmas do 3D): no tema escuro a placa
+   do modal NÃO inverte — a mesma exceção das pranchas dos desenhos (.prancheta-cores, estilo/componentes.css),
+   senão a canaleta amarela vira verde-oliva. O modal é o das figuras das entradas (ui/), que inverte as figuras
+   em preto e branco; a regra pega só a imagem que vem de public/pecas/. */
+body[data-theme='dark'] .prancheta.figura-placa:has(> img[src*='/pecas/']) {
+  filter: none;
+}

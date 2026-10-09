@@ -1,0 +1,11 @@
+{
+ "fonte": "Revit do Jose, 'Al-rimo Templates.rvt', vista {3D}: material das famílias e filtros de vista (lido em 09/10/2026)",
+ "por_que": "Ele pinta cada tipo de bloco de uma cor para o pessoal da obra entender a montagem. O app usa as MESMAS cores no 3D e na vista frontal (paginação), com legenda.",
+ "cores": {
+  "bloco inteiro (Blocos Padrão)": "#787878",
+  "meio bloco": "#004080",
+  "canaleta (inteira, meia e cortada)": "#ffff80",
+  "bloco 34": "#ff8040",
+  "bloco 54": "#ff0000"
+ }
+}

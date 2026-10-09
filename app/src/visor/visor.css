@@ -1,0 +1,320 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   visor/visor.css — o visor 3D (prefixo v3-, para não brigar com o CSS da UI)
+   ---------------------------------------------------------------------------
+   Copiado do A-PORT (palco, cubo, barra da vista) e renomeado. As cores são
+   SÓ tokens, com a reserva do tema escuro do A-PORT para o caso de a folha de
+   tokens ainda não ter chegado.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.visor3d {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 240px;
+  overflow: hidden;
+  background: var(--bg, #121216);
+  outline: none;
+  user-select: none;
+  font-family: var(--font-ui, 'Segoe UI', system-ui, sans-serif);
+  font-size: var(--fs-corpo, 13px);
+  color: var(--ink, #e8e8ee);
+}
+.visor3d canvas {
+  display: block;
+  outline: none;
+}
+
+/* Camada de cima: cubo, barra, painel. Só os filhos recebem o mouse. */
+.v3-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.v3-overlay > * {
+  pointer-events: auto;
+}
+
+/* ── CUBO DE VISTAS ── */
+.v3-cubo {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: calc(106px * var(--escala-ui, 1));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.v3-cubo-tela {
+  width: calc(96px * var(--escala-ui, 1));
+  height: calc(96px * var(--escala-ui, 1));
+  cursor: pointer;
+  /* Sombra PRETA nos dois temas: sombra é ausência de luz (A-PORT). */
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.26));
+}
+body[data-theme='dark'] .v3-cubo-tela {
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.55));
+}
+.v3-cubo-casa {
+  width: calc(24px * var(--escala-ui, 1));
+  height: calc(24px * var(--escala-ui, 1));
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--ink-2, #c8c8d3);
+  background: var(--surface, #17171b);
+  border: 1px solid var(--line-strong, #3a3a45);
+  cursor: pointer;
+  padding: 0;
+}
+.v3-cubo-casa:hover {
+  color: var(--accent-3, #3d8bfd);
+  border-color: var(--accent-3, #3d8bfd);
+}
+
+/* ── BARRA (canto de baixo, à esquerda) ── */
+.v3-barra {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  max-width: calc(100% - 20px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: calc(30px * var(--escala-ui, 1));
+  padding: 2px 6px;
+  background: color-mix(in srgb, var(--surface, #17171b) 92%, transparent);
+  border: 1px solid var(--line-strong, #3a3a45);
+  border-radius: var(--radius-md, 4px);
+  box-shadow: var(--shadow-1, 0 2px 8px rgba(0, 0, 0, 0.35));
+}
+.v3-fio {
+  width: 1px;
+  height: 16px;
+  background: var(--line, #26262d);
+  margin: 0 2px;
+}
+.v3-btn {
+  width: calc(26px * var(--escala-ui, 1));
+  height: calc(26px * var(--escala-ui, 1));
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm, 2px);
+  background: transparent;
+  color: var(--muted, #969aa8);
+  cursor: pointer;
+}
+.v3-btn > svg {
+  width: calc(17px * var(--escala-ui, 1));
+  height: calc(17px * var(--escala-ui, 1));
+}
+.v3-btn:hover {
+  color: var(--ink, #e8e8ee);
+  background: var(--surface-2, #1d1d23);
+}
+.v3-btn.on {
+  color: var(--accent-3, #3d8bfd);
+  background: var(--sel-bg, rgba(61, 139, 253, 0.16));
+}
+.v3-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.v3-btn-mini {
+  width: calc(20px * var(--escala-ui, 1));
+  height: calc(20px * var(--escala-ui, 1));
+}
+.v3-btn-mini > svg {
+  width: calc(13px * var(--escala-ui, 1));
+  height: calc(13px * var(--escala-ui, 1));
+}
+
+/* ── LISTA DE MOSTRAR/OCULTAR (abre para cima) ── */
+.v3-menu-ancora {
+  position: relative;
+  display: flex;
+}
+.v3-menu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  min-width: calc(150px * var(--escala-ui, 1));
+  padding: 4px 0;
+  background: var(--surface, #17171b);
+  border: 1px solid var(--line-strong, #3a3a45);
+  border-radius: var(--radius-md, 4px);
+  box-shadow: var(--shadow-2, 0 12px 30px rgba(0, 0, 0, 0.5));
+  z-index: 20;
+}
+.v3-menu-linha {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--row, 26px);
+  padding: 0 10px;
+  font-size: var(--fs-rotulo, 12.5px);
+  color: var(--ink-2, #c8c8d3);
+  cursor: pointer;
+}
+.v3-menu-linha:hover {
+  background: var(--surface-2, #1d1d23);
+}
+.v3-menu-linha.apagada {
+  color: var(--muted-2, #818595);
+  opacity: 0.55;
+  cursor: default;
+}
+.v3-menu-linha input {
+  accent-color: var(--accent-3, #3d8bfd);
+  margin: 0;
+}
+
+/* ── CORTE: campo + régua na barra, alça no palco ── */
+.v3-corte {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+}
+.v3-rotulo {
+  font-size: var(--fs-rotulo, 12.5px);
+  color: var(--muted, #969aa8);
+}
+.v3-unidade {
+  font-size: var(--fs-nota, 11.5px);
+  color: var(--muted-2, #818595);
+}
+.v3-campo {
+  width: calc(58px * var(--escala-ui, 1));
+  height: calc(22px * var(--escala-ui, 1));
+  padding: 0 6px;
+  background: var(--surface-2, #1d1d23);
+  color: var(--ink, #e8e8ee);
+  border: 1px solid var(--control-stroke, #3c3c49);
+  border-bottom-color: var(--control-stroke-2, #5a5a6c);
+  border-radius: var(--radius-md, 4px);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-rotulo, 12.5px);
+  text-align: right;
+  outline: none;
+}
+.v3-campo:focus {
+  box-shadow: inset 0 -2px 0 0 var(--accent-3, #3d8bfd);
+}
+.v3-regua {
+  width: calc(120px * var(--escala-ui, 1));
+  accent-color: var(--accent-3, #3d8bfd);
+}
+.v3-alca-corte {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--ink, #e8e8ee);
+  background: var(--surface, #17171b);
+  border: 1px solid var(--line-strong, #3a3a45);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  cursor: ew-resize;
+  touch-action: none;
+}
+.v3-alca-corte:hover,
+.v3-alca-corte.on {
+  color: var(--accent-3, #3d8bfd);
+  border-color: var(--accent-3, #3d8bfd);
+}
+
+/* ── PAINEL DA PEÇA (canto de cima, à esquerda) ── */
+.v3-props {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: calc(230px * var(--escala-ui, 1));
+  background: color-mix(in srgb, var(--surface, #17171b) 95%, transparent);
+  border: 1px solid var(--line-strong, #3a3a45);
+  border-radius: var(--radius-md, 4px);
+  box-shadow: var(--shadow-1, 0 2px 8px rgba(0, 0, 0, 0.35));
+  font-size: var(--fs-rotulo, 12.5px);
+  user-select: text;
+}
+.v3-props-cabeca {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: calc(28px * var(--escala-ui, 1));
+  padding: 0 4px 0 10px;
+  border-bottom: 1px solid var(--line, #26262d);
+  font-size: var(--fs-nota, 11.5px);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2, #c8c8d3);
+}
+.v3-props-corpo {
+  margin: 0;
+  padding: 4px 0;
+}
+.v3-prop {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  align-items: center;
+  min-height: calc(22px * var(--escala-ui, 1));
+  padding: 0 10px;
+  gap: 8px;
+}
+.v3-prop dt {
+  color: var(--muted, #969aa8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.v3-prop dd {
+  margin: 0;
+  color: var(--ink, #e8e8ee);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.v3-mono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── LEGENDA DO ESTILO CORES (embaixo do cubo, à direita) ──
+   O cubo ocupa 96 + 6 + 24 px (tela, vão, casinha) a partir de 10 px do topo:
+   a legenda começa 10 px abaixo dele, no canto que a barra e o painel da peça não usam. */
+.v3-legenda {
+  position: absolute;
+  top: calc(20px + 126px * var(--escala-ui, 1));
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 9px;
+  background: color-mix(in srgb, var(--surface, #17171b) 92%, transparent);
+  border: 1px solid var(--line-strong, #3a3a45);
+  border-radius: var(--radius-md, 4px);
+  box-shadow: var(--shadow-1, 0 2px 8px rgba(0, 0, 0, 0.35));
+  font-size: var(--fs-nota, 11.5px);
+  color: var(--ink-2, #c8c8d3);
+  pointer-events: none;
+}
+.v3-legenda-linha {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: calc(18px * var(--escala-ui, 1));
+  white-space: nowrap;
+}
+.v3-legenda-cor {
+  width: calc(11px * var(--escala-ui, 1));
+  height: calc(11px * var(--escala-ui, 1));
+  flex: none;
+  /* Contorno escuro nos dois temas: o amarelo-claro da canaleta some no fundo claro sem ele. */
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
