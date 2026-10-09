@@ -150,7 +150,14 @@ describe('desempenho com o muro de verdade', () => {
     expect(alvenaria).toBeGreaterThanOrEqual(5000);
     // Uma chamada por lote, mais o traço dos lotes de alvenaria/concreto, mais uma por Ø: nada cresce com o comprimento.
     expect(chamadas).toBeLessThanOrEqual(2 * c.lotes.length + c.barras.length);
-    expect(chamadas).toBeLessThan(80);
+    // Era < 80. Desde 09/10 noite (modulação) a canaleta tem o fundo furado onde sobe a barra e a parede quebrada no
+    // contraforte, e cada posição de furo é uma forma: na 14x39 a grade da canaleta anda 5 cm a cada contraforte, então
+    // o muro passa por ~70 posições antes de repetir — e para aí (30, 60, 120 e 240 m dão o mesmo tanto). O teto
+    // acompanha; o que não pode é crescer com o comprimento (conferido abaixo, com metade do muro).
+    expect(chamadas).toBeLessThan(220);
+    const metade = construirCena3D(modelo('aula123', { L_total: 60, junta_cada: 0 }), paleta);
+    expect(chamadas - metade.chamadasDeDesenho(), 'chamadas crescem com o comprimento').toBeLessThanOrEqual(6);
+    metade.dispose();
     const t2 = performance.now();
     for (let k = 0; k < 10; k++) c.pegar(raioDeFrente(5 + k * 11, 1));
     console.info(`[visor] raio de seleção no muro de 120 m: ${((performance.now() - t2) / 10).toFixed(1)} ms por clique`);

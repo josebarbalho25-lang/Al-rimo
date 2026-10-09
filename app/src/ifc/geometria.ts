@@ -78,11 +78,13 @@ export function pontoLocal(eixo: Eixo, u: number, v: number, w: number): Vec3 {
  * Posição do IfcExtrudedAreaSolid dentro da peça (mm). O sólido é extrudado sempre no +z do próprio sistema
  * (ExtrudedDirection = (0,0,1)), então basta escolher os eixos: x do perfil = `ref`, z da extrusão = `axis`.
  */
-export function posicaoDoSolido(eixo: Eixo, extensao: number): { local: Vec3; axis: Vec3 | null; ref: Vec3 | null } {
-  if (eixo === 'Z') return { local: [0, 0, 0], axis: null, ref: null };
+export function posicaoDoSolido(eixo: Eixo, extensao: number, de = 0): { local: Vec3; axis: Vec3 | null; ref: Vec3 | null } {
+  // `de` (acrescentado pela modulação, 09/10 noite): o sólido de um PEDAÇO da peça (Geometria.pedacos) começa em `de`
+  // ao longo do eixo e vai até `extensao`; a peça inteira é de = 0.
+  if (eixo === 'Z') return { local: [0, 0, de], axis: null, ref: null };
   // x do perfil → Y, extrusão → X; o y do perfil sai X × Y = Z. Destro, sem espelho.
-  if (eixo === 'X') return { local: [0, 0, 0], axis: [1, 0, 0], ref: [0, 1, 0] };
-  // x do perfil → X, extrusão → −Y; o y do perfil sai (−Y) × X = Z. Nasce em y = extensao e desce até 0.
+  if (eixo === 'X') return { local: [de, 0, 0], axis: [1, 0, 0], ref: [0, 1, 0] };
+  // x do perfil → X, extrusão → −Y; o y do perfil sai (−Y) × X = Z. Nasce em y = extensao e desce até `de`.
   return { local: [0, extensao, 0], axis: [0, -1, 0], ref: [1, 0, 0] };
 }
 

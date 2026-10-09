@@ -1,6 +1,30 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "al-rimo", "runtimeExecutable": "npm", "runtimeArgs": ["--prefix", "app", "run", "dev"], "port": 5180 }
+    {
+      "name": "al-rimo",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "app",
+        "run",
+        "dev"
+      ],
+      "port": 5180
+    },
+    {
+      "name": "al-rimo-github",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "C:\\Users\\JBarb\\AppData\\Local\\Temp\\claude\\C--CLAUDE-Projetos-Al-rimo\\13d2f926-960c-4592-b5ab-029606d09e7c\\scratchpad\\alrimo_print\\app",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5181"
+      ],
+      "port": 5181
+    }
   ]
 }

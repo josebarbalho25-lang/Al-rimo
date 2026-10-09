@@ -111,6 +111,7 @@ const AVISOS_QUE_MUDAM_QUANTIDADE = new Set([
   'CANALETA_SEM_ESPACAMENTO', // só a cinta do topo: as canaletas intermediárias (peça, graute e aço) ficam fora
   'HASTE_SEM_GABARITO',    // haste mais comprida que os modelos do Revit: peças da haste deduzidas
   'BALANCO_ALEM_DO_CF',    // o balanço da conta além do contraforte da ponta não está no desenho
+  'BARBACA_SEM_CELULA',    // barbacã pedido e não desenhado (1ª fiada sem célula livre — muro todo em canaleta)
 ]);
 
 function contarBlocos(m: Modelo): LinhaDeBloco[] {
@@ -301,7 +302,10 @@ export function quantificar(m: Modelo): Quantitativo {
 export function conferirGeometrias(m: Modelo): string[] {
   const erros: string[] = [];
   for (const [k, g] of Object.entries(m.geometrias)) {
-    const v = areaLiquida(g) * g.extensao;
+    // peça em pedaços (a canaleta furada/quebrada — Geometria.pedacos, modulação 09/10 noite): o volume é o da união
+    const v = g.pedacos?.length
+      ? g.pedacos.reduce((s, q) => s + Math.abs(areaDoLaco(q.contorno)) * (q.ate - q.de), 0)
+      : areaLiquida(g) * g.extensao;
     if (Math.abs(v - g.volume_mm3) > 0.005 * Math.max(v, g.volume_mm3, 1)) {
       erros.push(`${k}: volume ${g.volume_mm3.toFixed(0)} × perfil·extensão ${v.toFixed(0)} mm³`);
     }

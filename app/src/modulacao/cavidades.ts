@@ -23,15 +23,18 @@ export interface Cavidade {
 /** Cavidades de um trecho, por fiada, ordenadas por xmin (busca binária). */
 export class MapaDeCavidades {
   private porFiada: Cavidade[][];
-  private maiorA = 0;
+  // a maior meia-medida em X POR FIADA: a busca para de voltar quando já passou dela. Uma só para o trecho todo
+  // fazia a fiada de bloco varrer tudo — a canaleta corrida de uma fiada de canaleta tem metros de meia-medida
+  private maiorA: number[];
 
   constructor(nFiadas: number) {
     this.porFiada = Array.from({ length: nFiadas }, () => []);
+    this.maiorA = Array.from({ length: nFiadas }, () => 0);
   }
 
   add(i: number, c: Cavidade): void {
     this.porFiada[i].push(c);
-    this.maiorA = Math.max(this.maiorA, c.a);
+    this.maiorA[i] = Math.max(this.maiorA[i], c.a);
   }
 
   ordenar(): void {
@@ -61,7 +64,7 @@ export class MapaDeCavidades {
     let melhor: { cav: Cavidade; d: number } | null = null;
     for (let k = lo - 1; k >= 0; k--) {
       const c = f[k];
-      if (c.cx - c.a < x - 2 * this.maiorA) break;
+      if (c.cx - c.a < x - 2 * this.maiorA[i]) break;
       if (x > c.cx + c.a || y < c.cy - c.b || y > c.cy + c.b) continue;
       const d = distanciaAoFuro(x - c.cx, y - c.cy, c.a, c.b, c.r);
       if (!melhor || d < melhor.d - 1e-9) melhor = { cav: c, d };

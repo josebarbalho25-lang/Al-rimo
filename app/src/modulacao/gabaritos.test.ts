@@ -31,6 +31,7 @@ import type { Resultado, Valor } from '@/motor/tipos';
 import type { Modelo, TipoPeca, Vec3 } from '@/modelo/tipos';
 import { caixaGlobal, gerarModelo, paraGlobal } from './index';
 import { CORES_DO_JOSE } from './catalogo';
+import { areaPoligono } from './perfis';
 
 const PASTA = fileURLToPath(new URL('../../../dados/encaixes_revit/', import.meta.url));
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -136,9 +137,12 @@ function doApp(m: Modelo): Peca[] {
     if (!ALVENARIA.has(p.tipo) || p.fiada === undefined) continue;
     const g = m.geometrias[p.geometria];
     const c = caixaGlobal(p, g);
-    const chave = g.chave.split(' ').slice(2).join(' ');
+    // a canaleta furada/quebrada na obra (09/10 noite: ' | f… q…' na chave) é a mesma peça do Revit: compara a peça
+    // comprada — a chave do catálogo e o volume do envelope
+    const chave = g.chave.split(' |')[0].split(' ').slice(2).join(' ');
     const r = (v: number): number => Math.round(v * 10) / 10;
-    const q: Peca = { chave, fiada: p.fiada, x0: r(c.min[0]), x1: r(c.max[0]), y0: r(c.min[1]), y1: r(c.max[1]), id: p.id, volume: g.volume_mm3 };
+    const volume = g.pedacos ? Math.abs(areaPoligono(g.perfil.contorno)) * g.extensao : g.volume_mm3;
+    const q: Peca = { chave, fiada: p.fiada, x0: r(c.min[0]), x1: r(c.max[0]), y0: r(c.min[1]), y1: r(c.max[1]), id: p.id, volume };
     if (g.eixo === 'Z' && g.perfil.furos) {
       q.furos = g.perfil.furos.map((f) => {
         const pts = f.map(([u, v]) => paraGlobal(p, g, [u, v, 0] as Vec3));

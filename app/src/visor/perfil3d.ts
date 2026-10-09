@@ -161,19 +161,61 @@ function inverterFaces(g: THREE.BufferGeometry): void {
   }
 }
 
+/** Prisma do perfil (u, v) de w = de a w = ate, ainda no plano do three (x, y) e extrudado em z, em metro. */
+function extrudar(contorno: readonly Vec2[], furos: readonly Vec2[][], de: number, ate: number): THREE.BufferGeometry {
+  const forma = new THREE.Shape(noSentido(contorno, true).map(([u, v]) => new THREE.Vector2(u * MM, v * MM)));
+  for (const furo of furos) {
+    if (furo.length < 3) continue;
+    forma.holes.push(new THREE.Path(noSentido(furo, false).map(([u, v]) => new THREE.Vector2(u * MM, v * MM))));
+  }
+  const geo = new THREE.ExtrudeGeometry(forma, { depth: (ate - de) * MM, bevelEnabled: false, steps: 1, curveSegments: 1 });
+  geo.deleteAttribute('uv');
+  if (de) geo.translate(0, 0, de * MM);
+  return geo;
+}
+
+/** Uma malha só com os triângulos de todas (posição e normal; malhas não indexadas, como a ExtrudeGeometry). */
+function juntarMalhas(partes: THREE.BufferGeometry[]): THREE.BufferGeometry {
+  const out = new THREE.BufferGeometry();
+  for (const nome of ['position', 'normal']) {
+    const arrays = partes.map((p) => (p.getAttribute(nome) as THREE.BufferAttribute).array as Float32Array);
+    const tudo = new Float32Array(arrays.reduce((s, a) => s + a.length, 0));
+    let k = 0;
+    for (const a of arrays) {
+      tudo.set(a, k);
+      k += a.length;
+    }
+    out.setAttribute(nome, new THREE.BufferAttribute(tudo, 3));
+  }
+  for (const p of partes) p.dispose();
+  return out;
+}
+
+/**
+ * As arestas do traço de uma Geometria. Peça em pedaços: as do ENVELOPE (a peça inteira) — as dos pedaços riscariam
+ * a face de fora da canaleta em cada ponta de furo, como se fossem peças separadas. O furo do fundo fica escondido
+ * pelo graute e pela fiada de baixo; a parede quebrada, pelo graute do T, que tem o traço dele.
+ */
+export function arestasDaGeometria(g: Geometria, molde: THREE.BufferGeometry): Float32Array {
+  if (!g.pedacos?.length) return arestasDoMolde(molde);
+  const envelope = moldeDaGeometria({ ...g, pedacos: undefined });
+  const a = arestasDoMolde(envelope);
+  envelope.dispose();
+  return a;
+}
+
 /**
  * O MOLDE de uma Geometria: a malha de UMA peça, em metro, no sistema local
  * (antes do giro, origem local do perfil). Todas as peças de mesma chave
  * desenham este molde, cada uma com a sua matriz (InstancedMesh).
  */
 export function moldeDaGeometria(g: Geometria): THREE.BufferGeometry {
-  const forma = new THREE.Shape(noSentido(g.perfil.contorno, true).map(([u, v]) => new THREE.Vector2(u * MM, v * MM)));
-  for (const furo of g.perfil.furos ?? []) {
-    if (furo.length < 3) continue;
-    forma.holes.push(new THREE.Path(noSentido(furo, false).map(([u, v]) => new THREE.Vector2(u * MM, v * MM))));
-  }
-  const geo = new THREE.ExtrudeGeometry(forma, { depth: g.extensao * MM, bevelEnabled: false, steps: 1, curveSegments: 1 });
-  geo.deleteAttribute('uv');
+  // Peça em pedaços (Geometria.pedacos: a canaleta com o fundo furado e a parede quebrada — acrescentado pela
+  // modulação, 09/10 noite): a malha é a dos pedaços. Desenhar o envelope punha a parede quebrada e o graute do T no
+  // mesmo lugar — as duas faces de cima brigando na tela.
+  const geo = g.pedacos?.length
+    ? juntarMalhas(g.pedacos.map((q) => extrudar(q.contorno, [], q.de, q.ate)))
+    : extrudar(g.perfil.contorno, g.perfil.furos ?? [], 0, g.extensao);
 
   // A Shape vive em (x, y) e extruda em z: aqui (u, v, w). A troca de eixos
   // leva cada um para o lugar que o `PLANO_DO_PERFIL` manda.

@@ -4,7 +4,9 @@
   Ordem: lê a conta → modula (regra única, modular.ts) → arruma as fiadas (fiadas.ts, com os encaixes da tabela)
   → põe as barras procurando o furo de verdade de cada fiada (armaduras.ts + cavidades.ts; nas fiadas de canaleta,
   a corrida do muro e a barra em L de cada contraforte) → grauteia (parcial:
-  furo com barra; total: todos; contraforte: sempre todos) → sapata, drenagem e terreno (entorno.ts).
+  furo com barra; total: todos; contraforte: sempre todos) → fura o fundo da canaleta onde a barra sobe e quebra a
+  parede dela no encontro com o contraforte, com o graute no lugar (canaletas.ts) → sapata, drenagem e terreno
+  (entorno.ts).
 
   Tudo em mm, X ao longo do muro, Y = 0 na face aparente e +Y para o solo, Z = 0 no topo da sapata (contrato em
   modelo/tipos.ts). Determinístico: a mesma entrada dá o mesmo JSON (sem Map/Set na saída, sem relógio).
@@ -17,13 +19,15 @@ import { lerParametros } from './leitura';
 import { br, modular, type TrechoModulado } from './modular';
 import { fiadasDeCanaleta, montarFiadas, tiposDasFiadas, type FiadaMontada } from './fiadas';
 import { MapaDeCavidades, type Cavidade } from './cavidades';
-import { arred, prisma, retanguloArredondado } from './perfis';
+import { arred, caixaGlobal, prisma, retanguloArredondado } from './perfis';
 import { numerarPosicoes } from './barras';
 import { fmt, furosDaPeca, geoBloco, geoCanaleta, geoGrauteCanaleta, pad, secaoCanaleta, zTopoBarra, type Ctx } from './contexto';
 import { barrasDasCanaletasDosContrafortes, barrasDoBalanco, barrasDoPainel, barrasDosContrafortes, esperas, horizontais, type Vertical } from './armaduras';
 import { conferenciasGerais, drenagem, sapata, temDente, terreno } from './entorno';
+import { furarEQuebrarCanaletas } from './canaletas';
 
-export const VERSAO_MODULACAO = 'modulacao 4';
+// 5: canaleta furada onde sobe a barra, T de graute no contraforte, graute da haste corrido (09/10 noite)
+export const VERSAO_MODULACAO = 'modulacao 5';
 export { ESPESSURA_MANTA, COB_GRAUTE } from './contexto';
 
 export function gerarModelo(r: Resultado, extras: Record<string, Valor> = {}): Modelo {
@@ -65,6 +69,8 @@ export function gerarModelo(r: Resultado, extras: Record<string, Valor> = {}): M
     horizontais(ctx, tr, fiadas, canaleta);
     barrasDasCanaletasDosContrafortes(ctx, tr, fiadas, canaleta);
     graute(ctx, tr, fiadas, mapa, verticais, inicioAlvenaria);
+    // depois de TODAS as barras do trecho que sobem pelo muro (verticais e esperas) e do graute das canaletas
+    furarEQuebrarCanaletas(ctx, tr, canaleta, mapa, inicioAlvenaria);
     sapata(ctx, tr, Ype, YbA);
     drenagem(ctx, tr, mapa);
     terreno(ctx, tr, Ype, YbA);
@@ -82,10 +88,15 @@ export function gerarModelo(r: Resultado, extras: Record<string, Valor> = {}): M
     sapata: { y0: arred(Ype), y1: arred(YbA), z0: -(p.h_sap + (temDente(p) ? p.h_den : 0)), z1: 0 },
   };
 
+  // a canaleta furada/quebrada troca de geometria depois de nascer inteira: a inteira que ninguém mais usa sai (quem
+  // lê o Modelo percorre as geometrias — o IFC não pode ganhar tipo sem peça, nem o 3D molde sem uso)
+  const usadas = new Set(ctx.pecas.map((q) => q.geometria));
+  const geometrias = Object.fromEntries(Object.entries(ctx.geos).filter(([k]) => usadas.has(k)));
+
   const modelo: Modelo = {
     versao: VERSAO_MODULACAO,
     familia: mod.familia,
-    geometrias: ctx.geos,
+    geometrias,
     pecas: ctx.pecas,
     barras: numerarPosicoes(ctx.barras),
     ajustes: mod.ajustes,
@@ -224,19 +235,13 @@ function graute(ctx: Ctx, tr: TrechoModulado, fiadas: FiadaMontada[], mapa: Mapa
     }
   }
   const fim = pecas.length;
+  const daHaste = new Map<string, Peca[]>();
   for (let ip = ini; ip < fim; ip++) {
     const host = pecas[ip];
-    // canaleta deitada na haste (fiada de canaleta): o miolo dela, do comprimento dela, com a seção DELA (a cortada
-    // da 19 tem fundo mais grosso)
+    // canaleta deitada na haste (fiada de canaleta): o graute vai por corrida, logo abaixo
     if (host.grupo === 'contraforte' && ctx.geos[host.geometria]?.eixo === 'X') {
-      const comp = ctx.geos[host.geometria].extensao;
-      const { parede, fundo } = secaoCanaleta(mod, host);
-      const g: Peca = {
-        id: `${host.id}.gc`, tipo: 'GRAUTE_CANALETA', grupo: 'contraforte', geometria: geoGrauteCanaleta(ctx, comp, host),
-        origem: [arred(host.origem[0] + parede), host.origem[1], arred(host.origem[2] + fundo)], giro: host.giro, trecho: tr.indice, fiada: host.fiada,
-      };
-      if (host.contraforte !== undefined) g.contraforte = host.contraforte;
-      pecas.push(g);
+      const k = `${host.contraforte}|${host.fiada}`;
+      (daHaste.get(k) ?? daHaste.set(k, []).get(k)!).push(host);
       continue;
     }
     const cavs = porPeca.get(ip);
@@ -257,6 +262,37 @@ function graute(ctx: Ctx, tr: TrechoModulado, fiadas: FiadaMontada[], mapa: Mapa
       };
       if (host.contraforte !== undefined) g.contraforte = host.contraforte;
       pecas.push(g);
+    }
+  }
+
+  // Canaletas da haste: um prisma por corrida da MESMA seção, com o miolo dela, cobrindo as juntas de 10 mm entre
+  // elas (antes era um por peça e as juntas ficavam sem graute — revisão do IFC, 09/10 noite). A regra é a do muro,
+  // logo abaixo: onde a seção muda (a cortada da 19 tem fundo mais grosso), a junta fica com a corrida de antes —
+  // aqui, a mais perto do muro. A junta muro × haste é do graute do T (canaletas.ts).
+  const sg = p.enterrado ? 1 : -1;     // η cresce para +Y no enterrado e para −Y no aparente
+  for (const lista of daHaste.values()) {
+    const it = lista.map((host) => {
+      const c = caixaGlobal(host, ctx.geos[host.geometria]);
+      return { host, a: sg > 0 ? c.min[1] : -c.max[1], b: sg > 0 ? c.max[1] : -c.min[1], x0: c.min[0], z0: c.min[2] };
+    }).sort((u, v) => u.a - v.a);
+    let k = 0;
+    while (k < it.length) {
+      const ini0 = it[k];
+      const secao = secaoCanaleta(mod, ini0.host);
+      let j = k;
+      while (j + 1 < it.length && it[j + 1].a - it[j].b <= JUNTA + 1e-6 && secaoCanaleta(mod, it[j + 1].host).propria === secao.propria) j++;
+      // a junta com a corrida seguinte (seção diferente) vai com esta
+      const prox = it[j + 1];
+      const b = prox && prox.a - it[j].b <= JUNTA + 1e-6 ? prox.a : it[j].b;
+      const comp = b - ini0.a;
+      const host = ini0.host;
+      const g: Peca = {
+        id: `${host.id}.gc`, tipo: 'GRAUTE_CANALETA', grupo: 'contraforte', geometria: geoGrauteCanaleta(ctx, comp, host),
+        origem: [arred(ini0.x0 + secao.parede), arred(sg > 0 ? ini0.a : -b), arred(ini0.z0 + secao.fundo)], giro: host.giro, trecho: tr.indice, fiada: host.fiada,
+      };
+      if (host.contraforte !== undefined) g.contraforte = host.contraforte;
+      pecas.push(g);
+      k = j + 1;
     }
   }
 

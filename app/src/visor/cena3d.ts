@@ -28,7 +28,7 @@ import type { Barra, ClassePeca, Modelo, Peca, Vec3 } from '@/modelo/tipos';
 import { barraDoTriangulo, montarBarras, type LoteDeBarras } from './barras3d';
 import { corDaPeca, corDoAco, ESTILO_PADRAO, opacidadeDoTerreno, tracoDoEstilo, type EstiloVisual } from './estiloVisual';
 import { materialDoAcabamento, materialDoAco } from './materiaisDoEstilo';
-import { caixaDaPeca, caixaLocal, MM, arestasDoMolde, moldeDaGeometria, type Caixa } from './perfil3d';
+import { caixaDaPeca, caixaLocal, MM, arestasDaGeometria, moldeDaGeometria, type Caixa } from './perfil3d';
 import { emMetro, montarLotes, unirCaixas, visivel, type Acabamento, type Categoria, type Lote } from './lotes';
 import type { PaletaVisor } from './tema3d';
 
@@ -202,7 +202,7 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
     let m = moldes.get(chave);
     if (!m) {
       const geo = moldeDaGeometria(modelo.geometrias[chave]!);
-      moldes.set(chave, (m = { geo, arestas: new THREE.BufferAttribute(arestasDoMolde(geo), 3) }));
+      moldes.set(chave, (m = { geo, arestas: new THREE.BufferAttribute(arestasDaGeometria(modelo.geometrias[chave]!, geo), 3) }));
     }
     return m;
   };

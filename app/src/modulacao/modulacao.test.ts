@@ -7,9 +7,9 @@
 import { describe, expect, it } from 'vitest';
 import { cenariosDoGabarito, resultadoDoGabarito } from '@/motor/resultadoDoGabarito';
 import type { Resultado, Valor } from '@/motor/tipos';
-import type { Modelo, Peca, TipoPeca, Vec2 } from '@/modelo/tipos';
+import type { Modelo, Peca, TipoPeca, Vec2, Vec3 } from '@/modelo/tipos';
 import { caixaGlobal, gerarModelo, paraGlobal, padroesDoModelo } from './index';
-import { areaPoligono, calibrarFuro, distanciaAoFuro, retanguloArredondado } from './perfis';
+import { areaPoligono, calibrarFuro, distanciaAoFuro, profundidadeNaPeca, retanguloArredondado } from './perfis';
 import { CATALOGO, conferirCatalogo } from './catalogo';
 import { conferirEncaixes, ENCAIXES } from './encaixes';
 import { vaoAmarra } from './fiadas';
@@ -158,8 +158,9 @@ function pontoNoPoligono(x: number, y: number, pol: Vec2[]): boolean {
 
 /**
  * Toda barra vertical (e espera, acima da sapata) dentro do graute em toda fiada que atravessa: furo grauteado
- * (perfil exato) ou miolo da canaleta. Na fiada de canaleta vale a caixa do miolo da fiada toda — o fundo da
- * canaleta é quebrado nas células grauteadas para o graute vertical passar (brief §3.1).
+ * (perfil exato) ou miolo da canaleta. Na fiada de canaleta vale a caixa do miolo da fiada toda, ou o graute do furo
+ * no fundo dela — o fundo da canaleta é furado onde a barra sobe, e o graute da coluna passa (brief §3.1; desenhado
+ * desde 09/10 noite — barrasEmPecaSolida confere que a barra não atravessa o fundo).
  */
 function barrasForaDoGraute(m: Modelo): string[] {
   const porFiada = new Map<number, { c: Caixa; pol?: Vec2[] }[]>();
@@ -315,6 +316,17 @@ function conferirTudo(m: Modelo, r: Resultado, nome: string): void {
     const [hostId, gk] = p.id.split(/\.g(?=\d+$)/);
     const host = porId.get(hostId);
     expect(host, `${nome}: hospedeira de ${p.id}`).toBeDefined();
+    if (CANALETAS.has(host!.tipo)) {
+      // graute da coluna no FUNDO furado da canaleta (09/10 noite): da junta de baixo até o fundo, e o meio dele cai
+      // no furo — com o fundo inteiro, cairia dentro da canaleta
+      const c = caixa(m, p);
+      const ch = caixa(m, host!);
+      expect(c.min[2], `${nome}: ${p.id} começa na junta de baixo`).toBe(ch.min[2] - 10);
+      expect(c.max[2], `${nome}: ${p.id} vai até o fundo`).toBeLessThan(ch.min[2] + 45);
+      const meio: Vec3 = [(c.min[0] + c.max[0]) / 2, (c.min[1] + c.max[1]) / 2, (Math.max(c.min[2], ch.min[2]) + c.max[2]) / 2];
+      expect(profundidadeNaPeca(host!, m.geometrias[host!.geometria], meio), `${nome}: ${p.id} no fundo furado de ${hostId}`).toBeLessThanOrEqual(0);
+      continue;
+    }
     const furo = m.geometrias[host!.geometria].perfil.furos![Number(gk) - 1];
     expect(Math.abs(g.volume_mm3 / (Math.abs(areaPoligono(furo)) * g.extensao) - 1)).toBeLessThan(1e-6);
     expect(host!.furosGrauteados).toContain(Number(gk) - 1);
@@ -560,7 +572,8 @@ describe('regra modular', () => {
 
 describe('canaleta cortada da 19: peça própria (Jose, 09/10)', () => {
   const r19 = trocar(resultadoDoGabarito('aula123'), { t_bloco: 19, L_bloco: 39, eenr: 19, Ag_furo: 170, hf_bl: 3.5 });
-  const secao = (m: Modelo, p: Peca): number => m.geometrias[p.geometria].volume_mm3 / m.geometrias[p.geometria].extensao;
+  // a seção da PEÇA COMPRADA (o envelope): a canaleta furada/quebrada na obra (09/10 noite) é a mesma peça do catálogo
+  const secao = (m: Modelo, p: Peca): number => Math.abs(areaPoligono(m.geometrias[p.geometria].perfil.contorno));
   it('19x39: fundo 3,91 e o volume do Revit (2864 cm³ em 19 cm); o graute dela é o miolo dela', () => {
     const m = gerarModelo(r19, { L_total: 6 });
     const cortadas = m.pecas.filter((p) => p.tipo === 'CANALETA_CORTADA');
@@ -579,7 +592,7 @@ describe('canaleta cortada da 19: peça própria (Jose, 09/10)', () => {
     expect(fundo(inteira)).toBeCloseTo(29.1, 6);
     // graute: U + miolo = seção cheia, peça a peça na haste; na linha do muro o prisma muda de seção junto com a peça
     const t = m.familia.t;
-    for (const g of m.pecas.filter((p) => p.tipo === 'GRAUTE_CANALETA' && p.grupo === 'contraforte')) {
+    for (const g of m.pecas.filter((p) => p.tipo === 'GRAUTE_CANALETA' && p.grupo === 'contraforte' && p.id.endsWith('.gc'))) {
       const host = m.pecas.find((p) => p.id === g.id.replace(/\.gc$/, ''))!;
       expect(secao(m, host) + secao(m, g), g.id).toBeCloseTo(t * 190, 3);
     }
@@ -607,6 +620,223 @@ describe('canaleta cortada da 19: peça própria (Jose, 09/10)', () => {
     for (const p of cortadas) expect(Math.abs(secao(m, p) / (5116e3 / 390) - 1), p.id).toBeLessThan(1e-3);
     // e os cortes do gabarito (19, 20 e 24 cm) batem com o volume do Revit
     for (const [L, v] of [[190, 2492e3], [200, 2624e3], [240, 3148e3]]) expect(Math.abs((secao(m, cortadas[0]) * L) / v - 1)).toBeLessThan(2e-3);
+  });
+});
+
+// ── peça atravessando peça (revisão do IFC com o muro real, 09/10 noite) ─────
+
+type Solido = { p: Peca; g: Modelo['geometrias'][string]; c: Caixa };
+
+/** As peças de um conjunto de tipos, ordenadas pelo x mínimo, e quem pode conter um ponto (busca binária). */
+function indice(m: Modelo, tipos: ReadonlySet<TipoPeca>): (P: Vec3) => Solido[] {
+  const sol: Solido[] = m.pecas.filter((p) => tipos.has(p.tipo)).map((p) => ({ p, g: m.geometrias[p.geometria], c: caixa(m, p) }));
+  sol.sort((a, b) => a.c.min[0] - b.c.min[0]);
+  const largura = Math.max(0, ...sol.map((s) => s.c.max[0] - s.c.min[0]));
+  return (P) => {
+    let lo = 0;
+    let hi = sol.length;
+    while (lo < hi) {
+      const k = (lo + hi) >> 1;
+      if (sol[k].c.min[0] <= P[0]) lo = k + 1;
+      else hi = k;
+    }
+    const out: Solido[] = [];
+    for (let k = lo - 1; k >= 0 && sol[k].c.min[0] >= P[0] - largura - 1; k--) {
+      const c = sol[k].c;
+      if (P[0] <= c.max[0] && P[1] >= c.min[1] && P[1] <= c.max[1] && P[2] >= c.min[2] && P[2] <= c.max[2]) out.push(sol[k]);
+    }
+    return out;
+  };
+}
+
+/** Peças sólidas onde barra não entra: a alvenaria e a drenagem. A sapata é concreto armado (a armadura dela e o pé
+ *  da espera moram nela) e o terreno é só para ver. */
+const SEM_BARRA = new Set<TipoPeca>([...ALVENARIA, 'DRENO', 'MANTA', 'BARBACA']);
+
+/**
+ * Nenhuma barra atravessa peça sólida que não seja graute. Amostra a cada 5 mm no eixo de cada barra: o ponto do eixo
+ * e 4 na superfície (raio − 0,5 mm), contra o sólido de cada peça pelo perfil, furos e pedaços (profundidadeNaPeca;
+ * mais de 0,5 mm para dentro = atravessa). Pegava, antes de 09/10 noite, a barra vertical no fundo da canaleta e a barra
+ * em L do contraforte na parede do U do muro.
+ */
+function barrasEmPecaSolida(m: Modelo): string[] {
+  const perto = indice(m, SEM_BARRA);
+  const out = new Set<string>();
+  for (const b of m.barras) {
+    const R = b.diametro / 2 - 0.5;
+    const e = b.fechada ? [...b.eixo, b.eixo[0]] : b.eixo;
+    for (let k = 0; k + 1 < e.length; k++) {
+      const [a, c] = [e[k], e[k + 1]];
+      const d: Vec3 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+      const L = Math.hypot(...d);
+      if (L < 1e-9) continue;
+      const u = d.map((x) => x / L) as Vec3;
+      const q: Vec3 = Math.abs(u[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+      const cr = (x: Vec3, y: Vec3): Vec3 => [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]];
+      const n1 = cr(u, q);
+      const l1 = Math.hypot(...n1);
+      const e1 = n1.map((x) => x / l1) as Vec3;
+      const e2 = cr(u, e1);
+      const n = Math.max(1, Math.ceil(L / 5));
+      for (let j = 0; j <= n; j++) {
+        const P0: Vec3 = [a[0] + (d[0] * j) / n, a[1] + (d[1] * j) / n, a[2] + (d[2] * j) / n];
+        for (const [s1, s2] of [[0, 0], [R, 0], [-R, 0], [0, R], [0, -R]]) {
+          const P: Vec3 = [P0[0] + s1 * e1[0] + s2 * e2[0], P0[1] + s1 * e1[1] + s2 * e2[1], P0[2] + s1 * e1[2] + s2 * e2[2]];
+          for (const s of perto(P)) if (profundidadeNaPeca(s.p, s.g, P) > 0.5) out.add(`${b.id} × ${s.p.id}`);
+        }
+      }
+    }
+  }
+  return [...out].sort();
+}
+
+/**
+ * O graute das canaletas (miolo do muro, da haste, o T e o do furo do fundo) não entra em bloco nem em canaleta:
+ * amostra no meio da caixa de cada um e nos pontos a 1/4 dela (o miolo em U tem cantos arredondados — a caixa toda não
+ * serve). O graute de furo de bloco já é conferido pela área do furo da peça.
+ */
+function grauteEmPecaSolida(m: Modelo): string[] {
+  const perto = indice(m, ALVENARIA);
+  const out: string[] = [];
+  for (const p of m.pecas) {
+    if (p.tipo !== 'GRAUTE_CANALETA' && !(p.tipo === 'GRAUTE_FURO' && m.geometrias[p.geometria].perfil.contorno.length === 4)) continue;
+    const c = caixa(m, p);
+    const em = (f: number, k: number): number => c.min[k] + f * (c.max[k] - c.min[k]);
+    for (const [fx, fy, fz] of [[0.5, 0.5, 0.5], [0.25, 0.5, 0.5], [0.75, 0.5, 0.5], [0.5, 0.25, 0.75], [0.5, 0.75, 0.75]]) {
+      const P: Vec3 = [em(fx, 0), em(fy, 1), em(fz, 2)];
+      const s = perto(P).find((q) => profundidadeNaPeca(q.p, q.g, P) > 0.5);
+      if (s) {
+        out.push(`${p.id} × ${s.p.id}`);
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Graute da canaleta do contraforte contínuo (09/10 noite): em cada fiada de canaleta, do miolo do muro até a ponta da
+ * haste, sem fresta — pelas juntas de 10 mm entre as canaletas da haste e pela junta muro × haste (o T).
+ */
+function hasteSemFresta(m: Modelo): string[] {
+  const out: string[] = [];
+  const t = m.familia.t;
+  m.dims.contrafortes.forEach((cf, k) => {
+    const pecasCf = m.pecas.filter((p) => p.contraforte === k + 1);
+    const fiadas = [...new Set(pecasCf.filter((p) => CANALETAS.has(p.tipo)).map((p) => p.fiada!))];
+    for (const i of fiadas) {
+      const can = pecasCf.filter((p) => CANALETAS.has(p.tipo) && p.fiada === i).map((p) => caixa(m, p));
+      const enterrado = can.some((c) => c.max[1] > t + 0.5);
+      const ponta = enterrado ? Math.max(...can.map((c) => c.max[1])) : Math.min(...can.map((c) => c.min[1]));
+      const g = pecasCf.filter((p) => p.tipo === 'GRAUTE_CANALETA' && p.fiada === i).map((p) => caixa(m, p))
+        .filter((c) => c.min[0] <= cf.x && c.max[0] >= cf.x)
+        .map((c) => (enterrado ? [c.min[1], c.max[1]] : [-c.max[1], -c.min[1]]) as [number, number])
+        .sort((a, b) => a[0] - b[0]);
+      if (!g.length) {
+        out.push(`C${k + 1} fiada ${i}: sem graute`);
+        continue;
+      }
+      for (let j = 1; j < g.length; j++) if (Math.abs(g[j][0] - g[j - 1][1]) > 1e-6) out.push(`C${k + 1} fiada ${i}: fresta de ${g[j - 1][1]} a ${g[j][0]}`);
+      // começa dentro da parede do muro (o T), termina na ponta da haste
+      const ini = enterrado ? t - 25 : -25;
+      if (g[0][0] > ini) out.push(`C${k + 1} fiada ${i}: o graute começa em ${g[0][0]} (o T não chega no miolo do muro)`);
+      if (Math.abs(g[g.length - 1][1] - (enterrado ? ponta : -ponta)) > 1e-6) out.push(`C${k + 1} fiada ${i}: o graute não chega na ponta`);
+    }
+  });
+  return out;
+}
+
+/** O muro com as canaletas inteiras de antes (sem furo nem quebra) — para provar que as conferências têm dente. */
+function semRecortes(m: Modelo): Modelo {
+  const geometrias = Object.fromEntries(Object.entries(m.geometrias).map(([k, g]) => {
+    if (!g.pedacos) return [k, g];
+    const { pedacos: _, ...resto } = g;
+    void _;
+    return [k, resto];
+  }));
+  return { ...m, geometrias };
+}
+
+describe('canaleta como a obra deixa: fundo furado onde sobe a barra, T de graute no contraforte (09/10 noite)', () => {
+  // os muros da revisão do IFC: balanço 19 (aula 12.2), contrafortes 14 enterrado (VAL123), 19 enterrado (sorteio17)
+  // e 14 aparente todo em canaleta (sorteio23)
+  const MUROS = ['aula122', 'aula123', 'sorteio17', 'sorteio23'];
+  for (const c of MUROS) {
+    it(`${c}: nenhuma barra atravessa bloco, canaleta ou drenagem; graute fora da alvenaria; haste sem fresta`, () => {
+      const r = resultadoDoGabarito(c);
+      for (const extras of [padroesDoModelo(), { ...padroesDoModelo(), L_total: 20, junta_cada: 6 }]) {
+        const m = gerarModelo(r, extras);
+        expect(barrasEmPecaSolida(m), c).toEqual([]);
+        expect(grauteEmPecaSolida(m), c).toEqual([]);
+        expect(hasteSemFresta(m), c).toEqual([]);
+      }
+    }, 60_000);
+  }
+
+  it('as conferências têm dente: com as canaletas inteiras, a barra vertical fura o fundo e a barra em L a parede do muro', () => {
+    const m = gerarModelo(resultadoDoGabarito('aula123'), padroesDoModelo());
+    const achados = barrasEmPecaSolida(semRecortes(m));
+    expect(achados.some((a) => /\.V\.\d+ × T1\.M\.f\d+/.test(a)), 'vertical × fundo').toBe(true);
+    expect(achados.some((a) => /\.CF\d+\.H\.f\d+ × T1\.M\.f\d+/.test(a)), 'barra em L × parede').toBe(true);
+    expect(grauteEmPecaSolida(semRecortes(m)).some((a) => a.includes('.gT')), 'graute do T × parede').toBe(true);
+  });
+
+  it('a canaleta furada é a mesma peça comprada: catálogo, classe e caixa do envelope; volume = o que sobra', () => {
+    const m = gerarModelo(resultadoDoGabarito('aula123'), padroesDoModelo());
+    const recortadas = m.pecas.filter((p) => m.geometrias[p.geometria].pedacos);
+    expect(recortadas.length).toBeGreaterThan(0);
+    for (const p of recortadas) {
+      const g = m.geometrias[p.geometria];
+      const inteira = Object.values(m.geometrias).find((q) => !q.pedacos && q.catalogo === g.catalogo) ?? null;
+      expect(g.classe).toBe('canaleta');
+      expect(CANALETAS.has(p.tipo)).toBe(true);
+      const env = Math.abs(areaPoligono(g.perfil.contorno)) * g.extensao;
+      expect(g.volume_mm3).toBeLessThan(env);
+      expect(g.volume_mm3).toBeGreaterThan(0.5 * env);   // a cortada curta com furo e parede quebrada fica com ~64 %
+      for (const q of g.pedacos!) {
+        expect(areaPoligono(q.contorno), `${p.geometria}: pedaço anti-horário`).toBeGreaterThan(0);
+        expect(q.de >= 0 && q.ate <= g.extensao && q.ate > q.de).toBe(true);
+      }
+      if (inteira) expect(inteira.perfil.contorno).toEqual(g.perfil.contorno);
+    }
+    // canaletas furadas no mesmo lugar dividem a geometria (IfcMappedItem / InstancedMesh)
+    expect(new Set(recortadas.map((p) => p.geometria)).size).toBeLessThan(recortadas.length);
+  });
+
+  it('T: em cada fiada de canaleta e cada contraforte, a parede do muro quebrada na largura do canal até o fundo', () => {
+    for (const c of ['aula123', 'sorteio17', 'sorteio23']) {
+      const m = gerarModelo(resultadoDoGabarito(c), padroesDoModelo());
+      const t = m.familia.t;
+      const parede = CATALOGO[m.familia.nome].canaleta.parede;
+      const fiadasC = [...new Set(m.pecas.filter((p) => p.grupo === 'muro' && CANALETAS.has(p.tipo)).map((p) => p.fiada!))];
+      const enterrado = m.pecas.some((p) => p.grupo === 'contraforte' && caixa(m, p).max[1] > t + 0.5);
+      for (const cf of m.dims.contrafortes) {
+        for (const i of fiadasC) {
+          // no meio do canal, na altura do meio da parede: vazio (graute do T), e nas paredes do canal ao lado: cheio
+          const y = enterrado ? t - parede / 2 : parede / 2;
+          const z = i * 200 + 10 + 100;
+          const muro = m.pecas.filter((p) => p.grupo === 'muro' && p.fiada === i && CANALETAS.has(p.tipo));
+          const dentro = (x: number) => muro.some((p) => profundidadeNaPeca(p, m.geometrias[p.geometria], [x, y, z]) > 0);
+          expect(dentro(cf.x), `${c} C(${cf.x}) fiada ${i}: parede quebrada`).toBe(false);
+          const fora = t / 2 + 5;
+          if (cf.x - fora > 0 && cf.x + fora < m.dims.L_real) expect(dentro(cf.x - fora) && dentro(cf.x + fora), `${c} fiada ${i}: parede fora do canal`).toBe(true);
+          expect(m.pecas.some((p) => p.tipo === 'GRAUTE_CANALETA' && p.fiada === i && p.id.includes('.gT') && caixa(m, p).min[0] <= cf.x && caixa(m, p).max[0] >= cf.x), `${c} fiada ${i}: graute do T`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('barbacã: muro todo em canaleta avisa em vez de sumir; nunca numa célula com barra', () => {
+    const m23 = gerarModelo(resultadoDoGabarito('sorteio23'), padroesDoModelo());
+    expect(m23.pecas.filter((p) => p.tipo === 'BARBACA')).toEqual([]);
+    expect(m23.avisos.find((a) => a.codigo === 'BARBACA_SEM_CELULA')?.texto).toBe('Barbacã não desenhado: 1ª fiada em canaleta');
+    const m22 = gerarModelo(resultadoDoGabarito('aula122'), padroesDoModelo());
+    expect(m22.pecas.filter((p) => p.tipo === 'BARBACA').length).toBeGreaterThan(0);
+    expect(m22.avisos.map((a) => a.codigo)).not.toContain('BARBACA_SEM_CELULA');
+    // graute total: o tubo vai antes do graute, mas fora das células com barra (barrasEmPecaSolida pega o tubo × barra)
+    const total = gerarModelo(trocar(resultadoDoGabarito('aula122'), { Graute: 'Total' }), padroesDoModelo());
+    expect(total.pecas.filter((p) => p.tipo === 'BARBACA').length).toBeGreaterThan(0);
+    expect(barrasEmPecaSolida(total)).toEqual([]);
   });
 });
 

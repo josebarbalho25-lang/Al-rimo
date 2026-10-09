@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 """validar_ifc.py — confere um .ifc gerado pelo app Al-rimo com o ifcopenshell (0.8.5).
 
-    python -I tools/validar_ifc.py arquivo.ifc [--regras] [--geom | --geom-tudo] [--amostra N] [--json]
+    python -I tools/validar_ifc.py arquivo.ifc [--regras] [--geom | --geom-tudo] [--furos] [--barras] [--amostra N] [--json]
 
   --regras     roda também as regras WHERE do EXPRESS (CorrectItemsForType, CorrectPredefinedType, GUID...)
   --geom       monta o sólido de uma AMOSTRA de produtos (N por grupo classe:ObjectType, padrão 3)
   --geom-tudo  monta o sólido de todos os produtos e devolve caixa e volume de cada um, por Tag
-  --furos      graute de cada furo no VAZIO do bloco dono (Tag 'peça.gN'); canaleta com fundo cheio e miolo vazio
+  --furos      graute de cada furo no VAZIO do bloco dono (Tag 'peça.gN'; dono canaleta = furo do fundo); canaleta
+               com fundo cheio fora dos furos e miolo vazio; graute da canaleta fora de bloco e de canaleta (o T)
+  --barras     nenhuma barra atravessa bloco ou canaleta (pontos no eixo e na superfície de cada barra)
   --json       imprime o relatório em JSON (UTF-8) para o teste do app ler
 
 Sai com código 0 se não houver erro, 1 se houver, 2 se nem abrir o arquivo.
@@ -24,6 +26,9 @@ O que confere, e por quê (cada item já derrubou um arquivo de verdade — ver 
   6. com --furos, a ORIENTAÇÃO das peças: caixa e volume certos não provam que o furo está do lado certo (o bloco de
      34 e o de 54 têm furos de tamanhos diferentes, a ponta direita é a esquerda girada 180°, a haste gira 90°/270°).
      O graute de cada furo tem de cair no vazio do bloco dono, e a canaleta tem de abrir para cima.
+  7. com --barras, peça atravessando peça (revisão com o muro real, 09/10 noite): a barra vertical furava o fundo da
+     canaleta e a barra em L do contraforte, a parede do U do muro. Pontos no eixo e na superfície de cada barra não
+     podem cair dentro de bloco nem de canaleta.
 """
 import sys, os, json, time, math, logging, collections, types
 
@@ -122,9 +127,12 @@ def dentro_da_malha(np, tri, P):
     return int((ok & (u >= 0) & (u <= 1) & (w >= 0) & (u + w <= 1) & (t > 1e-12)).sum()) % 2 == 1
 
 
-def conferir_furos(f, rel):
-    """Graute do furo no vazio do bloco dono; canaleta com fundo cheio e miolo vazio (ver item 6 do cabeçalho)."""
-    import re
+CANALETAS = ('CANALETA', 'MEIA_CANALETA', 'CANALETA_CORTADA')
+ALVENARIA = ('BLOCO', 'MEIO_BLOCO', 'BLOCO_JUNCAO', 'BLOCO_CORTADO') + CANALETAS
+
+
+def malhas_das_partes(f, rel, prefixo):
+    """Malha (no mundo) de cada IfcBuildingElementPart com Tag: tipo, caixa e triângulos (v0, e1, e2)."""
     import numpy as np
     import ifcopenshell.geom, ifcopenshell.util.shape as US
     st = ifcopenshell.geom.settings()
@@ -136,7 +144,7 @@ def conferir_furos(f, rel):
         try:
             sh = ifcopenshell.geom.create_shape(st, p)
         except Exception as ex:
-            rel['erros'].append('furos: geom falhou em %s: %s' % (p.Tag, ex))
+            rel['erros'].append('%s: geom falhou em %s: %s' % (prefixo, p.Tag, ex))
             continue
         v = np.array(US.get_vertices(sh.geometry), float)
         fa = np.array(US.get_faces(sh.geometry), int)
@@ -144,7 +152,28 @@ def conferir_furos(f, rel):
             continue
         T = v[fa]
         malhas[p.Tag] = (p.ObjectType, v.min(0), v.max(0), (T[:, 0], T[:, 1] - T[:, 0], T[:, 2] - T[:, 0]))
-    n_graute = n_canaleta = 0
+    return malhas
+
+
+def conferir_furos(f, rel, malhas=None):
+    """Graute do furo no vazio do bloco dono; canaleta com fundo cheio e miolo vazio (ver item 6 do cabeçalho).
+    Desde 09/10 noite a canaleta tem o fundo FURADO onde sobe a barra vertical (o graute da coluna passa por ali, Tag
+    'canaleta.gN') e a parede quebrada no encontro com o contraforte (graute do T): o graute dono de canaleta é testado
+    na altura DELE (o fundo), não na meia altura do dono; o fundo cheio é conferido fora dos furos; e o graute da
+    canaleta não pode cair dentro de bloco nem de canaleta (pega a parede do T que não foi quebrada)."""
+    import re
+    import numpy as np
+    malhas = malhas if malhas is not None else malhas_das_partes(f, rel, 'furos')
+    # os furos do fundo: as caixas do graute de coluna dono de canaleta (o graute de um furo que pega duas canaletas
+    # mora numa só — a outra também tem o fundo aberto ali)
+    furos_no_fundo = []
+    for tag, (tipo, mn, mx, tri) in malhas.items():
+        m = re.match(r'^(.*)\.g\d+$', tag)
+        if tipo == 'GRAUTE_FURO' and m and malhas.get(m.group(1), ('',))[0] in CANALETAS:
+            furos_no_fundo.append(np.concatenate([mn, mx]))
+    furos_no_fundo = np.array(furos_no_fundo).reshape(-1, 6)
+    alvenaria = [(t_, mn, mx, tri) for t_, (tp, mn, mx, tri) in malhas.items() if tp in ALVENARIA]
+    n_graute = n_canaleta = n_t = 0
     for tag, (tipo, mn, mx, tri) in malhas.items():
         if tipo == 'GRAUTE_FURO':
             m = re.match(r'^(.*)\.g\d+$', tag)
@@ -154,21 +183,156 @@ def conferir_furos(f, rel):
                 continue
             c = (mn + mx) / 2
             a = (mx - mn) / 2
-            c[2] = (dono[1][2] + dono[2][2]) / 2          # meia altura do bloco (o graute desce a junta de baixo)
+            if dono[0] not in CANALETAS:
+                c[2] = (dono[1][2] + dono[2][2]) / 2      # meia altura do bloco (o graute desce a junta de baixo)
+            # na canaleta, c[2] fica no meio do graute: dentro do FUNDO dela — se o fundo não foi furado, acha
             for dx, dy in ((0, 0), (0.6, 0), (-0.6, 0), (0, 0.6), (0, -0.6)):
                 P = c + np.array([dx * a[0], dy * a[1], 0.0])
                 if dentro_da_malha(np, dono[3], P):
                     rel['erros'].append('furos: graute %s cai na parede do bloco %s em %s' % (tag, m.group(1), [round(float(x), 4) for x in P]))
                     break
             n_graute += 1
-        elif tipo in ('CANALETA', 'MEIA_CANALETA', 'CANALETA_CORTADA'):
+        elif tipo == 'GRAUTE_CANALETA':
+            # o meio da caixa do graute da canaleta cai no vazio: no miolo, ou na parede quebrada do T
             c = (mn + mx) / 2
-            if not dentro_da_malha(np, tri, np.array([c[0], c[1], mn[2] + 0.01])):
-                rel['erros'].append('furos: canaleta %s sem fundo' % tag)
+            for t2, mn2, mx2, tri2 in alvenaria:
+                if np.all(c > mn2) and np.all(c < mx2) and dentro_da_malha(np, tri2, c):
+                    rel['erros'].append('furos: graute da canaleta %s dentro de %s em %s' % (tag, t2, [round(float(x), 4) for x in c]))
+                    break
+            n_t += 1
+        elif tipo in CANALETAS:
+            c = (mn + mx) / 2
+            # fundo cheio fora dos furos: 9 pontos na linha do meio, ao longo da canaleta
+            ao = 0 if (mx[0] - mn[0]) >= (mx[1] - mn[1]) else 1
+            for k in range(9):
+                P = np.array([c[0], c[1], mn[2] + 0.002])
+                P[ao] = mn[ao] + (k + 0.5) / 9 * (mx[ao] - mn[ao])
+                F = furos_no_fundo
+                if len(F) and np.any(np.all(P > F[:, :3] - 0.001, axis=1) & np.all(P < F[:, 3:] + 0.001, axis=1)):
+                    continue
+                if not dentro_da_malha(np, tri, P):
+                    rel['erros'].append('furos: canaleta %s sem fundo em %s' % (tag, [round(float(x), 4) for x in P]))
+                    break
             if dentro_da_malha(np, tri, np.array([c[0], c[1], mx[2] - 0.01])):
                 rel['erros'].append('furos: canaleta %s com o miolo cheio (de cabeça para baixo?)' % tag)
             n_canaleta += 1
     rel['furos'] = {'graute': n_graute, 'canaletas': n_canaleta}
+    rel['grautes_de_canaleta'] = n_t
+
+
+def pontos_da_diretriz(curva, passo):
+    """Pontos ao longo da diretriz (retas e arcos de 3 pontos), a cada ~passo; com a tangente em cada um."""
+    import numpy as np
+    if curva.is_a('IfcPolyline'):
+        P = [np.array(p.Coordinates, float) for p in curva.Points]
+        segs = [('L', [i, i + 1]) for i in range(len(P) - 1)]
+    else:
+        P = [np.array(p, float) for p in curva.Points.CoordList]
+        if not curva.Segments:
+            segs = [('L', [i, i + 1]) for i in range(len(P) - 1)]
+        else:
+            segs = []
+            for s in curva.Segments:
+                idx = [i - 1 for i in s.wrappedValue]
+                if s.is_a('IfcLineIndex'):
+                    segs += [('L', [a, b]) for a, b in zip(idx, idx[1:])]
+                else:
+                    segs.append(('A', idx))
+    out = []
+    for tipo, idx in segs:
+        if tipo == 'L':
+            a, b = P[idx[0]], P[idx[1]]
+            d = b - a
+            L = float(np.linalg.norm(d))
+            if L < 1e-9:
+                continue
+            n = max(1, int(math.ceil(L / passo)))
+            for k in range(n + 1):
+                out.append((a + d * k / n, d / L))
+            continue
+        a, m, b = (P[i] for i in idx)
+        # círculo pelos 3 pontos (no plano deles)
+        u, v = m - a, b - a
+        w = np.cross(u, v)
+        ww = float(w @ w)
+        if ww < 1e-18:
+            out += [(a, (b - a) / max(np.linalg.norm(b - a), 1e-12)), (b, (b - a) / max(np.linalg.norm(b - a), 1e-12))]
+            continue
+        cen = a + (np.cross(w, u) * float(v @ v) + np.cross(v, w) * float(u @ u)) / (2 * ww)
+        e1 = a - cen
+        R = float(np.linalg.norm(e1))
+        e1 = e1 / R
+        nrm = w / math.sqrt(ww)
+        e2 = np.cross(nrm, e1)
+        ang = lambda p: math.atan2(float((p - cen) @ e2), float((p - cen) @ e1)) % (2 * math.pi)
+        tb = ang(b)
+        n = max(2, int(math.ceil(R * tb / passo)))
+        for k in range(n + 1):
+            t = tb * k / n
+            out.append((cen + R * (math.cos(t) * e1 + math.sin(t) * e2), -math.sin(t) * e1 + math.cos(t) * e2))
+    return out
+
+
+def conferir_barras(f, rel, malhas=None, passo=0.01, limite=30):
+    """Nenhuma barra atravessa bloco ou canaleta (09/10 noite): pontos a cada `passo` no eixo de cada barra e na
+    superfície dela (0,9·raio, 4 lados), testados contra a malha das peças de alvenaria. A barra mora no graute, no
+    furo ou no miolo — e na canaleta, pelo furo do fundo e pela parede quebrada do T."""
+    import numpy as np
+    import ifcopenshell.util.placement as UP
+    malhas = malhas if malhas is not None else malhas_das_partes(f, rel, 'barras')
+    alv = [(t_, mn, mx, tri) for t_, (tp, mn, mx, tri) in malhas.items() if tp in ALVENARIA]
+    pts, dono = [], []
+    nomes = []
+    for b in f.by_type('IfcReinforcingBar'):
+        if not b.Representation:
+            continue
+        M = UP.get_local_placement(b.ObjectPlacement)
+        item = b.Representation.Representations[0].Items[0]
+        if item.is_a('IfcMappedItem'):
+            M = M @ UP.get_mappeditem_transformation(item)
+            disco = [i for i in item.MappingSource.MappedRepresentation.Items if i.is_a('IfcSweptDiskSolid')]
+        else:
+            disco = [i for i in b.Representation.Representations[0].Items if i.is_a('IfcSweptDiskSolid')]
+        if not disco:
+            continue
+        R = disco[0].Radius * 0.9
+        nb = len(nomes)
+        nomes.append(b.Tag or b.GlobalId)
+        for p, d in pontos_da_diretriz(disco[0].Directrix, passo):
+            q = np.array([1.0, 0.0, 0.0]) if abs(d[0]) < 0.9 else np.array([0.0, 1.0, 0.0])
+            e1 = np.cross(d, q)
+            e1 /= np.linalg.norm(e1)
+            e2 = np.cross(d, e1)
+            for o in (0 * e1, R * e1, -R * e1, R * e2, -R * e2):
+                pts.append((M @ np.append(p + o, 1.0))[:3])
+                dono.append(nb)
+    if not pts:
+        rel['barras_conferidas'] = 0
+        return
+    P = np.array(pts)
+    dono = np.array(dono)
+    ordem = np.argsort(P[:, 0])
+    P, dono = P[ordem], dono[ordem]
+    xs = P[:, 0]
+    achados = {}
+    for tag, mn, mx, tri in alv:
+        i0, i1 = np.searchsorted(xs, mn[0] + 1e-6), np.searchsorted(xs, mx[0] - 1e-6)
+        if i1 <= i0:
+            continue
+        Q = P[i0:i1]
+        sel = np.all(Q > mn + 1e-6, axis=1) & np.all(Q < mx - 1e-6, axis=1)
+        for k in np.nonzero(sel)[0]:
+            nb = int(dono[i0 + k])
+            if (nb, tag) in achados:
+                continue
+            if dentro_da_malha(np, tri, Q[k]):
+                achados[(nb, tag)] = [round(float(x), 4) for x in Q[k]]
+    for (nb, tag), p in sorted(achados.items())[:limite]:
+        rel['erros'].append('barras: %s atravessa %s em %s' % (nomes[nb], tag, p))
+    if len(achados) > limite:
+        rel['erros'].append('barras: mais %d encontros barra × alvenaria' % (len(achados) - limite))
+    rel['barras_conferidas'] = len(nomes)
+    rel['barras_pontos'] = int(len(P))
 
 
 def chave_do_grupo(el):
@@ -358,10 +522,17 @@ def main(argv):
         if GEOM_TUDO:
             rel['por_tag'] = por_tag
 
+    malhas = None
+    if '--furos' in argv or '--barras' in argv:
+        malhas = malhas_das_partes(f, rel, 'partes')
     if '--furos' in argv:
         t0 = time.time()
-        conferir_furos(f, rel)
+        conferir_furos(f, rel, malhas)
         rel['furos_s'] = round(time.time() - t0, 3)
+    if '--barras' in argv:
+        t0 = time.time()
+        conferir_barras(f, rel, malhas)
+        rel['barras_s'] = round(time.time() - t0, 3)
 
     return saida(0)
 

@@ -56,7 +56,7 @@ export interface Geometria {
   eixo: 'X' | 'Y' | 'Z';         // direção da extrusão, em coordenadas LOCAIS (antes do giro)
   perfil: { contorno: Vec2[]; furos?: Vec2[][] };   // anti-horário; furos horários
   extensao: number;              // mm ao longo do eixo
-  volume_mm3: number;            // do perfil × extensão, furos descontados
+  volume_mm3: number;            // do perfil × extensão, furos descontados (com `pedacos`: o da união deles)
   catalogo?: string;             // nome comercial: '14x19x39', 'canaleta 19x19x39', 'bloco 54 (amarração em T)'
   /**
    * Só alvenaria (acrescentado pela modulação, 09/10): a classe para pintar por tipo, com as cores que o Jose usa no
@@ -64,7 +64,21 @@ export interface Geometria {
    * cortadas são uma classe só.
    */
   classe?: ClassePeca;
+  /**
+   * Peça que não é UM prisma só (acrescentado pela modulação, 09/10 noite): a canaleta com o fundo furado onde sobe a
+   * barra vertical e com a parede quebrada no encontro com o contraforte (o T de graute). Na obra é a mesma canaleta
+   * comprada, furada ou quebrada no lugar.
+   * O SÓLIDO é a união destes pedaços: mesmo `eixo`, contorno no mesmo plano (u, v) e na mesma origem do `perfil`,
+   * extrudado de `de` a `ate` ao longo do eixo (0 ≤ de < ate ≤ extensao). Pedaços vizinhos só se encostam.
+   * `perfil` e `extensao` continuam sendo o ENVELOPE (a peça inteira, sem furo nem quebra) e a caixa do envelope é a
+   * da união — posição, caixa, cor e silhueta saem dele como sempre. Quem desenha o sólido de verdade (IFC, 3D) usa
+   * os pedaços. `volume_mm3` é o da UNIÃO (concreto que fica).
+   */
+  pedacos?: PedacoDePrisma[];
 }
+
+/** Um pedaço de prisma (ver Geometria.pedacos): contorno anti-horário, extrudado de `de` a `ate`. */
+export interface PedacoDePrisma { contorno: Vec2[]; de: number; ate: number }
 
 export type ClassePeca = 'inteiro' | 'meio' | 'canaleta' | 'bloco34' | 'bloco54';
 

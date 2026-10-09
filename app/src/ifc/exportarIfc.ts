@@ -278,17 +278,27 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
     return w.add('IFCINDEXEDPOLYCURVE', [lst, [T('IFCLINEINDEX', idx)], E('F')]);
   };
 
-  const solidoDaGeometria = (geo: Geometria): Ref | null => {
-    const p = perfilOrientado(geo.perfil);
-    if (!p || !positivo(mm(geo.extensao))) return null;   // Depth é IfcPositiveLengthMeasure
+  const solidoDoPrisma = (geo: Geometria, perfilGeo: Geometria['perfil'], de: number, ate: number): Ref | null => {
+    const p = perfilOrientado(perfilGeo);
+    if (!p || !positivo(mm(ate - de))) return null;   // Depth é IfcPositiveLengthMeasure
     const m2 = (pts: [number, number][]) => pts.map(([u, v]) => [mm(u), mm(v)]);
     const externo = poligono(m2(p.contorno));
     const perfil = p.furos.length
       ? w.add('IFCARBITRARYPROFILEDEFWITHVOIDS', [E('AREA'), geo.catalogo ?? geo.chave, externo, p.furos.map((f) => poligono(m2(f)))])
       : w.add('IFCARBITRARYCLOSEDPROFILEDEF', [E('AREA'), geo.catalogo ?? geo.chave, externo]);
-    const pos = posicaoDoSolido(geo.eixo, geo.extensao);
+    const pos = posicaoDoSolido(geo.eixo, ate, de);
     const posicao = A3(P(ptm(pos.local)), pos.axis ? D(pos.axis) : null, pos.ref ? D(pos.ref) : null);
-    return w.add('IFCEXTRUDEDAREASOLID', [perfil, posicao, D([0, 0, 1]), mm(geo.extensao)]);
+    return w.add('IFCEXTRUDEDAREASOLID', [perfil, posicao, D([0, 0, 1]), mm(ate - de)]);
+  };
+  // Peça em pedaços (Geometria.pedacos — a canaleta com o fundo furado e a parede quebrada, acrescentado pela
+  // modulação em 09/10 noite): um IfcExtrudedAreaSolid por pedaço, todos no MESMO mapa — a peça continua uma só
+  // (um IfcMappedItem), e 'SweptSolid' com vários sólidos é o que a Reference View aceita (booleana não entra nela).
+  const solidosDaGeometria = (geo: Geometria): Ref[] => {
+    if (!geo.pedacos?.length) {
+      const s = solidoDoPrisma(geo, geo.perfil, 0, geo.extensao);
+      return s ? [s] : [];
+    }
+    return geo.pedacos.map((q) => solidoDoPrisma(geo, { contorno: q.contorno }, q.de, q.ate)).filter((s): s is Ref => s !== null);
   };
 
   // ── tipos: um por (Geometria, classe) com a IfcRepresentationMap ─────────────────────────────────────────────
@@ -307,10 +317,10 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
     const classe = CLASSE[peca.tipo]!;
     const k = geo.chave + '|' + classe;
     if (tiposGeo.has(k)) return tiposGeo.get(k)!;
-    const solido = solidoDaGeometria(geo);
-    if (!solido) { tiposGeo.set(k, null); return null; }
-    w.add('IFCSTYLEDITEM', [solido, [estilo(materialDe(peca.tipo))], $]);
-    const mapa = w.add('IFCREPRESENTATIONMAP', [A3(), w.add('IFCSHAPEREPRESENTATION', [body, 'Body', 'SweptSolid', [solido]])]);
+    const solidos = solidosDaGeometria(geo);
+    if (!solidos.length) { tiposGeo.set(k, null); return null; }
+    for (const solido of solidos) w.add('IFCSTYLEDITEM', [solido, [estilo(materialDe(peca.tipo))], $]);
+    const mapa = w.add('IFCREPRESENTATIONMAP', [A3(), w.add('IFCSHAPEREPRESENTATION', [body, 'Body', 'SweptSolid', solidos])]);
     const t: TipoGeo = { k, classe, mapa, ocorrencias: [], geo, tipoPeca: peca.tipo };
     tiposGeo.set(k, t);
     return t;

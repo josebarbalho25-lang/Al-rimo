@@ -407,12 +407,13 @@ describe('com a modulação de verdade', () => {
     const { resultadoDoGabarito } = await import('@/motor/resultadoDoGabarito');
     // família → largura, U da canaleta (inteira e cortada, mm²) e, por comprimento de bloco: parede, furos ao longo da
     // peça (de, até) e volume do Revit (mm³)
-    const CAT: Record<string, { t: number; U: number; Ucortada: number; blocos: Record<number, [number, [number, number][], number]> }> = {
-      '14x39': { t: 140, U: 5116e3 / 390, Ucortada: 5116e3 / 390,
+    const CAT: Record<string, { t: number; U: number; Ucortada: number; fundo: number; fundoCortada: number; blocos: Record<number, [number, [number, number][], number]> }> = {
+      '14x39': { t: 140, U: 5116e3 / 390, Ucortada: 5116e3 / 390, fundo: 39.1, fundoCortada: 39.1,
         blocos: { 390: [32, [[25, 182.5], [207.5, 365]], 5883e3], 190: [25, [[25, 165]], 2690e3], 340: [32, [[32, 108], [175, 315]], 5975e3], 540: [32, [[25, 175], [232, 308], [375, 515]], 9152e3] } },
-      '19x39': { t: 190, U: 5333e3 / 390, Ucortada: 2864e3 / 190,
+      '19x39': { t: 190, U: 5333e3 / 390, Ucortada: 2864e3 / 190, fundo: 29.1, fundoCortada: 39.1,
         blocos: { 390: [32, [[35, 177.5], [212.5, 355]], 7288.9e3], 190: [25, [[25, 165]], 3165.3e3] } },
     };
+    const PAREDE_U = 25;
     for (const [cenario, extras] of [['aula123', {}], ['sorteio17', { L_total: 12, junta_cada: 6 }]] as const) {
       let m: Modelo;
       try {
@@ -437,22 +438,51 @@ describe('com a modulação de verdade', () => {
         const perda = (ret.reduce((s, x) => s + x, 0) - (c.t * L - vol / 190)) / ret.length;
         for (const i of p.furosGrauteados) furos += (ret[i] - perda) * 200;
       }
-      const miolo = (tipo: string) => c.t * 190 - (tipo === 'CANALETA_CORTADA' ? c.Ucortada : c.U);
-      let can = 0;
-      const corridas = new Map<string, Modelo['pecas']>();
+      const CANALETAS = ['CANALETA', 'MEIA_CANALETA', 'CANALETA_CORTADA'];
+      const cortada = (tipo: string) => tipo === 'CANALETA_CORTADA';
+      const miolo = (tipo: string) => c.t * 190 - (cortada(tipo) ? c.Ucortada : c.U);
+      // graute da coluna no fundo FURADO da canaleta (09/10 noite): o retângulo do furo × (junta + fundo do catálogo)
+      const porId = new Map(m.pecas.map((p) => [p.id, p]));
       for (const p of m.pecas) {
-        if (!['CANALETA', 'MEIA_CANALETA', 'CANALETA_CORTADA'].includes(p.tipo)) continue;
-        if (p.grupo === 'contraforte') { can += miolo(p.tipo) * comp(p); continue; }   // haste: o comprimento dela
-        const k = `${p.trecho}|${p.fiada}`;
-        corridas.set(k, [...(corridas.get(k) ?? []), p]);
+        const host = p.tipo === 'GRAUTE_FURO' ? porId.get(p.id.replace(/\.g\d+$/, '')) : undefined;
+        if (!host || !CANALETAS.includes(host.tipo)) continue;
+        const k = caixaDaPeca(p, m.geometrias[p.geometria]);
+        const h = 10 + (cortada(host.tipo) ? c.fundoCortada : c.fundo);
+        expect(k.z1 - k.z0, `${cenario} ${p.id}`).toBeCloseTo(h, 6);
+        furos += (k.x1 - k.x0) * (k.y1 - k.y0) * h;
+      }
+      let can = 0;
+      // linha do muro e haste de cada contraforte: o miolo de cada canaleta e a junta com a seguinte, que vai com a de
+      // antes (no muro, a da esquerda; na haste, a mais perto do muro — desde 09/10 noite a haste também é corrida)
+      const corridas = new Map<string, { p: Modelo['pecas'][number]; a: number; b: number }[]>();
+      const enterrado = m.pecas.some((p) => p.grupo === 'contraforte' && caixaDaPeca(p, m.geometrias[p.geometria]).y1 > c.t + 0.5);
+      for (const p of m.pecas) {
+        if (!CANALETAS.includes(p.tipo)) continue;
+        const k = caixaDaPeca(p, m.geometrias[p.geometria]);
+        const [a, b] = p.grupo === 'muro' ? [k.x0, k.x1] : enterrado ? [k.y0, k.y1] : [-k.y1, -k.y0];
+        const chave = `${p.trecho}|${p.fiada}|${p.grupo === 'muro' ? 'M' : p.contraforte}`;
+        corridas.set(chave, [...(corridas.get(chave) ?? []), { p, a, b }]);
       }
       for (const l of corridas.values()) {
-        l.sort((a, b) => a.origem[0] - b.origem[0]);
-        l.forEach((p, i) => {
-          can += miolo(p.tipo) * comp(p);
+        l.sort((u, v) => u.a - v.a);
+        l.forEach(({ p, a, b }, i) => {
+          can += miolo(p.tipo) * (b - a);
           const prox = l[i + 1];
-          if (prox && Math.abs(prox.origem[0] - p.origem[0] - comp(p) - 10) < 1e-6) can += miolo(p.tipo) * 10;   // a junta vai com a de antes
+          if (prox && Math.abs(prox.a - b - 10) < 1e-6) can += miolo(p.tipo) * 10;   // a junta vai com a de antes
         });
+      }
+      // o T (09/10 noite): parede quebrada do muro + a junta muro × haste, na largura do canal, do fundo ao topo, mais o
+      // canto arredondado do fundo que sai com a parede — a metade do que o U do Revit tem a mais que o U reto
+      const C_CANTOS = 4 - 12 * Math.sin(Math.PI / 12);
+      for (const p of m.pecas) {
+        if (p.tipo !== 'GRAUTE_CANALETA' || !/\.gT\d+$/.test(p.id)) continue;
+        const k = caixaDaPeca(p, m.geometrias[p.geometria]);
+        const f = k.z0 - (p.fiada! * 200 + 10);
+        const ehCortada = Math.abs(f - c.fundoCortada) < 1e-6 && c.fundoCortada !== c.fundo;
+        const reta = c.t * 190 - (c.t - 2 * PAREDE_U) * (190 - f);
+        const canto = ((ehCortada ? c.Ucortada : c.U) - reta) / 2;
+        const r = Math.sqrt((4 * canto) / C_CANTOS);
+        can += (k.x1 - k.x0) * ((k.y1 - k.y0 - r) * (190 - f) + canto);
       }
       const q = quantificar(m);
       expect(q.graute.furos, cenario).toBeCloseTo(furos / 1e9, 4);

@@ -10,7 +10,7 @@
 > ### Leia antes de usar
 > O Al-rimo é gratuito e é uma **ferramenta de auxílio ao cálculo**. Ele não projeta muro por ninguém: quem projeta é o engenheiro, que escolhe os parâmetros do solo, confere cada número e assina a ART.
 >
-> Ao marcar **"Li e aceito"** e usar o aplicativo, você concorda com todo este Termo. Se não concordar com alguma parte, não use o aplicativo.
+> Ao clicar em **"Li e aceito"** e usar o aplicativo, você concorda com todo este Termo. Se não concordar com alguma parte, não use o aplicativo.
 
 ---
 
@@ -263,7 +263,7 @@
 
 ### DECLARAÇÃO DE ACEITE
 
-Ao marcar **"Li e aceito"** e usar o Al-rimo, o USUÁRIO declara que:
+Ao clicar em **"Li e aceito"** e usar o Al-rimo, o USUÁRIO declara que:
 
 1. leu e entendeu este Termo e concorda com ele por inteiro;
 2. é engenheiro legalmente habilitado ou, se não for, usa o aplicativo só para estudo e não levará nenhum resultado à obra sem responsável técnico habilitado;

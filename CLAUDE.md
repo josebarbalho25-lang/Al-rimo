@@ -240,6 +240,10 @@ e dizer ao Jose o que mudou e por quê.
   canaleta cortada na lista de compras (converter cortes em inteiras?); barras iguais em elementos diferentes com N
   diferentes (painel × contraforte) — é o que ele quer na lista de ferros?; GUID do IFC agora sai do id do projeto (UUID
   no .alrimo) — "Salvar como" e cópia do arquivo MANTÊM o id (como o Revit): manter ou o "Salvar como" criar muro novo?
+  Achados da revisão FEITOS (09/10 noite): fundo da canaleta furado onde passa barra (Geometria.pedacos), T de graute
+  no encontro das canaletas, graute da haste contínuo nas juntas, aviso BARBACA_SEM_CELULA; validador do IFC com
+  --furos/--barras (tem dente). Graute total sobe ~4–5%. Para o Jose: barbacã em muro todo em canaleta — furar a
+  canaleta?; IFC: cada canaleta furada diferente vira um tipo com o mesmo nome — abrir no Revit para conferir.
   Faltam: dreno de fundo; deslizamento e posição do dente
   (aguardando resumo da aula do Gilberto); nó de cachorro (Revit dele); detalhes na prancha final; T de graute no 3D
   (parede quebrada da canaleta); "→ 5,99" aparece mesmo com comprimento modular (comparar com o modular?); revisores de

@@ -22,6 +22,11 @@
 #   - a barra do contraforte começa a 3 cm da ponta dele (COB_PONTA), tem o Ø da cinta e dobra com o pino da NBR
 #     (5φ: raio do eixo 3φ); a perna, depois da dobra, encosta na barra da cinta do lado do contraforte.
 #
+# O app desenha este mesmo T no 3D e no IFC (app/src/modulacao/canaletas.ts, 09/10 noite): a canaleta do muro
+# perde a parede no canal, até o fundo, e uma peça de graute enche a parede quebrada e a junta muro × haste, ligando
+# o graute das duas calhas. Lá a parede sai junto com o canto arredondado do fundo daquele lado (a canaleta do Revit
+# tem os dois cantos do fundo arredondados por dentro; aqui o desenho é de canto vivo — a mesma quebra).
+#
 # DEDUÇÃO (não veio dos gabaritos nem da fala do Jose):
 #   - o trecho removido tem a largura do canal do contraforte (t − 2·parede) e desce até o fundo da canaleta do
 #     muro — é o mínimo que fecha o T sem degrau;

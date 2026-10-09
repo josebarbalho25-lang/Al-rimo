@@ -4,7 +4,7 @@
 */
 import type { Vec2 } from '@/modelo/tipos';
 import { H_BLOCO, JUNTA } from './catalogo';
-import type { MapaDeCavidades } from './cavidades';
+import type { Cavidade, MapaDeCavidades } from './cavidades';
 import type { Parametros } from './leitura';
 import { br, type TrechoModulado } from './modular';
 import { arred, circulo, retangulo } from './perfis';
@@ -107,16 +107,33 @@ export function drenagem(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidades): v
     });
   }
 
-  // barbacãs na 1ª fiada, numa célula sem graute (com graute total o tubo vai antes do graute), fora do contraforte
+  // Barbacãs na 1ª fiada, no furo de um bloco do muro, fora do contraforte: numa célula sem graute; com graute
+  // total, numa grauteada (o tubo vai antes do graute). Nunca numa célula com barra (o tubo atravessaria a barra) nem
+  // na canaleta (o tubo furaria as paredes do U e passaria na altura da barra da canaleta). Sem célula assim — o muro
+  // todo em canaleta, por exemplo —, o barbacã não é desenhado e o aviso diz (antes sumia calado, 09/10 noite).
   if (p.barbaca && p.barbaca_phi > 0 && p.barbaca_s > 0 && mod.n_fiadas > 0) {
     const d = p.barbaca_phi;
     const zc = JUNTA + H_BLOCO / 2;
     const foraDosNos = (x: number): boolean => !tr.nos.some((no) => x > no.xs - JUNTA - d / 2 && x < no.xe + d / 2);
-    const daParede = mapa.fiada(0).filter((c) => c.tipo === 'furo' && Math.abs(c.cy - t / 2) < 1e-6 && ctx.pecas[c.peca].grupo === 'muro' && foraDosNos(c.cx));
+    const comBarra = new Set<Cavidade>();
+    for (const b of ctx.barras) {
+      if (b.trecho !== tr.indice) continue;
+      for (let k = 0; k + 1 < b.eixo.length; k++) {
+        const [a, c] = [b.eixo[k], b.eixo[k + 1]];
+        if (Math.abs(a[0] - c[0]) > 1e-6 || Math.abs(a[1] - c[1]) > 1e-6) continue;
+        if (Math.min(a[2], c[2]) >= zc + d / 2 || Math.max(a[2], c[2]) <= zc - d / 2) continue;
+        const f = mapa.achar(0, a[0], a[1]);
+        if (f) comBarra.add(f.cav);
+      }
+    }
+    const daParede = mapa.fiada(0).filter((c) => c.tipo === 'furo' && Math.abs(c.cy - t / 2) < 1e-6 && ctx.pecas[c.peca].grupo === 'muro' && foraDosNos(c.cx) && !comBarra.has(c));
     let cand = daParede.filter((c) => !c.grauteada).map((c) => c.cx);
-    if (!cand.length) cand = mapa.fiada(0).filter((c) => Math.abs(c.cy - t / 2) < 1e-6 && foraDosNos(c.cx)).map((c) => c.cx);
+    if (!cand.length) cand = daParede.map((c) => c.cx);
     const Lt = tr.x1 - tr.x0;
     const n = Math.max(1, Math.round(Lt / p.barbaca_s));
+    const conta = ctx.barbacas ?? (ctx.barbacas = { pedidos: 0, desenhados: 0, emCanaleta: false });
+    conta.pedidos += n;
+    if (mapa.fiada(0).some((c) => c.tipo === 'canaleta' && Math.abs(c.cy - t / 2) < 1e-6)) conta.emCanaleta = true;
     const usados = new Set<number>();
     const geo = geoPrismaReto(ctx, `barbacã Ø${fmt(d)} L${fmt(t)}`, 'X', circulo(d), t, `tubo Ø${fmt(d)} mm`);
     for (let j = 0; j < n; j++) {
@@ -128,6 +145,7 @@ export function drenagem(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidades): v
       });
       if (melhor < 0) break;
       usados.add(melhor);
+      conta.desenhados++;
       const x = cand[melhor];
       ctx.pecas.push({
         id: `${T}.BBC.${pad(j + 1, 2)}`, tipo: 'BARBACA', grupo: 'drenagem', geometria: geo,
@@ -194,6 +212,15 @@ export function conferenciasGerais(ctx: Ctx, Ype: number, YbA: number): void {
   }
   if (p.traspasse === null && p.lb === null) {
     ctx.avisos.push({ codigo: 'TRASPASSE_ADOTADO', texto: 'Traspasse: ℓb da conta indisponível — adotado 50φ (dedução)' });
+  }
+  // barbacã pedido e não desenhado (drenagem.ts conta por trecho; o aviso é um só, do muro todo)
+  const bb = ctx.barbacas;
+  if (bb && bb.desenhados < bb.pedidos) {
+    const onde = bb.emCanaleta ? '1ª fiada em canaleta' : '1ª fiada sem célula livre';
+    ctx.avisos.push({
+      codigo: 'BARBACA_SEM_CELULA',
+      texto: bb.desenhados === 0 ? `Barbacã não desenhado: ${onde}` : `Barbacã: ${bb.desenhados} de ${bb.pedidos} desenhados (${onde})`,
+    });
   }
   if (p.contrafortes) {
     if (p.traspasse === null) {

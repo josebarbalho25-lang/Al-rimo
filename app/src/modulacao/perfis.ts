@@ -63,8 +63,20 @@ export function raioPelaArea(somaRet: number, area: number, n: number): number {
  * do fundo arredondados por dentro (raio r; 0 = canto vivo). O miolo é exatamente o vazio do U.
  */
 export function secaoDaCanaleta(t: number, h: number, parede: number, fundo: number, r: number): { U: Vec2[]; miolo: Vec2[] } {
+  // canto direito do fundo (centro do arco em t − p − r, f + r) e canto esquerdo (p + r, f + r)
+  const { dir: dirDesce, esq: esqDesce } = cantosDoFundo(t, parede, fundo, r);
+  const limpa = (p: Vec2[]): Vec2[] => semRepetidos(p.map(([x, y]) => [arred(x), arred(y)] as Vec2));
+  const U = limpa([[0, 0], [t, 0], [t, h], [t - parede, h], ...dirDesce, ...esqDesce, [parede, h], [0, h]]);
+  const miolo = limpa([...[...esqDesce].reverse(), ...[...dirDesce].reverse(), [t - parede, h], [parede, h]]);
+  return { U, miolo };
+}
+
+/**
+ * Os dois cantos arredondados do fundo, por dentro, como secaoDaCanaleta os desenha (mesmos pontos, antes do arred).
+ * Exportado para o graute do T (canaletas.ts) encostar no graute do miolo pelo MESMO arco.
+ */
+export function cantosDoFundo(t: number, parede: number, fundo: number, r: number): { dir: Vec2[]; esq: Vec2[] } {
   const arco = (cx: number, cy: number, a0: number, a1: number): Vec2[] => {
-    if (r <= 1e-9) return [[cx, cy]];
     const pts: Vec2[] = [];
     for (let k = 0; k <= SEG_QUARTO; k++) {
       const a = a0 + ((a1 - a0) * k) / SEG_QUARTO;
@@ -72,13 +84,37 @@ export function secaoDaCanaleta(t: number, h: number, parede: number, fundo: num
     }
     return pts;
   };
-  // canto direito do fundo (centro do arco em t − p − r, f + r) e canto esquerdo (p + r, f + r)
-  const dirDesce = r > 1e-9 ? arco(t - parede - r, fundo + r, 0, -Math.PI / 2) : [[t - parede, fundo] as Vec2];
-  const esqDesce = r > 1e-9 ? arco(parede + r, fundo + r, -Math.PI / 2, -Math.PI) : [[parede, fundo] as Vec2];
+  return {
+    // do pé da parede direita (t − p, f + r) até o fundo (t − p − r, f)
+    dir: r > 1e-9 ? arco(t - parede - r, fundo + r, 0, -Math.PI / 2) : [[t - parede, fundo]],
+    // do fundo (p + r, f) até o pé da parede esquerda (p, f + r)
+    esq: r > 1e-9 ? arco(parede + r, fundo + r, -Math.PI / 2, -Math.PI) : [[parede, fundo]],
+  };
+}
+
+/**
+ * Seção de um TRECHO da canaleta (plano y, z), com o fundo furado em [furo[0], furo[1]] e/ou sem uma das paredes
+ * (`sem[0]`: a de u = 0; `sem[1]`: a de u = t). A parede quebrada sai até o fundo e leva junto o canto arredondado
+ * daquele lado (o T de graute ocupa o lugar dos dois). O furo é só do FUNDO (as paredes ficam): tem de estar em
+ * [parede, t − parede]. Devolve um polígono por pedaço de fundo (o furo parte o fundo em dois), anti-horários.
+ * Sem furo e com as duas paredes, devolve o U de secaoDaCanaleta, ponto a ponto.
+ * O canto arredondado pode ficar em balanço sobre o furo (furo mais largo que o miolo menos os cantos) — é o que
+ * sobra da canaleta quebrada no lugar; o polígono continua simples.
+ */
+export function perfisDaCanaleta(t: number, h: number, parede: number, fundo: number, r: number, furo: [number, number] | null, sem: [boolean, boolean]): Vec2[][] {
+  const { dir, esq } = cantosDoFundo(t, parede, fundo, r);
   const limpa = (p: Vec2[]): Vec2[] => semRepetidos(p.map(([x, y]) => [arred(x), arred(y)] as Vec2));
-  const U = limpa([[0, 0], [t, 0], [t, h], [t - parede, h], ...dirDesce, ...esqDesce, [parede, h], [0, h]]);
-  const miolo = limpa([...[...esqDesce].reverse(), ...[...dirDesce].reverse(), [t - parede, h], [parede, h]]);
-  return { U, miolo };
+  const fundos: [number, number][] = furo ? [[0, furo[0]], [furo[1], t]] : [[0, t]];
+  return fundos.map(([a, b]) => {
+    const comEsq = a === 0 && !sem[0];
+    const comDir = b === t && !sem[1];
+    const pts: Vec2[] = [[a, 0], [b, 0]];
+    if (comDir) pts.push([t, h], [t - parede, h], ...dir);
+    else pts.push([b, fundo]);
+    if (comEsq) pts.push(...esq, [parede, h], [0, h]);
+    else pts.push([a, fundo]);
+    return limpa(pts);
+  });
 }
 
 /** Retângulo arredondado [x0, x0+l] × [y0, y0+w], anti-horário (ou horário, para furo). */
@@ -201,6 +237,62 @@ export function paraGlobal(p: Peca, g: Geometria, local: Vec3): Vec3 {
   const r = girar(p.giro, local);
   const d = deslocamento(p, g);
   return [p.origem[0] + r[0] - d[0], p.origem[1] + r[1] - d[1], p.origem[2] + r[2] - d[2]];
+}
+
+/** Ponto do mundo (mm) → coordenadas locais da geometria (o inverso de `paraGlobal`). */
+export function paraLocal(p: Peca, g: Geometria, P: Vec3): Vec3 {
+  return paraLocalDe(p, g)(P);
+}
+
+/** O mesmo `paraLocal`, com a conta da peça feita uma vez (para muitos pontos da mesma peça). */
+export function paraLocalDe(p: Peca, g: Geometria): (P: Vec3) => Vec3 {
+  const d = deslocamento(p, g);
+  const volta = ((360 - p.giro) % 360) as Peca['giro'];
+  const o: Vec3 = [p.origem[0] - d[0], p.origem[1] - d[1], p.origem[2] - d[2]];
+  return (P) => girar(volta, [P[0] - o[0], P[1] - o[1], P[2] - o[2]]);
+}
+
+/** Coordenada local (x, y, z) → (u, v) do perfil e w na extrusão (o inverso de `localDoPerfil`). */
+function noPerfil(eixo: Geometria['eixo'], [x, y, z]: Vec3): Vec3 {
+  if (eixo === 'Z') return [x, y, z];
+  if (eixo === 'X') return [y, z, x];
+  return [x, z, y];
+}
+
+/** Distância com sinal do ponto ao polígono: positiva dentro, negativa fora. */
+function distanciaAoPoligono(u: number, v: number, pol: Vec2[]): number {
+  let dentro = false;
+  let d2 = Infinity;
+  for (let i = 0, j = pol.length - 1; i < pol.length; j = i++) {
+    const [xi, yi] = pol[i];
+    const [xj, yj] = pol[j];
+    if (yi > v !== yj > v && u < ((xj - xi) * (v - yi)) / (yj - yi) + xi) dentro = !dentro;
+    const ex = xi - xj;
+    const ey = yi - yj;
+    const L2 = ex * ex + ey * ey;
+    const k = L2 > 0 ? Math.max(0, Math.min(1, ((u - xj) * ex + (v - yj) * ey) / L2)) : 0;
+    d2 = Math.min(d2, (u - xj - k * ex) ** 2 + (v - yj - k * ey) ** 2);
+  }
+  const d = Math.sqrt(d2);
+  return dentro ? d : -d;
+}
+
+/**
+ * Quanto o ponto (mundo, mm) está DENTRO do sólido da peça: a distância até a face mais próxima (> 0 dentro,
+ * ≤ 0 fora). Lê os `pedacos` quando a geometria tem (canaleta furada/quebrada), senão o perfil com os furos.
+ * Serve para conferir encontro de peças por amostra (barra × bloco, graute × canaleta) sem montar malha.
+ * Na face comum de dois pedaços vizinhos dá ~0 (cada pedaço mede só até a própria ponta): amostra, não prova.
+ */
+export function profundidadeNaPeca(p: Peca, g: Geometria, P: Vec3): number {
+  const [u, v, w] = noPerfil(g.eixo, paraLocal(p, g, P));
+  const pedacos = g.pedacos?.length ? g.pedacos.map((q) => ({ ...q, furos: [] as Vec2[][] })) : [{ contorno: g.perfil.contorno, furos: g.perfil.furos ?? [], de: 0, ate: g.extensao }];
+  let melhor = -Infinity;
+  for (const q of pedacos) {
+    let d = Math.min(w - q.de, q.ate - w, distanciaAoPoligono(u, v, q.contorno));
+    for (const f of q.furos) d = Math.min(d, -distanciaAoPoligono(u, v, f));
+    melhor = Math.max(melhor, d);
+  }
+  return melhor;
 }
 
 /** Caixa envolvente da peça no mundo (mm). `min` = `origem`. */
