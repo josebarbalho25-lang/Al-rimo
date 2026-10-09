@@ -8,7 +8,15 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { abrirDoDisco, baixar, foiCancelado, salvarNoDisco, type Alca } from './arquivo';
-import { desserializarProjeto, EXTENSAO, nomeDeArquivo, recadoDeAbertura, serializarProjeto, tituloDoArquivo } from './projeto';
+import {
+  desserializarProjeto,
+  EXTENSAO,
+  nomeDeArquivo,
+  projetoNovo,
+  recadoDeAbertura,
+  serializarProjeto,
+  tituloDoArquivo,
+} from './projeto';
 import { ruim } from './recadoRuim';
 import { CAMPOS, projetoAtual, useApp, VERSAO_DA_CONTA } from './store';
 
@@ -50,7 +58,7 @@ function naoDeuPara(acao: string, e: unknown): string {
 export function novoProjeto(): void {
   if (!perderAlteracoes('O muro tem alterações não salvas. Começar outro mesmo assim?')) return;
   alcaAtual = null;
-  useApp.getState().carregar({ titulo: 'Sem título', alteracoes: {}, extras: {} }, null);
+  useApp.getState().carregar(projetoNovo(), null);
   avisar('Projeto novo');
 }
 
@@ -66,7 +74,11 @@ export async function abrirProjeto(): Promise<void> {
     }
     alcaAtual = lido.alca;
     const projeto = { ...a.projeto, titulo: tituloDoArquivo(lido.nome) };
-    useApp.getState().carregar(projeto, lido.nome, { contaDoArquivo: a.outraVersao ? a.versaoDaConta : null });
+    useApp.getState().carregar(projeto, lido.nome, {
+      contaDoArquivo: a.outraVersao ? a.versaoDaConta : null,
+      // arquivo sem identidade ganhou uma agora: ela só vale de verdade depois de ir para o disco (ver projeto.ts)
+      sujo: a.ganhouId,
+    });
     avisar(recadoDeAbertura(lido.nome, a));
   } catch (e) {
     if (!foiCancelado(e)) avisar(naoDeuPara('abrir', e));
@@ -86,7 +98,7 @@ export async function salvarProjeto(comoNovo = false): Promise<void> {
     // novo, a gravação foi do muro ANTERIOR: guardar a alça dela agora faria
     // o próximo Ctrl+S gravar o muro da tela POR CIMA do arquivo anterior.
     // Então só se dá a notícia, que é verdadeira; o muro da tela fica como está.
-    if (useApp.getState().idDoProjeto === s.idDoProjeto) {
+    if (useApp.getState().carregamento === s.carregamento) {
       alcaAtual = r.alca;
       useApp.getState().marcarSalvo(r.nome, tituloDoArquivo(r.nome), gravado);
     }
@@ -106,6 +118,9 @@ export function exportarIfc(): void {
   }
   try {
     const texto = exportar(s.modelo, {
+      // Os GUIDs saem da identidade do muro, não do nome: dois muros "Sem título" não podem sair com as mesmas
+      // peças no modelo federado, e renomear não pode trocar as peças do vínculo no Revit (ver estado/projeto.ts).
+      chave: s.idDoProjeto,
       projeto: s.titulo,
       data: new Date().toISOString().slice(0, 10),
       resultado: s.resultado ?? undefined,

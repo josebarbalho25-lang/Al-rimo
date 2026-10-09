@@ -238,7 +238,8 @@ e dizer ao Jose o que mudou e por quê.
   da canaleta (furar o fundo onde há barra) e a barra em L atravessa a parede do U (T de graute não modelado); graute da
   canaleta da haste não cobre as juntas de 10 mm; barbacã some sem aviso em muro todo em canaleta. Para o Jose:
   canaleta cortada na lista de compras (converter cortes em inteiras?); barras iguais em elementos diferentes com N
-  diferentes (painel × contraforte) — é o que ele quer na lista de ferros?
+  diferentes (painel × contraforte) — é o que ele quer na lista de ferros?; GUID do IFC agora sai do id do projeto (UUID
+  no .alrimo) — "Salvar como" e cópia do arquivo MANTÊM o id (como o Revit): manter ou o "Salvar como" criar muro novo?
   Faltam: dreno de fundo; deslizamento e posição do dente
   (aguardando resumo da aula do Gilberto); nó de cachorro (Revit dele); detalhes na prancha final; T de graute no 3D
   (parede quebrada da canaleta); "→ 5,99" aparece mesmo com comprimento modular (comparar com o modular?); revisores de

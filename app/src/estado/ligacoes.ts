@@ -29,10 +29,13 @@ export interface Veredito {
 }
 export type JuizDoVeredito = (r: Resultado) => Veredito | null;
 
-/** '@/ifc' → exportarIfc. Devolve o texto do .ifc. */
+/**
+ * '@/ifc' → exportarIfc. Devolve o texto do .ifc. A `chave` é obrigatória AQUI (no IFC ela é opcional): sem ela os
+ * GUIDs saem do nome do projeto, e quem exporta pelo app tem sempre a identidade do muro para dar.
+ */
 export type ExportadorIfc = (
   modelo: Modelo,
-  info: { projeto: string; autor?: string; data?: string; resultado?: Resultado },
+  info: { projeto: string; chave: string; autor?: string; data?: string; resultado?: Resultado },
 ) => string;
 
 /** '@/memoria' → imprimirMemorial (que é assíncrono), embrulhado pela integração. */

@@ -29,6 +29,8 @@ const FORMATO = 'alrimo';
 const VERSAO_DO_ARQUIVO = 2;
 
 export interface Projeto {
+  /** A identidade do muro (ver novoIdDeProjeto). Não muda com o nome; nasce no Novo. */
+  id: string;
   titulo: string;
   alteracoes: Alteracoes;
   extras: Record<string, Valor>;
@@ -39,9 +41,48 @@ interface Arquivo {
   versaoDoArquivo: number;
   /** Hash do gerador da planilha que fez a conta quando o arquivo foi salvo. */
   versaoDaConta: string;
+  /*
+    Campo novo sem subir a versão do arquivo: a falta dele não muda a leitura de mais nada — o arquivo antigo abre
+    igual e só ganha um id (desserializarProjeto). Subir a versão faria um app anterior recusar o arquivo inteiro
+    por causa de um campo que ele simplesmente ignoraria.
+  */
+  id: string;
   titulo: string;
   alteracoes: Alteracoes;
   extras: Record<string, Valor>;
+}
+
+/*
+  A IDENTIDADE DO MURO. O IFC dá a cada peça um GUID, e o Revit/Navisworks reconhece a peça por ele: é o GUID que
+  faz o vínculo recarregado achar "a mesma parede" e é ele que não pode se repetir entre dois muros no mesmo modelo
+  federado. Os GUIDs saem desta identidade (ifc/exportarIfc.ts, `chave`), então ela precisa ser:
+    · ÚNICA por muro — tirada do nome, todo muro novo se chamava "Sem título" e dois muros diferentes saíam com
+      os MESMOS GUIDs, um por cima do outro no modelo federado;
+    · FIXA na vida do muro — tirada do nome, renomear trocava todos os GUIDs e o vínculo perdia as peças.
+  Por isso é sorteada quando o muro nasce (Novo, ou o app aberto pela primeira vez) e viaja no arquivo.
+  Copiar o arquivo (Explorer, "Salvar como") leva a mesma identidade — é a mesma convenção do Revit, onde a
+  cópia de um .rvt mantém os ids das peças.
+*/
+const FORMATO_DO_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** UUID v4. */
+export function novoIdDeProjeto(): string {
+  const c = globalThis.crypto;
+  // randomUUID só existe em "contexto seguro" (https ou localhost); o app aberto pelo IP da rede ou de um
+  // arquivo local não o tem — daí a reserva com getRandomValues, que existe em qualquer página.
+  if (typeof c?.randomUUID === 'function') return c.randomUUID();
+  const b = new Uint8Array(16);
+  if (typeof c?.getRandomValues === 'function') c.getRandomValues(b);
+  else for (let i = 0; i < 16; i++) b[i] = Math.floor(Math.random() * 256); // último recurso: ambiente sem crypto
+  b[6] = (b[6] & 0x0f) | 0x40; // versão 4
+  b[8] = (b[8] & 0x3f) | 0x80; // variante RFC 4122
+  const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
+/** O muro em branco do Novo e da primeira abertura — já com a identidade dele. */
+export function projetoNovo(): Projeto {
+  return { id: novoIdDeProjeto(), titulo: 'Sem título', alteracoes: {}, extras: {} };
 }
 
 export function serializarProjeto(p: Projeto, versaoDaConta: string): string {
@@ -49,6 +90,7 @@ export function serializarProjeto(p: Projeto, versaoDaConta: string): string {
     formato: FORMATO,
     versaoDoArquivo: VERSAO_DO_ARQUIVO,
     versaoDaConta,
+    id: p.id,
     titulo: p.titulo,
     alteracoes: p.alteracoes,
     extras: p.extras,
@@ -67,6 +109,12 @@ export type Aberto =
       /** A conta que salvou o arquivo não é a de hoje. */
       outraVersao: boolean;
       versaoDaConta: string;
+      /**
+       * O arquivo não trazia identidade (salvo antes dela existir, ou estragado à mão) e ganhou uma agora. Quem
+       * abre acende o "não salvo": enquanto ela não for para o disco, abrir o mesmo arquivo de novo sortearia
+       * outra, e os GUIDs do IFC mudariam de uma exportação para a outra.
+       */
+      ganhouId: boolean;
     }
   | { ok: false; motivo: string };
 
@@ -128,9 +176,13 @@ export function desserializarProjeto(
   if (versaoDoArquivo < 2 && typeof alteracoes.H_muro === 'number' && !('H_solo' in alteracoes) && campos.has('H_solo')) {
     alteracoes.H_solo = alteracoes.H_muro;
   }
+  // Só UUID: um id qualquer escrito à mão ("1", "muro") se repetiria em outro arquivo e voltaria a colisão de
+  // GUIDs. O que vem no formato fica como veio, letra por letra — é o texto exato que vira GUID.
+  const ganhouId = !(typeof a.id === 'string' && FORMATO_DO_ID.test(a.id));
   return {
     ok: true,
     projeto: {
+      id: ganhouId ? novoIdDeProjeto() : (a.id as string),
       titulo: typeof a.titulo === 'string' && a.titulo.trim() ? a.titulo : 'Sem título',
       alteracoes,
       extras: filtrar(a.extras, 'modelo'),
@@ -139,6 +191,7 @@ export function desserializarProjeto(
     recusados,
     outraVersao: versaoDaConta !== versaoDeHoje,
     versaoDaConta,
+    ganhouId,
   };
 }
 

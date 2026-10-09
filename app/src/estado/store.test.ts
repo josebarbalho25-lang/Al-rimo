@@ -29,6 +29,8 @@ afterEach(() => {
   delete (globalThis as Record<string, unknown>).localStorage;
 });
 
+const ID_A = '0b9f3c1e-6a2d-4c8e-9f10-2a3b4c5d6e7f';
+
 describe('salvar', () => {
   it('o que se digita enquanto o disco grava continua marcado como não salvo', async () => {
     const app = await abrirApp(new Map());
@@ -55,7 +57,7 @@ describe('o último projeto no navegador', () => {
     const m = new Map<string, string>();
     let app = await abrirApp(m);
     app.lembrarUltimoProjeto();
-    app.useApp.getState().carregar({ titulo: 'Muro A', alteracoes: { H_muro: 2.2 }, extras: {} }, 'Muro A.alrimo', {
+    app.useApp.getState().carregar({ id: ID_A, titulo: 'Muro A', alteracoes: { H_muro: 2.2 }, extras: {} }, 'Muro A.alrimo', {
       contaDoArquivo: 'conta-antiga-0001',
     });
     app = await abrirApp(m);
@@ -63,6 +65,7 @@ describe('o último projeto no navegador', () => {
     expect(s.arquivo).toBe('Muro A.alrimo');
     expect(s.alteracoes).toEqual({ H_muro: 2.2 });
     expect(s.contaDoArquivo).toBe('conta-antiga-0001');
+    expect(s.idDoProjeto).toBe(ID_A);
   });
 
   it('volta com a conta refeita, a aba e o sujo', async () => {
@@ -181,7 +184,7 @@ describe('listas que dependem de outra entrada (montagens fechadas)', () => {
 
   it('arquivo salvo com valor fora da lista abre ajustado e marcado como alterado', async () => {
     const app = await abrirApp(new Map());
-    app.useApp.getState().carregar({ titulo: 'Antigo', alteracoes: { Tipo_muro: 'Contrafortes', l_cf: 1.5 }, extras: {} }, 'Antigo.alrimo');
+    app.useApp.getState().carregar({ id: ID_A, titulo: 'Antigo', alteracoes: { Tipo_muro: 'Contrafortes', l_cf: 1.5 }, extras: {} }, 'Antigo.alrimo');
     const s = app.useApp.getState();
     expect(app.leitorDoEstado(s)('l_cf')).toBe(1.6);
     expect(s.sujo).toBe(true);

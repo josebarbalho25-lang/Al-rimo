@@ -30,7 +30,7 @@ import {
 import type { AvisoDaPlanilha } from './avisosDaPlanilha';
 import { CHAVES, ehObjeto, guardarNaAba, lembrarDaAba } from './lembrete';
 import { SEM_LIGACOES, type IdAba, type Ligacoes, type Veredito } from './ligacoes';
-import { desserializarProjeto, recadoDeAbertura, serializarProjeto, type Projeto } from './projeto';
+import { desserializarProjeto, projetoNovo, recadoDeAbertura, serializarProjeto, type Projeto } from './projeto';
 import { padroesDe, recalcular } from './recalculo';
 import { RECADO_RUIM, ruim } from './recadoRuim';
 
@@ -62,6 +62,8 @@ const ehAba = (x: unknown): x is IdAba => ABAS.some((a) => a.id === x);
 /* ── o estado ─────────────────────────────────────────────────────────── */
 
 export interface EstadoDoApp {
+  /** A identidade do muro: de onde saem os GUIDs do IFC (ver estado/projeto.ts). Nasce no Novo, viaja no arquivo. */
+  idDoProjeto: string;
   titulo: string;
   /** Nome do arquivo em disco, quando há. */
   arquivo: string | null;
@@ -88,8 +90,10 @@ export interface EstadoDoApp {
    * Muda a cada projeto carregado (Novo, Abrir). O Salvar espera o disco; se
    * no meio o usuário trocou de muro, o que o disco respondeu é do muro
    * ANTERIOR e não pode virar o nome nem o arquivo do muro da tela.
+   * (Não serve a identidade do muro para isso: reabrir o MESMO arquivo no meio
+   * do Salvar traz a mesma identidade, mas é outra carga.)
    */
-  idDoProjeto: number;
+  carregamento: number;
 
   selecionado: string | null;
   aba: IdAba;
@@ -219,17 +223,22 @@ interface Inicio {
   projeto fica marcado como alterado.
 */
 function projetoInicial(): Inicio {
-  const vazio: Inicio = { p: { titulo: 'Sem título', alteracoes: {}, extras: {} }, arquivo: null, sujo: false, contaDoArquivo: null, recado: null };
+  // Primeira abertura (ou lembrete ilegível): o muro nasce aqui, com a identidade dele.
+  const vazio: Inicio = { p: projetoNovo(), arquivo: null, sujo: false, contaDoArquivo: null, recado: null };
   const u = lembrarDaAba<Ultimo | null>(CHAVES.ultimoProjeto, null, (x): x is Ultimo | null => x === null || ehUltimo(x));
   if (!u) return vazio;
   const a = desserializarProjeto(u.texto, CAMPOS, VERSAO_DA_CONTA);
   if (!a.ok) return { ...vazio, recado: ruim(`Último muro não reaberto: ${a.motivo}`) };
   const guardada = typeof u.contaDoArquivo === 'string' ? u.contaDoArquivo : null;
   const fora = a.descartados.length + a.recusados.length;
+  const arquivo = typeof u.arquivo === 'string' ? u.arquivo : null;
   return {
     p: a.projeto,
-    arquivo: typeof u.arquivo === 'string' ? u.arquivo : null,
-    sujo: !!u.sujo || fora > 0,
+    arquivo,
+    // Identidade nova num muro que tem arquivo em disco: o disco ainda não a tem, então o muro fica "não salvo"
+    // até ir para lá. Muro só do navegador, sem arquivo, não tem para onde levá-la — o lembrete já a guarda, e
+    // acender o • num muro em branco faria o Novo perguntar por "alterações" que não existem.
+    sujo: !!u.sujo || fora > 0 || (a.ganhouId && arquivo !== null),
     contaDoArquivo: guardada ?? (a.outraVersao ? a.versaoDaConta : null),
     recado: fora > 0 ? recadoDeAbertura(a.projeto.titulo, a) : null,
   };
@@ -240,13 +249,14 @@ const { mudouNaLista: inicioMudou, ...contaInicial } = comConta(SEM_LIGACOES, in
 let relogioDoRecado: ReturnType<typeof setTimeout> | undefined;
 
 export const useApp = create<EstadoDoApp>()((set, get) => ({
+  idDoProjeto: inicio.p.id,
   titulo: inicio.p.titulo,
   arquivo: inicio.arquivo,
   sujo: inicio.sujo || inicioMudou,
   extras: inicio.p.extras,
   ...contaInicial,
   contaDoArquivo: inicio.contaDoArquivo,
-  idDoProjeto: 0,
+  carregamento: 0,
 
   selecionado: null,
   aba: lembrarDaAba<IdAba>(CHAVES.aba, '3d', ehAba),
@@ -274,12 +284,13 @@ export const useApp = create<EstadoDoApp>()((set, get) => ({
     // marcado como alterado — o que está na tela já não é o que está no disco.
     const { mudouNaLista, ...conta } = comConta(s.ligacoes, p.alteracoes, p.extras, {}, null);
     set({
+      idDoProjeto: p.id,
       titulo: p.titulo,
       arquivo,
       sujo: (opc?.sujo ?? false) || mudouNaLista,
       extras: p.extras,
       contaDoArquivo: opc?.contaDoArquivo ?? null,
-      idDoProjeto: s.idDoProjeto + 1,
+      carregamento: s.carregamento + 1,
       selecionado: null,
       ...conta,
     });
@@ -324,8 +335,8 @@ export function leitorDoEstado(s: Pick<EstadoDoApp, 'alteracoes' | 'extras'>): L
 }
 
 /** O projeto como vai para o arquivo. */
-export function projetoAtual(s: Pick<EstadoDoApp, 'titulo' | 'alteracoes' | 'extras'>): Projeto {
-  return { titulo: s.titulo, alteracoes: s.alteracoes, extras: s.extras };
+export function projetoAtual(s: Pick<EstadoDoApp, 'idDoProjeto' | 'titulo' | 'alteracoes' | 'extras'>): Projeto {
+  return { id: s.idDoProjeto, titulo: s.titulo, alteracoes: s.alteracoes, extras: s.extras };
 }
 
 /** O navegador guardou o último estado desta aba? (Se não, o F5 perde o que não foi salvo.) */
@@ -362,6 +373,7 @@ export function lembrarUltimoProjeto(): () => void {
   guardarUltimo(useApp.getState());
   const parar = useApp.subscribe((s, a) => {
     if (
+      s.idDoProjeto === a.idDoProjeto &&
       s.alteracoes === a.alteracoes &&
       s.extras === a.extras &&
       s.titulo === a.titulo &&
