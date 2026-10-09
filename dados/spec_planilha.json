@@ -265,13 +265,13 @@
     },
     {
      "ref": "B18",
-     "v": "=IF(AND(ISNUMBER(MATCH(H_muro,lst_H,0)),ISNUMBER(MATCH(l_cf,lst_lcf,0)),ISNUMBER(MATCH(tenr_,lst_tenr,0)),IF(ISNUMBER(s_dir),ISNUMBER(MATCH(s_dir,lst_s,0)),TRUE),IF(ISNUMBER(s_pv_dir),ISNUMBER(MATCH(s_pv_dir,lst_s,0)),TRUE)),\"OK\",\"fora da lista:\"&IF(ISNUMBER(MATCH(H_muro,lst_H,0)),\"\",\" altura;\")&IF(ISNUMBER(MATCH(l_cf,lst_lcf,0)),\"\",\" eixo a eixo;\")&IF(ISNUMBER(MATCH(tenr_,lst_tenr,0)),\"\",\" contraforte;\")&IF(IF(ISNUMBER(s_dir),ISNUMBER(MATCH(s_dir,lst_s,0)),TRUE),\"\",\" espaçamento das barras;\")&IF(IF(ISNUMBER(s_pv_dir),ISNUMBER(MATCH(s_pv_dir,lst_s,0)),TRUE),\"\",\" espaçamento vertical do painel;\"))",
+     "v": "=IF(AND(ISNUMBER(MATCH(H_muro,lst_H,0)),ISNUMBER(MATCH(l_cf,lst_lcf,0)),ISNUMBER(MATCH(tenr_,lst_tenr,0)),IF(ISNUMBER(s_dir),ISNUMBER(MATCH(s_dir,lst_s,0)),TRUE),IF(ISNUMBER(s_pv_dir),ISNUMBER(MATCH(s_pv_dir,lst_s,0)),TRUE),IF(Tipo_muro<>\"Contrafortes\",ISNUMBER(MATCH(phi_v,lst_phi_esp,0)),TRUE),IF(Tipo_muro=\"Contrafortes\",ISNUMBER(MATCH(phi_pv,lst_phi_esp,0)),TRUE),IF(Tipo_muro=\"Contrafortes\",ISNUMBER(MATCH(phi_cf,lst_phi_esp,0)),TRUE),IF(AND(Tipo_muro=\"Contrafortes\",n_cc>0),ISNUMBER(MATCH(phi_cc,lst_phi_esp,0)),TRUE)),\"OK\",\"fora da lista:\"&IF(ISNUMBER(MATCH(H_muro,lst_H,0)),\"\",\" altura;\")&IF(ISNUMBER(MATCH(l_cf,lst_lcf,0)),\"\",\" eixo a eixo;\")&IF(ISNUMBER(MATCH(tenr_,lst_tenr,0)),\"\",\" contraforte;\")&IF(IF(ISNUMBER(s_dir),ISNUMBER(MATCH(s_dir,lst_s,0)),TRUE),\"\",\" espaçamento das barras;\")&IF(IF(ISNUMBER(s_pv_dir),ISNUMBER(MATCH(s_pv_dir,lst_s,0)),TRUE),\"\",\" espaçamento vertical do painel;\")&IF(IF(Tipo_muro<>\"Contrafortes\",ISNUMBER(MATCH(phi_v,lst_phi_esp,0)),TRUE),\"\",\" Ø vertical (dobra da espera);\")&IF(IF(Tipo_muro=\"Contrafortes\",ISNUMBER(MATCH(phi_pv,lst_phi_esp,0)),TRUE),\"\",\" Ø do painel (dobra da espera);\")&IF(IF(Tipo_muro=\"Contrafortes\",ISNUMBER(MATCH(phi_cf,lst_phi_esp,0)),TRUE),\"\",\" Ø do contraforte (dobra da espera);\")&IF(IF(AND(Tipo_muro=\"Contrafortes\",n_cc>0),ISNUMBER(MATCH(phi_cc,lst_phi_esp,0)),TRUE),\"\",\" Ø construtivas (dobra da espera);\"))",
      "nome": "lim_lst",
      "tipo": "resultado"
     },
     {
      "ref": "D18",
-     "v": "Altura, contraforte e espaçamentos dependem do tipo de muro e do bloco: trocar um deles depois não reconfere os outros."
+     "v": "Altura, contraforte e espaçamentos dependem do tipo de muro e do bloco; os Ø com espera, da altura da sapata: trocar um deles depois não reconfere os outros."
     },
     {
      "ref": "A19",
@@ -729,7 +729,7 @@
     },
     {
      "ref": "D45",
-     "v": "Barra no furo grauteado. A aba Arranjos mostra qual Ø serve para cada espaçamento. (ver Fig. 5)"
+     "v": "Barra no furo grauteado. A aba Arranjos mostra qual Ø serve para cada espaçamento. Lista: só os Ø cuja dobra da espera cabe na sapata (aba Fundação, seção 10). (ver Fig. 5)"
     },
     {
      "ref": "E45",
@@ -1245,7 +1245,7 @@
     },
     {
      "ref": "D79",
-     "v": "Na ponta do contraforte (furo da ponta). Aula 12.3: 3Ø10. (ver Fig. 12)"
+     "v": "Na ponta do contraforte (furo da ponta). Aula 12.3: 3Ø10. Lista: só os Ø cuja dobra da espera cabe na sapata (aba Fundação, seção 10). (ver Fig. 12)"
     },
     {
      "ref": "E79",
@@ -1325,7 +1325,7 @@
     },
     {
      "ref": "D83",
-     "v": "Aula 12.3: 2Ø10 construtivas. (ver Fig. 12)"
+     "v": "Aula 12.3: 2Ø10 construtivas. Lista: só os Ø cuja dobra da espera cabe na sapata (aba Fundação, seção 10). (ver Fig. 12)"
     },
     {
      "ref": "E83",
@@ -1441,7 +1441,7 @@
     },
     {
      "ref": "D91",
-     "v": "Aula 12.3: Ø10. (ver Fig. 13)"
+     "v": "Aula 12.3: Ø10. Lista: só os Ø cuja dobra da espera cabe na sapata (aba Fundação, seção 10). (ver Fig. 13)"
     },
     {
      "ref": "E91",
@@ -2175,7 +2175,7 @@
     },
     {
      "celulas": "B45",
-     "lista": "='Referências'!$L$5:$L$10"
+     "lista": "='Referências'!$AS$5:$AS$10"
     },
     {
      "celulas": "B46",
@@ -2239,11 +2239,11 @@
     },
     {
      "celulas": "B79",
-     "lista": "='Referências'!$L$5:$L$10"
+     "lista": "='Referências'!$AS$5:$AS$10"
     },
     {
      "celulas": "B83",
-     "lista": "='Referências'!$L$5:$L$10"
+     "lista": "='Referências'!$AS$5:$AS$10"
     },
     {
      "celulas": "B85",
@@ -2255,7 +2255,7 @@
     },
     {
      "celulas": "B91",
-     "lista": "='Referências'!$L$5:$L$10"
+     "lista": "='Referências'!$AS$5:$AS$10"
     },
     {
      "celulas": "B92",
@@ -13958,243 +13958,145 @@
     },
     {
      "ref": "A109",
-     "v": "Memória — pressão do solo integrada em 20 fatias por balanço (ponta e talão)"
+     "v": "10. Esperas — dobra do pé na sapata"
     },
     {
      "ref": "A110",
-     "v": "σ(x): trapézio se |e| ≤ B/6; triângulo a partir da borda mais comprimida se |e| > B/6. Ponta: q = σ − γc·h (para cima). Talão: q = γ·h solo + q + γc·h − σ (para baixo)."
+     "v": "Balanço: espera do Ø vertical: 2c + malha + D + 2φ"
+    },
+    {
+     "ref": "B110",
+     "v": "=IFERROR(IF(AND(Tipo_muro<>\"Contrafortes\",gancho_=\"Sim\"),2*cob_sap+phi_sap/10+phi_sap2/10+IF(phi_v<20,5,8)*phi_v/10+2*phi_v/10,\"—\"),\"—\")",
+     "nome": "hdob_v",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C110",
+     "v": "cm"
+    },
+    {
+     "ref": "D110",
+     "v": "D = 5φ (φ < 20 mm) ou 8φ (φ ≥ 20 mm). 2c e malha (Ø transversal + Ø longitudinal, onde o pé da espera apoia): dedução."
+    },
+    {
+     "ref": "E110",
+     "v": "NBR 6118 Tab. 9.1 + dedução"
     },
     {
      "ref": "A111",
-     "v": "Ponta: fatia"
+     "v": "Contrafortes: espera do Ø vertical do painel: 2c + malha + D + 2φ"
     },
     {
      "ref": "B111",
-     "v": "x (m)"
+     "v": "=IFERROR(IF(AND(Tipo_muro=\"Contrafortes\",gancho_=\"Sim\"),2*cob_sap+phi_sap/10+phi_sap2/10+IF(phi_pv<20,5,8)*phi_pv/10+2*phi_pv/10,\"—\"),\"—\")",
+     "nome": "hdob_pv",
+     "tipo": "resultado"
     },
     {
      "ref": "C111",
-     "v": "σ (kPa)"
-    },
-    {
-     "ref": "D111",
-     "v": "q líquida (kPa)"
+     "v": "cm"
     },
     {
      "ref": "E111",
-     "v": "braço à face (m)"
-    },
-    {
-     "ref": "F111",
-     "v": "dM (kN·m/m)"
-    },
-    {
-     "ref": "G111",
-     "v": "dV além de d (kN/m)"
+     "v": "NBR 6118 Tab. 9.1 + dedução"
     },
     {
      "ref": "A112",
-     "v": 1
+     "v": "Contrafortes: espera do Ø principal do contraforte: 2c + malha + D + 2φ"
     },
     {
      "ref": "B112",
-     "v": "=IFERROR(a_ater+t_m/2+(1-0.5)*toe/20,\"—\")"
+     "v": "=IFERROR(IF(AND(Tipo_muro=\"Contrafortes\",gancho_=\"Sim\"),2*cob_sap+phi_sap/10+phi_sap2/10+IF(phi_cf<20,5,8)*phi_cf/10+2*phi_cf/10,\"—\"),\"—\")",
+     "nome": "hdob_cf",
+     "tipo": "resultado"
     },
     {
      "ref": "C112",
-     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B112,B112)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B112,B112)/c_len))),\"—\")"
-    },
-    {
-     "ref": "D112",
-     "v": "=IFERROR(C112-gama_c*h_sap,\"—\")"
+     "v": "cm"
     },
     {
      "ref": "E112",
-     "v": "=IFERROR(B112-(a_ater+t_m/2),\"—\")"
-    },
-    {
-     "ref": "F112",
-     "v": "=IFERROR(D112*toe/20*E112,\"—\")"
-    },
-    {
-     "ref": "G112",
-     "v": "=IFERROR(IF(E112>d_s/100,D112*toe/20,0),\"—\")"
+     "v": "NBR 6118 Tab. 9.1 + dedução"
     },
     {
      "ref": "A113",
-     "v": 2
+     "v": "Contrafortes: espera das construtivas: 2c + malha + D + 2φ"
     },
     {
      "ref": "B113",
-     "v": "=IFERROR(a_ater+t_m/2+(2-0.5)*toe/20,\"—\")"
+     "v": "=IFERROR(IF(AND(AND(Tipo_muro=\"Contrafortes\",n_cc>0),gancho_=\"Sim\"),2*cob_sap+phi_sap/10+phi_sap2/10+IF(phi_cc<20,5,8)*phi_cc/10+2*phi_cc/10,\"—\"),\"—\")",
+     "nome": "hdob_cc",
+     "tipo": "resultado"
     },
     {
      "ref": "C113",
-     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B113,B113)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B113,B113)/c_len))),\"—\")"
-    },
-    {
-     "ref": "D113",
-     "v": "=IFERROR(C113-gama_c*h_sap,\"—\")"
+     "v": "cm"
     },
     {
      "ref": "E113",
-     "v": "=IFERROR(B113-(a_ater+t_m/2),\"—\")"
-    },
-    {
-     "ref": "F113",
-     "v": "=IFERROR(D113*toe/20*E113,\"—\")"
-    },
-    {
-     "ref": "G113",
-     "v": "=IFERROR(IF(E113>d_s/100,D113*toe/20,0),\"—\")"
+     "v": "NBR 6118 Tab. 9.1 + dedução"
     },
     {
      "ref": "A114",
-     "v": 3
+     "v": "Dobra da espera: 2c + malha + D + 2φ ≤ h da sapata"
     },
     {
      "ref": "B114",
-     "v": "=IFERROR(a_ater+t_m/2+(3-0.5)*toe/20,\"—\")"
-    },
-    {
-     "ref": "C114",
-     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B114,B114)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B114,B114)/c_len))),\"—\")"
+     "v": "=IFERROR(IF(gancho_<>\"Sim\",\"— (espera reta, sem dobra)\",IF(MAX(IF(ISNUMBER(hdob_v),hdob_v,0),IF(ISNUMBER(hdob_pv),hdob_pv,0),IF(ISNUMBER(hdob_cf),hdob_cf,0),IF(ISNUMBER(hdob_cc),hdob_cc,0))<=h_sap*100,\"OK — \",\"NÃO OK — \")&IF(Tipo_muro=\"Contrafortes\",\"painel Ø\"&IF(phi_pv=INT(phi_pv),FIXED(phi_pv,0),FIXED(phi_pv,1))&\": \"&FIXED(hdob_pv,1)&\" · contraforte Ø\"&IF(phi_cf=INT(phi_cf),FIXED(phi_cf,0),FIXED(phi_cf,1))&\": \"&FIXED(hdob_cf,1)&IF(ISNUMBER(hdob_cc),\" · construtivas Ø\"&IF(phi_cc=INT(phi_cc),FIXED(phi_cc,0),FIXED(phi_cc,1))&\": \"&FIXED(hdob_cc,1),\"\")&\" cm; maior \"&FIXED(MAX(IF(ISNUMBER(hdob_v),hdob_v,0),IF(ISNUMBER(hdob_pv),hdob_pv,0),IF(ISNUMBER(hdob_cf),hdob_cf,0),IF(ISNUMBER(hdob_cc),hdob_cc,0)),1),\"Ø\"&IF(phi_v=INT(phi_v),FIXED(phi_v,0),FIXED(phi_v,1))&\": \"&FIXED(hdob_v,1))&IF(MAX(IF(ISNUMBER(hdob_v),hdob_v,0),IF(ISNUMBER(hdob_pv),hdob_pv,0),IF(ISNUMBER(hdob_cf),hdob_cf,0),IF(ISNUMBER(hdob_cc),hdob_cc,0))<=h_sap*100,\" ≤ \",\" > \")&FIXED(h_sap*100,1)&\" cm\"&IF(MAX(IF(ISNUMBER(hdob_v),hdob_v,0),IF(ISNUMBER(hdob_pv),hdob_pv,0),IF(ISNUMBER(hdob_cf),hdob_cf,0),IF(ISNUMBER(hdob_cc),hdob_cc,0))<=h_sap*100,\"\",\": baixar o Ø ou aumentar a altura da sapata\")),\"—\")",
+     "nome": "dob_esp",
+     "tipo": "resultado"
     },
     {
      "ref": "D114",
-     "v": "=IFERROR(C114-gama_c*h_sap,\"—\")"
+     "v": "Os Ø com espera só aceitam valores cuja dobra cabe (lista na aba Referências, coluna AS)."
     },
     {
      "ref": "E114",
-     "v": "=IFERROR(B114-(a_ater+t_m/2),\"—\")"
-    },
-    {
-     "ref": "F114",
-     "v": "=IFERROR(D114*toe/20*E114,\"—\")"
-    },
-    {
-     "ref": "G114",
-     "v": "=IFERROR(IF(E114>d_s/100,D114*toe/20,0),\"—\")"
-    },
-    {
-     "ref": "A115",
-     "v": 4
-    },
-    {
-     "ref": "B115",
-     "v": "=IFERROR(a_ater+t_m/2+(4-0.5)*toe/20,\"—\")"
-    },
-    {
-     "ref": "C115",
-     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B115,B115)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B115,B115)/c_len))),\"—\")"
-    },
-    {
-     "ref": "D115",
-     "v": "=IFERROR(C115-gama_c*h_sap,\"—\")"
-    },
-    {
-     "ref": "E115",
-     "v": "=IFERROR(B115-(a_ater+t_m/2),\"—\")"
-    },
-    {
-     "ref": "F115",
-     "v": "=IFERROR(D115*toe/20*E115,\"—\")"
-    },
-    {
-     "ref": "G115",
-     "v": "=IFERROR(IF(E115>d_s/100,D115*toe/20,0),\"—\")"
+     "v": "NBR 6118 Tab. 9.1 + dedução"
     },
     {
      "ref": "A116",
-     "v": 5
-    },
-    {
-     "ref": "B116",
-     "v": "=IFERROR(a_ater+t_m/2+(5-0.5)*toe/20,\"—\")"
-    },
-    {
-     "ref": "C116",
-     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B116,B116)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B116,B116)/c_len))),\"—\")"
-    },
-    {
-     "ref": "D116",
-     "v": "=IFERROR(C116-gama_c*h_sap,\"—\")"
-    },
-    {
-     "ref": "E116",
-     "v": "=IFERROR(B116-(a_ater+t_m/2),\"—\")"
-    },
-    {
-     "ref": "F116",
-     "v": "=IFERROR(D116*toe/20*E116,\"—\")"
-    },
-    {
-     "ref": "G116",
-     "v": "=IFERROR(IF(E116>d_s/100,D116*toe/20,0),\"—\")"
+     "v": "Memória — pressão do solo integrada em 20 fatias por balanço (ponta e talão)"
     },
     {
      "ref": "A117",
-     "v": 6
-    },
-    {
-     "ref": "B117",
-     "v": "=IFERROR(a_ater+t_m/2+(6-0.5)*toe/20,\"—\")"
-    },
-    {
-     "ref": "C117",
-     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B117,B117)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B117,B117)/c_len))),\"—\")"
-    },
-    {
-     "ref": "D117",
-     "v": "=IFERROR(C117-gama_c*h_sap,\"—\")"
-    },
-    {
-     "ref": "E117",
-     "v": "=IFERROR(B117-(a_ater+t_m/2),\"—\")"
-    },
-    {
-     "ref": "F117",
-     "v": "=IFERROR(D117*toe/20*E117,\"—\")"
-    },
-    {
-     "ref": "G117",
-     "v": "=IFERROR(IF(E117>d_s/100,D117*toe/20,0),\"—\")"
+     "v": "σ(x): trapézio se |e| ≤ B/6; triângulo a partir da borda mais comprimida se |e| > B/6. Ponta: q = σ − γc·h (para cima). Talão: q = γ·h solo + q + γc·h − σ (para baixo)."
     },
     {
      "ref": "A118",
-     "v": 7
+     "v": "Ponta: fatia"
     },
     {
      "ref": "B118",
-     "v": "=IFERROR(a_ater+t_m/2+(7-0.5)*toe/20,\"—\")"
+     "v": "x (m)"
     },
     {
      "ref": "C118",
-     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B118,B118)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B118,B118)/c_len))),\"—\")"
+     "v": "σ (kPa)"
     },
     {
      "ref": "D118",
-     "v": "=IFERROR(C118-gama_c*h_sap,\"—\")"
+     "v": "q líquida (kPa)"
     },
     {
      "ref": "E118",
-     "v": "=IFERROR(B118-(a_ater+t_m/2),\"—\")"
+     "v": "braço à face (m)"
     },
     {
      "ref": "F118",
-     "v": "=IFERROR(D118*toe/20*E118,\"—\")"
+     "v": "dM (kN·m/m)"
     },
     {
      "ref": "G118",
-     "v": "=IFERROR(IF(E118>d_s/100,D118*toe/20,0),\"—\")"
+     "v": "dV além de d (kN/m)"
     },
     {
      "ref": "A119",
-     "v": 8
+     "v": 1
     },
     {
      "ref": "B119",
-     "v": "=IFERROR(a_ater+t_m/2+(8-0.5)*toe/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(1-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C119",
@@ -14218,11 +14120,11 @@
     },
     {
      "ref": "A120",
-     "v": 9
+     "v": 2
     },
     {
      "ref": "B120",
-     "v": "=IFERROR(a_ater+t_m/2+(9-0.5)*toe/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(2-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C120",
@@ -14246,11 +14148,11 @@
     },
     {
      "ref": "A121",
-     "v": 10
+     "v": 3
     },
     {
      "ref": "B121",
-     "v": "=IFERROR(a_ater+t_m/2+(10-0.5)*toe/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(3-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C121",
@@ -14274,11 +14176,11 @@
     },
     {
      "ref": "A122",
-     "v": 11
+     "v": 4
     },
     {
      "ref": "B122",
-     "v": "=IFERROR(a_ater+t_m/2+(11-0.5)*toe/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(4-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C122",
@@ -14302,11 +14204,11 @@
     },
     {
      "ref": "A123",
-     "v": 12
+     "v": 5
     },
     {
      "ref": "B123",
-     "v": "=IFERROR(a_ater+t_m/2+(12-0.5)*toe/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(5-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C123",
@@ -14330,11 +14232,11 @@
     },
     {
      "ref": "A124",
-     "v": 13
+     "v": 6
     },
     {
      "ref": "B124",
-     "v": "=IFERROR(a_ater+t_m/2+(13-0.5)*toe/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(6-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C124",
@@ -14358,11 +14260,11 @@
     },
     {
      "ref": "A125",
-     "v": 14
+     "v": 7
     },
     {
      "ref": "B125",
-     "v": "=IFERROR(a_ater+t_m/2+(14-0.5)*toe/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(7-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C125",
@@ -14386,11 +14288,11 @@
     },
     {
      "ref": "A126",
-     "v": 15
+     "v": 8
     },
     {
      "ref": "B126",
-     "v": "=IFERROR(a_ater+t_m/2+(15-0.5)*toe/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(8-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C126",
@@ -14414,11 +14316,11 @@
     },
     {
      "ref": "A127",
-     "v": 16
+     "v": 9
     },
     {
      "ref": "B127",
-     "v": "=IFERROR(a_ater+t_m/2+(16-0.5)*toe/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(9-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C127",
@@ -14442,11 +14344,11 @@
     },
     {
      "ref": "A128",
-     "v": 17
+     "v": 10
     },
     {
      "ref": "B128",
-     "v": "=IFERROR(a_ater+t_m/2+(17-0.5)*toe/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(10-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C128",
@@ -14470,11 +14372,11 @@
     },
     {
      "ref": "A129",
-     "v": 18
+     "v": 11
     },
     {
      "ref": "B129",
-     "v": "=IFERROR(a_ater+t_m/2+(18-0.5)*toe/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(11-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C129",
@@ -14498,11 +14400,11 @@
     },
     {
      "ref": "A130",
-     "v": 19
+     "v": 12
     },
     {
      "ref": "B130",
-     "v": "=IFERROR(a_ater+t_m/2+(19-0.5)*toe/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(12-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C130",
@@ -14526,11 +14428,11 @@
     },
     {
      "ref": "A131",
-     "v": 20
+     "v": 13
     },
     {
      "ref": "B131",
-     "v": "=IFERROR(a_ater+t_m/2+(20-0.5)*toe/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(13-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C131",
@@ -14553,40 +14455,68 @@
      "v": "=IFERROR(IF(E131>d_s/100,D131*toe/20,0),\"—\")"
     },
     {
+     "ref": "A132",
+     "v": 14
+    },
+    {
+     "ref": "B132",
+     "v": "=IFERROR(a_ater+t_m/2+(14-0.5)*toe/20,\"—\")"
+    },
+    {
+     "ref": "C132",
+     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B132,B132)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B132,B132)/c_len))),\"—\")"
+    },
+    {
+     "ref": "D132",
+     "v": "=IFERROR(C132-gama_c*h_sap,\"—\")"
+    },
+    {
+     "ref": "E132",
+     "v": "=IFERROR(B132-(a_ater+t_m/2),\"—\")"
+    },
+    {
+     "ref": "F132",
+     "v": "=IFERROR(D132*toe/20*E132,\"—\")"
+    },
+    {
+     "ref": "G132",
+     "v": "=IFERROR(IF(E132>d_s/100,D132*toe/20,0),\"—\")"
+    },
+    {
      "ref": "A133",
-     "v": "Talão: fatia"
+     "v": 15
     },
     {
      "ref": "B133",
-     "v": "x (m)"
+     "v": "=IFERROR(a_ater+t_m/2+(15-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C133",
-     "v": "σ (kPa)"
+     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B133,B133)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B133,B133)/c_len))),\"—\")"
     },
     {
      "ref": "D133",
-     "v": "q líquida (kPa)"
+     "v": "=IFERROR(C133-gama_c*h_sap,\"—\")"
     },
     {
      "ref": "E133",
-     "v": "braço à face (m)"
+     "v": "=IFERROR(B133-(a_ater+t_m/2),\"—\")"
     },
     {
      "ref": "F133",
-     "v": "dM (kN·m/m)"
+     "v": "=IFERROR(D133*toe/20*E133,\"—\")"
     },
     {
      "ref": "G133",
-     "v": "dV além de d (kN/m)"
+     "v": "=IFERROR(IF(E133>d_s/100,D133*toe/20,0),\"—\")"
     },
     {
      "ref": "A134",
-     "v": 1
+     "v": 16
     },
     {
      "ref": "B134",
-     "v": "=IFERROR((1-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(16-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C134",
@@ -14594,27 +14524,27 @@
     },
     {
      "ref": "D134",
-     "v": "=IFERROR(gama_solo*H_solo+q_sobre+gama_c*h_sap-C134,\"—\")"
+     "v": "=IFERROR(C134-gama_c*h_sap,\"—\")"
     },
     {
      "ref": "E134",
-     "v": "=IFERROR((a_ater-t_m/2)-B134,\"—\")"
+     "v": "=IFERROR(B134-(a_ater+t_m/2),\"—\")"
     },
     {
      "ref": "F134",
-     "v": "=IFERROR(D134*heel/20*E134,\"—\")"
+     "v": "=IFERROR(D134*toe/20*E134,\"—\")"
     },
     {
      "ref": "G134",
-     "v": "=IFERROR(IF(E134>d_s/100,D134*heel/20,0),\"—\")"
+     "v": "=IFERROR(IF(E134>d_s/100,D134*toe/20,0),\"—\")"
     },
     {
      "ref": "A135",
-     "v": 2
+     "v": 17
     },
     {
      "ref": "B135",
-     "v": "=IFERROR((2-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(17-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C135",
@@ -14622,27 +14552,27 @@
     },
     {
      "ref": "D135",
-     "v": "=IFERROR(gama_solo*H_solo+q_sobre+gama_c*h_sap-C135,\"—\")"
+     "v": "=IFERROR(C135-gama_c*h_sap,\"—\")"
     },
     {
      "ref": "E135",
-     "v": "=IFERROR((a_ater-t_m/2)-B135,\"—\")"
+     "v": "=IFERROR(B135-(a_ater+t_m/2),\"—\")"
     },
     {
      "ref": "F135",
-     "v": "=IFERROR(D135*heel/20*E135,\"—\")"
+     "v": "=IFERROR(D135*toe/20*E135,\"—\")"
     },
     {
      "ref": "G135",
-     "v": "=IFERROR(IF(E135>d_s/100,D135*heel/20,0),\"—\")"
+     "v": "=IFERROR(IF(E135>d_s/100,D135*toe/20,0),\"—\")"
     },
     {
      "ref": "A136",
-     "v": 3
+     "v": 18
     },
     {
      "ref": "B136",
-     "v": "=IFERROR((3-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(18-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C136",
@@ -14650,27 +14580,27 @@
     },
     {
      "ref": "D136",
-     "v": "=IFERROR(gama_solo*H_solo+q_sobre+gama_c*h_sap-C136,\"—\")"
+     "v": "=IFERROR(C136-gama_c*h_sap,\"—\")"
     },
     {
      "ref": "E136",
-     "v": "=IFERROR((a_ater-t_m/2)-B136,\"—\")"
+     "v": "=IFERROR(B136-(a_ater+t_m/2),\"—\")"
     },
     {
      "ref": "F136",
-     "v": "=IFERROR(D136*heel/20*E136,\"—\")"
+     "v": "=IFERROR(D136*toe/20*E136,\"—\")"
     },
     {
      "ref": "G136",
-     "v": "=IFERROR(IF(E136>d_s/100,D136*heel/20,0),\"—\")"
+     "v": "=IFERROR(IF(E136>d_s/100,D136*toe/20,0),\"—\")"
     },
     {
      "ref": "A137",
-     "v": 4
+     "v": 19
     },
     {
      "ref": "B137",
-     "v": "=IFERROR((4-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(19-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C137",
@@ -14678,27 +14608,27 @@
     },
     {
      "ref": "D137",
-     "v": "=IFERROR(gama_solo*H_solo+q_sobre+gama_c*h_sap-C137,\"—\")"
+     "v": "=IFERROR(C137-gama_c*h_sap,\"—\")"
     },
     {
      "ref": "E137",
-     "v": "=IFERROR((a_ater-t_m/2)-B137,\"—\")"
+     "v": "=IFERROR(B137-(a_ater+t_m/2),\"—\")"
     },
     {
      "ref": "F137",
-     "v": "=IFERROR(D137*heel/20*E137,\"—\")"
+     "v": "=IFERROR(D137*toe/20*E137,\"—\")"
     },
     {
      "ref": "G137",
-     "v": "=IFERROR(IF(E137>d_s/100,D137*heel/20,0),\"—\")"
+     "v": "=IFERROR(IF(E137>d_s/100,D137*toe/20,0),\"—\")"
     },
     {
      "ref": "A138",
-     "v": 5
+     "v": 20
     },
     {
      "ref": "B138",
-     "v": "=IFERROR((5-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR(a_ater+t_m/2+(20-0.5)*toe/20,\"—\")"
     },
     {
      "ref": "C138",
@@ -14706,83 +14636,55 @@
     },
     {
      "ref": "D138",
-     "v": "=IFERROR(gama_solo*H_solo+q_sobre+gama_c*h_sap-C138,\"—\")"
+     "v": "=IFERROR(C138-gama_c*h_sap,\"—\")"
     },
     {
      "ref": "E138",
-     "v": "=IFERROR((a_ater-t_m/2)-B138,\"—\")"
+     "v": "=IFERROR(B138-(a_ater+t_m/2),\"—\")"
     },
     {
      "ref": "F138",
-     "v": "=IFERROR(D138*heel/20*E138,\"—\")"
+     "v": "=IFERROR(D138*toe/20*E138,\"—\")"
     },
     {
      "ref": "G138",
-     "v": "=IFERROR(IF(E138>d_s/100,D138*heel/20,0),\"—\")"
-    },
-    {
-     "ref": "A139",
-     "v": 6
-    },
-    {
-     "ref": "B139",
-     "v": "=IFERROR((6-0.5)*heel/20,\"—\")"
-    },
-    {
-     "ref": "C139",
-     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B139,B139)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B139,B139)/c_len))),\"—\")"
-    },
-    {
-     "ref": "D139",
-     "v": "=IFERROR(gama_solo*H_solo+q_sobre+gama_c*h_sap-C139,\"—\")"
-    },
-    {
-     "ref": "E139",
-     "v": "=IFERROR((a_ater-t_m/2)-B139,\"—\")"
-    },
-    {
-     "ref": "F139",
-     "v": "=IFERROR(D139*heel/20*E139,\"—\")"
-    },
-    {
-     "ref": "G139",
-     "v": "=IFERROR(IF(E139>d_s/100,D139*heel/20,0),\"—\")"
+     "v": "=IFERROR(IF(E138>d_s/100,D138*toe/20,0),\"—\")"
     },
     {
      "ref": "A140",
-     "v": 7
+     "v": "Talão: fatia"
     },
     {
      "ref": "B140",
-     "v": "=IFERROR((7-0.5)*heel/20,\"—\")"
+     "v": "x (m)"
     },
     {
      "ref": "C140",
-     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B140,B140)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B140,B140)/c_len))),\"—\")"
+     "v": "σ (kPa)"
     },
     {
      "ref": "D140",
-     "v": "=IFERROR(gama_solo*H_solo+q_sobre+gama_c*h_sap-C140,\"—\")"
+     "v": "q líquida (kPa)"
     },
     {
      "ref": "E140",
-     "v": "=IFERROR((a_ater-t_m/2)-B140,\"—\")"
+     "v": "braço à face (m)"
     },
     {
      "ref": "F140",
-     "v": "=IFERROR(D140*heel/20*E140,\"—\")"
+     "v": "dM (kN·m/m)"
     },
     {
      "ref": "G140",
-     "v": "=IFERROR(IF(E140>d_s/100,D140*heel/20,0),\"—\")"
+     "v": "dV além de d (kN/m)"
     },
     {
      "ref": "A141",
-     "v": 8
+     "v": 1
     },
     {
      "ref": "B141",
-     "v": "=IFERROR((8-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR((1-0.5)*heel/20,\"—\")"
     },
     {
      "ref": "C141",
@@ -14806,11 +14708,11 @@
     },
     {
      "ref": "A142",
-     "v": 9
+     "v": 2
     },
     {
      "ref": "B142",
-     "v": "=IFERROR((9-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR((2-0.5)*heel/20,\"—\")"
     },
     {
      "ref": "C142",
@@ -14834,11 +14736,11 @@
     },
     {
      "ref": "A143",
-     "v": 10
+     "v": 3
     },
     {
      "ref": "B143",
-     "v": "=IFERROR((10-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR((3-0.5)*heel/20,\"—\")"
     },
     {
      "ref": "C143",
@@ -14862,11 +14764,11 @@
     },
     {
      "ref": "A144",
-     "v": 11
+     "v": 4
     },
     {
      "ref": "B144",
-     "v": "=IFERROR((11-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR((4-0.5)*heel/20,\"—\")"
     },
     {
      "ref": "C144",
@@ -14890,11 +14792,11 @@
     },
     {
      "ref": "A145",
-     "v": 12
+     "v": 5
     },
     {
      "ref": "B145",
-     "v": "=IFERROR((12-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR((5-0.5)*heel/20,\"—\")"
     },
     {
      "ref": "C145",
@@ -14918,11 +14820,11 @@
     },
     {
      "ref": "A146",
-     "v": 13
+     "v": 6
     },
     {
      "ref": "B146",
-     "v": "=IFERROR((13-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR((6-0.5)*heel/20,\"—\")"
     },
     {
      "ref": "C146",
@@ -14946,11 +14848,11 @@
     },
     {
      "ref": "A147",
-     "v": 14
+     "v": 7
     },
     {
      "ref": "B147",
-     "v": "=IFERROR((14-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR((7-0.5)*heel/20,\"—\")"
     },
     {
      "ref": "C147",
@@ -14974,11 +14876,11 @@
     },
     {
      "ref": "A148",
-     "v": 15
+     "v": 8
     },
     {
      "ref": "B148",
-     "v": "=IFERROR((15-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR((8-0.5)*heel/20,\"—\")"
     },
     {
      "ref": "C148",
@@ -15002,11 +14904,11 @@
     },
     {
      "ref": "A149",
-     "v": 16
+     "v": 9
     },
     {
      "ref": "B149",
-     "v": "=IFERROR((16-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR((9-0.5)*heel/20,\"—\")"
     },
     {
      "ref": "C149",
@@ -15030,11 +14932,11 @@
     },
     {
      "ref": "A150",
-     "v": 17
+     "v": 10
     },
     {
      "ref": "B150",
-     "v": "=IFERROR((17-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR((10-0.5)*heel/20,\"—\")"
     },
     {
      "ref": "C150",
@@ -15058,11 +14960,11 @@
     },
     {
      "ref": "A151",
-     "v": 18
+     "v": 11
     },
     {
      "ref": "B151",
-     "v": "=IFERROR((18-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR((11-0.5)*heel/20,\"—\")"
     },
     {
      "ref": "C151",
@@ -15086,11 +14988,11 @@
     },
     {
      "ref": "A152",
-     "v": 19
+     "v": 12
     },
     {
      "ref": "B152",
-     "v": "=IFERROR((19-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR((12-0.5)*heel/20,\"—\")"
     },
     {
      "ref": "C152",
@@ -15114,11 +15016,11 @@
     },
     {
      "ref": "A153",
-     "v": 20
+     "v": 13
     },
     {
      "ref": "B153",
-     "v": "=IFERROR((20-0.5)*heel/20,\"—\")"
+     "v": "=IFERROR((13-0.5)*heel/20,\"—\")"
     },
     {
      "ref": "C153",
@@ -15141,7 +15043,203 @@
      "v": "=IFERROR(IF(E153>d_s/100,D153*heel/20,0),\"—\")"
     },
     {
+     "ref": "A154",
+     "v": 14
+    },
+    {
+     "ref": "B154",
+     "v": "=IFERROR((14-0.5)*heel/20,\"—\")"
+    },
+    {
+     "ref": "C154",
+     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B154,B154)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B154,B154)/c_len))),\"—\")"
+    },
+    {
+     "ref": "D154",
+     "v": "=IFERROR(gama_solo*H_solo+q_sobre+gama_c*h_sap-C154,\"—\")"
+    },
+    {
+     "ref": "E154",
+     "v": "=IFERROR((a_ater-t_m/2)-B154,\"—\")"
+    },
+    {
+     "ref": "F154",
+     "v": "=IFERROR(D154*heel/20*E154,\"—\")"
+    },
+    {
+     "ref": "G154",
+     "v": "=IFERROR(IF(E154>d_s/100,D154*heel/20,0),\"—\")"
+    },
+    {
      "ref": "A155",
+     "v": 15
+    },
+    {
+     "ref": "B155",
+     "v": "=IFERROR((15-0.5)*heel/20,\"—\")"
+    },
+    {
+     "ref": "C155",
+     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B155,B155)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B155,B155)/c_len))),\"—\")"
+    },
+    {
+     "ref": "D155",
+     "v": "=IFERROR(gama_solo*H_solo+q_sobre+gama_c*h_sap-C155,\"—\")"
+    },
+    {
+     "ref": "E155",
+     "v": "=IFERROR((a_ater-t_m/2)-B155,\"—\")"
+    },
+    {
+     "ref": "F155",
+     "v": "=IFERROR(D155*heel/20*E155,\"—\")"
+    },
+    {
+     "ref": "G155",
+     "v": "=IFERROR(IF(E155>d_s/100,D155*heel/20,0),\"—\")"
+    },
+    {
+     "ref": "A156",
+     "v": 16
+    },
+    {
+     "ref": "B156",
+     "v": "=IFERROR((16-0.5)*heel/20,\"—\")"
+    },
+    {
+     "ref": "C156",
+     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B156,B156)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B156,B156)/c_len))),\"—\")"
+    },
+    {
+     "ref": "D156",
+     "v": "=IFERROR(gama_solo*H_solo+q_sobre+gama_c*h_sap-C156,\"—\")"
+    },
+    {
+     "ref": "E156",
+     "v": "=IFERROR((a_ater-t_m/2)-B156,\"—\")"
+    },
+    {
+     "ref": "F156",
+     "v": "=IFERROR(D156*heel/20*E156,\"—\")"
+    },
+    {
+     "ref": "G156",
+     "v": "=IFERROR(IF(E156>d_s/100,D156*heel/20,0),\"—\")"
+    },
+    {
+     "ref": "A157",
+     "v": 17
+    },
+    {
+     "ref": "B157",
+     "v": "=IFERROR((17-0.5)*heel/20,\"—\")"
+    },
+    {
+     "ref": "C157",
+     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B157,B157)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B157,B157)/c_len))),\"—\")"
+    },
+    {
+     "ref": "D157",
+     "v": "=IFERROR(gama_solo*H_solo+q_sobre+gama_c*h_sap-C157,\"—\")"
+    },
+    {
+     "ref": "E157",
+     "v": "=IFERROR((a_ater-t_m/2)-B157,\"—\")"
+    },
+    {
+     "ref": "F157",
+     "v": "=IFERROR(D157*heel/20*E157,\"—\")"
+    },
+    {
+     "ref": "G157",
+     "v": "=IFERROR(IF(E157>d_s/100,D157*heel/20,0),\"—\")"
+    },
+    {
+     "ref": "A158",
+     "v": 18
+    },
+    {
+     "ref": "B158",
+     "v": "=IFERROR((18-0.5)*heel/20,\"—\")"
+    },
+    {
+     "ref": "C158",
+     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B158,B158)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B158,B158)/c_len))),\"—\")"
+    },
+    {
+     "ref": "D158",
+     "v": "=IFERROR(gama_solo*H_solo+q_sobre+gama_c*h_sap-C158,\"—\")"
+    },
+    {
+     "ref": "E158",
+     "v": "=IFERROR((a_ater-t_m/2)-B158,\"—\")"
+    },
+    {
+     "ref": "F158",
+     "v": "=IFERROR(D158*heel/20*E158,\"—\")"
+    },
+    {
+     "ref": "G158",
+     "v": "=IFERROR(IF(E158>d_s/100,D158*heel/20,0),\"—\")"
+    },
+    {
+     "ref": "A159",
+     "v": 19
+    },
+    {
+     "ref": "B159",
+     "v": "=IFERROR((19-0.5)*heel/20,\"—\")"
+    },
+    {
+     "ref": "C159",
+     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B159,B159)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B159,B159)/c_len))),\"—\")"
+    },
+    {
+     "ref": "D159",
+     "v": "=IFERROR(gama_solo*H_solo+q_sobre+gama_c*h_sap-C159,\"—\")"
+    },
+    {
+     "ref": "E159",
+     "v": "=IFERROR((a_ater-t_m/2)-B159,\"—\")"
+    },
+    {
+     "ref": "F159",
+     "v": "=IFERROR(D159*heel/20*E159,\"—\")"
+    },
+    {
+     "ref": "G159",
+     "v": "=IFERROR(IF(E159>d_s/100,D159*heel/20,0),\"—\")"
+    },
+    {
+     "ref": "A160",
+     "v": 20
+    },
+    {
+     "ref": "B160",
+     "v": "=IFERROR((20-0.5)*heel/20,\"—\")"
+    },
+    {
+     "ref": "C160",
+     "v": "=IFERROR(IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*IF(e_f>=0,B_sap-B160,B160)/B_sap,MAX(0,s_hi*(1-IF(e_f>=0,B_sap-B160,B160)/c_len))),\"—\")"
+    },
+    {
+     "ref": "D160",
+     "v": "=IFERROR(gama_solo*H_solo+q_sobre+gama_c*h_sap-C160,\"—\")"
+    },
+    {
+     "ref": "E160",
+     "v": "=IFERROR((a_ater-t_m/2)-B160,\"—\")"
+    },
+    {
+     "ref": "F160",
+     "v": "=IFERROR(D160*heel/20*E160,\"—\")"
+    },
+    {
+     "ref": "G160",
+     "v": "=IFERROR(IF(E160>d_s/100,D160*heel/20,0),\"—\")"
+    },
+    {
+     "ref": "A162",
      "v": "Pressão por unidade de área (kPa) vale para qualquer faixa de 1 m do módulo (sapata rígida). Com contrafortes, a diferença entre o Md concentrado do contraforte e a reação uniforme vira a torção da seção 8."
     }
    ],
@@ -15331,6 +15429,10 @@
      "v": "Ø sapata secund./torção (mm)"
     },
     {
+     "ref": "AS4",
+     "v": "Ø com espera (mm)"
+    },
+    {
      "ref": "AT4",
      "v": "Montagem"
     },
@@ -15477,6 +15579,10 @@
     {
      "ref": "AR5",
      "v": 5
+    },
+    {
+     "ref": "AS5",
+     "v": "=IF(OR(gancho_<>\"Sim\",2*cob_sap+phi_sap/10+phi_sap2/10+IF(6.3<20,5,8)*6.3/10+2*6.3/10<=h_sap*100),6.3,\"\")"
     },
     {
      "ref": "AT5",
@@ -15635,6 +15741,10 @@
      "v": 6.3
     },
     {
+     "ref": "AS6",
+     "v": "=IF(OR(gancho_<>\"Sim\",2*cob_sap+phi_sap/10+phi_sap2/10+IF(8<20,5,8)*8/10+2*8/10<=h_sap*100),8,\"\")"
+    },
+    {
      "ref": "AT6",
      "v": "14x54"
     },
@@ -15781,6 +15891,10 @@
     {
      "ref": "AR7",
      "v": 8
+    },
+    {
+     "ref": "AS7",
+     "v": "=IF(OR(gancho_<>\"Sim\",2*cob_sap+phi_sap/10+phi_sap2/10+IF(10<20,5,8)*10/10+2*10/10<=h_sap*100),10,\"\")"
     },
     {
      "ref": "AT7",
@@ -15931,6 +16045,10 @@
      "v": 10
     },
     {
+     "ref": "AS8",
+     "v": "=IF(OR(gancho_<>\"Sim\",2*cob_sap+phi_sap/10+phi_sap2/10+IF(12.5<20,5,8)*12.5/10+2*12.5/10<=h_sap*100),12.5,\"\")"
+    },
+    {
      "ref": "AT8",
      "v": "19x79"
     },
@@ -16079,6 +16197,10 @@
      "v": 12.5
     },
     {
+     "ref": "AS9",
+     "v": "=IF(OR(gancho_<>\"Sim\",2*cob_sap+phi_sap/10+phi_sap2/10+IF(16<20,5,8)*16/10+2*16/10<=h_sap*100),16,\"\")"
+    },
+    {
      "ref": "A10",
      "v": "γ de argila por NSPT"
     },
@@ -16193,6 +16315,10 @@
     {
      "ref": "AQ10",
      "v": 20
+    },
+    {
+     "ref": "AS10",
+     "v": "=IF(OR(gancho_<>\"Sim\",2*cob_sap+phi_sap/10+phi_sap2/10+IF(20<20,5,8)*20/10+2*20/10<=h_sap*100),20,\"\")"
     },
     {
      "ref": "AT10",
@@ -17137,6 +17263,10 @@
     {
      "ref": "C25",
      "v": "Barra a 5 cm da face do solo no bloco de 19 → d = 14 cm (lado tracionado = lado do solo). ABCP: cobrimento de graute ≥ 15 mm."
+    },
+    {
+     "ref": "AJ25",
+     "v": "Ø com espera: só os Ø cuja dobra do pé da espera cabe na sapata — 2c + Ø transversal + Ø longitudinal + D + 2φ ≤ h da sapata; D = 5φ (φ < 20 mm) ou 8φ (φ ≥ 20 mm), NBR 6118 Tab. 9.1 (CA-50). Cobrimento em cima e embaixo e pé apoiado na malha: dedução (é como o app desenha a espera). Espera sem gancho (reta): todos. Conta por espera na aba Fundação, seção 10."
     },
     {
      "ref": "A26",
@@ -24705,6 +24835,9 @@
   "lst_phi_sap2": [
    "Referências!$AR$5:$AR$9"
   ],
+  "lst_phi_esp": [
+   "Referências!$AS$5:$AS$10"
+  ],
   "cons_arg": [
    "Solo e Empuxo!$B$8"
   ],
@@ -25827,17 +25960,32 @@
   "A90_m": [
    "Fundação!$B$92"
   ],
+  "hdob_v": [
+   "Fundação!$B$110"
+  ],
+  "hdob_pv": [
+   "Fundação!$B$111"
+  ],
+  "hdob_cf": [
+   "Fundação!$B$112"
+  ],
+  "hdob_cc": [
+   "Fundação!$B$113"
+  ],
+  "dob_esp": [
+   "Fundação!$B$114"
+  ],
   "T_dM": [
-   "Fundação!$F$112:$F$131"
+   "Fundação!$F$119:$F$138"
   ],
   "T_dV": [
-   "Fundação!$G$112:$G$131"
+   "Fundação!$G$119:$G$138"
   ],
   "H_dM": [
-   "Fundação!$F$134:$F$153"
+   "Fundação!$F$141:$F$160"
   ],
   "H_dV": [
-   "Fundação!$G$134:$G$153"
+   "Fundação!$G$141:$G$160"
   ]
  }
 }

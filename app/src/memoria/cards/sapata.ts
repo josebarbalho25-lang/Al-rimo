@@ -16,7 +16,7 @@
 */
 import dados from '@/motor/planilha.gerada.json';
 import type { PlanilhaExportada } from '@/motor/tipos';
-import type { AutorDeCards, Card, Expr, Ref } from '../tipos';
+import type { AutorDeCards, Card, Expr, Passo, Ref } from '../tipos';
 import { arredBaixo, avaliar, cte, div, max, min, mul, nome, par, pi, pot, raiz, soma, sub } from '../expr';
 import { memoriaDe, secao } from '../passo';
 import type { Memoria } from '../passo';
@@ -93,6 +93,12 @@ export const SIMBOLOS_SAPATA: Readonly<Record<string, string>> = {
   '(A_{90}/s)_{m\\acute{\\imath}n}': 'estribo mínimo de torção por metro, por ramo (b_w = B)',
   s_t: 'espaçamento do estribo de torção',
   'A_{sl}': 'armadura longitudinal de torção, total no perímetro',
+  // ── esperas: dobra do pé na sapata (aba Fundação, seção 10) ──
+  '\\phi_{cc}': 'diâmetro das barras construtivas do contraforte',
+  'h_{dob}': 'altura de sapata que a dobra da espera da barra vertical pede',
+  'h_{dob,v}': 'altura de sapata que a dobra da espera do painel pede',
+  'h_{dob,cf}': 'altura de sapata que a dobra da espera do contraforte pede',
+  'h_{dob,cc}': 'altura de sapata que a dobra da espera das construtivas pede',
 };
 
 const ABA = 'Fundação';
@@ -484,6 +490,73 @@ function cardTorcao(r: Parameters<AutorDeCards>[0]): Card {
   return { ...base, secoes: [vazada, diagonais, momento, armadura] };
 }
 
+// ───────────────────────────── esperas: dobra do pé ─────────────────────────────
+
+/*
+  A dobra do pé da espera tem de caber na sapata (Jose, 09/10: "sapata corrida de 20 cm não comporta nó de cachorro
+  com barra de 20 mm"). A conta é a h_dobra do gerador (aba Fundação, seção 10; a mesma que monta a lista dos Ø):
+  h_dob = 2·c + φs + φs2 + D + 2φ ≤ h. Só o pino D é da NBR 6118 (Tab. 9.1, CA-50: 5φ com φ < 20 mm, 8φ com φ ≥ 20);
+  o cobrimento em cima e embaixo e o pé apoiado nas duas camadas da malha são DEDUÇÃO — por isso a seção leva a
+  marca de dedução e o passo, a da tabela. O IF(φ<20;5;8) da planilha vira o `if` do pino aqui.
+  Sem verificação com célula de veredito: a célula dob_esp julga a MAIOR das esperas do muro, e cada linha aqui é
+  uma espera — a desigualdade de cada uma é a régua dela.
+*/
+export interface Espera {
+  id: string;          // nome da célula da aba Fundação (hdob_v, hdob_pv...)
+  simbolo: string;
+  phi: Expr;           // Ø da barra, em cm (a folha da entrada com fator 0,1)
+  phiMm: number | null;
+  chave: string;
+  rotulo: string;
+}
+
+/** Uma espera: h_dob = 2·c_s + φ_s + φ_s2 + D + 2φ, com h_dob ≤ h_s. null quando a planilha deixou "—". */
+export function passoDaDobra(m: Memoria, e: Espera): Passo | null {
+  if (m.valor(e.id) === null) return null;
+  const pino = (e.phiMm ?? 0) < 20 ? 5 : 8;                      // IF(φ<20;5;8)
+  const cS = m.ent('cob_sap', 'c_s');
+  const phiS = m.ent('phi_sap', '\\phi_s', { fator: 0.1, casas: 2, unidade: 'cm' });
+  const phiS2 = m.ent('phi_sap2', '\\phi_{s2}', { fator: 0.1, casas: 2, unidade: 'cm' });
+  const hS = m.ent('h_sap', 'h_s', { fator: 100, casas: 1, unidade: 'cm' });
+  return m.passo(e.id, e.simbolo, soma(mul(cte(2, 0), cS), phiS, phiS2, mul(cte(pino, 0), e.phi), mul(cte(2, 0), e.phi)), {
+    casas: 2, unidade: 'cm', ref: NBR('Tab. 9.1'),
+    verif: { chave: e.chave, rotulo: e.rotulo, limite: hS, relacao: '<=' },
+  });
+}
+
+/** Contrafortes: as esperas do painel, do contraforte e das construtivas. (No balanço, a do card de ancoragem.) */
+function cardEsperas(r: Parameters<AutorDeCards>[0]): Card {
+  const m = memoriaDe(r);
+  const contrafortes = m.texto('Tipo_muro') === 'Contrafortes';
+  const emCm = { fator: 0.1, casas: 2, unidade: 'cm' };
+  const passos = contrafortes
+    ? [
+        passoDaDobra(m, {
+          id: 'hdob_pv', simbolo: 'h_{dob,v}', phi: m.ent('phi_pv', '\\phi_v', emCm), phiMm: m.num('phi_pv'),
+          chave: 'sapata.espera.painel', rotulo: 'Dobra da espera do painel ≤ altura da sapata',
+        }),
+        passoDaDobra(m, {
+          id: 'hdob_cf', simbolo: 'h_{dob,cf}', phi: m.ent('phi_cf', '\\phi_{cf}', emCm), phiMm: m.num('phi_cf'),
+          chave: 'sapata.espera.contraforte', rotulo: 'Dobra da espera do contraforte ≤ altura da sapata',
+        }),
+        passoDaDobra(m, {
+          id: 'hdob_cc', simbolo: 'h_{dob,cc}', phi: m.ent('phi_cc', '\\phi_{cc}', emCm), phiMm: m.num('phi_cc'),
+          chave: 'sapata.espera.construtivas', rotulo: 'Dobra da espera das construtivas ≤ altura da sapata',
+        }),
+      ]
+    : [];
+  const sec = secao('Dobra do pé na sapata', passos, DEDUCAO);
+  return {
+    id: 'sapata.esperas',
+    titulo: 'Esperas na fundação · contrafortes',
+    ref: NBR('Tab. 9.1'),
+    figura: 'Fig. 9',
+    secoes: sec.passos.length > 0 ? [sec] : [],
+    avisos: [],
+    aplicavel: contrafortes && sec.passos.length > 0,
+  };
+}
+
 /** Dimensionamento da sapata: flexão (ponta, talão), armadura, cortante e torção — nos dois tipos de muro. */
 export const autorSapata: AutorDeCards = (r) => [
   cardFlexao(r, PONTA),
@@ -491,4 +564,5 @@ export const autorSapata: AutorDeCards = (r) => [
   cardArmadura(r),
   cardCortante(r),
   cardTorcao(r),
+  cardEsperas(r),
 ];

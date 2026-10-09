@@ -13,9 +13,9 @@ const opcoes = (nome: string, a: Alteracoes = {}) => {
 };
 
 describe('listas dependentes', () => {
-  it('são as da planilha: altura, vão, contraforte e os espaçamentos', () => {
+  it('são as da planilha: altura, vão, contraforte, os espaçamentos e os Ø com espera', () => {
     const dependentes = CAMPOS.filter((c) => c.opcoesRef).map((c) => c.meta.nome).sort();
-    expect(dependentes).toEqual(['H_muro', 'l_cf', 's_dir', 's_pv_dir', 'tenr_']);
+    expect(dependentes).toEqual(['H_muro', 'l_cf', 'phi_cc', 'phi_cf', 'phi_pv', 'phi_v', 's_dir', 's_pv_dir', 'tenr_']);
     for (const c of CAMPOS.filter((x) => x.opcoesRef)) expect(c.controle, c.meta.nome).toBe('lista');
   });
 
@@ -76,6 +76,42 @@ describe('listas dependentes', () => {
     const c: Alteracoes = { s_dir: 50 };
     const rc = calcular(c);
     expect(ajustarAsListas(CAMPOS, c, (ref) => rc.cel(ref)).ajustes).toEqual([{ nome: 's_dir', de: 50, para: 40 }]);
+  });
+
+  /*
+    Ø com espera (Jose, 09/10): só os Ø cuja dobra do pé cabe na sapata — 2c + malha + D + 2φ ≤ h (D = 5φ até Ø16,
+    8φ no Ø20). Com c = 4 e a malha do padrão (10 + 6,3): Ø12,5 pede 18,4 cm, Ø16 20,8, Ø20 29,6. É o que o Jose
+    viu no Revit: sapata de 20 cm não comporta a dobra a partir do Ø16.
+  */
+  it('Ø com espera: os que a dobra cabe na sapata (20/25/30/40 cm com c = 4)', () => {
+    const ate = (n: number) => [6.3, 8, 10, 12.5, 16, 20].slice(0, n);
+    expect(opcoes('phi_v', { h_sap: 0.2 })).toEqual(ate(4));
+    expect(opcoes('phi_v', { h_sap: 0.25 })).toEqual(ate(5));
+    expect(opcoes('phi_v')).toEqual(ate(6));                          // padrão: 30 cm
+    expect(opcoes('phi_v', { h_sap: 0.4 })).toEqual(ate(6));
+    // as quatro barras com espera leem a mesma lista
+    for (const n of ['phi_pv', 'phi_cf', 'phi_cc']) expect(opcoes(n, { h_sap: 0.2 }), n).toEqual(ate(4));
+    // a malha entra na conta: com Ø12,5 + Ø8 por baixo, o Ø12,5 já não cabe em 20 cm (2·4 + 1,25 + 0,8 + 8,75 = 18,8;
+    // com cobrimento 5: 20,8)
+    expect(opcoes('phi_v', { h_sap: 0.2, cob_sap: 5, phi_sap: 12.5, phi_sap2: 8 })).toEqual(ate(3));
+    // espera reta (sem gancho) não dobra: todos
+    expect(opcoes('phi_v', { h_sap: 0.2, gancho_: 'Não' })).toEqual(ate(6));
+    // não teria nem o 6,3: lista vazia (a memória e a aba Fundação acusam)
+    expect(opcoes('phi_v', { h_sap: 0.12 })).toEqual([]);
+  });
+
+  it('Ø com espera que deixou de caber vai para o MAIOR que cabe, com o "→"', () => {
+    const a: Alteracoes = { h_sap: 0.2, phi_v: 20, phi_cf: 16, phi_pv: 12.5 };
+    const r = calcular(a);
+    const t = ajustarAsListas(CAMPOS, a, (ref) => r.cel(ref));
+    expect(t.alteracoes).toEqual({ h_sap: 0.2, phi_v: 12.5, phi_cf: 12.5, phi_pv: 12.5 });
+    expect(t.ajustes).toEqual(
+      expect.arrayContaining([
+        { nome: 'phi_v', de: 20, para: 12.5 },
+        { nome: 'phi_cf', de: 16, para: 12.5 },
+      ]),
+    );
+    expect(t.ajustes.find((x) => x.nome === 'phi_pv')).toBeUndefined();
   });
 
   it('dentro da lista, e em branco no opcional, nada muda', () => {

@@ -13,6 +13,7 @@ import type { AutorDeCards, Card, Expr, Ref, Secao } from '../tipos';
 import { arredBaixo, arredCima, cte, div, max, min, mul, pi, pot, raiz, soma, sub } from '../expr';
 import { memoriaDe, secao, type Memoria } from '../passo';
 import { nbr, nt } from '../formato';
+import { passoDaDobra } from './sapata';
 
 export const SIMBOLOS_BALANCO: Readonly<Record<string, string>> = {
   // ── materiais ──
@@ -446,12 +447,21 @@ function cardAncoragem(m: Memoria, f: Folhas, c: Ctx): Card {
     v('lb_adot') !== null && m.passo('lb_adot', '\\ell_{b,adot}', arredCima(max(f.lbNec, f.lbMin)), { casas: 0, unidade: 'cm' }),
   ], NBR6118_ANC);
 
+  // A dobra do pé da espera na sapata (aba Fundação, seção 10): a mesma conta da lista do Ø vertical. Só com gancho
+  // (espera reta não dobra) — a célula fica "—" e o passo não entra. Pino da Tab. 9.1; o resto, dedução.
+  const dobra = secao('Dobra da espera na sapata', [
+    passoDaDobra(m, {
+      id: 'hdob_v', simbolo: 'h_{dob}', phi: f.phiCm, phiMm: m.num('phi_v'),
+      chave: 'balanco.espera.dobra', rotulo: 'Dobra da espera ≤ altura da sapata',
+    }),
+  ], { fonte: 'Dedução' });
+
   return {
     id: 'balanco.ancoragem',
     titulo: 'Ancoragem na fundação · muro em balanço',
     ref: NBR('12.7.2'),
     figura: 'Fig. 9',
-    secoes: so([comprimento, adotado]),
+    secoes: so([comprimento, adotado, dobra]),
     avisos: [],
     aplicavel: c.balanco,
   };

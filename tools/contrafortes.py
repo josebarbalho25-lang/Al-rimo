@@ -60,7 +60,7 @@ MONT_CF = [  # chave, t, tenr, c enterrado (da ponta), c aparente (da face do so
     ('19x59', 19, 59, 10.0, 10.0, 163.29, 150.78, (40, 24, 15, 8, 6, 3), (35, 24, 15, 8, 6, 2)),
     ('19x79', 19, 79, 10.0, 10.0, 163.29, 150.78, (40, 24, 15, 8, 6, 3), (35, 24, 15, 8, 6, 2)),
 ]
-MONT_PHI = (6.3, 8, 10, 12.5, 16, 20)   # = LST_PHI das Entradas (Ø de furo)
+MONT_PHI = PHI_BARRAS   # Ø de furo (build_new.py); o phi_cf sai da lista dos Ø com espera, que é parte desta
 R['AT2'] = 'Contraforte: furo da barra principal nas montagens do Revit (templates do Jose, 09/10)'; R['AT2'].font = fB
 R['AT3'] = ('c = da face tracionada ao eixo das barras (enterrado: da ponta; aparente: da face do solo) = centro do trecho '
             'comum aos furos das fiadas P e I. Aparente = espelho do template (dedução).'); R['AT3'].font = fS

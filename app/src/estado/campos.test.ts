@@ -174,7 +174,8 @@ describe('o controle de cada entrada', () => {
     const c = campoDe(meta('t_bloco'), 'planilha');
     expect(c.opcoes.map((o) => o.valor)).toEqual([14, 19]);
     expect(mesmoValor(19, '19')).toBe(true);
-    const phi = campoDe(meta('phi_v'), 'planilha');
+    // (phi_ph: o Ø das barras com espera virou lista que depende da sapata — listas.test.ts)
+    const phi = campoDe(meta('phi_ph'), 'planilha');
     expect(phi.opcoes.map((o) => o.rotulo)).toEqual(['6,3', '8', '10', '12,5', '16', '20']);
     // Texto que só parece número continua texto.
     expect(campoDe(meta('arg_cls'), 'planilha').opcoes[0].valor).toBe('1,5 a 3,4 MPa');
@@ -304,8 +305,8 @@ describe('valor vindo de arquivo (validarValor)', () => {
     expect(validarValor(c('Agua'), 'SIM')).toEqual({ ok: true, valor: 'Sim' });
     expect(validarValor(c('t_bloco'), '14')).toEqual({ ok: true, valor: 14 });
     expect(validarValor(c('t_bloco'), 17)).toEqual({ ok: false });
-    expect(validarValor(c('phi_v'), 12.5)).toEqual({ ok: true, valor: 12.5 });
-    expect(validarValor(c('phi_v'), 11)).toEqual({ ok: false });
+    expect(validarValor(c('phi_ph'), 12.5)).toEqual({ ok: true, valor: 12.5 });
+    expect(validarValor(c('phi_ph'), 11)).toEqual({ ok: false });
   });
 });
 

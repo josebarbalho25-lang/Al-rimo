@@ -154,6 +154,31 @@ describe('listas que dependem de outra entrada (montagens fechadas)', () => {
     expect(s.alteracoes.l_cf).toBe(1.8);
   });
 
+  it('Ø com espera: a sapata baixa leva ao maior que cabe, e o Ø escolhido volta quando cabe de novo', async () => {
+    // digitar "0,25" na altura da sapata passa por "0,2" (o campo manda a conta a cada tecla)
+    const app = await abrirApp(new Map());
+    app.useApp.getState().definir('phi_v', 16);
+    app.useApp.getState().definir('h_sap', 0.2);
+    let s = app.useApp.getState();
+    expect(s.alteracoes.phi_v).toBe(12.5);
+    expect(s.ajustesDeLista.phi_v).toEqual({ nome: 'phi_v', de: 16, para: 12.5 });
+    app.useApp.getState().definir('h_sap', 0.205);               // 20,83 > 20,5: continua 12,5, "→" do 16
+    s = app.useApp.getState();
+    expect(s.alteracoes.phi_v).toBe(12.5);
+    expect(s.ajustesDeLista.phi_v).toEqual({ nome: 'phi_v', de: 16, para: 12.5 });
+    app.useApp.getState().definir('h_sap', 0.25);                // 2·4 + 1,63 + 11,2 = 20,83 ≤ 25: volta
+    s = app.useApp.getState();
+    expect(s.alteracoes.phi_v).toBe(16);
+    expect(s.ajustesDeLista.phi_v).toBeUndefined();
+    // escolhido na lista depois do "→", fica o escolhido
+    app.useApp.getState().definir('h_sap', 0.2);
+    app.useApp.getState().definir('phi_v', 10);
+    app.useApp.getState().definir('h_sap', 0.3);
+    s = app.useApp.getState();
+    expect(app.leitorDoEstado(s)('phi_v')).toBe(10);
+    expect(s.ajustesDeLista.phi_v).toBeUndefined();
+  });
+
   it('arquivo salvo com valor fora da lista abre ajustado e marcado como alterado', async () => {
     const app = await abrirApp(new Map());
     app.useApp.getState().carregar({ titulo: 'Antigo', alteracoes: { Tipo_muro: 'Contrafortes', l_cf: 1.5 }, extras: {} }, 'Antigo.alrimo');

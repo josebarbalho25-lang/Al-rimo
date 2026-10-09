@@ -30,8 +30,8 @@ ALVOS = {
         't_bloco': 19, 'H_muro': 1, 'gama_solo': 18, 'q_sobre': 0, 'c_solo': 0, 'Agua': 'Não', 'Ka_dir': 0.75,
         'K_dir': 1, 'd_dir': 7.5, 'fbk_': 4, 'fpk_ref': 'Bruta (NBR)', 'Graute': 'Parcial (seção I)', 'M2d_on': 'Não',
     },
-    # Fundação!G129: E129 > d_s/100 com os dois iguais a menos do último bit — Excel diz FALSO (0);
-    # o double cru daria −0,105.
+    # Fundação!G136 (G129 até a seção 10 da aba entrar, 09/10): E136 > d_s/100 com os dois iguais a menos do último
+    # bit — Excel diz FALSO (0); o double cru daria −0,105.
     'alvo_compara15_sapata_a': {
         'H_muro': 2, 't_bloco': 14, 'Trav_lat': 'Sim', 'Ka_dir': 0.33, 'phi_solo': 30, 'c_solo': 10,
         'q_sobre': 0, 'Agua': 'Não', 'z_NA': 0.7, 'fbk_': 12, 'Graute': 'Total (seção cheia)',
@@ -48,7 +48,7 @@ ALVOS = {
         'bwh_els': 20, 'fgk_dir': None, 'psi_els': 1, 'vao_ref': 'h', 'sg_on': 'Não',
         'dxi': 0.5, 'bw_dir': 15,
     },
-    # Fundação!G124 e B78 (cortante do talão): até 08/10 caía na mesma armadilha da seção crítica d_s/100. Com o vão e
+    # Fundação!G131 (era G124) e B78 (cortante do talão): até 08/10 caía na mesma armadilha da seção crítica d_s/100. Com o vão e
     # o contraforte da lista (3,75 e 54, antes 4 e 59) não cai mais na borda — fica como cobertura da sapata com
     # contrafortes em 14x39; a regra dos 15 dígitos na comparação continua provada pelo sapata_a.
     'alvo_compara15_sapata_b': {

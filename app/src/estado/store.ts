@@ -18,7 +18,10 @@ import {
   ajustarAsListas,
   ajustarAosTetos,
   aplicarValor,
+  LISTA_PELA_SAPATA,
   leitorDeValores,
+  mesmoValor,
+  valorAtual,
   montarSecoes,
   type AjusteDeLista,
   type Campo,
@@ -111,8 +114,9 @@ export interface EstadoDoApp {
 
 /*
   A conta com as listas em dia. A lista dependente sai da própria conta (aba Referências), então a ordem é: conta →
-  confere as listas → valor fora vai para a opção mais próxima → conta de novo. Nenhuma lista depende de entrada que
-  também está em lista (dependem do bloco e do tipo de muro), então uma volta resolve; o laço é só folga.
+  confere as listas → valor fora vai para a opção mais próxima → conta de novo. Nenhuma lista dependente depende de
+  entrada que também está em lista dependente (dependem do bloco, do tipo de muro e da sapata — altura, cobrimento,
+  Ø da malha e gancho, para os Ø com espera), então uma volta resolve; o laço é só folga.
   Devolve as alterações JÁ AJUSTADAS — são elas que vão para o estado, o arquivo e a conta.
 */
 function contaCom(lig: Ligacoes, alteracoes: Alteracoes, extras: Record<string, Valor>) {
@@ -155,9 +159,26 @@ function comConta(
   antes: Record<string, AjusteDeLista>,
   limpar: string | null,
 ) {
-  const { ajustesNovos, ...resto } = contaCom(lig, alteracoes, extras);
+  /*
+    O Ø com espera que a lista trocou ("→") volta a ser PEDIDO a cada conta. A lista dele depende de número digitado
+    (altura e cobrimento da sapata), e o campo numérico manda a conta a cada tecla: digitar "0,25" passa por "0,2", e
+    o Ø16 escolhido virava 12,5 no meio da digitação e ficava. Pedindo de novo o Ø do "de", ele volta assim que couber
+    (e o "→" some); se ainda não couber, a lista troca de novo e o "→" continua com o Ø que o usuário escolheu. As
+    outras listas dependem de escolha (bloco, tipo de muro), não de digitação, e ficam como estão.
+  */
+  let pedidas = alteracoes;
+  const devolvidos: string[] = [];
+  for (const aj of Object.values(antes)) {
+    const meta = METAS.get(aj.nome);
+    if (aj.nome === limpar || !meta || !LISTA_PELA_SAPATA.has(aj.nome)) continue;
+    if (!mesmoValor(valorAtual(meta, pedidas), aj.para)) continue;
+    pedidas = aplicarValor(pedidas, meta, aj.de);
+    devolvidos.push(aj.nome);
+  }
+  const { ajustesNovos, ...resto } = contaCom(lig, pedidas, extras);
   const ajustesDeLista = { ...antes };
   if (limpar) delete ajustesDeLista[limpar];
+  for (const nome of devolvidos) if (!(nome in ajustesNovos)) delete ajustesDeLista[nome];
   Object.assign(ajustesDeLista, ajustesNovos);
   return { ...resto, ajustesDeLista, mudouNaLista: Object.keys(ajustesNovos).length > 0 };
 }

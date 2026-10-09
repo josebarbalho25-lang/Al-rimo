@@ -228,7 +228,11 @@ e dizer ao Jose o que mudou e por quê.
   foi a 4Ø10. Entradas travadas, cerâmico removido, altura solo × muro, argila, calculadora da Fig. 22, tela de aceite
   do termo + versões no rosto do memorial, aviso de coesão no app, barra do contraforte em L na canaleta, canaleta
   cortada 19 própria, detalhes det01–det05, catálogo de peças no quantitativo. Suíte: 3351 testes, tsc limpo.
-  Faltam: bitola da espera em lista pela altura da sapata (decidido); dreno de fundo; deslizamento e posição do dente
+  Bitola da espera em LISTA pela altura da sapata (feito: h necessária = 2c + Ø malha (2 camadas) + D + 2φ ≤ h_sap, D da
+  NBR 6118 Tab. 9.1; função h_dobra() no build_new; aba Fundação seção 10; memória nos cards de ancoragem/esperas; a malha
+  na conta é DEDUÇÃO — com ela o Ø16 não cabe em sapata de 20, como o Jose disse). Trocar h_dobra() quando chegar o nó de
+  cachorro do Revit.
+  Faltam: dreno de fundo; deslizamento e posição do dente
   (aguardando resumo da aula do Gilberto); nó de cachorro (Revit dele); detalhes na prancha final; T de graute no 3D
   (parede quebrada da canaleta); "→ 5,99" aparece mesmo com comprimento modular (comparar com o modular?); revisores de
   IFC/quantitativo com o muro real; Ag da conta pelo bloco desenhado (decidir).

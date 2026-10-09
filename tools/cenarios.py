@@ -6,7 +6,8 @@ REGRESSÃO: o testar.py confere que os números não mudam sem querer, não que 
 
 OPCOES/sortear = o domínio dos cenários sorteados (varredura.py procura erro; golden.py vira gabarito do app). Só
 valores que a planilha ACEITA: as listas da validação de dados — inclusive as que dependem de outra entrada (altura
-pelo tipo de muro; vão, contraforte e espaçamentos pelo bloco), que o sortear() resolve depois de sortear o bloco."""
+pelo tipo de muro; vão, contraforte e espaçamentos pelo bloco; Ø com espera pela sapata), que o sortear() resolve
+depois de sortear o bloco e a sapata."""
 import openpyxl
 
 VAL123 = {
@@ -64,11 +65,30 @@ def solo_sorteado(rnd, h_muro):
     return max(0.2, min(h_muro, round(h_muro * rnd.uniform(0.4, 0.99), 2)))
 
 
+PHI_ESPERA = ('phi_v', 'phi_pv', 'phi_cf', 'phi_cc')   # barras que nascem de uma espera dobrada na sapata
+
+
+def bitolas_com_espera(sc):
+    """Os Ø com espera que a planilha aceita (Referências, coluna AS; a conta é a h_dobra do build_new.py): a dobra do
+    pé, 2c + malha + D + 2φ, até a altura da sapata; espera reta (sem gancho), todos. Entrada fora do sorteio fica no
+    padrão da planilha (Ø longitudinal 6,3; gancho Sim)."""
+    if sc.get('gancho_', 'Sim') != 'Sim':
+        return list(PHI_FURO)
+    base = 2 * sc['cob_sap'] + sc['phi_sap'] / 10 + sc.get('phi_sap2', 6.3) / 10
+    return [b for b in PHI_FURO if base + (5 if b < 20 else 8) * b / 10 + 2 * b / 10 <= sc['h_sap'] * 100 + 1e-9]
+
+
 def sortear(rnd):
     """Um cenário com valores aceitos pela planilha. '' = em branco (None)."""
     sc = {k: rnd.choice(v) for k, v in OPCOES.items()}
     sc.update({k: rnd.choice(v) for k, v in listas_do_bloco(sc['t_bloco'], sc['Tipo_muro']).items()})
     sc['H_solo'] = solo_sorteado(rnd, sc['H_muro'])
+    # Ø com espera que a sapata sorteada não comporta: fica o maior que cabe, como o app faz ("→"). Sem novo sorteio,
+    # para não mexer na sequência aleatória — os outros cenários continuam os mesmos de antes da lista nova (09/10).
+    cabem = bitolas_com_espera(sc)
+    for k in PHI_ESPERA:
+        if cabem and k in sc and sc[k] not in cabem:
+            sc[k] = max([b for b in cabem if b <= sc[k]] or cabem[:1])
     return {k: (None if v == '' else v) for k, v in sc.items()}
 
 

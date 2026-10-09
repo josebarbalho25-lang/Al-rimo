@@ -88,9 +88,25 @@ def lista(ref, celula, ws=None):
 LST = {  # nome definido → intervalo da lista na aba Referências (preenchido lá, na seção "Listas das Entradas")
     'lst_H': '$AJ$5:$AJ$22', 'lst_lcf': '$AK$5:$AK$21', 'lst_tenr': '$AL$5:$AL$6', 'lst_s': '$AM$5:$AM$11',
     'lst_hpan': '$AN$5:$AN$12', 'lst_sph': '$AO$5:$AO$13', 'lst_phi_est': '$AP$5:$AP$6',
-    'lst_phi_sap': '$AQ$5:$AQ$11', 'lst_phi_sap2': '$AR$5:$AR$9',
+    'lst_phi_sap': '$AQ$5:$AQ$11', 'lst_phi_sap2': '$AR$5:$AR$9', 'lst_phi_esp': '$AS$5:$AS$10',
 }
+PHI_BARRAS = (6.3, 8, 10, 12.5, 16, 20)   # Ø de furo e canaleta: Referências L5:L10 e a lista das esperas (AS)
 LST_PHI = '$L$5:$L$10'   # Ø 6,3 a 20 (barras em furo e canaleta): a mesma lista das tabelas de arranjos
+
+
+def h_dobra(ph):
+    """Altura de sapata (cm) que a dobra do pé da espera de Ø `ph` (mm) pede: 2c + malha + D + 2φ.
+
+    Por que existe (Jose, 09/10, modelando o "nó de cachorro" no Revit): "sapata corrida de 20 cm não comporta nó de
+    cachorro com barra de 20 mm; dá problema a partir de 16 mm". O Ø da barra que tem espera passa a ser lista que
+    depende da sapata. D = pino de dobra da NBR 6118 Tab. 9.1 (CA-50): 5φ com φ < 20 mm, 8φ com φ ≥ 20 — a mesma regra
+    que o app usa para desenhar a dobra (app/src/modulacao/barras.ts, pino). O resto é DEDUÇÃO nossa: a dobra inteira
+    (D + 2φ) entre o cobrimento de baixo e o de cima (2c), e o pé apoiado nas duas camadas da malha da sapata (Ø
+    transversal + Ø longitudinal), que é onde o app põe a espera (armaduras.ts, zPeBase; detalhe d03). Com a malha
+    a conta reproduz o que o Jose disse: em 20 cm (c = 4, malha 10 + 6,3) o Ø12,5 cabe (18,4) e o Ø16 não (20,8).
+    Uma função só para a lista (Referências) e para as linhas da aba Fundação: é a mesma conta nos dois lugares, e o
+    app herda as duas pelo motor."""
+    return f'2*cob_sap+phi_sap/10+phi_sap2/10+IF({ph}<20,5,8)*{ph}/10+2*{ph}/10'
 r = 5
 section(E, r, 'Geometria'); r += 1
 # Duas alturas desde 09/10 (pedido do Jose): o MURO (lista de fiadas) e o SOLO contido (livre, até o topo do muro).
@@ -146,9 +162,17 @@ _fora = [('H_muro', 'lst_H', 'altura', False), ('l_cf', 'lst_lcf', 'eixo a eixo'
          ('s_pv_dir', 'lst_s', 'espaçamento vertical do painel', True)]
 _conds = [(f'IF(ISNUMBER({n}),ISNUMBER(MATCH({n},{l},0)),TRUE)' if opc else f'ISNUMBER(MATCH({n},{l},0))', rot)
           for n, l, rot, opc in _fora]
+# Ø com espera (lista pela altura da sapata, ver h_dobra): só se confere a barra que o muro escolhido tem — no balanço o
+# Ø vertical; com contrafortes o do painel, o do contraforte e o das construtivas (se houver). Um Ø de contraforte
+# esquecido num muro em balanço não desenha espera nenhuma e não deve acusar.
+_esp = [('phi_v', 'Tipo_muro<>"Contrafortes"', 'Ø vertical (dobra da espera)'),
+        ('phi_pv', 'Tipo_muro="Contrafortes"', 'Ø do painel (dobra da espera)'),
+        ('phi_cf', 'Tipo_muro="Contrafortes"', 'Ø do contraforte (dobra da espera)'),
+        ('phi_cc', 'AND(Tipo_muro="Contrafortes",n_cc>0)', 'Ø construtivas (dobra da espera)')]
+_conds += [(f'IF({cnd},ISNUMBER(MATCH({n},lst_phi_esp,0)),TRUE)', rot) for n, cnd, rot in _esp]
 line(E, r, 'Entradas nas listas', '=IF(AND(' + ','.join(c for c, _ in _conds) + '),"OK","fora da lista:' +
      '"&' + '&'.join(f'IF({c},""," {rot};")' for c, rot in _conds) + ')', '',
-     'Altura, contraforte e espaçamentos dependem do tipo de muro e do bloco: trocar um deles depois não reconfere os outros.', 'key', None, 'lim_lst'); r += 1
+     'Altura, contraforte e espaçamentos dependem do tipo de muro e do bloco; os Ø com espera, da altura da sapata: trocar um deles depois não reconfere os outros.', 'key', None, 'lim_lst'); r += 1
 line(E, r, 'Travamento lateral transversal?', 'Não', '', 'Não = he = 2h (aula 12.2). Sim = usa αv, αh e l abaixo (planilha 02 do curso, aba Altura Efetiva).', 'inp', None, 'Trav_lat'); r += 1
 dv_tl = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validation(dv_tl); dv_tl.add(f'B{r-1}')
 line(E, r, 'αv', 2.5, '', '1,0 se travada no topo e na base; 2,5 se travada só numa extremidade.', 'inp', '0.0', 'alfa_v'); r += 1
@@ -186,8 +210,8 @@ dv_fr = DataValidation(type='list', formula1='"Líquida (curso),Bruta (NBR)"'); 
 line(E, r, 'Peso próprio da parede', 3.0, 'kN/m²', 'Só entra no momento de 2ª ordem (efeito pequeno). Grauteamento total pesa mais.', 'inp', '0.00', 'peso_par'); r += 1
 line(E, r, 'fyk (CA-50)', 500, 'MPa', '', 'inp', '0', 'fyk_'); r += 1
 line(E, r, 'fgk do graute — opcional', None, 'MPa', 'Em branco = tabela do curso pelo fbk (fbk 8 → 20 MPa). Entra no estribo mínimo do contraforte (ρw de 0,07% a 0,14%).', 'inp', '0.0', 'fgk_dir'); r += 1
-line(E, r, 'Ø armadura vertical', 10, 'mm', 'Barra no furo grauteado. A aba Arranjos mostra qual Ø serve para cada espaçamento.', 'inp', '0.0', 'phi_v'); r += 1
-lista(LST_PHI, f'B{r-1}')
+line(E, r, 'Ø armadura vertical', 10, 'mm', 'Barra no furo grauteado. A aba Arranjos mostra qual Ø serve para cada espaçamento. Lista: só os Ø cuja dobra da espera cabe na sapata (aba Fundação, seção 10).', 'inp', '0.0', 'phi_v'); r += 1
+lista(LST['lst_phi_esp'], f'B{r-1}')
 line(E, r, 'Espaçamento das barras — opcional', 40, 'cm', 'Em branco = automático: maior múltiplo do meio bloco (m) que atende o As de cálculo, até 6t (NBR 16868-1 11.3.5). Lista: múltiplos de m até 6t (aula 12.2: 40). A aba Muro em balanço avisa se As,ef ficar abaixo do As de cálculo.', 'inp', '0', 's_dir'); r += 1
 lista(LST['lst_s'], f'B{r-1}')
 line(E, r, 'd (altura útil) — opcional', 14, 'cm', 'Em branco = t/2 (barra no meio do furo). Aula 12.2: barra a 5 cm da face do solo no bloco de 19 → d = 14 cm (lado do solo = lado tracionado no balanço). Só use d maior que t/2 se garantir a posição da barra na obra (espaçador/gabarito).', 'inp', '0.0', 'd_dir'); r += 1
@@ -243,13 +267,13 @@ dv_pc = DataValidation(type='list', formula1='"Enterrado (lado do solo),Aparente
 line(E, r, 'Contraforte calculado', 'Intermediário', '', 'Intermediário: largura de influência = l. Extremidade: l/2 + balanço do muro além dele.', 'inp', None, 'tipo_cf'); r += 1
 dv_tc = DataValidation(type='list', formula1='"Intermediário,Extremidade"'); E.add_data_validation(dv_tc); dv_tc.add(f'B{r-1}')
 line(E, r, 'Balanço do muro além do contraforte de extremidade', 0, 'm', 'Só para "Extremidade".', 'inp', '0.00', 'bal_cf'); r += 1
-line(E, r, 'Ø da armadura principal do contraforte', 10, 'mm', 'Na ponta do contraforte (furo da ponta). Aula 12.3: 3Ø10.', 'inp', '0.0', 'phi_cf'); r += 1
-lista(LST_PHI, f'B{r-1}')
+line(E, r, 'Ø da armadura principal do contraforte', 10, 'mm', 'Na ponta do contraforte (furo da ponta). Aula 12.3: 3Ø10. Lista: só os Ø cuja dobra da espera cabe na sapata (aba Fundação, seção 10).', 'inp', '0.0', 'phi_cf'); r += 1
+lista(LST['lst_phi_esp'], f'B{r-1}')
 line(E, r, 'Nº de barras do contraforte — opcional', None, '', 'Em branco = automático.', 'inp', '0', 'n_cf_dir'); r += 1
 line(E, r, 'Cobrimento ao eixo das barras (da face tracionada) — opcional', None, 'cm', 'Em branco = medido na montagem do Revit (furo onde a barra passa reta): da ponta, 9,5 cm no bloco 14 e 10,0 no 19.', 'inp', '0.0', 'c_cf_dir'); r += 1
 line(E, r, 'K do contraforte — opcional', 1.0, '', 'Em branco = NBR (1,5 sem graute; 2,0 grauteado). Aula 12.3: K = 1.', 'inp', '0.00', 'K_cf'); r += 1
-line(E, r, 'Barras construtivas (lado comprimido): Ø', 10, 'mm', 'Aula 12.3: 2Ø10 construtivas.', 'inp', '0.0', 'phi_cc'); r += 1
-lista(LST_PHI, f'B{r-1}')
+line(E, r, 'Barras construtivas (lado comprimido): Ø', 10, 'mm', 'Aula 12.3: 2Ø10 construtivas. Lista: só os Ø cuja dobra da espera cabe na sapata (aba Fundação, seção 10).', 'inp', '0.0', 'phi_cc'); r += 1
+lista(LST['lst_phi_esp'], f'B{r-1}')
 line(E, r, 'Barras construtivas: quantidade', 2, '', '', 'inp', '0', 'n_cc'); r += 1
 line(E, r, 'Estribo: Ø', 6.3, 'mm', 'Vai na junta de assentamento: Ø ≤ 6,3 (lista: 5 ou 6,3). Aula 12.3: Ø6,3.', 'inp', '0.0', 'phi_est'); r += 1
 lista(LST['lst_phi_est'], f'B{r-1}')
@@ -259,8 +283,8 @@ r += 1
 section(E, r, 'Painel entre contrafortes (aula 12.3)'); r += 1
 line(E, r, 'Bordas laterais do painel (nos contrafortes)', 'Apoiadas', '', 'Base sempre engastada na sapata corrida; topo livre. Apoiadas = Tipo 21 (aula 12.3); Engastadas = Tipo 22.', 'inp', None, 'lat_pan'); r += 1
 dv_lp = DataValidation(type='list', formula1='"Apoiadas,Engastadas"'); E.add_data_validation(dv_lp); dv_lp.add(f'B{r-1}')
-line(E, r, 'Ø vertical do painel', 10, 'mm', 'Aula 12.3: Ø10.', 'inp', '0.0', 'phi_pv'); r += 1
-lista(LST_PHI, f'B{r-1}')
+line(E, r, 'Ø vertical do painel', 10, 'mm', 'Aula 12.3: Ø10. Lista: só os Ø cuja dobra da espera cabe na sapata (aba Fundação, seção 10).', 'inp', '0.0', 'phi_pv'); r += 1
+lista(LST['lst_phi_esp'], f'B{r-1}')
 line(E, r, 'Espaçamento vertical — opcional', None, 'cm', 'Em branco = automático (múltiplo do espaçamento dos furos). Lista: múltiplos de m até 6t.', 'inp', '0', 's_pv_dir'); r += 1
 lista(LST['lst_s'], f'B{r-1}')
 line(E, r, 'Posição das barras verticais', '2 barras (uma em cada face)', '', 'Aula 12.3: barras excêntricas simétricas a 5 cm das faces (o momento troca de sinal: base traciona o lado do solo, vão traciona o lado de fora).', 'inp', None, 'pos_pv'); r += 1
@@ -426,7 +450,7 @@ for c0, tab, lab in ((15, LB_R, 'Reta'), (23, LB_G, 'Gancho')):
             c = R.cell(row=5 + i, column=c0 + j, value=v); c.font = fN; c.border = BOX; c.alignment = Alignment(horizontal='center')
 for col, h_ in zip('LM', ['Ø (mm)', 'As (cm²)']):
     c = R[f'{col}4']; c.value = h_; c.font = fH; c.fill = NAVY; c.alignment = Alignment(horizontal='center')
-for i, ph in enumerate([6.3, 8, 10, 12.5, 16, 20]):
+for i, ph in enumerate(PHI_BARRAS):
     R[f'L{5+i}'] = ph; R[f'M{5+i}'] = f'=PI()*L{5+i}^2/400'; R[f'M{5+i}'].number_format = '0.000'
     for cc in 'LM':
         R[f'{cc}{5+i}'].font = fN; R[f'{cc}{5+i}'].border = BOX; R[f'{cc}{5+i}'].alignment = Alignment(horizontal='center')
@@ -437,7 +461,7 @@ for i, ph in enumerate([6.3, 8, 10, 12.5, 16, 20]):
 R['AJ2'] = 'Listas das Entradas (montagens fechadas, decisão do Jose 09/10). Branco no topo = automático.'; R['AJ2'].font = fB
 _lst_cab = {'AJ': 'Altura (m)', 'AK': 'Eixo a eixo (m)', 'AL': 'Contraforte (cm)', 'AM': 'Barras (cm)',
             'AN': 'Canaletas balanço (m)', 'AO': 'Canaletas contraf. (cm)', 'AP': 'Ø estribo (mm)',
-            'AQ': 'Ø sapata (mm)', 'AR': 'Ø sapata secund./torção (mm)'}
+            'AQ': 'Ø sapata (mm)', 'AR': 'Ø sapata secund./torção (mm)', 'AS': 'Ø com espera (mm)'}
 _lst_col = {}
 for col, h_ in _lst_cab.items():
     c = R[f'{col}4']; c.value = h_; c.font = fH; c.fill = NAVY; c.alignment = Alignment(horizontal='center', wrap_text=True)
@@ -457,6 +481,10 @@ _lst_col['AO'] = [None] + [20 * n for n in range(1, 9)]
 _lst_col['AP'] = [5, 6.3]
 _lst_col['AQ'] = [6.3, 8, 10, 12.5, 16, 20, 25]
 _lst_col['AR'] = [5, 6.3, 8, 10, 12.5]
+# Ø das barras que nascem de uma espera na sapata (balanço, painel, contraforte e construtivas): só os que a dobra do
+# pé cabe na altura da sapata (h_dobra, acima). Espera sem gancho é reta, não dobra: aí valem todos. A conta cresce
+# com o Ø, então a lista é sempre do 6,3 até o maior que cabe — e o app, quando o Ø sai dela, fica com esse maior.
+_lst_col['AS'] = [f'=IF(OR(gancho_<>"Sim",{h_dobra(b)}<=h_sap*100),{b},"")' for b in PHI_BARRAS]
 for col, vals in _lst_col.items():
     for i, v in enumerate(vals):
         c = R[f'{col}{5 + i}']; c.value = v; c.font = fN; c.border = BOX; c.alignment = Alignment(horizontal='center')
@@ -467,6 +495,11 @@ R['AJ24'] = ('Eixo a eixo: 0,80 a 4,00 m. Abaixo disso o vão livre entre contra
              'muro); acima de 4,00 m a tabela de δ já está no fim (lenr/eenr ≥ 20 → δ = 1: o contraforte não enrijece mais a '
              'parede) e o painel só cai na tabela de Libânio (γ = h/l ≥ 0,30) com h ≥ 1,20 m. Canaletas: até 1,60 m (8 fiadas).')
 R['AJ24'].font = fS
+R['AJ25'] = ('Ø com espera: só os Ø cuja dobra do pé da espera cabe na sapata — 2c + Ø transversal + Ø longitudinal + D + 2φ '
+             '≤ h da sapata; D = 5φ (φ < 20 mm) ou 8φ (φ ≥ 20 mm), NBR 6118 Tab. 9.1 (CA-50). Cobrimento em cima e embaixo '
+             'e pé apoiado na malha: dedução (é como o app desenha a espera). Espera sem gancho (reta): todos. Conta por '
+             'espera na aba Fundação, seção 10.')
+R['AJ25'].font = fS
 widths(R, {'A': 30, 'B': 34, 'C': 80, 'H': 8, 'I': 8, 'J': 8, 'L': 16, 'M': 10, 'N': 10, 'O': 8, 'P': 8})
 
 # ================= SOLO E EMPUXO =================

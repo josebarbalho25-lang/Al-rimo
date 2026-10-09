@@ -339,8 +339,9 @@ export function validarValor(campo: Campo, v: unknown): { ok: true; valor: Valor
 
 /*
   Montagens fechadas (Jose, 09/10): altura, vão entre contrafortes, contraforte e espaçamentos só em valores da
-  lista — e a lista muda com o tipo de muro ou com o bloco. Ela mora na planilha (aba Referências, células com
-  fórmula), então as opções saem da CONTA ATUAL: o app não tem uma segunda cópia da regra para divergir.
+  lista — e a lista muda com o tipo de muro ou com o bloco. Os Ø das barras com espera, com a sapata (só os que a
+  dobra do pé cabe). Ela mora na planilha (aba Referências, células com fórmula), então as opções saem da CONTA
+  ATUAL: o app não tem uma segunda cópia da regra para divergir.
 */
 
 /** Lê uma célula do Resultado ('Referências!AK5'). */
@@ -387,6 +388,15 @@ export function opcoesDoCampo(campo: Campo, cel: LerCelula): Opcao[] {
 */
 const EMPATE_PARA_BAIXO = new Set(['s_dir', 's_pv_dir', 's_ph_dir', 'h_pan']);
 
+/*
+  Ø DA BARRA COM ESPERA (Jose, 09/10): a lista é dos Ø cuja dobra do pé cabe na sapata (Referências, coluna AS).
+  Baixou a sapata e o Ø não cabe mais → fica o MAIOR que cabe, nunca um Ø maior que o escolhido. Como a dobra cresce
+  com o Ø, a lista é sempre do 6,3 até um teto, e o "mais próximo" já daria isso; a regra fica escrita para não
+  depender dessa coincidência. Diferente das outras listas, esta depende de número DIGITADO (altura e cobrimento da
+  sapata): o store devolve o Ø escolhido quando ele volta a caber (store.ts, comConta).
+*/
+export const LISTA_PELA_SAPATA: ReadonlySet<string> = new Set(['phi_v', 'phi_pv', 'phi_cf', 'phi_cc']);
+
 /** O que a troca automática fez num campo, para a tela mostrar ("→ 54"). */
 export interface AjusteDeLista {
   nome: string;
@@ -396,8 +406,9 @@ export interface AjusteDeLista {
 
 /**
  * Valor atual que saiu da lista dependente (ex.: contraforte 79 e o bloco trocado para 14, cuja lista é 34/54)
- * → a opção mais próxima; empate, a do lado da segurança. No Excel a lista só confere no momento em que se digita
- * (lá a linha "Entradas nas listas" acusa); aqui a troca é na hora, e o ajuste aparece ao lado do campo.
+ * → a opção mais próxima; empate, a do lado da segurança (Ø com espera: a maior que cabe na sapata). No Excel a
+ * lista só confere no momento em que se digita (lá a linha "Entradas nas listas" acusa); aqui a troca é na hora, e
+ * o ajuste aparece ao lado do campo.
  * Só número sai da lista: em branco ("auto") é sempre aceito na entrada opcional.
  */
 export function ajustarAsListas(
@@ -421,6 +432,8 @@ export function ajustarAsListas(
       const d = Math.abs(o - v) - Math.abs(melhor - v);
       if (d < -1e-9 || (Math.abs(d) <= 1e-9 && (paraBaixo ? o < melhor : o > melhor))) melhor = o;
     }
+    const abaixo = nums.filter((o) => o < v);
+    if (LISTA_PELA_SAPATA.has(campo.meta.nome) && abaixo.length > 0) melhor = Math.max(...abaixo);
     novas = aplicarValor(novas, campo.meta, melhor);
     ajustes.push({ nome: campo.meta.nome, de: v, para: melhor });
   }

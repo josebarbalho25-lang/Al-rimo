@@ -144,8 +144,35 @@ CHKF = [
 ]
 for lab, f in CHKF:
     Lf(lab, f, '', '', 'key')
-# A verificação do he ocupou a linha em branco que havia aqui: a memória das fatias fica nas mesmas linhas de antes
-# (o gabarito do app e os cenários-alvo do golden_alvos.py citam células dela pelo endereço).
+r += 1
+# ---------- 10. esperas: dobra do pé na sapata ----------
+# Seção nova (09/10) DEPOIS das verificações e antes da memória das fatias: as seções 1 a 9 ficam nos mesmos endereços,
+# que a memória do app (cards/estabilidade.ts) e a modulação (leitura.ts, estribo de torção) leem pelo endereço. A
+# memória das fatias desceu: o app a lê pelos nomes T_dM/H_dM/T_dV/H_dV, e o gabarito é refeito pelo golden.
+# A conta é a da lista dos Ø com espera (h_dobra, build_new.py): a lista só oferece o Ø que cabe, e estas linhas
+# mostram a conta de cada espera do muro escolhido. "—" quando a barra não existe nesse muro ou a espera é reta.
+section(Fd, r, '10. Esperas — dobra do pé na sapata'); r += 1
+_h = 'h_sap*100'
+ESP = [('Balanço: espera do Ø vertical', 'phi_v', 'hdob_v', 'Tipo_muro<>"Contrafortes"'),
+       ('Contrafortes: espera do Ø vertical do painel', 'phi_pv', 'hdob_pv', 'Tipo_muro="Contrafortes"'),
+       ('Contrafortes: espera do Ø principal do contraforte', 'phi_cf', 'hdob_cf', 'Tipo_muro="Contrafortes"'),
+       ('Contrafortes: espera das construtivas', 'phi_cc', 'hdob_cc', 'AND(Tipo_muro="Contrafortes",n_cc>0)')]
+for i, (lab, ph, nm_, cnd) in enumerate(ESP):
+    Lf(f'{lab}: 2c + malha + D + 2φ', f'=IF(AND({cnd},gancho_="Sim"),{h_dobra(ph)},"—")', 'cm',
+       'D = 5φ (φ < 20 mm) ou 8φ (φ ≥ 20 mm). 2c e malha (Ø transversal + Ø longitudinal, onde o pé da espera apoia): dedução.' if i == 0 else '',
+       'res', '0.00', nm_, 'NBR 6118 Tab. 9.1 + dedução')
+# Veredito pela maior das esperas do muro (a conta cresce com o Ø). O "—" vira 0 com ÉNÚM antes do MÁXIMO, em vez de
+# confiar que o MÁXIMO pula texto lido por referência: fica explícito, e o motor do app não precisa imitar essa regra.
+_hmax = 'MAX(' + ','.join(f'IF(ISNUMBER({nm_}),{nm_},0)' for _, _, nm_, _ in ESP) + ')'
+# Com contrafortes são duas ou três esperas: a lista de todas e a maior, que é a que se compara com a sapata.
+_partes = ('IF(Tipo_muro="Contrafortes","painel Ø"&' + fphi('phi_pv') + '&": "&FIXED(hdob_pv,1)&" · contraforte Ø"&'
+           + fphi('phi_cf') + '&": "&FIXED(hdob_cf,1)&IF(ISNUMBER(hdob_cc)," · construtivas Ø"&' + fphi('phi_cc')
+           + f'&": "&FIXED(hdob_cc,1),"")&" cm; maior "&FIXED({_hmax},1),"Ø"&' + fphi('phi_v') + '&": "&FIXED(hdob_v,1))')
+Lf('Dobra da espera: 2c + malha + D + 2φ ≤ h da sapata',
+   f'=IF(gancho_<>"Sim","— (espera reta, sem dobra)",IF({_hmax}<={_h},"OK — ","NÃO OK — ")&{_partes}'
+   f'&IF({_hmax}<={_h}," ≤ "," > ")&FIXED({_h},1)&" cm"&IF({_hmax}<={_h},"",": baixar o Ø ou aumentar a altura da sapata"))',
+   '', 'Os Ø com espera só aceitam valores cuja dobra cabe (lista na aba Referências, coluna AS).', 'key', None, 'dob_esp',
+   'NBR 6118 Tab. 9.1 + dedução')
 r += 1
 # ---------- memória: fatias ----------
 section(Fd, r, 'Memória — pressão do solo integrada em 20 fatias por balanço (ponta e talão)', 8); r += 1
