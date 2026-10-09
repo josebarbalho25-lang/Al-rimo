@@ -152,6 +152,9 @@ e dizer ao Jose o que mudou e por quê.
   Pontos para o Jose: cor da espera (Fig. 9 × Fig. 18 invertidas — seguiu a 9); impermeabilização até a altura de
   solo (quantitativo) × topo do muro (Fig. 17); barra vertical subindo até 3 cm do topo atravessa o fundo da canaleta
   da cinta (furar o fundo? o detalhe não mostra); junta: o app interrompe toda a barra da cinta (ABCP fala em "parte").
+- **Barbacã (Jose, 09/10 noite): não precisa de célula livre** — fura-se qualquer bloco, canaleta inclusive, com broca
+  convencional ou serra copo (acabamento melhor). A FAZER: no muro todo em canaleta, desenhar o barbacã furando a canaleta
+  (3D, IFC, quantitativo) em vez do aviso `BARBACA_SEM_CELULA` "não desenhado".
 - **A FAZER (Jose, 09/10): DRENO DE FUNDO** além dos barbacãs — tubo correndo na longitudinal, no pé do tardoz, envolto
   por bidim (geotêxtil), areia e brita. Entra no 3D, no corte, no quantitativo (m de tubo, m² de bidim, m³ de areia e
   brita), no IFC e nas entradas de Drenagem (Ø do tubo, dimensões do envelope). Fácil; ficou para depois.
@@ -242,8 +245,7 @@ e dizer ao Jose o que mudou e por quê.
   no .alrimo) — "Salvar como" e cópia do arquivo MANTÊM o id (como o Revit): manter ou o "Salvar como" criar muro novo?
   Achados da revisão FEITOS (09/10 noite): fundo da canaleta furado onde passa barra (Geometria.pedacos), T de graute
   no encontro das canaletas, graute da haste contínuo nas juntas, aviso BARBACA_SEM_CELULA; validador do IFC com
-  --furos/--barras (tem dente). Graute total sobe ~4–5%. Para o Jose: barbacã em muro todo em canaleta — furar a
-  canaleta?; IFC: cada canaleta furada diferente vira um tipo com o mesmo nome — abrir no Revit para conferir.
+  --furos/--barras (tem dente). Graute total sobe ~4–5%. Para o Jose: IFC: cada canaleta furada diferente vira um tipo com o mesmo nome — abrir no Revit para conferir.
   Faltam: dreno de fundo; deslizamento e posição do dente
   (aguardando resumo da aula do Gilberto); nó de cachorro (Revit dele); detalhes na prancha final; T de graute no 3D
   (parede quebrada da canaleta); "→ 5,99" aparece mesmo com comprimento modular (comparar com o modular?); revisores de
