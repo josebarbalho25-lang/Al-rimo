@@ -185,7 +185,12 @@ export function modular(p: Parametros, avisos: Aviso[]): Modulo {
   const { trechos, L_real } = p.contrafortes
     ? trechosComContrafortes(p, Wn, l_cf)
     : trechosEmBalanco(p, m);
-  ajuste('L_total', p.L_total / 1000, L_real / 1000, 'm');
+  // O comprimento digitado é o MODULAR (Jose: "comprimento fixado em múltiplos dos blocos"): células de bloco + junta
+  // contadas com a junta da ponta, como na planta de modulação. O desenhado (L_real, que o quantitativo e os desenhos
+  // usam) é 1 cm menor — a junta da ponta não tem bloco do outro lado. Comparar o digitado com o desenhado punha
+  // "6,00 → 5,99" em todo muro que já fechava; comparando com o modular, a seta só aparece quando o valor não fecha.
+  // A seta mostra o modular, e não o desenhado, para que digitar o valor dela a faça sumir.
+  ajuste('L_total', p.L_total / 1000, (L_real + JUNTA) / 1000, 'm');
 
   return { cat, familia, furo, m, Wn, n_fiadas, H_des, s_vert, s_pv, s_can, l_cf, tenr, n_haste, s_est, trechos, L_real, ajustes };
 }
@@ -219,8 +224,19 @@ function trechosEmBalanco(p: Parametros, m: number): { trechos: TrechoModulado[]
 
 function trechosComContrafortes(p: Parametros, Wn: number, l_cf: number): { trechos: TrechoModulado[]; L_real: number } {
   const b = Wn - JUNTA;           // largura do contraforte (t)
-  const nT = quantosTrechos(p.L_total, p.junta_cada);
-  const N = Math.max(nT, Math.round((p.L_total - nT * b - JUNTA * (nT - 1)) / l_cf));
+  // Comprimento modular com nT trechos e N vãos: N·l_cf + nT·Wn (cada trecho fecha com o nó da ponta; o desenhado é
+  // esse menos a junta da ponta). N sai do digitado; nT, como no balanço, do DESENHADO — contar os trechos pelo
+  // digitado fazia o modular mudar quando o usuário digitava o valor da seta (junta a cada 6 m: 5,90 → 6,20 e, ao
+  // digitar 6,20, → 6,40). Partindo do digitado menos a junta e repetindo até o nº de trechos parar, o valor da seta
+  // é ponto fixo: digitado de novo, dá o mesmo muro e nenhuma seta.
+  const vaos = (n: number): number => Math.max(n, Math.round((p.L_total - n * Wn) / l_cf));
+  let nT = quantosTrechos(p.L_total - JUNTA, p.junta_cada);
+  for (let i = 0; i < 4; i++) {
+    const outro = quantosTrechos(vaos(nT) * l_cf + nT * Wn - JUNTA, p.junta_cada);
+    if (outro === nT) break;
+    nT = outro;
+  }
+  const N = vaos(nT);
   const trechos: TrechoModulado[] = [];
   let x = 0;
   let cf = 1;

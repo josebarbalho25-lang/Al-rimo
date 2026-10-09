@@ -516,6 +516,46 @@ describe('regra modular', () => {
       expect(b.x - a.x).toBe(c.familia.t + 10);
     }
   });
+  it('"→" do comprimento só quando o digitado não é modular; o desenho segue 1 cm menor (a junta da ponta)', () => {
+    const seta = (m: Modelo) => m.ajustes.find((a) => a.nome === 'L_total');
+    // balanço, bloco 19: 6,00 = 30 células de 20 → sem seta, desenhado 5,99
+    const b6 = gerarModelo(resultadoDoGabarito('aula122'), { L_total: 6 });
+    expect(b6.familia.nome).toBe('19x39');
+    expect(seta(b6)).toBeUndefined();
+    expect(b6.dims.L_real).toBe(5990);
+    // 6,10 não fecha: vai a 31 células — a seta mostra o modular (6,20), o desenho tem 6,19
+    const b61 = gerarModelo(resultadoDoGabarito('aula122'), { L_total: 6.1 });
+    expect(seta(b61)).toEqual({ nome: 'L_total', de: 6.1, para: 6.2, unidade: 'm' });
+    expect(b61.dims.L_real).toBe(6190);
+    expect(seta(gerarModelo(resultadoDoGabarito('aula122'), { L_total: 6.2 }))).toBeUndefined();
+
+    // contrafortes 14x39 (VAL123, vão 1,35 = 15 + 6·20): N vãos + o nó da ponta (15) fecha
+    const c14 = resultadoDoGabarito('aula123');
+    for (const [L, vaos] of [[2.85, 2], [5.55, 4]] as const) {
+      const m = gerarModelo(c14, { L_total: L });
+      expect(m.familia.nome).toBe('14x39');
+      expect(seta(m), `14x39 ${L}`).toBeUndefined();
+      expect(m.dims.contrafortes.length).toBe(vaos + 1);
+      expect(m.dims.L_real).toBe(Math.round(L * 1000) - 10);
+    }
+    expect(seta(gerarModelo(c14, { L_total: 6 }))).toEqual({ nome: 'L_total', de: 6, para: 5.55, unidade: 'm' });
+
+    // contrafortes 19x39 (vão 1,60 = 20 + 7·20): 3 vãos + 20 = 5,00
+    const c19 = trocar(c14, { t_bloco: 19, L_bloco: 39, eenr: 19, Ag_furo: 170, hf_bl: 3.5, l_cf: 1.6 });
+    const m19 = gerarModelo(c19, { L_total: 5 });
+    expect(m19.familia.nome).toBe('19x39');
+    expect(seta(m19)).toBeUndefined();
+    expect(m19.dims.L_real).toBe(4990);
+    expect(seta(gerarModelo(c19, { L_total: 4.99 }))).toEqual({ nome: 'L_total', de: 4.99, para: 5, unidade: 'm' });
+
+    // com junta de controle, digitar o valor da seta faz a seta sumir (o nº de trechos não muda com ele)
+    const c19j = trocar(c14, { t_bloco: 19, L_bloco: 39, eenr: 19, Ag_furo: 170, hf_bl: 3.5, l_cf: 2 });
+    const antes = seta(gerarModelo(c19j, { L_total: 5.9, junta_cada: 6 }))!;
+    expect(antes.para).toBe(6.4);                                   // 2 trechos: 3 vãos de 2,00 + 2 nós de 20
+    const depois = gerarModelo(c19j, { L_total: antes.para, junta_cada: 6 });
+    expect(seta(depois)).toBeUndefined();
+    expect(depois.dims.trechos.length).toBe(2);
+  });
 });
 
 describe('canaleta cortada da 19: peça própria (Jose, 09/10)', () => {
@@ -621,9 +661,17 @@ describe('comprimento do muro no módulo (Jose, 09/10)', () => {
           const vao = xs[1] - xs[0];
           m.dims.trechos.forEach((tr) => expect((tr.x1 - tr.x0 - m.familia.t) % vao, nome).toBe(0));
         }
+        // a seta compara com o MODULAR (desenhado + a junta da ponta) e mostra ele; digitado de volta, ela some
+        const modular = m.dims.L_real + 10;
         const aj = m.ajustes.find((a) => a.nome === 'L_total');
-        if (Math.abs(Lt - m.dims.L_real / 1000) > 1e-6) expect(aj, nome).toEqual({ nome: 'L_total', de: Lt, para: Math.round(m.dims.L_real / 10) / 100, unidade: 'm' });
-        else expect(aj, nome).toBeUndefined();
+        if (Math.abs(Lt - modular / 1000) > 1e-6) {
+          expect(aj, nome).toEqual({ nome: 'L_total', de: Lt, para: Math.round(modular / 10) / 100, unidade: 'm' });
+          const deNovo = gerarModelo(r, { L_total: aj!.para });
+          expect(deNovo.ajustes.find((a) => a.nome === 'L_total'), `${nome} → ${aj!.para}`).toBeUndefined();
+          expect(deNovo.dims.L_real, `${nome} → ${aj!.para}`).toBe(m.dims.L_real);
+        } else {
+          expect(aj, nome).toBeUndefined();
+        }
       }
     }
   }, 120_000);
