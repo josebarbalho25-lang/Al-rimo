@@ -255,5 +255,6 @@ e dizer ao Jose o que mudou e por quê.
 - Receber a NBR 16868-1 em PDF: conferir numeração de itens, Anexo E (βf) e os contornos do ábaco do ELS (lidos do slide).
 - Confirmar os FS da NBR 11682 (tombamento 2,0, deslizamento 1,5 — "pelo que sei").
 - Fundação: o mínimo de estribo de torção com bw = B fica alto em sapata larga (avaliar); peso do contraforte grauteado é estimativa.
+- **Fundação rígida × flexível (Jose, 10/10, para o dia seguinte):** a conta ASSUME sapata rígida e não verifica. Pela NBR 6118 22.6.1 (h ≥ 2/3 do balanço) o exemplo (talão 0,855, h 0,30) é flexível. Ver com ele: linha rígida/flexível, modelo com molas (Winkler) ao longo do muro, punção/cisalhamento. Fonte: apostila do Bastos (Sapatas de Fundação, UNESP).
 - Cisalhamento do painel não armado: hipótese Vsd = fd·l/2 nunca confirmada no vídeo.
 - Depois da planilha: app (3D, quantitativo, desenhos, memória auditável). Reaproveitar os SVG de `figs/`.
