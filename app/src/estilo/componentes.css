@@ -758,3 +758,104 @@ body[data-theme='dark'] .prancheta.prancheta-cores {
   border: 1px solid var(--line-strong);
   background: var(--surface);
 }
+
+/* ── ENTRADA POR FIGURAS (piloto, Jose 10/10) ───────────────────────────────
+   Modal grande: abas dos grupos em cima; figura à esquerda, campos à direita.
+   As linhas são as do painel (.entrada); a figura é a .prancheta das outras. */
+.btn-por-figuras {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-nota);
+  color: var(--muted);
+}
+.btn-por-figuras:hover {
+  color: var(--ink);
+  background: var(--sel-bg);
+}
+.modal-caixa.por-figuras {
+  width: min(calc(1400px * var(--escala-ui)), 96vw);
+  height: 92vh;
+}
+.pf-abas {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 6px 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.pf-aba {
+  padding: 6px 10px;
+  font-size: var(--fs-rotulo);
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+}
+.pf-aba:hover {
+  color: var(--ink);
+}
+.pf-aba.on {
+  color: var(--ink);
+  border-bottom-color: var(--accent-3);
+}
+.pf-corpo {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(calc(380px * var(--escala-ui)), 1fr);
+  gap: calc(12px * var(--escala-ui));
+  padding: calc(12px * var(--escala-ui));
+}
+.pf-figura {
+  min-height: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.pf-figura .figura-img,
+.pf-figura .figura-viva {
+  flex: 1 1 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  object-fit: contain;
+}
+.pf-legenda {
+  padding: 4px 8px 8px;
+  font-size: var(--fs-nota);
+}
+.pf-campos {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+.pf-campos .entrada:focus-within > label {
+  color: var(--accent-3);
+}
+.pf-campos .calc-solo {
+  margin-top: calc(14px * var(--escala-ui));
+  padding-top: calc(10px * var(--escala-ui));
+  border-top: 1px solid var(--line);
+}
+/* cota clicável do corte vivo: acende no pairar e quando o campo está em foco */
+.cota-viva {
+  cursor: pointer;
+}
+.cota-viva:hover line,
+.cota-viva.on line {
+  stroke: #c55a11;
+}
+.cota-viva:hover text,
+.cota-viva.on text {
+  fill: #c55a11;
+  font-weight: bold;
+}
