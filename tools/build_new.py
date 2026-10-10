@@ -315,8 +315,9 @@ dv_qe = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validatio
 line(E, r, "φ' do solo de apoio — opcional", None, '°', "Em branco = φ' adotado do solo contido. A aba do Gilberto usava o solo de cima.", 'inp', '0.0', 'phi_base'); r += 1
 line(E, r, "δ/φ' na base", 0.67, '', 'Atrito sapata-solo: tg δ. 2/3 é o usual; 1,0 = aba do Gilberto (areia).', 'inp', '0.00', 'dphi'); r += 1
 line(E, r, 'Adesão na base — opcional', 0, 'kPa', 'ATENÇÃO: resistência de curto prazo. A aba do Gilberto usa 0,5·SPT tf/m² em argila. Coerente com desprezar a coesão no empuxo: deixar 0.', 'inp', '0.0', 'ades_b'); r += 1
-line(E, r, 'Considerar passivo na frente da sapata?', 'Sim', '', 'Kp·γ·(h sapata + dente)²/2, solo da frente no nível do topo da sapata (aba do Gilberto).', 'inp', None, 'pass_on'); r += 1
+line(E, r, 'Passivo: há garantia de que o solo da frente da sapata jamais será escavado/removido?', 'Não', '', 'Sim = conta o empuxo passivo do solo da frente, Kp·γ·(h sapata + dente)²/2, dividido por 2,0 (NBR 6122 7.6.3). Marcar Sim só se nenhuma escavação futura (vala, rede, calçada, jardim, terraplenagem) puder tirar esse solo durante a vida útil. Na dúvida, Não (Bastos: o passivo pode ser desprezado).', 'inp', None, 'pass_on'); r += 1
 dv_po = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validation(dv_po); dv_po.add(f'B{r-1}')
+line(E, r, 'Aviso do passivo', '=IF(pass_on="Sim","Garantir que o solo da frente da sapata jamais seja escavado/removido (NBR 6122 7.6.3)","")', '', 'Aparece no app ao lado do campo e no memorial.', 'key', None, 'aviso_passivo'); r += 1
 line(E, r, 'SPT abaixo da sapata', 10, 'golpes', 'Só para a sugestão de σadm (2·SPT tf/m² = N/5 kgf/cm², regra da aba do Gilberto).', 'inp', '0', 'SPT_b'); r += 1
 line(E, r, 'σadm do solo — opcional', None, 'kPa', 'Em branco = 20·SPT kPa. Preferir valor de ensaio/projeto geotécnico.', 'inp', '0', 'sig_adm_dir'); r += 1
 line(E, r, 'FS mínimo ao tombamento', 2.0, '', 'Pelo que sei, NBR 11682 — conferir. Junto vale e ≤ B/4 (critério do Gilberto); fica o pior.', 'inp', '0.00', 'FS_tomb'); r += 1
@@ -974,6 +975,7 @@ FIGS = [
     (13, 'fig13_painel', 'Painel entre contrafortes: vinculação, cargas, armaduras e charneiras'),
     (14, 'fig14_barras_painel', 'PAINEL: uma barra vertical em CADA face; horizontal centralizada'),
     (15, 'fig15_sapata', 'Sapata corrida: posição, forças, tombamento e deslizamento'),
+    (24, 'fig24_tomb_desl', 'Sapata corrida: tombamento e deslizamento (traço do Bastos, Fig. 1.116)'),
 ]
 # Mapa entrada → figura: a fonte única é dados/figuras.json, o mesmo arquivo que o app lê (app/src/figuras/mapa.ts).
 # Antes havia uma cópia aqui e outra no app, e elas já divergiam (ex.: Ka_dir na Fig. 1 aqui e na Fig. 11 no app).
@@ -1017,7 +1019,7 @@ for i, (n, tit) in enumerate(FIGS_APP):
     IL.cell(row=rr, column=3, value=campos).font = fS
     fig_row[n] = rr       # o link das Entradas cai na linha do índice, que diz que a figura é do app
 IL.cell(row=r_idx_app + len(FIGS_APP), column=1,
-        value=f'Figuras {FIGS_APP[0][0]} a {FIGS_APP[-1][0]}: só no app (SVG em figs/app). A planilha e o PDF de ilustrações trazem as figuras 1 a {len(FIGS)}.').font = fS
+        value=f'Figuras {FIGS_APP[0][0]} a {FIGS_APP[-1][0]}: só no app (SVG em figs/app). A planilha e o PDF de ilustrações trazem as figuras {", ".join(str(n) for n, _, _ in FIGS)}.').font = fS
 widths(IL, {'A': 8, 'B': 62, 'C': 90})
 # Entradas: coluna Figura com link + "ver Fig. N" na observação
 for nm, n in FIG_OF.items():

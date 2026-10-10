@@ -37,6 +37,8 @@ const NBR_11682: Ref = { fonte: 'NBR 11682' };
 const NBR_PESO: Ref = { fonte: 'NBR 16868-1', item: '8.3.1.1' };
 
 const DOIS = cte(2, 0);
+// passivo reduzido por no mínimo 2,0 e só com solo da frente garantido na vida útil (Jose, 10/10, decisão pelo Bastos)
+const NBR_PASSIVO: Ref = { fonte: 'NBR 6122', item: '7.6.3' };
 
 export const SIMBOLOS_ESTABILIDADE: Readonly<Record<string, string>> = {
   // ── geometria (B, h_s, a, b_t, b_p: SIMBOLOS_SAPATA) ──
@@ -362,8 +364,8 @@ function cardDeslizamento(r: Resultado): Card {
     // N ≤ 0 (subpressão maior que o peso): a planilha zera o atrito com MAX(0; N)
     m.passo('R_at', 'R_{at}', [mul(f.N, tgDelta), mul(max(cte(0, 0), f.N), tgDelta)], { casas: 2, unidade: 'kN' }),
     comAdesao && m.passo('R_ad', 'R_{ad}', mul(m.ent('ades_b', 'c_a'), f.B, f.L), { casas: 2, unidade: 'kN' }),
-    comPassivo && m.passo('E_p', 'E_p', mul(div(mul(f.Kp, f.gama, pot(soma(f.hs, f.hden), 2)), DOIS), f.L), {
-      casas: 2, unidade: 'kN',
+    comPassivo && m.passo('E_p', 'E_p', mul(div(div(mul(f.Kp, f.gama, pot(soma(f.hs, f.hden), 2)), DOIS), DOIS), f.L), {
+      casas: 2, unidade: 'kN', ref: NBR_PASSIVO,
     }),
   ], GILBERTO);
 

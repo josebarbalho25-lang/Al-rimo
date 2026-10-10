@@ -201,8 +201,9 @@ describe('régua única entre cenários', () => {
     // pelo critério do curso (0,15%·b·d) — a nota da aba Arranjos já registra. Se outra chave reprovar aqui, mudou a conta.
     const r122 = resultadoDoGabarito('aula122');
     const falhas122 = verificacoesDe(cardsDaMemoria(r122)).filter((x) => !x.v.passa).map((x) => x.v.chave);
-    expect(falhas122).toEqual(['balanco.flexao.As']);
-    expect(vereditoDaMemoria(r122)).toEqual({ passa: false, falhas: 1 });
+    // Desde 10/10 (Jose): passivo desligado por padrão (NBR 6122 7.6.3) → a sapata do exemplo não passa ao deslizamento.
+    expect(falhas122).toEqual(['balanco.flexao.As', 'fundacao.deslizamento']);
+    expect(vereditoDaMemoria(r122)).toEqual({ passa: false, falhas: 2 });
     expect(vereditoDaMemoria(resultadoDoGabarito('aula123'))).not.toBeNull();
     for (const c of CENARIOS) {
       const r = resultadoDoGabarito(c);

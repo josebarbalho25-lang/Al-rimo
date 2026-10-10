@@ -23,7 +23,8 @@
     { "id": "fig20", "numero": 20, "titulo": "Tipo de muro", "arquivo": "fig20.svg" },
     { "id": "fig21", "numero": 21, "titulo": "Contraforte em corte vertical", "arquivo": "fig21.svg" },
     { "id": "fig22", "numero": 22, "titulo": "Solos: valores de referência", "arquivo": "fig22.svg" },
-    { "id": "fig23", "numero": 23, "titulo": "Blocos: resistências de referência", "arquivo": "fig23.svg" }
+    { "id": "fig23", "numero": 23, "titulo": "Blocos: resistências de referência", "arquivo": "fig23.svg" },
+    { "id": "fig24", "numero": 24, "titulo": "Tombamento e deslizamento", "arquivo": "fig24.svg", "planilha": "fig24_tomb_desl" }
   ],
   "entradas": {
     "H_muro": { "figura": "fig01", "campo": "H_muro" },
@@ -115,13 +116,13 @@
     "P_topo": { "figura": "fig15", "campo": "P_topo" },
     "q_est": { "figura": "fig15", "campo": "q_est" },
     "phi_base": { "figura": "fig15", "campo": "phi_base" },
-    "dphi": { "figura": "fig15", "campo": "dphi" },
-    "ades_b": { "figura": "fig15", "campo": "ades_b" },
-    "pass_on": { "figura": "fig15", "campo": "pass_on" },
+    "dphi": { "figura": "fig24", "campo": "dphi" },
+    "ades_b": { "figura": "fig24", "campo": "ades_b" },
+    "pass_on": { "figura": "fig24", "campo": "pass_on" },
     "SPT_b": { "figura": "fig15", "campo": "SPT_b" },
     "sig_adm_dir": { "figura": "fig15", "campo": "sig_adm_dir" },
-    "FS_tomb": { "figura": "fig15", "campo": "FS_tomb" },
-    "FS_desl": { "figura": "fig15", "campo": "FS_desl" },
+    "FS_tomb": { "figura": "fig24", "campo": "FS_tomb" },
+    "FS_desl": { "figura": "fig24", "campo": "FS_desl" },
     "cob_sap": { "figura": "fig18", "campo": "cob_sap" },
     "phi_sap": { "figura": "fig18", "campo": "phi_sap" },
     "phi_sap2": { "figura": "fig18", "campo": "phi_sap2" },

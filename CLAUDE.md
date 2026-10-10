@@ -74,7 +74,9 @@ e dizer ao Jose o que mudou e por quê.
 - Contrafortes no mesmo arquivo. **Fundação: só sapata corrida** (ela é o engaste, sem viga), dimensionada a flexão,
   cortante e torção. Não aprofundar em outros modelos.
 - Fundação (escolhas do Jose): sobrecarga sobre o talão **estabiliza** (padrão Sim, como o Gilberto; o seletor permite rodar
-  a combinação sem ela); deslizamento só com atrito N·tg δ (δ = 2/3·φ padrão), **adesão opcional = 0**; tombamento com
+  a combinação sem ela); deslizamento só com atrito N·tg δ (δ = 2/3·φ padrão), **adesão opcional = 0**; **passivo da frente
+  DESLIGADO por padrão (Jose, 10/10, pelo Bastos "Sapatas de Fundação" 1.8 e NBR 6122 7.6.3): só com garantia de que o
+  solo da frente jamais será escavado/removido, e então dividido por 2,0** (aviso_passivo); tombamento com
   **FS em torno do pé ≥ 2,0 E |e| ≤ B/4 (Gilberto), vale o pior**.
 
 ## App (começou em 08/10/2026) — `app/` (Vite + React + TS + three, como o A-PORT)
@@ -252,6 +254,8 @@ e dizer ao Jose o que mudou e por quê.
 
 - Receber a NBR 16868-1 em PDF: conferir numeração de itens, Anexo E (βf) e os contornos do ábaco do ELS (lidos do slide).
 - Confirmar os FS da NBR 11682 (tombamento 2,0, deslizamento 1,5 — "pelo que sei").
+- Fig. 24 (tombamento e deslizamento no traço do Bastos, Fig. 1.116) FEITA 10/10: planilha e app; abre em dphi, ades_b, pass_on, FS_tomb, FS_desl.
 - Fundação: o mínimo de estribo de torção com bw = B fica alto em sapata larga (avaliar); peso do contraforte grauteado é estimativa.
+- **Fundação rígida × flexível (Jose, 10/10, para o dia seguinte):** a conta ASSUME sapata rígida e não verifica. Pela NBR 6118 22.6.1 (h ≥ 2/3 do balanço) o exemplo (talão 0,855, h 0,30) é flexível. DECIDIDO (Jose, 10/10): na planilha, auditável, molas NAS DUAS DIREÇÕES (nossa carga é excêntrica e com momento grande, diferente do exemplo centrado do Bastos) — transversal: viga de comprimento B sobre Winkler com N e M na posição do muro (Hetényi viga finita OU ~20 molas com MATRIZ.MULT/MATRIZ.INVERSO — mostrar as duas e ele escolhe; o motor do app ainda NÃO tem MMULT/MINVERSE), comparada com a pressão linear de hoje, + classificação da 6118 22.6.1; longitudinal entre contrafortes por viga sobre base elástica em forma fechada (Hetényi, λ = (k·B/4EI)^¼; λL ≤ π/4 → rígida, vale o ±Md/2); punção junto ao contraforte pela 6118 19.5; k do solo sugerido por tabela, com aviso. A casca 2D do A-PORT (PC do Jose) só VALIDA alguns casos. Fonte: Bastos, Sapatas de Fundação (`_trabalho/fontes/`, notas em /mnt/project-files/al-rimo/bastos_sapata_flexivel.md).
 - Cisalhamento do painel não armado: hipótese Vsd = fd·l/2 nunca confirmada no vídeo.
 - Depois da planilha: app (3D, quantitativo, desenhos, memória auditável). Reaproveitar os SVG de `figs/`.
