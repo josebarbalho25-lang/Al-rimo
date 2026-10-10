@@ -21,8 +21,6 @@ const C = {
   water: '#2e75b6', blockfill: '#d9d9d9', groutfill: '#bdd7ee', grout: '#2e75b6', concreto: '#ececec', note: '#595959',
   steel: '#c00000',
 };
-const W = 1000;
-const H = 620;
 const FONTE = "Arial,'DejaVu Sans',sans-serif";
 
 const num = (v: Valor, padrao: number) => (typeof v === 'number' && Number.isFinite(v) ? v : padrao);
@@ -52,16 +50,20 @@ export function CorteDoMuro({ ler, aoClicar, ativo }: {
   const xPe = a - B;          // borda externa (pé)
   const xTalao = a;           // borda aterrada
   const xFace = t / 2;        // face do solo
-  const xmin = Math.min(xPe, -t / 2, comCf && !cfEnterrado ? -t / 2 - (tenr - t) : 0) - 0.55;
-  const xSolo = Math.max(xTalao, xFace, comCf && cfEnterrado ? xFace + tenr - t : 0) + Math.max(0.6, 0.35 * hm);
-  const xmax = xSolo + 0.15;
-  const ymin = -hs - 0.25;
-  const ymax = Math.max(hm, hsolo + (q > 0 ? 0.35 : 0)) + 0.25;
-  // margens do papel para as cotas (px)
-  const ME = 120, MD = 150, MC = 50, MB = 95;
-  const esc = Math.min((W - ME - MD) / (xmax - xmin), (H - MC - MB) / (ymax - ymin));
-  const ox = ME + ((W - ME - MD) - (xmax - xmin) * esc) / 2 - xmin * esc;
-  const oy = MC + ((H - MC - MB) - (ymax - ymin) * esc) / 2 + ymax * esc;
+  const xmin = Math.min(xPe, -t / 2, comCf && !cfEnterrado ? -t / 2 - (tenr - t) : 0) - 0.3;
+  const xSolo = Math.max(xTalao, xFace, comCf && cfEnterrado ? xFace + tenr - t : 0) + Math.max(0.5, 0.3 * hm);
+  const xmax = xSolo;
+  const ymin = -hs - 0.15;
+  const ymax = Math.max(hm, hsolo + (q > 0 ? 0.3 : 0)) + 0.05;
+  // O papel tem o tamanho do desenho (+ margens das cotas): a maior dimensão do muro vale ~TAM unidades, e a
+  // figura cresce até encher a placa. Assim o texto guarda a mesma proporção com o muro em qualquer altura.
+  const TAM = 520;
+  const ME = 150, MD = agua ? 230 : 140, MC = 45, MB = 95;
+  const esc = TAM / Math.max(xmax - xmin, ymax - ymin);
+  const W = Math.round((xmax - xmin) * esc + ME + MD);
+  const H = Math.round((ymax - ymin) * esc + MC + MB);
+  const ox = ME - xmin * esc;
+  const oy = MC + ymax * esc;
   const X = (x: number) => ox + x * esc;
   const Y = (y: number) => oy - y * esc;
 
