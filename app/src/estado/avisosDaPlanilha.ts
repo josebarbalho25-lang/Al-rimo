@@ -35,7 +35,11 @@ export interface AvisoDaPlanilha {
  * tudo bem (lim_H, lim_Hs) não entra aqui sem tratar o "OK" — senão o "OK"
  * virava aviso.
  */
-const AVISOS: ReadonlyArray<{ nome: string; campo: string }> = [{ nome: 'aviso_coesao', campo: 'c_solo' }];
+const AVISOS: ReadonlyArray<{ nome: string; campo: string }> = [
+  { nome: 'aviso_coesao', campo: 'c_solo' },
+  // passivo só com o solo da frente garantido na vida útil (Jose, 10/10: lembrar na hora de preencher)
+  { nome: 'aviso_passivo', campo: 'pass_on' },
+];
 
 /** Só para o teste conferir que os nomes existem na planilha e no painel (nome errado não avisa nada). */
 export const _avisos = AVISOS;

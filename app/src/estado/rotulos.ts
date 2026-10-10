@@ -119,7 +119,7 @@ export const ROTULO_CURTO: Record<string, string> = {
   phi_base: "φ' da base",
   dphi: "δ/φ'",
   ades_b: 'Adesão na base',
-  pass_on: 'Passivo na frente',
+  pass_on: 'Solo frente garantido?',
   SPT_b: 'SPT da base',
   sig_adm_dir: 'σadm',
   FS_tomb: 'FS tombamento',

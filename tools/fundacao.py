@@ -59,7 +59,7 @@ Lf('σh na base do muro', '=sh_base', 'kPa', '', 'res', '0.00')
 Lf('σh na base da sapata', '=sh_base+h_sap*(Ka_*(gama_solo-IF(AND(Agua="Sim",H_solo+h_sap>z_NA),gama_w,0))+IF(AND(Agua="Sim",H_solo+h_sap>z_NA),gama_w,0))', 'kPa', 'Continua o perfil por mais h da sapata.', 'res', '0.00', 'sh_b2')
 Lf('Hk — empuxo total no módulo', '=(Vk_+(sh_base+sh_b2)/2*h_sap)*Lm', 'kN', '', 'key', '0.00', 'H_k')
 Lf('M tombador em relação à base da sapata', '=(Mk_+Vk_*h_sap+h_sap^2*(2*sh_base+sh_b2)/6)*Lm', 'kN·m', 'Mk na base do muro + Vk·h sapata + fatia da sapata. (A aba do Gilberto soma Vk·h.)', 'key', '0.00', 'M_tb')
-Lf('Passivo na frente (Kp·γ·(h + dente)²/2)', '=IF(pass_on="Sim",Kp_*gama_solo*(h_sap+h_den)^2/2*Lm,0)', 'kN', 'Solo da frente no nível do topo da sapata.', 'res', '0.00', 'E_p')
+Lf('Passivo na frente (Kp·γ·(h + dente)²/2 ÷ 2,0)', '=IF(pass_on="Sim",Kp_*gama_solo*(h_sap+h_den)^2/2/2*Lm,0)', 'kN', 'Solo da frente no nível do topo da sapata. Reduzido por 2,0 (NBR 6122 7.6.3).', 'res', '0.00', 'E_p')
 r += 1
 section(Fd, r, '4. Tombamento'); r += 1
 Lf('M estabilizante em relação ao pé', '=M_est', 'kN·m', 'Σ N·(B − x). Passivo não entra (a favor da segurança).', 'res', '0.00')

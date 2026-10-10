@@ -74,7 +74,9 @@ e dizer ao Jose o que mudou e por quê.
 - Contrafortes no mesmo arquivo. **Fundação: só sapata corrida** (ela é o engaste, sem viga), dimensionada a flexão,
   cortante e torção. Não aprofundar em outros modelos.
 - Fundação (escolhas do Jose): sobrecarga sobre o talão **estabiliza** (padrão Sim, como o Gilberto; o seletor permite rodar
-  a combinação sem ela); deslizamento só com atrito N·tg δ (δ = 2/3·φ padrão), **adesão opcional = 0**; tombamento com
+  a combinação sem ela); deslizamento só com atrito N·tg δ (δ = 2/3·φ padrão), **adesão opcional = 0**; **passivo da frente
+  DESLIGADO por padrão (Jose, 10/10, pelo Bastos "Sapatas de Fundação" 1.8 e NBR 6122 7.6.3): só com garantia de que o
+  solo da frente jamais será escavado/removido, e então dividido por 2,0** (aviso_passivo); tombamento com
   **FS em torno do pé ≥ 2,0 E |e| ≤ B/4 (Gilberto), vale o pior**.
 
 ## App (começou em 08/10/2026) — `app/` (Vite + React + TS + three, como o A-PORT)
