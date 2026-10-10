@@ -479,6 +479,10 @@ select optgroup {
   font-size: var(--fs-rotulo);
   color: var(--muted);
 }
+/* Fig. 15: regra do σadm usada fora da faixa de SPT em que vale */
+.calc-res .calc-fora {
+  color: var(--warn);
+}
 
 /* ── A JANELA DE CONFIGURAÇÕES ──────────────────────────────────────────────
    Página só, linha = rótulo | controle (a mesma grade do painel de entradas).

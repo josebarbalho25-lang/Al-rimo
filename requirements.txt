@@ -1,3 +1,4 @@
 openpyxl>=3.1
+pillow>=10   # o gerador põe as figuras na planilha (openpyxl precisa dele para imagens)
 # opcional, só para redesenhar as figuras (figs/render.py e figs/make_pdf.py):
 # playwright   (depois: python -m playwright install chromium)

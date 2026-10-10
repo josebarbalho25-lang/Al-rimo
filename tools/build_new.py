@@ -349,6 +349,10 @@ refs = [
     ('γ de areia por NSPT', 'Aula 12.1, slide 10 (Godoy, 1972)', 'Tabela reproduzida na aba Solo e Empuxo.'),
     ('φ de areia por NSPT', 'Aula 12.1, slide 10 (Alonso, 2010)', 'Tabela reproduzida na aba Solo e Empuxo.'),
     ('γ de argila por NSPT', 'Aula 12.1, slide 10 (Godoy, 1972)', 'Tabela reproduzida na aba Solo e Empuxo.'),
+    ('σadm da sapata pelo SPT', 'Cintra, Aoki e Albiero, "Fundações diretas" (2011); Mello (1975)',
+     'Regras práticas, só sugestão (aba Fundação, seção 6): σadm = 20·N kPa (N/50 MPa; a mesma da aba do Gilberto), para '
+     '5 ≤ N ≤ 20; Mello: σadm = 100·(√N − 1) kPa, para 4 ≤ N ≤ 16. N = SPT médio no bulbo abaixo da base. Livro não '
+     'visto aqui; as duas fórmulas e faixas como aparecem nas reproduções. Preferir ensaio/projeto geotécnico.'),
     ('γ e φ por tipo de solo', 'Aula 12.1, slide 10 (Gerscovich)', 'Solos do Rio de Janeiro — referência regional.'),
     ('Bloco em contato com o solo', 'Aula 12.1, slide 2', 'Classe A, fbk ≥ 8 MPa.'),
     ('Modelo do muro em balanço', 'Aula 12.1, slide 12', 'Engastado na base, carga σh,topo → σh,base.'),
