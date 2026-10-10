@@ -6,7 +6,7 @@ W, H = 1240, 620
 s = SVG(W, H)
 s.defs.append('<marker id="arrK" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="%s"/></marker>' % K)
 s.defs.append('<marker id="arrG" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="%s"/></marker>' % G)
-s.text(30, 34, 'Fig. 16 — Sapata corrida: tombamento e deslizamento', size=18, anchor='start', weight='bold')
+s.text(30, 34, 'Fig. 24 — Sapata corrida: tombamento e deslizamento', size=18, anchor='start', weight='bold')
 s.text(30, 56, 'Corte por módulo. Traço da Fig. 1.116 do Bastos, com as forças do muro de arrimo. Solo contido à esquerda.', size=13, anchor='start', color=C['note'])
 B, a, t, hs, Hm = 1.40, 0.95, 0.19, 0.30, 1.60
 def painel(x0, yb, tomb):
@@ -77,4 +77,4 @@ s.text(900, 560, 'b) Deslizamento: forças horizontais', size=14, weight='bold',
 s.text(900, 584, 'FS = (N·tg δ + adesão·B + Ep/2,0) / Ea ≥ 1,5', size=12.5, color=K)
 s.text(900, 604, 'δ = 2/3·φ (Bastos 1.74); adesão = 2/3·c, padrão 0', size=12.5, color=K)
 s.line(620, 90, 620, 610, stroke='#bfbfbf', sw=1)
-s.save('fig16_tomb_desl.svg'); print('ok')
+s.save('fig24_tomb_desl.svg'); print('ok')

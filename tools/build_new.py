@@ -975,6 +975,7 @@ FIGS = [
     (13, 'fig13_painel', 'Painel entre contrafortes: vinculação, cargas, armaduras e charneiras'),
     (14, 'fig14_barras_painel', 'PAINEL: uma barra vertical em CADA face; horizontal centralizada'),
     (15, 'fig15_sapata', 'Sapata corrida: posição, forças, tombamento e deslizamento'),
+    (24, 'fig24_tomb_desl', 'Sapata corrida: tombamento e deslizamento (traço do Bastos, Fig. 1.116)'),
 ]
 # Mapa entrada → figura: a fonte única é dados/figuras.json, o mesmo arquivo que o app lê (app/src/figuras/mapa.ts).
 # Antes havia uma cópia aqui e outra no app, e elas já divergiam (ex.: Ka_dir na Fig. 1 aqui e na Fig. 11 no app).
@@ -1018,7 +1019,7 @@ for i, (n, tit) in enumerate(FIGS_APP):
     IL.cell(row=rr, column=3, value=campos).font = fS
     fig_row[n] = rr       # o link das Entradas cai na linha do índice, que diz que a figura é do app
 IL.cell(row=r_idx_app + len(FIGS_APP), column=1,
-        value=f'Figuras {FIGS_APP[0][0]} a {FIGS_APP[-1][0]}: só no app (SVG em figs/app). A planilha e o PDF de ilustrações trazem as figuras 1 a {len(FIGS)}.').font = fS
+        value=f'Figuras {FIGS_APP[0][0]} a {FIGS_APP[-1][0]}: só no app (SVG em figs/app). A planilha e o PDF de ilustrações trazem as figuras {", ".join(str(n) for n, _, _ in FIGS)}.').font = fS
 widths(IL, {'A': 8, 'B': 62, 'C': 90})
 # Entradas: coluna Figura com link + "ver Fig. N" na observação
 for nm, n in FIG_OF.items():

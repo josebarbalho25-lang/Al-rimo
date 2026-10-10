@@ -7,7 +7,8 @@ FIGS = [(1,'fig01_geral','Muro de arrimo em balanço: visão geral e entradas'),
  (9,'fig09_ancoragem','Ancoragem da espera na fundação'),(10,'fig10_els','ELS do balanço: fissuração e flecha'),(11,'fig11_pressoes','Pressões: sem coesão, com coesão e com água'),
  (12,'fig12_contraforte','Contraforte em planta: enterrado (seção T) ou aparente (retangular)'),(13,'fig13_painel','Painel entre contrafortes: vinculação, cargas, armaduras e charneiras'),
  (14,'fig14_barras_painel','PAINEL: uma barra vertical em CADA face; horizontal centralizada'),
- (15,'fig15_sapata','Sapata corrida: posição, forças, tombamento e deslizamento')]
+ (15,'fig15_sapata','Sapata corrida: posição, forças, tombamento e deslizamento'),
+ (24,'fig24_tomb_desl','Sapata corrida: tombamento e deslizamento (traço do Bastos, Fig. 1.116)')]
 CAMPOS = {1:'Altura do muro, Altura de solo contido, Tipo de muro, Tipo de solo, NSPT, γ, φ\', Ka direto, Sobrecarga (q)',2:'Espessura do bloco (t), Área de referência do fpk',
  3:'Seção / grauteamento (B8), Largura da alma da seção I',4:'d (altura útil)',5:'Ø armadura vertical, Espaçamento das barras, Espaçamento das canaletas',
  6:'Caso de vinculação do painel, βf manual',7:'Travamento lateral, αv, αh, l, Somar M2d',8:'Argamassa',9:'Concreto da fundação, Zona de aderência, Gancho',
@@ -15,7 +16,8 @@ CAMPOS = {1:'Altura do muro, Altura de solo contido, Tipo de muro, Tipo de solo,
  12:'Espaçamento entre contrafortes, Comprimento (tenr), Posição do contraforte, Contraforte calculado, Balanço, Ø/nº de barras, Cobrimento, K, construtivas, estribo',
  13:'Bordas laterais do painel, Ø e espaçamento vertical/horizontal, K vertical/horizontal, almas da seção I no ELS',
  14:'Posição das barras verticais, Cobrimento ao eixo das barras do painel, Posição da barra horizontal',
- 15:'Largura e altura da sapata, Distância da borda aterrada ao eixo, Dente, Carga no topo, Sobrecarga estabiliza?, φ e δ da base, Adesão, Passivo, SPT, σadm, FS mínimos'}
+ 15:'Largura e altura da sapata, Distância da borda aterrada ao eixo, Dente, Carga no topo, Sobrecarga estabiliza?, φ e δ da base, Adesão, Passivo, SPT, σadm, FS mínimos',
+ 24:'φ e δ da base, Adesão, Passivo, FS mínimos'}
 css = """@page{size:A4 landscape;margin:12mm} body{font-family:Arial,'DejaVu Sans',sans-serif;color:#262626;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .pg{page-break-after:always;display:flex;flex-direction:column;align-items:center;justify-content:center;height:180mm}
 .pg svg{max-width:270mm;max-height:170mm;width:auto;height:auto} h1{font-size:22pt;margin:0 0 4mm} .sub{color:#595959;font-size:11pt;margin-bottom:8mm}
