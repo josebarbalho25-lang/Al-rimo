@@ -61,7 +61,7 @@ export const ABAS: readonly Aba[] = [
   },
   {
     id: 'materiais', titulo: 'Materiais', grupos: [
-      { titulo: 'Alvenaria', campos: ['fbk_', 'fpk_ref', 'fgk_dir', 'arg_cls'] },
+      { titulo: 'Alvenaria', campos: ['fbk_', 'fgk_dir', 'arg_cls'] },
       { titulo: 'Peso próprio', campos: ['reb_fac', 'reb_esp', 'peso_par', ['gama_cf', C]] },
       { titulo: 'Concreto e aço', campos: ['fck_fund', 'gama_c', 'fyk_'] },
     ],
@@ -107,7 +107,8 @@ export const ABAS: readonly Aba[] = [
   {
     id: 'criterios', titulo: 'Critérios de cálculo', grupos: [
       { titulo: 'Norma', campos: ['gama_f', 'gama_m', 'gama_s', 'FS_tomb', 'FS_desl'] },
-      { titulo: 'Flexão', campos: [['K_dir', B], ['K_cf', C], ['K_pv', C], ['K_ph', C], 'AsMin_crit', ['M2d_on', B]] },
+      // área de referência do fpk: convenção de cálculo (curso × NBR), não escolha de graute (Jose, 12/10)
+      { titulo: 'Flexão', campos: ['fpk_ref', ['K_dir', B], ['K_cf', C], ['K_pv', C], ['K_ph', C], 'AsMin_crit', ['M2d_on', B]] },
       { titulo: 'ELS', campos: ['psi_els', 'div_adm', 'vao_ref', 'dxi', ['sg_on', B], ['bwv_dir', C], ['bwh_els', C]] },
       { titulo: 'Painel não armado', soCom: B, campos: ['caso_pan', 'beta_dir', 'sig_pan'] },
     ],

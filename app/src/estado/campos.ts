@@ -539,6 +539,9 @@ const ATIVA_SE: Record<string, (ler: LerValor) => boolean> = {
   gama_w: (l) => l('Agua') === 'Sim',
   bal_cf: (l) => String(l('tipo_cf') ?? '').startsWith('Extrem'),
   gama_cf: (l) => l('Tipo_muro') === 'Contrafortes',
+  // área de referência do fpk: com grauteamento total no balanço a planilha usa fpk* e ignora a escolha
+  // (fpk_liq = fpk_tab); no painel entre contrafortes (sempre seção I) ela vale sempre
+  fpk_ref: (l) => l('Tipo_muro') === 'Contrafortes' || String(l('Graute') ?? '').startsWith('Parcial'),
   // espessura do reboco só pesa com reboco (Entradas, g_reb: IF(reb_fac=…;…;0))
   reb_esp: (l) => l('reb_fac') !== 'Nenhum',
   // o aterro da frente só conta com a garantia do solo da frente (Fundação: IF(pass_on="Sim";…;0))
