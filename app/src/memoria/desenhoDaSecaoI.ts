@@ -159,10 +159,17 @@ export function desenhoDasSecoesDoPainel(r: Resultado): DesenhoDoCard | null {
 }
 
 /**
-  A faixa de 1 m da flexão do balanço (Jose, 12/10: a figura também no card de flexão). A conta da flexão é por metro
-  (b = 100 cm, aula 12.2): a mesma seção do bloco, agora com TODAS as barras do metro (uma a cada s, cada uma no seu
-  furo grauteado), a linha neutra x e o bloco comprimido 0,8x junto da face externa — que tem de caber na parede do
-  bloco comprimido junto da face externa: 0,8x na parede, ou (seção T) a parede inteira + y nas almas grauteadas.
+  A faixa de 1 m da flexão do balanço, em DUAS vistas empilhadas (Jose, 12/10: "visível por favor, tá pequeno"):
+
+  1. a faixa em PLANTA (b = 100 cm), com as barras a cada s nos furos grauteados e a zona comprimida sombreada — só as
+     cotas de largura (b, s, bw,f) e a espessura t;
+  2. as FORÇAS NA SEÇÃO, numa escala maior (a profundidade é o que importa): a parede comprimida (C mesa) e, em seção
+     T, as almas comprimidas (C alma), com a largura proporcional à força por cm (K·fd·b), a tração no aço (As·σs), a
+     linha neutra, as cotas de profundidade (hf, y ou 0,8x, x, d) e os braços até a barra. É a figura das linhas da
+     verificação da parede, da seção T e do equilíbrio.
+
+  A largura do desenho (~770) é a da coluna da memória na tela: a letra sai quase no tamanho da do texto. Números só
+  das células (x_ln, y_alma, ln_mesa, d_util, hf_bl, t_bloco, s_adot, bw_f, bw_m, ffd_m, ffd_g, phi_v).
 */
 export function desenhoDaFlexao(r: Resultado): DesenhoDoCard | null {
   if (r.v('Tipo_muro') !== 'Balanço') return null;
@@ -170,125 +177,142 @@ export function desenhoDaFlexao(r: Resultado): DesenhoDoCard | null {
   if (!ok(t, d, hf, sAd) || !(sAd! > 0) || !(t! > 0)) return null;
   const bw = r.num('bw_f') ?? r.num('bw_els') ?? 21;   // a alma de cada furo da conta da flexão (bw_f)
   const x = r.num('x_ln');
+  const temX = x !== null && x > 0 && x < t!;
   const cheia = String(r.v('Graute') ?? '').slice(0, 5).toLowerCase() === 'total';
-  const b = 100;
-  const s = Math.min(600 / b, 170 / t!);
+  const mesaSo = r.v('ln_mesa') === 'Sim';
+  const yAlma = r.num('y_alma');
+  const secaoT = !mesaSo && yAlma !== null && temX;
+  const FS = 15, FT = 16;                                 // letra das cotas e dos títulos
+  const COMP = 'fill="#f8cbad" fill-opacity="0.8" stroke="#c55a11" stroke-width="1.2"';
+  const LARANJA = '#c55a11';
+  const partes: string[] = [];
+  const lin = (x1: number, y1: number, x2: number, y2: number, cor = TINTA, sw = 1, extra = '') =>
+    `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${cor}" stroke-width="${sw}"${extra}/>`;
+  const tick = (xx: number, yy: number) => lin(xx - 4, yy + 4, xx + 4, yy - 4, COTA, 1.1);
+  /** Cota vertical com o rótulo DEITADO ao lado, na altura do meio (lê-se sem virar a cabeça). */
+  const cotaV = (xx: number, ya: number, yb: number, rot: string, lado: 1 | -1) =>
+    lin(xx, ya, xx, yb, COTA, 0.8) + tick(xx, ya) + tick(xx, yb) +
+    texto(xx + lado * 7, (ya + yb) / 2 + FS * 0.35, rot, FS, lado > 0 ? 'start' : 'end');
+  const cotaH = (xa: number, xb: number, yy: number, rot: string, embaixo: boolean) =>
+    lin(xa, yy, xb, yy, COTA, 0.8) + tick(xa, yy) + tick(xb, yy) +
+    texto((xa + xb) / 2, embaixo ? yy + FS + 3 : yy - 6, rot, FS);
+
+  // ── 1. a faixa em planta ──
+  const b = 100, s = 6.4;                                  // px por cm na planta
   const W = b * s, T = t! * s;
-  const x0 = 150, yS = 48, y0 = yS + 22, y1 = y0 + T;
-  const partes: string[] = [texto(8, 16, 'Faixa de 1 m · b = 100', 13, 'start')];
-  partes.push(rect(x0 - 10, yS, W + 20, 22, SOLO, 'none'));
-  partes.push(`<line x1="${(x0 - 10).toFixed(2)}" y1="${y0.toFixed(2)}" x2="${(x0 + W + 10).toFixed(2)}" y2="${y0.toFixed(2)}" stroke="#8d6e3f" stroke-width="1.6"/>`);
-  // as barras do metro: uma a cada s, a primeira a s/2 da borda da faixa
+  const x0 = 46, yS = 64, y0 = yS + 18, y1 = y0 + T;
+  partes.push(texto(8, 22, 'Faixa de 1 m em planta (cm)', FT, 'start'));
+  partes.push(rect(x0 - 10, yS, W + 20, 18, SOLO, 'none'));
+  partes.push(lin(x0 - 10, y0, x0 + W + 10, y0, '#8d6e3f', 1.8));
   const xs: number[] = [];
   for (let k = 0; sAd! / 2 + k * sAd! < b; k++) xs.push(sAd! / 2 + k * sAd!);
+  const almas: Array<[number, number]> = cheia ? [[0, b]] : xs.map((xb) => [Math.max(0, xb - bw / 2), Math.min(b, xb + bw / 2)]);
   if (cheia) partes.push(rect(x0, y0, W, T, GRAUTE, GRAUTE_LINHA, 1.2));
   else {
     partes.push(rect(x0, y0, W, T, VAZIO, TINTA, 0.8));
     partes.push(rect(x0, y0, W, hf! * s, MESA, TINTA, 1));
     partes.push(rect(x0, y1 - hf! * s, W, hf! * s, MESA, TINTA, 1));
-    for (const xb of xs) {
-      const a = Math.max(0, xb - bw / 2), e = Math.min(b, xb + bw / 2);
-      partes.push(rect(x0 + a * s, y0, (e - a) * s, T, GRAUTE, GRAUTE_LINHA, 1.2));
-    }
+    for (const [a0, a1] of almas) partes.push(rect(x0 + a0 * s, y0, (a1 - a0) * s, T, GRAUTE, GRAUTE_LINHA, 1.2));
   }
-  // o bloco comprimido e a linha neutra, junto da face externa (embaixo). Na mesa: 0,8x na largura toda. Seção T
-  // (12/10): a parede do bloco inteira (hf) + a altura y nas almas grauteadas, só onde há furo grauteado.
-  const mesaSo = r.v('ln_mesa') === 'Sim';
-  const yAlma = r.num('y_alma');
-  const COMP = 'fill="#f8cbad" fill-opacity="0.75" stroke="#c55a11" stroke-width="1"';
-  if (x !== null && x > 0 && x < t!) {
-    if (mesaSo || yAlma === null) {
-      partes.push(`<rect x="${x0.toFixed(2)}" y="${(y1 - 0.8 * x * s).toFixed(2)}" width="${W.toFixed(2)}" height="${(0.8 * x * s).toFixed(2)}" ${COMP}/>`);
-    } else {
-      partes.push(`<rect x="${x0.toFixed(2)}" y="${(y1 - hf! * s).toFixed(2)}" width="${W.toFixed(2)}" height="${(hf! * s).toFixed(2)}" ${COMP}/>`);
-      const almas: Array<[number, number]> = cheia ? [[0, b]] : xs.map((xb) => [Math.max(0, xb - bw / 2), Math.min(b, xb + bw / 2)]);
+  // a zona comprimida, junto da face externa (embaixo): 0,8x na parede, ou a parede inteira + y nas almas
+  if (temX) {
+    if (!secaoT) partes.push(`<rect x="${x0}" y="${(y1 - 0.8 * x! * s).toFixed(2)}" width="${W.toFixed(2)}" height="${(0.8 * x! * s).toFixed(2)}" ${COMP}/>`);
+    else {
+      partes.push(`<rect x="${x0}" y="${(y1 - hf! * s).toFixed(2)}" width="${W.toFixed(2)}" height="${(hf! * s).toFixed(2)}" ${COMP}/>`);
       for (const [a0, a1] of almas)
-        partes.push(`<rect x="${(x0 + a0 * s).toFixed(2)}" y="${(y1 - (hf! + yAlma) * s).toFixed(2)}" width="${((a1 - a0) * s).toFixed(2)}" height="${(yAlma * s).toFixed(2)}" ${COMP}/>`);
+        partes.push(`<rect x="${(x0 + a0 * s).toFixed(2)}" y="${(y1 - (hf! + yAlma!) * s).toFixed(2)}" width="${((a1 - a0) * s).toFixed(2)}" height="${(yAlma! * s).toFixed(2)}" ${COMP}/>`);
     }
-    partes.push(`<line x1="${(x0 - 6).toFixed(2)}" y1="${(y1 - x * s).toFixed(2)}" x2="${(x0 + W + 6).toFixed(2)}" y2="${(y1 - x * s).toFixed(2)}" stroke="#c55a11" stroke-width="1.2" stroke-dasharray="8 4 2 4"/>`);
-    partes.push(texto(x0 + W + 10, y1 - x * s + 4, 'LN', 11, 'start'));
+    partes.push(lin(x0 - 8, y1 - x! * s, x0 + W + 8, y1 - x! * s, LARANJA, 1.3, ' stroke-dasharray="9 4 2 4"'));
+    partes.push(texto(x0 - 12, y1 - x! * s + 5, 'LN', 13, 'end'));
   }
-  const rb = Math.max(3, ((r.num('phi_v') ?? 10) / 20) * s);
+  const rb = Math.max(3.5, ((r.num('phi_v') ?? 10) / 20) * s);
   const yb = y1 - d! * s;
   for (const xb of xs) partes.push(`<circle cx="${(x0 + xb * s).toFixed(2)}" cy="${yb.toFixed(2)}" r="${rb.toFixed(2)}" fill="${ACO}"/>`);
-
-  // cotas: b embaixo, s em cima (entre as duas primeiras barras), t à direita, hf, d, x e 0,8x à esquerda
-  const yCb = y1 + 26;
-  partes.push(chamada(x0, y1, x0, yCb + 4), chamada(x0 + W, y1, x0 + W, yCb + 4));
-  partes.push(cota(x0, yCb, x0 + W, yCb, 'b = 100', 1));
+  // cotas de largura e a espessura
   if (xs.length > 1) {
-    const yCs = yS - 10, xa = x0 + xs[0] * s, xb2 = x0 + xs[1] * s;
+    const yCs = yS - 14, xa = x0 + xs[0] * s, xb2 = x0 + xs[1] * s;
     partes.push(chamada(xa, yb, xa, yCs - 4), chamada(xb2, yb, xb2, yCs - 4));
-    partes.push(cota(xa, yCs, xb2, yCs, `s = ${cm(sAd!)}`, -1));
+    partes.push(cotaH(xa, xb2, yCs, `s = ${cm(sAd!)}`, false));
   }
-  const xT = x0 + W + 40;
+  let yBaixo = y1 + 30;
+  partes.push(chamada(x0, y1, x0, yBaixo + 4), chamada(x0 + W, y1, x0 + W, yBaixo + 4));
+  partes.push(cotaH(x0, x0 + W, yBaixo, 'b = 100', true));
+  if (!cheia && xs.length) {
+    const a0 = almas[0][0], a1 = almas[0][1];
+    yBaixo += 40;
+    partes.push(chamada(x0 + a0 * s, y1, x0 + a0 * s, yBaixo + 4), chamada(x0 + a1 * s, y1, x0 + a1 * s, yBaixo + 4));
+    partes.push(cotaH(x0 + a0 * s, x0 + a1 * s, yBaixo, `bw,f = ${cm(bw)}`, true));
+  }
+  const xT = x0 + W + 24;
   partes.push(chamada(x0 + W, y0, xT + 4, y0), chamada(x0 + W, y1, xT + 4, y1));
-  partes.push(cota(xT, y0, xT, y1, `t = ${cm(t!)}`, 1));
-  const xD = x0 - 20;
-  partes.push(chamada(x0 + xs[0] * s, yb, xD - 4, yb), chamada(x0, y1, xD - 4, y1));
-  partes.push(cota(xD, yb, xD, y1, `d = ${cm(d!)}`, -1));
-  if (x !== null && x > 0 && x < t!) {
-    const xX = x0 - 60;
-    partes.push(chamada(x0, y1 - x * s, xX - 4, y1 - x * s), chamada(x0, y1, xX - 4, y1));
-    partes.push(cota(xX, y1 - x * s, xX, y1, `x = ${nbr(x, 2)}`, -1));
-  }
-  if (!cheia) {
-    const xH = x0 + W + 90;
-    partes.push(chamada(x0 + W, y1 - hf! * s, xH + 4, y1 - hf! * s), chamada(x0 + W, y1, xH + 4, y1));
-    partes.push(cota(xH, y1 - hf! * s, xH, y1, `hf = ${cm(hf!)}`, 1));
-  }
-  let Wt = Math.ceil(x0 + W + 170), Ht = Math.ceil(yCb + 26);
+  partes.push(cotaV(xT, y0, y1, `t = ${cm(t!)}`, 1));
+  let Ht = yBaixo + FS + 16;
 
-  /*
-    SEÇÃO T (Jose, 12/10: "a gente vai ter de desenhar isso daqui"): a mesma faixa ganha as cotas que a conta da seção
-    T usa — a alma de cada furo (bw,f) e o y nas almas, em cadeia com o hf — e, ao lado, as FORÇAS: o bloco comprimido
-    da parede (C_mesa, na altura hf) e o das almas (C_alma, na altura y), com a largura proporcional à força por cm de
-    altura (K·fd·b), a tração no aço e os dois braços até a barra. É a figura das linhas M_mesa e M_alma.
-  */
+  // ── 2. as forças na seção (escala maior) ──
   const fM = r.num('ffd_m'), fA = r.num('ffd_g'), bwM = r.num('bw_m');
-  if (!mesaSo && yAlma !== null && x !== null && ok(fM, fA, bwM)) {
-    const yTopoMesa = y1 - hf! * s, yTopoAlma = y1 - (hf! + yAlma) * s;
-    // y em cadeia com o hf, na mesma coluna (com graute total o hf não saiu acima: a parede continua sendo a mesa)
-    const xH = x0 + W + 90;
-    if (cheia) {
-      partes.push(chamada(x0 + W, yTopoMesa, xH + 4, yTopoMesa), chamada(x0 + W, y1, xH + 4, y1));
-      partes.push(cota(xH, yTopoMesa, xH, y1, `hf = ${cm(hf!)}`, 1));
-    }
-    partes.push(chamada(x0 + W, yTopoAlma, xH + 4, yTopoAlma));
-    partes.push(cota(xH, yTopoAlma, xH, yTopoMesa, `y = ${nbr(yAlma, 2)}`, 1));
-    // alma de um furo, embaixo, numa segunda linha de cota
-    if (!cheia && xs.length) {
-      const a0 = Math.max(0, xs[0] - bw / 2), a1 = Math.min(b, xs[0] + bw / 2), yCw = yCb + 26;
-      partes.push(chamada(x0 + a0 * s, y1, x0 + a0 * s, yCw + 4), chamada(x0 + a1 * s, y1, x0 + a1 * s, yCw + 4));
-      partes.push(cota(x0 + a0 * s, yCw, x0 + a1 * s, yCw, `bw,f = ${cm(bw)}`, 1));
-      Ht = Math.ceil(yCw + 24);
-    }
-    // o diagrama de forças, à direita
-    const xa = x0 + W + 210, larg = 80;
-    const wM = larg, wA = larg * (fA! * bwM!) / (fM! * 100);
-    partes.push(texto(xa - 10, 16 + 18, 'Forças na faixa', 12, 'start'));
-    partes.push(`<line x1="${xa.toFixed(2)}" y1="${y0.toFixed(2)}" x2="${xa.toFixed(2)}" y2="${y1.toFixed(2)}" stroke="${TINTA}" stroke-width="1.2"/>`);
-    partes.push(`<rect x="${xa.toFixed(2)}" y="${yTopoMesa.toFixed(2)}" width="${wM.toFixed(2)}" height="${(hf! * s).toFixed(2)}" ${COMP}/>`);
-    partes.push(`<rect x="${xa.toFixed(2)}" y="${yTopoAlma.toFixed(2)}" width="${wA.toFixed(2)}" height="${(yAlma * s).toFixed(2)}" ${COMP}/>`);
+  if (temX && ok(fM)) {
+    const k = 14;                                          // px por cm na profundidade
+    const yF = Ht + 30;
+    partes.push(texto(8, yF, 'Forças na seção (cm)', FT, 'start'));
+    const yB = yF + 26 + t! * k;                           // face externa (comprimida), embaixo
+    const yTopo = yB - t! * k;                             // face do solo
+    const xa = 300, wM = 150;
+    const nivel = (prof: number) => yB - prof * k;         // profundidade medida da face comprimida
+    // a seção: a linha da espessura, com as duas faces
+    partes.push(rect(xa - 14, yTopo, 14, t! * k, MESA, TINTA, 0.8));
+    partes.push(lin(xa, yTopo, xa, yB, TINTA, 1.5));
+    // blocos comprimidos e as resultantes
+    const xSeta = xa + wM + 64;
     const seta = (xi: number, xf: number, yy: number, cor: string) => {
       const dir = Math.sign(xf - xi) || 1;
-      return `<line x1="${xi.toFixed(2)}" y1="${yy.toFixed(2)}" x2="${xf.toFixed(2)}" y2="${yy.toFixed(2)}" stroke="${cor}" stroke-width="1.6"/>`
-        + `<path d="M${xf.toFixed(2)},${yy.toFixed(2)} l${(-dir * 8).toFixed(2)},-4 l0,8 z" fill="${cor}"/>`;
+      return lin(xi, yy, xf, yy, cor, 1.8) + `<path d="M${xf.toFixed(2)},${yy.toFixed(2)} l${(-dir * 10).toFixed(2)},-5 l0,10 z" fill="${cor}"/>`;
     };
-    const yCm = y1 - (hf! / 2) * s, yCa = y1 - (hf! + yAlma / 2) * s;
-    const xSeta = xa + larg + 46;
-    partes.push(seta(xSeta, xa + wM + 4, yCm, '#c55a11'), texto(xSeta + 4, yCm + 4, 'C mesa', 11, 'start'));
-    partes.push(seta(xSeta, xa + wA + 4, yCa, '#c55a11'), texto(xSeta + 4, yCa + 4, 'C alma', 11, 'start'));
-    partes.push(`<line x1="${(xa - 6).toFixed(2)}" y1="${(y1 - x * s).toFixed(2)}" x2="${(xa + larg + 20).toFixed(2)}" y2="${(y1 - x * s).toFixed(2)}" stroke="#c55a11" stroke-width="1.2" stroke-dasharray="8 4 2 4"/>`);
-    partes.push(`<circle cx="${xa.toFixed(2)}" cy="${yb.toFixed(2)}" r="${rb.toFixed(2)}" fill="${ACO}"/>`);
-    partes.push(seta(xa + 6, xa + 60, yb, ACO), texto(xa + 64, yb + 4, 'As·σs', 11, 'start'));
-    // os dois braços até a barra
-    const xB1 = xSeta + 70, xB2 = xSeta + 140;
-    partes.push(chamada(xa + 60, yb, xB2 + 4, yb), chamada(xSeta + 50, yCm, xB1 + 4, yCm), chamada(xSeta + 50, yCa, xB2 + 4, yCa));
-    partes.push(cota(xB1, yb, xB1, yCm, 'd − hf/2', 1));
-    partes.push(cota(xB2, yb, xB2, yCa, 'd − hf − y/2', 1));
-    Wt = Math.ceil(xB2 + 120);   // folga para o rótulo deitado da cota curta
+    const braços: Array<[number, string]> = [];
+    if (secaoT && ok(fA, bwM)) {
+      const wA = wM * (fA! * bwM!) / (fM! * 100);
+      partes.push(`<rect x="${xa}" y="${nivel(hf!).toFixed(2)}" width="${wM}" height="${(hf! * k).toFixed(2)}" ${COMP}/>`);
+      partes.push(`<rect x="${xa}" y="${nivel(hf! + yAlma!).toFixed(2)}" width="${wA.toFixed(2)}" height="${(yAlma! * k).toFixed(2)}" ${COMP}/>`);
+      partes.push(seta(xSeta, xa + wM + 4, nivel(hf! / 2), LARANJA), texto(xSeta + 6, nivel(hf! / 2) + 5, 'C mesa', FS, 'start'));
+      partes.push(seta(xSeta, xa + wA + 4, nivel(hf! + yAlma! / 2), LARANJA), texto(xSeta + 6, nivel(hf! + yAlma! / 2) + 5, 'C alma', FS, 'start'));
+      braços.push([nivel(hf! / 2), 'd − hf/2'], [nivel(hf! + yAlma! / 2), 'd − hf − y/2']);
+    } else {
+      partes.push(`<rect x="${xa}" y="${nivel(0.8 * x!).toFixed(2)}" width="${wM}" height="${(0.8 * x! * k).toFixed(2)}" ${COMP}/>`);
+      partes.push(seta(xSeta, xa + wM + 4, nivel(0.4 * x!), LARANJA), texto(xSeta + 6, nivel(0.4 * x!) + 5, 'C', FS, 'start'));
+      braços.push([nivel(0.4 * x!), 'z = d − 0,4x']);
+    }
+    // a linha neutra e o aço
+    partes.push(lin(xa - 20, nivel(x!), xa + wM + 30, nivel(x!), LARANJA, 1.3, ' stroke-dasharray="9 4 2 4"'));
+    partes.push(texto(xa + wM + 34, nivel(x!) + 5, 'LN', 13, 'start'));
+    partes.push(`<circle cx="${xa}" cy="${nivel(d!).toFixed(2)}" r="5" fill="${ACO}"/>`);
+    partes.push(seta(xa + 7, xa + 80, nivel(d!), ACO), texto(xa + 86, nivel(d!) + 5, 'As·σs', FS, 'start'));
+    // profundidades, à esquerda (da face comprimida): hf e y (ou 0,8x), x, d
+    const cA = xa - 40, cB = xa - 135, cC = xa - 230;
+    partes.push(chamada(xa - 14, yB, cC - 4, yB));
+    if (secaoT) {
+      partes.push(chamada(xa - 14, nivel(hf!), cA - 4, nivel(hf!)), chamada(xa - 14, nivel(hf! + yAlma!), cA - 4, nivel(hf! + yAlma!)));
+      partes.push(cotaV(cA, nivel(hf!), yB, `hf = ${cm(hf!)}`, -1));
+      partes.push(cotaV(cA, nivel(hf! + yAlma!), nivel(hf!), `y = ${nbr(yAlma!, 2)}`, -1));
+    } else {
+      // a verificação da parede: 0,8x (o bloco comprimido) contra hf (a parede) — o hf cotado, o 0,8x escrito embaixo
+      partes.push(chamada(xa - 14, nivel(hf!), cA - 4, nivel(hf!)));
+      partes.push(cotaV(cA, nivel(hf!), yB, `hf = ${cm(hf!)}`, -1));
+      partes.push(texto(xa + wM / 2, yB + 20, `0,8x = ${nbr(0.8 * x!, 2)} ≤ hf`, FS));
+    }
+    partes.push(chamada(xa - 20, nivel(x!), cB - 4, nivel(x!)));
+    partes.push(cotaV(cB, nivel(x!), yB, `x = ${nbr(x!, 2)}`, -1));
+    partes.push(chamada(xa - 5, nivel(d!), cC - 4, nivel(d!)));
+    partes.push(cotaV(cC, nivel(d!), yB, `d = ${cm(d!)}`, -1));
+    // os braços até a barra, à direita
+    let xr = xSeta + 90;
+    partes.push(chamada(xa + 140, nivel(d!), xr + (braços.length - 1) * 120 + 4, nivel(d!)));   // depois do rótulo do aço
+    for (const [yy, rot] of braços) {
+      partes.push(chamada(xSeta + 60, yy, xr + 4, yy));
+      partes.push(cotaV(xr, nivel(d!), yy, rot, 1));
+      xr += 120;
+    }
+    Ht = yB + (secaoT ? 26 : 34);
   }
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${Wt} ${Ht}" style="width:100%;height:auto;display:block" font-family="Arial, Helvetica, sans-serif"><rect width="${Wt}" height="${Ht}" fill="#ffffff"/>${partes.join('')}</svg>`;
-  return { svg, titulo: mesaSo ? 'Seção da flexão: faixa de 1 m (cm)' : 'Seção da flexão: faixa de 1 m em seção T e as forças (cm)' };
+  const Wt = 840;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${Wt} ${Math.ceil(Ht)}" style="width:100%;height:auto;display:block" font-family="Arial, Helvetica, sans-serif"><rect width="${Wt}" height="${Math.ceil(Ht)}" fill="#ffffff"/>${partes.join('')}</svg>`;
+  return { svg, titulo: secaoT ? 'Flexão da faixa de 1 m: seção T e as forças' : 'Flexão da faixa de 1 m: a parede do bloco e as forças' };
 }
