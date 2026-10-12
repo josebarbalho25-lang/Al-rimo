@@ -278,7 +278,9 @@ function cardEsbeltez(r: Parameters<AutorDeCards>[0]): Card {
   const t = m.ent('t_bloco', 't');
   const av = m.ent('alfa_v', '\\alpha_v');
   const ah = m.ent('alfa_h', '\\alpha_h');
-  const l = m.ent('l_trav', '\\ell');
+  // com contrafortes o travamento lateral é o próprio contraforte: l = espaçamento adotado (planilha, he_; Jose 12/10)
+  const comCf = m.texto('Tipo_muro') === 'Contrafortes';
+  const l = comCf ? m.g('l_cf_adot', '\\ell_{cf}', 2, 'm') : m.ent('l_trav', '\\ell');
   const tenr = m.g('tenr_adot', 't_{enr}', 1, 'cm');
   const eenr = m.g('eenr', 'e_{enr}', 1, 'cm');
   const lenrCm = m.g('l_cf_adot', '\\ell_{cf}', 0, 'cm', { fator: 100 });
@@ -294,7 +296,8 @@ function cardEsbeltez(r: Parameters<AutorDeCards>[0]): Card {
     m.entrada('H_muro', 'h_{muro}'),
     travado && m.entrada('alfa_v', '\\alpha_v'),
     travado && m.entrada('alfa_h', '\\alpha_h'),
-    travado && m.entrada('l_trav', '\\ell'),
+    travado && !comCf && m.entrada('l_trav', '\\ell'),
+    travado && comCf && ps('l_cf_adot', '\\ell_{cf}', null, { casas: 2, unidade: 'm', origem: 'adotado' }),
     m.entrada('t_bloco', 't'),
     ps('tenr_adot', 't_{enr}', null, { casas: 1, unidade: 'cm', origem: 'adotado' }),
     // eenr = t_bloco: o contraforte tem a largura do bloco (montagem fechada)

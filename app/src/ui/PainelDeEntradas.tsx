@@ -26,6 +26,7 @@ import { memo, useCallback, useMemo, useState } from 'react';
 import type { Valor } from '@/motor/tipos';
 import type { Ajuste } from '@/modelo/tipos';
 import {
+  campoEspelhado,
   entradaAtiva,
   entradaDoAjuste,
   opcoesDoCampo,
@@ -43,10 +44,15 @@ import { figuraDaEntrada } from '@/figuras/mapa';
 import { CampoNumero, Escolha, Lista } from './controles';
 import { Chevron, IconeAlerta, IconeFigura } from './icones';
 import { ModalDaFigura, type FiguraDaEntrada } from './ModalDaFigura';
+import { EntradaPorFiguras } from './EntradaPorFiguras';
 
 const existeCampo = (nome: string) => CAMPOS.has(nome);
 
-export function PainelDeEntradas() {
+/**
+ * O que cada linha precisa além do campo: valor, opções vivas, trava, ajuste "→" e aviso. Compartilhado pelo
+ * painel e pela entrada por figuras (EntradaPorFiguras.tsx), para as duas telas mostrarem a mesma coisa.
+ */
+export function useLinhasDeEntrada() {
   const alteracoes = useApp((s) => s.alteracoes);
   const extras = useApp((s) => s.extras);
   const ajustes = useApp((s) => s.modelo?.ajustes);
@@ -80,6 +86,41 @@ export function PainelDeEntradas() {
     return m;
   }, [resultado]);
 
+  const propsDoCampo = (c: Campo) => {
+    const trava = valorTravado(c.meta.nome, ler);
+    return {
+      campo: c,
+      opcoes: opcoesVivas.get(c.meta.nome) ?? c.opcoes,
+      valor: trava ?? ler(c.meta.nome),
+      travado: trava !== undefined,
+      ativa: entradaAtiva(c.meta.nome, ler),
+      ajuste: ajustePorNome.get(c.meta.nome),
+      aviso: avisoDoCampo(avisosDaConta, c.meta.nome),
+      figura: figuraDaEntrada(c.meta.nome)?.titulo ?? null,
+      definir,
+    };
+  };
+  // Linha espelho (o "l" da Geometria, Jose 12/10): mostra e edita o campo de verdade — espaçamento dos contrafortes
+  // ou comprimento do muro —, com a lista, o "→" e a figura dele; só o rótulo e o apagado são da linha.
+  const propsDaLinha = (c: Campo) => {
+    const e = campoEspelhado(c.meta.nome, ler);
+    const alvo = e ? CAMPOS.get(e.alvo) : undefined;
+    if (!e || !alvo) return propsDoCampo(c);
+    const daSecao = SECOES.find((s) => s.campos.some((x) => x.meta.nome === e.alvo))?.titulo ?? '';
+    return {
+      ...propsDoCampo(alvo),
+      campo: { ...alvo, curto: e.rotulo, dica: `${alvo.dica} — o mesmo campo do grupo ${daSecao}, que o desenho usa` },
+      ativa: e.ativa,
+    };
+  };
+  return { ler, propsDaLinha };
+}
+
+export function PainelDeEntradas() {
+  const { ler, propsDaLinha } = useLinhasDeEntrada();
+  const [porFiguras, setPorFiguras] = useState(false);
+  const fecharPorFiguras = useCallback(() => setPorFiguras(false), []);
+
   // Aberto/fechado escolhido pelo usuário; o que ele nunca tocou fica fechado.
   // Só a ESCOLHA é guardada (não o padrão): assim o padrão pode mudar sem
   // brigar com o que ficou gravado em navegador de versão antiga.
@@ -103,6 +144,10 @@ export function PainelDeEntradas() {
     <aside className="painel-entradas">
       <div className="painel-cabeca">
         <span className="rotulo">Entradas</span>
+        <button type="button" className="btn-por-figuras" title="Entrada por figuras (piloto)" onClick={() => setPorFiguras(true)}>
+          <IconeFigura tamanho={14} />
+          Por figuras
+        </button>
       </div>
       <div className="painel-corpo">
         {SECOES.filter((s) => secaoVisivel(s, ler)).map((s) => {
@@ -127,22 +172,12 @@ export function PainelDeEntradas() {
               </div>
               {aberto && (
                 <div className="grupo-corpo">
-                  {s.campos.map((c) => (
-                    <LinhaDeEntrada
-                      key={c.meta.nome}
-                      campo={c}
-                      opcoes={opcoesVivas.get(c.meta.nome) ?? c.opcoes}
-                      valor={valorTravado(c.meta.nome, ler) ?? ler(c.meta.nome)}
-                      travado={valorTravado(c.meta.nome, ler) !== undefined}
-                      ativa={entradaAtiva(c.meta.nome, ler)}
-                      ajuste={ajustePorNome.get(c.meta.nome)}
-                      aviso={avisoDoCampo(avisosDaConta, c.meta.nome)}
-                      figura={figuraDaEntrada(c.meta.nome)?.titulo ?? null}
-                      figuraAberta={aberta?.nome === c.meta.nome}
-                      definir={definir}
-                      abrirFigura={abrirFigura}
-                    />
-                  ))}
+                  {s.campos.map((c) => {
+                    const p = propsDaLinha(c);
+                    return (
+                      <LinhaDeEntrada key={c.meta.nome} {...p} figuraAberta={aberta?.nome === p.campo.meta.nome} abrirFigura={abrirFigura} />
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -150,6 +185,7 @@ export function PainelDeEntradas() {
         })}
       </div>
       {aberta && <ModalDaFigura figura={aberta.figura} aoFechar={fecharFigura} />}
+      {porFiguras && <EntradaPorFiguras aoFechar={fecharPorFiguras} />}
     </aside>
   );
 }
@@ -158,7 +194,7 @@ export function PainelDeEntradas() {
  * Uma linha. `memo` porque o painel tem ~120 linhas e cada tecla refaz a
  * conta: só redesenha a linha cujo valor, estado ou ajuste mudou.
  */
-const LinhaDeEntrada = memo(function LinhaDeEntrada({
+export const LinhaDeEntrada = memo(function LinhaDeEntrada({
   campo,
   opcoes,
   valor,
@@ -193,7 +229,7 @@ const LinhaDeEntrada = memo(function LinhaDeEntrada({
   let controle;
   switch (campo.controle) {
     case 'numero':
-      controle = <CampoNumero campo={campo} valor={valor} aoMudar={mudar} />;
+      controle = <CampoNumero campo={campo} valor={valor} aoMudar={mudar} desabilitado={travado} />;
       break;
     case 'simnao':
     case 'escolha':
@@ -210,7 +246,7 @@ const LinhaDeEntrada = memo(function LinhaDeEntrada({
   const largo = campo.controle === 'lista' && !campo.meta.unidade;
 
   return (
-    <div className={`entrada${ativa ? '' : ' apagada'}`}>
+    <div className={`entrada${ativa ? '' : ' apagada'}`} data-campo={nome}>
       <label title={campo.dica}>{campo.curto}</label>
       <div className={`entrada-controle${largo ? ' largo' : ''}`}>
         {controle}

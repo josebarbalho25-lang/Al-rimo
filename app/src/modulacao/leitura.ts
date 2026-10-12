@@ -140,7 +140,7 @@ export function lerParametros(r: Resultado, extrasIn: Record<string, Valor>, avi
     s_ps: cm(n('s_ps')),
     s_ss: cm(n('s_ss')),
     // O espaçamento do estribo de torção não tem nome definido na aba Fundação: lido pela célula.
-    s_tor: cm(comoNumero(r.cel('Fundação!B93'))),
+    s_tor: cm(comoNumero(r.cel('Fundação!B96'))),
     Mk_heel: n('Mk_heel') ?? 0,
     T_sd: n('T_sd') ?? 0,
     Asl_s: n('Asl_s') ?? 0,

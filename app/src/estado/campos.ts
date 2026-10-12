@@ -556,6 +556,31 @@ export function valorTravado(nome: string, ler: LerValor): Valor | undefined {
   return regra ? regra(ler) : undefined;
 }
 
+/*
+  CAMPO ESPELHO (Jose, 12/10). O "l entre travamentos" da Geometria não é um número à parte: é o muro desenhado.
+    - contrafortes: l = espaçamento entre contrafortes (eixo a eixo) — a lista dos vãos que amarram com o bloco, a
+      mesma do grupo Contrafortes; a planilha usa o adotado (l_cf_adot) no he_;
+    - balanço (travado nas duas pontas): l = comprimento do muro (grupo Modelo); o store manda o comprimento para a
+      conta como l_trav, porque a planilha não tem o comprimento.
+  A linha mostra e EDITA o campo de verdade (mesma lista, mesmo "→"), e o 3D se refaz. Na planilha o l_trav continua
+  entrada — lá o projetista digita o comprimento entre travamentos.
+*/
+const ESPELHO_SE: Record<string, { alvo: (ler: LerValor) => string; rotulo: (ler: LerValor) => string; ativa: (ler: LerValor) => boolean }> = {
+  l_trav: {
+    alvo: (l) => (l('Tipo_muro') === 'Contrafortes' ? 'l_cf' : 'L_total'),
+    rotulo: (l) => (l('Tipo_muro') === 'Contrafortes' ? 'Entre contrafortes l' : 'Comprimento do muro l'),
+    // com contrafortes é o próprio espaçamento, que a conta usa sempre (painel, contraforte, sapata); no balanço só
+    // a esbeltez usa, e só com travamento lateral
+    ativa: (l) => l('Tipo_muro') === 'Contrafortes' || l('Trav_lat') === 'Sim',
+  },
+};
+
+/** O campo que esta linha espelha na situação atual (nome, rótulo e se está ativo), ou null. */
+export function campoEspelhado(nome: string, ler: LerValor): { alvo: string; rotulo: string; ativa: boolean } | null {
+  const e = ESPELHO_SE[nome];
+  return e ? { alvo: e.alvo(ler), rotulo: e.rotulo(ler), ativa: e.ativa(ler) } : null;
+}
+
 /* ── o valor que a modulação ajustou ──────────────────────────────────── */
 
 /*

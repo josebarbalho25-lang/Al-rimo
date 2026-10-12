@@ -191,3 +191,38 @@ describe('listas que dependem de outra entrada (montagens fechadas)', () => {
     expect(s.ajustesDeLista.l_cf).toEqual({ nome: 'l_cf', de: 1.5, para: 1.6 });
   });
 });
+
+describe('o "l" da esbeltez é o muro desenhado (Jose, 12/10)', () => {
+  it('balanço travado: a conta recebe o comprimento do muro, já no módulo do bloco', async () => {
+    const app = await abrirApp(new Map());
+    const { gerarModelo } = await import('@/modulacao');
+    app.useApp.getState().ligar({ gerador: gerarModelo });
+    app.useApp.getState().definir('Trav_lat', 'Sim');
+    expect(app.useApp.getState().resultado?.v('l_trav')).toBe(6);          // padrão do comprimento: 6,00 fecha
+    app.useApp.getState().definir('L_total', 6.1);                          // não fecha: "→ 6,2"
+    const s = app.useApp.getState();
+    expect(s.modelo?.ajustes).toContainEqual({ nome: 'L_total', de: 6.1, para: 6.2, unidade: 'm' });
+    expect(s.resultado?.v('l_trav')).toBe(6.2);
+  });
+
+  it('contrafortes: trocar o espaçamento refaz o muro (o 3D anda junto)', async () => {
+    const app = await abrirApp(new Map());
+    const { gerarModelo } = await import('@/modulacao');
+    app.useApp.getState().ligar({ gerador: gerarModelo });
+    app.useApp.getState().definir('Tipo_muro', 'Contrafortes');
+    app.useApp.getState().definir('t_bloco', 14);
+    const passo = () => {
+      const xs = app.useApp.getState().modelo!.dims.contrafortes.map((c) => c.x);
+      return xs[1] - xs[0];
+    };
+    app.useApp.getState().definir('l_cf', 1.35);
+    expect(passo()).toBe(1350);
+    app.useApp.getState().definir('l_cf', 2.15);
+    expect(passo()).toBe(2150);
+    // a esbeltez usa o adotado: o he_ muda com o espaçamento (travamento lateral = Sim)
+    app.useApp.getState().definir('Trav_lat', 'Sim');
+    const he215 = app.useApp.getState().resultado?.num('he_');
+    app.useApp.getState().definir('l_cf', 1.35);
+    expect(app.useApp.getState().resultado?.num('he_')).not.toBe(he215);
+  });
+});

@@ -28,10 +28,13 @@ export function CampoNumero({
   campo,
   valor,
   aoMudar,
+  desabilitado = false,
 }: {
   campo: Campo;
   valor: Valor;
   aoMudar: (v: number | null) => void;
+  /** Campo travado num valor que vem de outra entrada: mostra, não deixa digitar. */
+  desabilitado?: boolean;
 }) {
   const [rascunho, setRascunho] = useState<string | null>(null);
   const aoEntrar = useRef<Valor>(null);
@@ -48,6 +51,7 @@ export function CampoNumero({
       spellCheck={false}
       autoComplete="off"
       value={rascunho ?? mostrado}
+      disabled={desabilitado}
       placeholder={campo.opcional ? 'auto' : undefined}
       aria-label={campo.curto}
       aria-invalid={errado || undefined}

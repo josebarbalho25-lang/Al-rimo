@@ -117,42 +117,74 @@ export interface EstadoDoApp {
 }
 
 /*
+  O "l entre travamentos" da esbeltez (Jose, 12/10) é o muro desenhado: no balanço travado nas duas pontas, o
+  comprimento do muro; com contrafortes, o espaçamento entre eles (a planilha já usa o l_cf_adot e ignora o l_trav).
+  A planilha não tem o comprimento (é entrada só do modelo), então o app manda o comprimento para a conta como l_trav.
+  No painel, a linha do l espelha o campo de verdade (campos.ts, campoEspelhado).
+*/
+function comTravamentoDoModelo(a: Alteracoes, L: number | null): Alteracoes {
+  const meta = METAS.get('l_trav');
+  const tipo = METAS.get('Tipo_muro');
+  if (!meta || !tipo || L === null || valorAtual(tipo, a) === 'Contrafortes') return a;
+  return aplicarValor(a, meta, L);
+}
+
+/** A esbeltez do balanço usa o comprimento do muro? (balanço com travamento lateral) */
+function travadoPeloComprimento(a: Alteracoes): boolean {
+  const tipo = METAS.get('Tipo_muro');
+  const trav = METAS.get('Trav_lat');
+  return !!tipo && !!trav && valorAtual(tipo, a) !== 'Contrafortes' && valorAtual(trav, a) === 'Sim';
+}
+
+/*
   A conta com as listas em dia. A lista dependente sai da própria conta (aba Referências), então a ordem é: conta →
   confere as listas → valor fora vai para a opção mais próxima → conta de novo. Nenhuma lista dependente depende de
   entrada que também está em lista dependente (dependem do bloco, do tipo de muro e da sapata — altura, cobrimento,
   Ø da malha e gancho, para os Ø com espera), então uma volta resolve; o laço é só folga.
   Devolve as alterações JÁ AJUSTADAS — são elas que vão para o estado, o arquivo e a conta.
+
+  O comprimento do muro que vai para a conta (l do balanço travado) é o MODULAR, como todo valor que a modulação
+  ajusta (a conta usa o ajustado — decisão do Jose, como os *_adot da planilha): 1ª volta com o digitado; se a
+  modulação arredondou o comprimento (o "→"), a conta refaz com o arredondado.
 */
 function contaCom(lig: Ligacoes, alteracoes: Alteracoes, extras: Record<string, Valor>) {
-  let final = alteracoes;
-  const ajustes: Record<string, AjusteDeLista> = {};
-  const calcularNaLista = (pedidas: Alteracoes): Resultado => {
-    let a = pedidas;
-    const anotar = (t: { alteracoes: Alteracoes; ajustes: AjusteDeLista[] }) => {
-      for (const aj of t.ajustes) ajustes[aj.nome] = { ...aj, de: ajustes[aj.nome]?.de ?? aj.de };
-      a = t.alteracoes;
-    };
-    // o solo acima do muro não vai para a conta nem uma vez (a planilha não deixaria digitar)
-    anotar(ajustarAosTetos(METAS, a));
-    let r = calcular(a);
-    for (let volta = 0; volta < 4; volta++) {
-      const t = ajustarAsListas(CAMPOS_EM_LISTA, a, (ref) => r.cel(ref));
-      if (t.ajustes.length === 0) break;
-      anotar(t);
-      // a lista pode ter baixado a altura do muro (tipo de muro trocado): o teto do solo desce junto
+  const digitado = typeof extras.L_total === 'number' ? extras.L_total : PADROES_DO_MODELO.L_total;
+  const rodar = (L: number | null) => {
+    let final = alteracoes;
+    const ajustes: Record<string, AjusteDeLista> = {};
+    const calcularComTravamento = (a: Alteracoes) => calcular(comTravamentoDoModelo(a, L));
+    const calcularNaLista = (pedidas: Alteracoes): Resultado => {
+      let a = pedidas;
+      const anotar = (t: { alteracoes: Alteracoes; ajustes: AjusteDeLista[] }) => {
+        for (const aj of t.ajustes) ajustes[aj.nome] = { ...aj, de: ajustes[aj.nome]?.de ?? aj.de };
+        a = t.alteracoes;
+      };
+      // o solo acima do muro não vai para a conta nem uma vez (a planilha não deixaria digitar)
       anotar(ajustarAosTetos(METAS, a));
-      r = calcular(a);
-    }
-    final = a;
-    return r;
+      let r = calcularComTravamento(a);
+      for (let volta = 0; volta < 4; volta++) {
+        const t = ajustarAsListas(CAMPOS_EM_LISTA, a, (ref) => r.cel(ref));
+        if (t.ajustes.length === 0) break;
+        anotar(t);
+        // a lista pode ter baixado a altura do muro (tipo de muro trocado): o teto do solo desce junto
+        anotar(ajustarAosTetos(METAS, a));
+        r = calcularComTravamento(a);
+      }
+      final = a;
+      return r;
+    };
+    const feito = recalcular(
+      { calcular: calcularNaLista, gerador: lig.gerador, veredito: lig.veredito },
+      alteracoes,
+      extras,
+      PADROES_DO_MODELO,
+    );
+    return { ...feito, alteracoes: final, ajustesNovos: ajustes };
   };
-  const feito = recalcular(
-    { calcular: calcularNaLista, gerador: lig.gerador, veredito: lig.veredito },
-    alteracoes,
-    extras,
-    PADROES_DO_MODELO,
-  );
-  return { ...feito, alteracoes: final, ajustesNovos: ajustes };
+  const primeira = rodar(typeof digitado === 'number' ? digitado : null);
+  if (!travadoPeloComprimento(primeira.alteracoes)) return primeira;
+  const modular = primeira.modelo?.ajustes.find((x) => x.nome === 'L_total')?.para;
+  return typeof modular === 'number' && modular !== digitado ? rodar(modular) : primeira;
 }
 
 /** O que vai para o estado: a conta, as alterações ajustadas e os "→" (os de antes, menos `limpar`, mais os novos). */

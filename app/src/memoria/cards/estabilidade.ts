@@ -285,7 +285,7 @@ function cardTombamento(r: Resultado): Card {
   const momentoPositivo = (m.num('M_tb') ?? 0) > 0;          // IF(M_tb>0; M_est/M_tb; 99)
   const fsMin = m.ent('FS_tomb', 'FS_{tomb,m\\acute{\\imath}n}');
   const verifFS: PedidoDeVerificacao = {
-    chave: 'fundacao.tombamento', rotulo: 'Tombamento FS ≥ FS mín', limite: fsMin, relacao: '>=', celula: cel('B98'),
+    chave: 'fundacao.tombamento', rotulo: 'Tombamento FS ≥ FS mín', limite: fsMin, relacao: '>=', celula: cel('B101'),
   };
 
   const fs = secao('Fator de segurança em torno do pé', [
@@ -308,8 +308,8 @@ function cardTombamento(r: Resultado): Card {
   const eNum = m.valor('e_f');
   const elimNum = m.valor(cel('B38')) ?? 0;
   const verifE: PedidoDeVerificacao = eNum !== null && eNum < 0
-    ? { chave: 'fundacao.excentricidade', rotulo: 'Tombamento |e| ≤ B/4', limite: -elimNum, relacao: '>=', celula: cel('B99') }
-    : { chave: 'fundacao.excentricidade', rotulo: 'Tombamento |e| ≤ B/4', limite: f.elim, relacao: '<=', celula: cel('B99') };
+    ? { chave: 'fundacao.excentricidade', rotulo: 'Tombamento |e| ≤ B/4', limite: -elimNum, relacao: '>=', celula: cel('B102') }
+    : { chave: 'fundacao.excentricidade', rotulo: 'Tombamento |e| ≤ B/4', limite: f.elim, relacao: '<=', celula: cel('B102') };
   const texE = eNum !== null && eNum < 0 ? `-e_{lim} = ${nt(-elimNum, 3)}\\,\\mathrm{m}` : undefined;
   const passoE = eNum !== null && m.passo('e_f', 'e', div(f.Mcen, f.N), {
     casas: 3, unidade: 'm', verif: verifE, ...(texE ? { limiteTex: texE } : {}),
@@ -378,7 +378,7 @@ function cardDeslizamento(r: Resultado): Card {
       ref: NBR_11682,
       verif: {
         chave: 'fundacao.deslizamento', rotulo: 'Deslizamento FS ≥ FS mín',
-        limite: m.ent('FS_desl', 'FS_{desl,m\\acute{\\imath}n}'), relacao: '>=', celula: cel('B101'),
+        limite: m.ent('FS_desl', 'FS_{desl,m\\acute{\\imath}n}'), relacao: '>=', celula: cel('B104'),
       },
     }),
   ], GILBERTO);
@@ -420,7 +420,7 @@ function cardTensoes(r: Resultado): Card {
     const trapezio = Math.abs(e) <= B / 6;                 // IF(ABS(e_f) <= B_sap/6; trapézio; triângulo)
     if (Math.abs(e) >= B / 2) avisos.push('Resultante fora da base');
     const verifSigma: PedidoDeVerificacao = {
-      chave: 'fundacao.tensao', rotulo: 'σmáx ≤ σadm', limite: sAdm, relacao: '<=', celula: cel('B102'),
+      chave: 'fundacao.tensao', rotulo: 'σmáx ≤ σadm', limite: sAdm, relacao: '<=', celula: cel('B105'),
     };
     const seisEB = div(mul(cte(6, 0), abs(f.e)), f.B);
     secoes.push(secao(trapezio ? 'Diagrama trapezoidal (|e| ≤ B/6)' : 'Diagrama triangular (|e| > B/6)', [

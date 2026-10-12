@@ -6,7 +6,8 @@
 //  EDITA não fecha com clique fora). Cabeçalho = título da figura; corpo = só
 //  o desenho. Sem legenda, sem rodapé, sem texto de ajuda. Exceção: a figura
 //  dos solos (fig22) traz embaixo a calculadora de consulta (Ka/Kp e argila),
-//  que só mostra — não edita nada, então clique fora continua fechando.
+//  e a da sapata (fig15) a do σadm pelo SPT; as duas só mostram — não editam
+//  nada, então clique fora continua fechando.
 //
 //  A figura aparece LIMPA, como foi desenhada. Ela já acendeu a grandeza da
 //  entrada com um halo laranja e esmaeceu as outras; o Jose tirou (09/10):
@@ -24,6 +25,7 @@ import { createPortal } from 'react-dom';
 import type { figuraDaEntrada } from '@/figuras/mapa';
 import { IconeFechar } from './icones';
 import { CalculadoraDoSolo } from './CalculadoraDoSolo';
+import { CalculadoraDaTensao } from './CalculadoraDaTensao';
 
 /** A figura de uma entrada (com id) ou de uma peça do quantitativo (sem id: nunca é a dos solos). */
 export type FiguraDaEntrada = Omit<NonNullable<ReturnType<typeof figuraDaEntrada>>, 'id'> & { id?: string };
@@ -71,6 +73,8 @@ export function ModalDaFigura({ figura, aoFechar }: { figura: FiguraDaEntrada; a
           </div>
           {/* tabelas de solo: a consulta de Ka/Kp e da argila fica embaixo, sem mexer no formulário (Jose, 09/10) */}
           {figura.id === 'fig22' && <CalculadoraDoSolo />}
+          {/* sapata: σadm pelo SPT da base, pelas duas regras práticas (Jose, 10/10) */}
+          {figura.id === 'fig15' && <CalculadoraDaTensao />}
         </div>
       </div>
     </div>,

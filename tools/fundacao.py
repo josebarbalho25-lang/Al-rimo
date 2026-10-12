@@ -82,7 +82,12 @@ Lf('Comprimento comprimido', '=IF(ABS(e_f)<=B_sap/6,B_sap,3*(B_sap/2-ABS(e_f)))'
 Lf('σ máx', '=IF(ABS(e_f)<=B_sap/6,s_med*(1+6*ABS(e_f)/B_sap),2*N_tot/(c_len*Lm))', 'kPa', '', 'key', '0.0', 's_hi')
 Lf('σ mín', '=IF(ABS(e_f)<=B_sap/6,s_med*(1-6*ABS(e_f)/B_sap),0)', 'kPa', '', 'res', '0.0', 's_lo')
 Lf('Lado da σ máx', '=IF(e_f>=0,"pé (borda externa)","talão (borda aterrada)")', '', '', 'res')
-Lf('Sugestão: 20·SPT (N/5 kgf/cm²)', '=20*SPT_b', 'kPa', 'Regra prática da aba do Gilberto, sem teto.', 'sug', '0')
+# Duas regras práticas pelo SPT da base, cada uma com a faixa de N em que vale (Jose, 10/10: calculadora embaixo da
+# Fig. 15). Só sugestão: o σadm usado continua sendo o digitado ou 20·SPT.
+Lf('Sugestão: 20·SPT (N/50 MPa)', '=20*SPT_b', 'kPa', 'Regra prática da aba do Gilberto (Cintra, Aoki e Albiero). Vale para 5 ≤ N ≤ 20.', 'sug', '0', 'sadm_20N', 'Cintra, Aoki e Albiero (2011)')
+Lf('20·SPT: faixa de validade', '=IF(AND(SPT_b>=5,SPT_b<=20),"Dentro (5 ≤ N ≤ 20)","Fora (vale para 5 ≤ N ≤ 20)")', '', '', 'res', None, 'sadm_20N_fx')
+Lf('Sugestão: Mello 100·(√SPT − 1)', '=100*(SQRT(SPT_b)-1)', 'kPa', 'Mello (1975). Vale para 4 ≤ N ≤ 16.', 'sug', '0', 'sadm_mel', 'Mello (1975), em Cintra, Aoki e Albiero (2011)')
+Lf('Mello: faixa de validade', '=IF(AND(SPT_b>=4,SPT_b<=16),"Dentro (4 ≤ N ≤ 16)","Fora (vale para 4 ≤ N ≤ 16)")', '', '', 'res', None, 'sadm_mel_fx')
 Lf('σadm usado', '=IF(ISNUMBER(sig_adm_dir),sig_adm_dir,20*SPT_b)', 'kPa', '', 'res', '0', 's_adm')
 r += 1
 section(Fd, r, '7. Flexão e cortante transversais (por metro, NBR 6118)'); r += 1
