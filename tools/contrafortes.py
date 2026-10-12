@@ -414,12 +414,28 @@ def xq(bm, bw, hf, As1, d, As2, dl, n, n2, T):
     else:
         A_ = f'{bm}/2'; B_ = f'({n}*{As1}+{n2}*{As2})'; C_ = f'(-{n}*{As1}*{d}-{n2}*{As2}*{dl})'
     return f'(-{B_}+SQRT({B_}^2-4*{A_}*{C_}))/(2*{A_})'
+def bc_ln(bm, bw, hf, As1, d, As2, dl, n, n2, T):
+    # parcelas B e C da LN, C com sinal trocado: (−B + √(B² + 2·b·C))/b é a MESMA aritmética de xq (4·(b/2) = 2b e
+    # 2·(b/2) = b são exatos em ponto flutuante; −(a+b+c) = −a−b−c também) — o número não muda nem no último dígito
+    if T:
+        return (f'(({bm}-{bw})*{hf}+{n}*{As1}+{n2}*{As2})', f'(({bm}-{bw})*{hf}^2/2+{n}*{As1}*{d}+{n2}*{As2}*{dl})')
+    return (f'({n}*{As1}+{n2}*{As2})', f'({n}*{As1}*{d}+{n2}*{As2}*{dl})')
 def els_block(tag, bm, bw, As1, d, As2, dl, Ma, Mr, Im):
-    # LN: 1º supõe As2 tracionada (n); se x > d', As2 comprimida (n − 1)
-    xr1 = xq(bm, bw, 'hf_bl', As1, d, As2, dl, 'n_pn', 'n_pn', False); xt1 = xq(bm, bw, 'hf_bl', As1, d, As2, dl, 'n_pn', 'n_pn', True)
-    Lc('x com As2 tracionada (n)', f'=IF({xr1}<=hf_bl,{xr1},{xt1})', 'cm', '', 'res', '0.000', f'x1_{tag}')
-    xr2 = xq(bm, bw, 'hf_bl', As1, d, As2, dl, 'n_pn', '(n_pn-1)', False); xt2 = xq(bm, bw, 'hf_bl', As1, d, As2, dl, 'n_pn', '(n_pn-1)', True)
-    Lc('x adotado', f'=IF(OR({As2}=0,x1_{tag}<={dl}),x1_{tag},IF({xr2}<=hf_bl,{xr2},{xt2}))', 'cm', "Se x < d', a 2ª barra está tracionada (entra com n).", 'key', '0.00', f'x_{tag}')
+    # LN: 1º supõe As2 tracionada (n); se x > d', As2 comprimida (n − 1).
+    # B e C ficam em linha própria (memória: a conta inteira numa linha só passava da largura da folha).
+    xr1 = xq(bm, bw, 'hf_bl', As1, d, As2, dl, 'n_pn', 'n_pn', False)
+    Br1, Cr1 = bc_ln(bm, bw, 'hf_bl', As1, d, As2, dl, 'n_pn', 'n_pn', False); Bt1, Ct1 = bc_ln(bm, bw, 'hf_bl', As1, d, As2, dl, 'n_pn', 'n_pn', True)
+    Lc('B da LN com As2 tracionada (n)', f'=IF({xr1}<=hf_bl,{Br1},{Bt1})', 'cm²', 'x = (−B + √(B² + 2·b·C))/b; b = bm na mesa, bw na alma.', 'res', '0.00', f'B_ln1_{tag}')
+    Lc('C da LN com As2 tracionada (n)', f'=IF({xr1}<=hf_bl,{Cr1},{Ct1})', 'cm³', '', 'res', '0.00', f'C_ln1_{tag}')
+    B1, C1 = f'B_ln1_{tag}', f'C_ln1_{tag}'
+    Lc('x com As2 tracionada (n)', f'=IF({xr1}<=hf_bl,(-{B1}+SQRT({B1}^2+2*{bm}*{C1}))/{bm},(-{B1}+SQRT({B1}^2+2*{bw}*{C1}))/{bw})', 'cm', '', 'res', '0.000', f'x1_{tag}')
+    xr2 = xq(bm, bw, 'hf_bl', As1, d, As2, dl, 'n_pn', '(n_pn-1)', False)
+    Br2, Cr2 = bc_ln(bm, bw, 'hf_bl', As1, d, As2, dl, 'n_pn', '(n_pn-1)', False); Bt2, Ct2 = bc_ln(bm, bw, 'hf_bl', As1, d, As2, dl, 'n_pn', '(n_pn-1)', True)
+    tr = f'OR({As2}=0,x1_{tag}<={dl})'
+    Lc('B da LN adotada', f'=IF({tr},{B1},IF({xr2}<=hf_bl,{Br2},{Bt2}))', 'cm²', '', 'res', '0.00', f'B_ln_{tag}')
+    Lc('C da LN adotada', f'=IF({tr},{C1},IF({xr2}<=hf_bl,{Cr2},{Ct2}))', 'cm³', '', 'res', '0.00', f'C_ln_{tag}')
+    B, C = f'B_ln_{tag}', f'C_ln_{tag}'
+    Lc('x adotado', f'=IF({tr},x1_{tag},IF({xr2}<=hf_bl,(-{B}+SQRT({B}^2+2*{bm}*{C}))/{bm},(-{B}+SQRT({B}^2+2*{bw}*{C}))/{bw}))', 'cm', "Se x < d', a 2ª barra está tracionada (entra com n).", 'key', '0.00', f'x_{tag}')
     Lc('n da 2ª barra', f'=IF(x_{tag}<={dl},n_pn,n_pn-1)', '', 'A planilha 06 do curso usa sempre n − 1 (diferença pequena).', 'res', '0.00', f'n2_{tag}')
     Lc('III', f'=IF(x_{tag}<=hf_bl,{bm}*x_{tag}^3/3,{bw}*x_{tag}^3/3+({bm}-{bw})*hf_bl^3/12+({bm}-{bw})*hf_bl*(x_{tag}-hf_bl/2)^2)+n2_{tag}*{As2}*(x_{tag}-{dl})^2+n_pn*{As1}*({d}-x_{tag})^2', 'cm⁴', '', 'res', '0', f'III_{tag}')
     Lc('Ieq (Branson) ≤ Im', f'=IF({Ma}<={Mr},{Im},MIN({Im},({Mr}/{Ma})^3*{Im}+(1-({Mr}/{Ma})^3)*III_{tag}))', 'cm⁴', '', 'res', '0', f'Ieq_{tag}')
