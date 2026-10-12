@@ -183,7 +183,7 @@ function cardEsforcosBalanco(r: Parameters<AutorDeCards>[0]): Card {
     m.passo('lambda_', '\\lambda', div(he, tM), {
       casas: 1,
       ref: { fonte: 'ABCP', item: '3.2' },
-      verif: { chave: 'balanco.esbeltez', rotulo: 'Esbeltez λ ≤ 30', limite: 30, relacao: '<=', celula: 'Muro em balanço!B78', casasLimite: 0 },
+      verif: { chave: 'balanco.esbeltez', rotulo: 'Esbeltez λ ≤ 30', limite: 30, relacao: '<=', celula: 'chk_esb', casasLimite: 0 },
     }),
   ], { fonte: 'Aula 12.2' });
 

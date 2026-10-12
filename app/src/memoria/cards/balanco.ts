@@ -29,6 +29,19 @@ export const SIMBOLOS_BALANCO: Readonly<Record<string, string>> = {
   f_d: 'resistência de cálculo à compressão da alvenaria',
   K: 'coeficiente da resistência à compressão na flexão',
   'K\\,f_d': 'resistência de cálculo à compressão na flexão',
+  // flexão pela geometria real (12/10): mesa = parede do bloco; alma = furo grauteado
+  'f_{d,mesa}': 'resistência de cálculo da parede do bloco (área líquida)',
+  'K\\,f_{d,mesa}': 'resistência à compressão na flexão da parede do bloco',
+  'f_{d,alma}': 'resistência de cálculo do furo grauteado (prisma cheio)',
+  'K\\,f_{d,alma}': 'resistência à compressão na flexão do furo grauteado',
+  'x_{mesa}': 'linha neutra com a compressão só na parede do bloco',
+  's_{alma}': 'espaçamento dos furos grauteados considerado nas almas',
+  'b_{w,f}': 'alma de cada furo grauteado (furo + septos)',
+  'b_{w,m}': 'largura das almas grauteadas no metro',
+  'M_{mesa}': 'momento resistido pela parede do bloco inteira comprimida',
+  'M_{alma}': 'momento que sobra para as almas grauteadas',
+  y: 'altura comprimida nas almas, abaixo da parede do bloco',
+  C: 'força de compressão na faixa de 1 m',
   'f_{yk}': 'resistência característica de escoamento do aço',
   '\\gamma_s': 'coeficiente de ponderação da resistência do aço',
   'f_{sd}': 'tensão de cálculo na armadura tracionada',
@@ -84,19 +97,19 @@ export const SIMBOLOS_BALANCO: Readonly<Record<string, string>> = {
   'A_{s,sug}': 'armadura por metro com a barra sugerida',
 };
 
-const ABA = 'Muro em balanço';
-/** Células de veredito da aba (coluna B, "Verificações"). */
+/** Células de veredito da aba (coluna B, "Verificações"), pelo NOME (12/10: a flexão pela geometria real mudou as
+    linhas de lugar; o endereço fixo quebrava a cada linha nova acima). */
 const VER = {
-  classeA: `${ABA}!B77`,
-  resiste: `${ABA}!B79`,
-  ductil: `${ABA}!B80`,
-  mesa: `${ABA}!B81`,
-  coerente: `${ABA}!B82`,
-  cabe: `${ABA}!B83`,
-  As: `${ABA}!B84`,
-  tau: `${ABA}!B85`,
-  bielas: `${ABA}!B86`,
-  seisT: `${ABA}!B89`,
+  classeA: 'chk_classeA',
+  resiste: 'chk_resiste',
+  ductil: 'chk_ductil',
+  mesa: 'chk_mesa',
+  coerente: 'chk_coerente',
+  cabe: 'chk_cabe',
+  As: 'chk_As',
+  tau: 'chk_tau',
+  bielas: 'chk_bielas',
+  seisT: 'chk_6t',
 } as const;
 
 const NBR = (item: string): Ref => ({ fonte: 'NBR 16868-1', item });
@@ -109,12 +122,6 @@ const NBR6118_ANC: Ref = { fonte: 'NBR 6118', item: '9.4.2.5' };
 const comeca = (s: string, prefixo: string) => s.slice(0, prefixo.length).toLowerCase() === prefixo.toLowerCase();
 const so = (secoes: Secao[]) => secoes.filter((s) => s.passos.length > 0);
 
-/*
-  A planilha testa "arg_x < 1" e o Excel compara com 15 algarismos: 0,9999999999999996 já é 1 para ele (seção não
-  resiste — o gabarito alvo_compara15_flexao cai exatamente aí). O limite escrito é o maior double que o Excel ainda
-  vê abaixo de 1; na linha ele sai "1", e a desigualdade escrita fica do mesmo lado do veredito da célula.
-*/
-const LIMITE_KMD = 0.9999999999999994;
 
 /**
   As folhas que mais de um card usa — sempre com o mesmo símbolo e as mesmas casas (o teste cobra a régua única).
@@ -137,7 +144,9 @@ function folhas(m: Memoria) {
     fk: m.g('fk_', 'f_k', 2, 'MPa'),
     fd: m.g('fd_', 'f_d', 3, 'MPa'),
     K: m.g('k_flex', 'K', 2),
-    Kfd01: m.g('ffd_', 'K\\,f_d', 4, 'kN/cm²', { fator: 0.1 }),
+    // a flexão usa a resistência da PAREDE do bloco (mesa) e, em seção T, a do furo grauteado (alma) — 12/10
+    Kfd01: m.g('ffd_m', 'K\\,f_{d,mesa}', 4, 'kN/cm²', { fator: 0.1 }),
+    KfdAlma01: m.g('ffd_g', 'K\\,f_{d,alma}', 4, 'kN/cm²', { fator: 0.1 }),
     fsd: m.g('fyd_', 'f_{sd}', 1, 'MPa'),
     fsd01: m.g('fyd_', 'f_{sd}', 2, 'kN/cm²', { fator: 0.1 }),
     hf: m.g('hf_bl', 'h_f', 1, 'cm'),
@@ -205,11 +214,10 @@ const fpkUsado = (f: Folhas, c: Ctx): Expr => (c.usaLiq ? f.fpkLiq : fpkDaTabela
 // ───────────────────────────── 1 · materiais e seção ─────────────────────────────
 
 /*
-  A cadeia do fd: fbk → fpk (tabela) → fpk,liq → fk → fd → K·fd. Vai no card de materiais E no de flexão (Jose, 12/10:
-  "da onde vem o fd utilizado?" — o card de flexão usava K·fd sem mostrar de onde vinha). Os mesmos passos, as mesmas
-  células: o teste confere os dois cards contra a planilha.
+  A cadeia do fd do card de materiais: fbk → fpk (tabela) → fpk,liq → fk → fd → K·fd. É o fpk "usado" que dá o Em do
+  ELS. A flexão tem a sua (secaoResistenciaDaFlexao): parede do bloco e furo grauteado, pela geometria real.
 */
-function secaoResistencia(m: Memoria, f: Folhas, c: Ctx, comVerificacao = true) {
+function secaoResistencia(m: Memoria, f: Folhas, c: Ctx) {
   const num = (id: string) => m.valor(id) !== null;
   const kDigitado = m.num('K_dir') !== null;                      // ISNUMBER(K_dir)
   const daTabela = 'tabela';
@@ -217,10 +225,7 @@ function secaoResistencia(m: Memoria, f: Folhas, c: Ctx, comVerificacao = true) 
   return secao('Resistência da alvenaria', [
     m.passo('fbk_', 'f_{bk}', null, {
       casas: 1, unidade: 'MPa', origem: 'entrada', ref: { fonte: 'Aula 12.1', item: 'slide 2' },
-      // a verificação da classe A entra uma vez só na tabela-resumo: no card de materiais
-      ...(comVerificacao
-        ? { verif: { chave: 'balanco.classeA', rotulo: 'Bloco classe A: fbk ≥ 8 MPa', limite: 8, relacao: '>=' as const, celula: VER.classeA, casasLimite: 0 } }
-        : {}),
+      verif: { chave: 'balanco.classeA', rotulo: 'Bloco classe A: fbk ≥ 8 MPa', limite: 8, relacao: '>=', celula: VER.classeA, casasLimite: 0 },
     }),
     c.total
       ? m.passo('fpk_chei', 'f_{pk}^{*}', null, { casas: 1, unidade: 'MPa', origem: daTabela, ref: { fonte: 'ABCP', item: 'Tab. 3.2' } })
@@ -233,6 +238,29 @@ function secaoResistencia(m: Memoria, f: Folhas, c: Ctx, comVerificacao = true) 
     // K = IF(ISNUMBER(K_dir); K_dir; IF(Total; 2; 1,5)): digitado (a planilha 04 do curso usa 1) ou o da norma
     m.passo('k_flex', 'K', null, { casas: 2, origem: kDigitado ? 'entrada' : 'tabela', ref: kDigitado ? undefined : NBR('6.2.2.4') }),
     num('ffd_') && m.passo('ffd_', 'K\\,f_d', mul(f.K, f.fd), { casas: 3, unidade: 'MPa', ref: CURSO_04 }),
+  ]);
+}
+
+/*
+  A resistência que a flexão usa (12/10, geometria real): a parede do bloco (mesa) com o prisma vazado na área líquida
+  — vale com graute parcial ou total, a parede é a mesma — e o furo grauteado (alma) com o prisma cheio, que só
+  trabalha se a compressão passar da parede.
+*/
+function secaoResistenciaDaFlexao(m: Memoria, f: Folhas) {
+  const kDigitado = m.num('K_dir') !== null;
+  const fdMesa = m.g('fd_m', 'f_{d,mesa}', 3, 'MPa');
+  const fdAlma = m.g('fd_g', 'f_{d,alma}', 3, 'MPa');
+  const num = (id: string) => m.valor(id) !== null;              // célula com "—"/erro (entrada vazia): a linha não sai
+  return secao('Resistência na flexão (parede do bloco e furo grauteado)', [
+    m.passo('fpk_oco', 'f_{pk}', null, { casas: 1, unidade: 'MPa', origem: 'tabela', ref: { fonte: 'ABCP', item: 'Tab. 3.2' } }),
+    m.passo('r_liq', 'A_{liq}/A_{br}', null, { casas: 2, origem: 'tabela', ref: BLOCOS_122 }),
+    m.entrada('gama_m', '\\gamma_m', { ref: NBR('6.2.2.2') }),
+    num('fd_m') && m.passo('fd_m', 'f_{d,mesa}', div(mul(cte(0.7, 1), div(f.fpkOco, f.rliq)), f.gm), { casas: 3, unidade: 'MPa', ref: AULA_122 }),
+    m.passo('k_flex', 'K', null, { casas: 2, origem: kDigitado ? 'entrada' : 'tabela', ref: kDigitado ? undefined : NBR('6.2.2.4') }),
+    num('ffd_m') && m.passo('ffd_m', 'K\\,f_{d,mesa}', mul(f.K, fdMesa), { casas: 3, unidade: 'MPa' }),
+    m.passo('fpk_chei', 'f_{pk}^{*}', null, { casas: 1, unidade: 'MPa', origem: 'tabela', ref: { fonte: 'ABCP', item: 'Tab. 3.2' } }),
+    num('fd_g') && m.passo('fd_g', 'f_{d,alma}', div(mul(cte(0.7, 1), f.fpkChei), f.gm), { casas: 3, unidade: 'MPa', ref: { fonte: 'Dedução' } }),
+    num('ffd_g') && m.passo('ffd_g', 'K\\,f_{d,alma}', mul(f.K, fdAlma), { casas: 3, unidade: 'MPa' }),
   ]);
 }
 
@@ -290,28 +318,48 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
   const sDigitado = m.num('s_dir') !== null;                     // ISNUMBER(s_dir)
   const minCurso = comeca(m.texto('AsMin_crit'), 'Curso');        // LEFT(AsMin_crit,5)="Curso"
 
-  // A verificação "0,8x ≤ hf" só vale com fpk líquido e seção I (parcial) — a célula diz "não se aplica" no resto.
-  // A planilha não tem célula para 0,8x: o limite sai da célula de x, e quem decide é o veredito B81.
-  const mesa = c.usaLiq && xN !== null && v('hf_bl') !== null;
+  // Na mesa (0,8x ≤ hf) só a parede do bloco trabalha; passou disso, seção T: a parede inteira + as almas grauteadas
+  // do metro (ln_mesa, planilha). A verificação "seção resiste" é a da célula (mesa ou T).
+  const mesaSo = m.texto('ln_mesa') === 'Sim';
+  const total = m.texto('Graute').slice(0, 5).toLowerCase() === 'total';
+  const xR = v('x_r');
+  const KfdAlma = f.KfdAlma01;
+  const y = m.g('y_alma', 'y', 2, 'cm');
+  const bwM = m.g('bw_m', 'b_{w,m}', 2, 'cm/m');
+  const Mmesa = m.g('M_mesa', 'M_{mesa}', 2, 'kN·cm/m');
+  const Malma = m.g('M_alma', 'M_{alma}', 2, 'kN·cm/m');
+  const C = m.g('C_c', 'C', 2, 'kN/m');
+  const dMenosHf = sub(f.d, f.hf);
+  const bwF = m.num('bw_dir') !== null
+    ? m.ent('bw_dir', 'b_{w,inf}')
+    : soma(div(sub(f.L, mul(cte(3, 0), f.hf)), cte(2, 0)), mul(cte(2, 0), f.hf));
+  const xMesa = mul(cte(1.25, 2), f.d, sub(cte(1, 0), raiz(sub(cte(1, 0), f.kmd))));
 
-  const linhaNeutra = secao('Linha neutra (b = 100 cm)', [
+  const linhaNeutra = secao(mesaSo ? 'Linha neutra (b = 100 cm) · compressão na parede do bloco' : 'Linha neutra (b = 100 cm) · seção T', [
     v('arg_x') !== null && m.passo('arg_x', 'k_{md}', div(f.Md100, mul(cte(0.5, 1), cte(100, 0), pot(f.d, 2), f.Kfd01)), {
       casas: 3, ref: { fonte: 'ABCP', item: '3.4' },
-      verif: { chave: 'balanco.flexao.resiste', rotulo: 'Armadura simples: k_md < 1', limite: LIMITE_KMD, relacao: '<=', celula: VER.resiste, casasLimite: 0 },
+      verif: { chave: 'balanco.flexao.resiste', rotulo: 'Seção resiste (mesa ou seção T)', limite: null, relacao: '<=', celula: VER.resiste },
     }),
-    xN !== null && m.passo('x_ln', 'x', mul(cte(1.25, 2), f.d, sub(cte(1, 0), raiz(sub(cte(1, 0), f.kmd)))), {
-      casas: 2, unidade: 'cm', ref: NBR('11.3.3'),
-    }),
-    mesa && m.passo('hf_bl', 'h_f', null, {
-      casas: 1, unidade: 'cm', origem: 'tabela', ref: { fonte: 'Dedução' },
-      verif: { chave: 'balanco.flexao.mesa', rotulo: 'Compressão na parede do bloco: 0,8x ≤ hf', limite: 0.8 * xN!, relacao: '>=', celula: VER.mesa },
-      limiteTex: `0{,}8\\,x = 0{,}8 \\times ${nt(xN!, 2)} = ${nt(0.8 * xN!, 2)}\\,\\mathrm{cm}`,
-    }),
+    mesaSo && xN !== null && m.passo('x_ln', 'x', xMesa, { casas: 2, unidade: 'cm', ref: NBR('11.3.3') }),
+    !mesaSo && xR !== null && m.passo('x_r', 'x_{mesa}', xMesa, { casas: 2, unidade: 'cm', ref: NBR('11.3.3') }),
+    !mesaSo && v('s_web') !== null && m.passo('s_web', 's_{alma}', null, { casas: 0, unidade: 'cm', origem: 'adotado' }),
+    !mesaSo && !total && v('bw_f') !== null && m.passo('bw_f', 'b_{w,f}', bwF, { casas: 2, unidade: 'cm', ref: AULA_122 }),
+    !mesaSo && v('bw_m') !== null && m.passo('bw_m', 'b_{w,m}', total
+      ? cte(100, 0)
+      : min(cte(100, 0), mul(div(cte(100, 0), m.g('s_web', 's_{alma}', 0, 'cm')), m.g('bw_f', 'b_{w,f}', 2, 'cm'))), { casas: 2, unidade: 'cm/m' }),
+    !mesaSo && v('M_mesa') !== null && m.passo('M_mesa', 'M_{mesa}', mul(f.Kfd01, cte(100, 0), f.hf, sub(f.d, div(f.hf, cte(2, 0)))), { casas: 2, unidade: 'kN·cm/m' }),
+    !mesaSo && v('M_alma') !== null && m.passo('M_alma', 'M_{alma}', max(cte(0, 0), sub(f.Md100, Mmesa)), { casas: 2, unidade: 'kN·cm/m' }),
+    !mesaSo && v('y_alma') !== null && m.passo('y_alma', 'y',
+      sub(dMenosHf, raiz(sub(pot(dMenosHf, 2), div(mul(cte(2, 0), Malma), mul(KfdAlma, bwM))))), { casas: 2, unidade: 'cm' }),
+    !mesaSo && xN !== null && m.passo('x_ln', 'x', div(soma(f.hf, y), cte(0.8, 1)), { casas: 2, unidade: 'cm', ref: NBR('11.3.4') }),
+    v('C_c') !== null && m.passo('C_c', 'C', mesaSo
+      ? mul(f.Kfd01, cte(100, 0), cte(0.8, 1), f.x)
+      : soma(mul(f.Kfd01, cte(100, 0), f.hf), mul(KfdAlma, bwM, y)), { casas: 2, unidade: 'kN/m' }),
     v('x_d') !== null && m.passo('x_d', 'x/d', div(f.x, f.d), {
       casas: 3, ref: NBR('11.3.3'),
       verif: { chave: 'balanco.flexao.ductilidade', rotulo: 'Ductilidade x/d ≤ 0,45', limite: 0.45, relacao: '<=', celula: VER.ductil, casasLimite: 2 },
     }),
-    v('z_br') !== null && m.passo('z_br', 'z', min(sub(f.d, mul(cte(0.4, 1), f.x)), mul(cte(0.95, 2), f.d)), {
+    v('z_br') !== null && m.passo('z_br', 'z', min(div(f.Md100, C), mul(cte(0.95, 2), f.d)), {
       casas: 2, unidade: 'cm', ref: NBR('11.3.3'),
     }),
     v('eps_s') !== null && m.passo('eps_s', '\\varepsilon_s', min(cte(1, 0), div(mul(cte(0.3, 2), sub(f.d, f.x)), f.x)), {
@@ -367,7 +415,7 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
 
   const avisos: string[] = [];
   if (c.encostada) avisos.push('Barra encostada no lado do solo (d > t/2): indicar em planta, corte e notas');
-  const coerente = m.r.cel(VER.coerente);
+  const coerente = m.r.v(VER.coerente);
   if (typeof coerente === 'string' && comeca(coerente, 'ATENÇÃO')) avisos.push('Barra em todos os furos: grautear todos (seção cheia)');
 
   const desenho = desenhoDaFlexao(m.r);
@@ -378,7 +426,7 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
     figura: 'Fig. 4',
     // a faixa de 1 m desenhada e cotada, com a linha neutra e o bloco 0,8x (Jose, 12/10)
     ...(desenho ? { desenho } : {}),
-    secoes: so([secaoResistencia(m, f, c, false), linhaNeutra, armadura, barras]),
+    secoes: so([secaoResistenciaDaFlexao(m, f), linhaNeutra, armadura, barras]),
     avisos,
     aplicavel: c.balanco,
   };

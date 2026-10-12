@@ -162,13 +162,13 @@ export function desenhoDasSecoesDoPainel(r: Resultado): DesenhoDoCard | null {
   A faixa de 1 m da flexão do balanço (Jose, 12/10: a figura também no card de flexão). A conta da flexão é por metro
   (b = 100 cm, aula 12.2): a mesma seção do bloco, agora com TODAS as barras do metro (uma a cada s, cada uma no seu
   furo grauteado), a linha neutra x e o bloco comprimido 0,8x junto da face externa — que tem de caber na parede do
-  bloco (0,8x ≤ hf) com fpk líquido. Números das células x_ln, d_util, hf_bl, t_bloco, s_adot, bw_els, phi_v.
+  bloco comprimido junto da face externa: 0,8x na parede, ou (seção T) a parede inteira + y nas almas grauteadas.
 */
 export function desenhoDaFlexao(r: Resultado): DesenhoDoCard | null {
   if (r.v('Tipo_muro') !== 'Balanço') return null;
   const t = r.num('t_bloco'), d = r.num('d_util'), hf = r.num('hf_bl'), sAd = r.num('s_adot');
   if (!ok(t, d, hf, sAd) || !(sAd! > 0) || !(t! > 0)) return null;
-  const bw = r.num('bw_els') ?? 21;
+  const bw = r.num('bw_f') ?? r.num('bw_els') ?? 21;   // a alma de cada furo da conta da flexão (bw_f)
   const x = r.num('x_ln');
   const cheia = String(r.v('Graute') ?? '').slice(0, 5).toLowerCase() === 'total';
   const b = 100;
@@ -191,9 +191,20 @@ export function desenhoDaFlexao(r: Resultado): DesenhoDoCard | null {
       partes.push(rect(x0 + a * s, y0, (e - a) * s, T, GRAUTE, GRAUTE_LINHA, 1.2));
     }
   }
-  // o bloco comprimido 0,8x e a linha neutra, junto da face externa (embaixo)
+  // o bloco comprimido e a linha neutra, junto da face externa (embaixo). Na mesa: 0,8x na largura toda. Seção T
+  // (12/10): a parede do bloco inteira (hf) + a altura y nas almas grauteadas, só onde há furo grauteado.
+  const mesaSo = r.v('ln_mesa') === 'Sim';
+  const yAlma = r.num('y_alma');
+  const COMP = 'fill="#f8cbad" fill-opacity="0.75" stroke="#c55a11" stroke-width="1"';
   if (x !== null && x > 0 && x < t!) {
-    partes.push(`<rect x="${x0.toFixed(2)}" y="${(y1 - 0.8 * x * s).toFixed(2)}" width="${W.toFixed(2)}" height="${(0.8 * x * s).toFixed(2)}" fill="#f8cbad" fill-opacity="0.75" stroke="#c55a11" stroke-width="1"/>`);
+    if (mesaSo || yAlma === null) {
+      partes.push(`<rect x="${x0.toFixed(2)}" y="${(y1 - 0.8 * x * s).toFixed(2)}" width="${W.toFixed(2)}" height="${(0.8 * x * s).toFixed(2)}" ${COMP}/>`);
+    } else {
+      partes.push(`<rect x="${x0.toFixed(2)}" y="${(y1 - hf! * s).toFixed(2)}" width="${W.toFixed(2)}" height="${(hf! * s).toFixed(2)}" ${COMP}/>`);
+      const almas: Array<[number, number]> = cheia ? [[0, b]] : xs.map((xb) => [Math.max(0, xb - bw / 2), Math.min(b, xb + bw / 2)]);
+      for (const [a0, a1] of almas)
+        partes.push(`<rect x="${(x0 + a0 * s).toFixed(2)}" y="${(y1 - (hf! + yAlma) * s).toFixed(2)}" width="${((a1 - a0) * s).toFixed(2)}" height="${(yAlma * s).toFixed(2)}" ${COMP}/>`);
+    }
     partes.push(`<line x1="${(x0 - 6).toFixed(2)}" y1="${(y1 - x * s).toFixed(2)}" x2="${(x0 + W + 6).toFixed(2)}" y2="${(y1 - x * s).toFixed(2)}" stroke="#c55a11" stroke-width="1.2" stroke-dasharray="8 4 2 4"/>`);
     partes.push(texto(x0 + W + 10, y1 - x * s + 4, 'LN', 11, 'start'));
   }

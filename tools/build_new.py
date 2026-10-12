@@ -721,14 +721,34 @@ line(B, r, 'fd = fk/γm', '=fk_/gama_m', 'MPa', '', 'res', '0.000', 'fd_', 'ABCP
 line(B, r, 'K (compressão na flexão)', '=IF(ISNUMBER(K_dir),K_dir,IF(LEFT(Graute,5)="Total",2,1.5))', '', 'Digitado nas Entradas ou, em branco, NBR: 1,5 sem graute; 2,0 grauteado (flexão fora do plano).', 'res', '0.00', 'k_flex', 'ABCP 3.5 / planilha 04'); r += 1
 line(B, r, 'ffd = k·fd', '=k_flex*fd_', 'MPa', '', 'res', '0.000', 'ffd_'); r += 1
 line(B, r, 'fsd = fyd', '=fyk_/gama_s', 'MPa', 'Bloco de concreto: fsd = fyd para todo Ø.', 'res', '0.0', 'fyd_', 'NBR 16868-1'); r += 1
+# FLEXÃO PELA GEOMETRIA REAL (Jose, 12/10: "o que eu quero é resistência real do negócio na conta pra faixa de 1
+# metro"). A faixa comprimida fica junto da face externa. Até a profundidade hf ela está na PAREDE do bloco, que é
+# contínua no metro inteiro e é concreto do bloco puro: vale a resistência do prisma vazado levada à área líquida
+# (fpk/(Aliq/Abr), como a aula 12.2), com graute total ou parcial (a parede é a mesma). Passando de hf, só os FUROS
+# GRAUTEADOS continuam (as almas): aí vale o prisma cheio (fpk*, ABCP tab. 3.2) na largura das almas que existem
+# no metro. A escolha "área de referência" não entra mais na flexão: quem decide é a geometria. (O ELS continua com
+# o fpk usado, que dá o Em.) DEDUÇÃO nossa: a alma com fpk* e a largura de alma = furo + septos (a da seção I do ELS).
+line(B, r, 'fd da parede do bloco (mesa) = 0,7·fpk/(Aliq/Abr)/γm', '=0.7*fpk_oco/r_liq/gama_m', 'MPa', 'Concreto do bloco: o prisma vazado na área líquida. Vale com graute parcial ou total.', 'res', '0.000', 'fd_m', 'Aula 12.2 / NBR 16868-1 6.2.2'); r += 1
+line(B, r, 'K·fd da mesa', '=k_flex*fd_m', 'MPa', '', 'res', '0.000', 'ffd_m'); r += 1
+line(B, r, 'fd do furo grauteado (alma) = 0,7·fpk*/γm', '=0.7*fpk_chei/gama_m', 'MPa', 'Prisma cheio (bloco + graute). Só trabalha se a compressão passar da parede do bloco.', 'res', '0.000', 'fd_g', 'ABCP Tab. 3.2 (dedução)'); r += 1
+line(B, r, 'K·fd da alma', '=k_flex*fd_g', 'MPa', '', 'res', '0.000', 'ffd_g'); r += 1
 r += 1
 section(B, r, 'Flexão (b = 100 cm)'); r += 1
 line(B, r, 'd sugerido (barra do lado do solo)', '=t_bloco-IF(t_bloco=19,3.5,2.7)-1.5-phi_v/20', 'cm', 't − parede do bloco (3,5 no 19; 2,7 no 14) − 1,5 cm de graute − Ø/2. Só informativo; a aula 12.2 adota 14 cm no bloco de 19.', 'res', '0.00', 'd_sug', 'ABCP (cobrimento ≥ 15 mm) / aula 12.2'); r += 1
 line(B, r, 'd (altura útil)', '=IF(ISNUMBER(d_dir),d_dir,t_bloco/2)', 'cm', 'd digitado nas Entradas ou, em branco, t/2 (barra no meio).', 'res', '0.00', 'd_util'); r += 1
-line(B, r, 'Md/(0,5·b·d²·ffd)', '=Md_*100/(0.5*100*d_util^2*ffd_/10)', '', 'Se > 1, a seção não resiste (armadura simples).', 'res', '0.000', 'arg_x'); r += 1
-line(B, r, 'x', '=IF(arg_x<1,1.25*d_util*(1-SQRT(1-arg_x)),"não resiste")', 'cm', 'x = 1,25·d·[1 − √(1 − Md/(0,5·b·d²·fd))]', 'res', '0.00', 'x_ln', 'ABCP 3.4'); r += 1
+line(B, r, 'Md/(0,5·b·d²·K·fd da mesa)', '=Md_*100/(0.5*100*d_util^2*ffd_m/10)', '', 'Compressão só na parede do bloco (b = 100). Se > 1, a mesa sozinha não resiste.', 'res', '0.000', 'arg_x'); r += 1
+line(B, r, 'x com a compressão só na mesa', '=IF(arg_x<1,1.25*d_util*(1-SQRT(1-arg_x)),"não resiste")', 'cm', 'x = 1,25·d·[1 − √(1 − Md/(0,5·b·d²·K·fd))]', 'res', '0.00', 'x_r', 'ABCP 3.4'); r += 1
+line(B, r, 'Compressão cabe na parede do bloco? (0,8x ≤ hf)', '=IF(ISNUMBER(x_r),IF(0.8*x_r<=hf_bl,"Sim","Não"),"Não")', '', 'Sim = só a mesa trabalha; Não = seção T: a mesa inteira + as almas grauteadas.', 'res', None, 'ln_mesa'); r += 1
+line(B, r, 'Espaçamento considerado nas almas', '=IF(ISNUMBER(s_dir),MAX(m_mod,ROUNDDOWN(s_dir/m_mod,0)*m_mod),ROUNDDOWN(6*t_bloco/m_mod,0)*m_mod)', 'cm', 'O digitado (na grade do meio bloco); em automático, 6t — o MENOR número de furos grauteados que o automático pode dar (a favor da segurança; o automático depende do As, que depende daqui).', 'res', '0', 's_web'); r += 1
+line(B, r, 'Alma de cada furo grauteado (furo + septos)', '=IF(ISNUMBER(bw_dir),bw_dir,(L_bloco-3*hf_bl)/2+2*hf_bl)', 'cm', 'A mesma alma da seção I do ELS.', 'res', '0.00', 'bw_f'); r += 1
+line(B, r, 'Largura das almas no metro', '=IF(LEFT(Graute,5)="Total",100,MIN(100,100/s_web*bw_f))', 'cm/m', 'Grauteamento total = o metro todo; parcial = (100/s) furos × alma.', 'res', '0.00', 'bw_m'); r += 1
+line(B, r, 'Momento da mesa inteira comprimida', '=ffd_m/10*100*hf_bl*(d_util-hf_bl/2)', 'kN·cm/m', 'K·fd·b·hf·(d − hf/2).', 'res', '0.00', 'M_mesa'); r += 1
+line(B, r, 'Momento que sobra para as almas', '=MAX(0,Md_*100-M_mesa)', 'kN·cm/m', '', 'res', '0.00', 'M_alma'); r += 1
+line(B, r, 'Altura comprimida nas almas, abaixo da mesa', '=IF(ln_mesa="Sim",0,IFERROR((d_util-hf_bl)-SQRT((d_util-hf_bl)^2-2*M_alma/(ffd_g/10*bw_m)),"não resiste"))', 'cm', 'y = (d − hf) − √((d − hf)² − 2·M_alma/(K·fd_alma·b_alma)).', 'res', '0.00', 'y_alma'); r += 1
+line(B, r, 'x', '=IF(ln_mesa="Sim",x_r,IF(ISNUMBER(y_alma),(hf_bl+y_alma)/0.8,"não resiste"))', 'cm', 'Na mesa: o de cima. Seção T: 0,8x = hf + y.', 'res', '0.00', 'x_ln', 'ABCP 3.4 / 11.3.4'); r += 1
+line(B, r, 'Força de compressão C', '=IF(ln_mesa="Sim",ffd_m/10*100*0.8*x_r,IF(ISNUMBER(y_alma),ffd_m/10*100*hf_bl+ffd_g/10*bw_m*y_alma,"—"))', 'kN/m', 'Na mesa: K·fd·b·0,8x. Seção T: mesa inteira + almas.', 'res', '0.00', 'C_c'); r += 1
 line(B, r, 'x/d', '=IFERROR(x_ln/d_util,"—")', '', 'Limite 0,45 (ductilidade).', 'key', '0.000', 'x_d', 'ABCP 3.4'); r += 1
-line(B, r, 'z = d − 0,4x ≤ 0,95d', '=IFERROR(MIN(d_util-0.4*x_ln,0.95*d_util),"—")', 'cm', '', 'res', '0.00', 'z_br', 'ABCP 3.4'); r += 1
+line(B, r, 'z = Md/C ≤ 0,95d', '=IFERROR(MIN(Md_*100/C_c,0.95*d_util),"—")', 'cm', 'Na mesa Md/C = d − 0,4x; na seção T é o braço da resultante (mesa + almas).', 'res', '0.00', 'z_br', 'ABCP 3.4'); r += 1
 line(B, r, 'εs = 0,30%·(d − x)/x ≤ 1%', '=IFERROR(MIN(1,0.3*(d_util-x_ln)/x_ln),"—")', '%', 'Deformação do aço (εc = 0,30% na borda).', 'res', '0.000', 'eps_s', 'Planilha 04 do curso / ABCP 3.4'); r += 1
 line(B, r, 'σs = Es·εs ≤ fyd', '=IFERROR(MIN(210000*eps_s/100,fyd_),"—")', 'MPa', 'Es = 210 GPa. Com x/d ≤ 0,45 o aço escoa (σs = fyd).', 'res', '0.0', 'sig_s', 'Planilha 04 do curso'); r += 1
 line(B, r, 'As,nec = Md/(σs·z)', '=IF(Md_<=0,0,IFERROR(Md_*100/(sig_s/10*z_br),"—"))', 'cm²/m', '', 'key', '0.00', 'As_nec', 'ABCP 3.4 / planilha 04'); r += 1
@@ -749,7 +769,7 @@ line(B, r, 'As efetiva', '=IF(s_adot>0,As_barra*100/s_adot,0)', 'cm²/m', '', 'r
 r += 1
 section(B, r, 'E se a barra for centralizada na obra? (d = t/2)'); r += 1
 line(B, r, 'd com barra centralizada', '=t_bloco/2', 'cm', 'Costume de obra em alvenaria estrutural: barra no meio do furo.', 'res', '0.00', 'd_c'); r += 1
-line(B, r, 'Md/(0,5·b·d²·ffd)', '=Md_*100/(0.5*100*d_c^2*ffd_/10)', '', 'Se > 1, a seção não resiste.', 'res', '0.000', 'arg_c'); r += 1
+line(B, r, 'Md/(0,5·b·d²·K·fd da mesa)', '=Md_*100/(0.5*100*d_c^2*ffd_m/10)', '', 'Se > 1, a mesa sozinha não resiste (estimativa: não conta as almas).', 'res', '0.000', 'arg_c'); r += 1
 line(B, r, 'x', '=IF(arg_c<1,1.25*d_c*(1-SQRT(1-arg_c)),"não resiste")', 'cm', '', 'res', '0.00', 'x_c'); r += 1
 line(B, r, 'x/d', '=IFERROR(x_c/d_c,"—")', '', 'Limite 0,45.', 'res', '0.000', 'xd_c'); r += 1
 line(B, r, 'As necessária com barra centralizada', '=IF(Md_<=0,As_min,IF(ISNUMBER(xd_c),IF(xd_c>0.45,"seção não dúctil (x/d > 0,45)",MAX(Md_*100/(MIN(210000*MIN(1,0.3*(d_c-x_c)/x_c)/100,fyd_)/10*MIN(d_c-0.4*x_c,0.95*d_c)),As_min)),"não resiste"))', 'cm²/m', 'Mesmo Md, mesmo fpk e K; só muda d. Inclui o As,mín.', 'key', '0.00', 'As_c'); r += 1
@@ -778,9 +798,9 @@ checks = [
     ('Robustez: barra centralizada por erro de obra', '=rob_c', ''),
     ('Bloco Classe A (fbk ≥ 8 MPa)', '=IF(fbk_>=8,"OK","NÃO OK — trocar bloco")', 'Aula 12.1 slide 2'),
     ('Esbeltez λ ≤ 30', '=IF(lambda_<=30,"OK","NÃO OK")', 'ABCP 3.2'),
-    ('Seção resiste (armadura simples)', '=IF(arg_x<1,"OK","NÃO OK — aumentar fbk, grautear ou mudar solução")', 'ABCP 3.4'),
+    ('Seção resiste (armadura simples)', '=IF(ISNUMBER(x_ln),"OK","NÃO OK — aumentar fbk, grautear ou mudar solução")', 'ABCP 3.4'),
     ('Ductilidade x/d ≤ 0,45', '=IF(ISNUMBER(x_d),IF(x_d<=0.45,"OK","NÃO OK — aumentar fbk ou grautear"),"NÃO OK")', 'ABCP 3.4'),
-    ('Bloco comprimido dentro da parede (0,8x ≤ hf)', '=IF(OR(LEFT(Graute,5)="Total",LEFT(fpk_ref,4)<>"Líqu"),"— (não se aplica)",IF(ISNUMBER(x_ln),IF(0.8*x_ln<=hf_bl,"OK","NÃO OK — compressão sai da parede do bloco; usar fpk bruto"),"—"))', 'Condição para usar fpk,liq'),
+    ('Compressão na parede do bloco (0,8x ≤ hf)', '=IF(ln_mesa="Sim","OK — só a parede do bloco comprimida","Seção T — a compressão passa para os furos grauteados")', 'Informativo: escolhe mesa ou seção T'),
     # barra em todo furo = espaçamento igual ao meio bloco (20 cm)
     ('Seção coerente com o espaçamento', '=IF(AND(LEFT(Graute,5)<>"Total",s_adot>0,s_adot<=m_mod),"ATENÇÃO — barra em todos os furos grauteia todos: usar Total (seção cheia)","OK")', ''),
     ('Armadura cabe (espaçamento ≥ meio bloco)', '=IF(s_adot>=m_mod,"OK","NÃO OK — aumentar Ø")', ''),
@@ -792,8 +812,15 @@ checks = [
     # no fim da lista de propósito: linhas acima têm endereço lido pelo app (memória de cálculo)
     ('Largura por barra ≤ 6t', '=IF(s_adot<=6*t_bloco,"OK","NÃO OK — espaçamento > 6t: a faixa de cada barra passa do limite")', 'NBR 16868-1 11.3.5'),
 ]
+# Nome nas linhas que a memória do app lê (antes por endereço, B77…B89: a flexão pela geometria real, 12/10,
+# acrescentou linhas acima e mudaria todos de lugar).
+NOME_CHK_B = {'Bloco Classe A (fbk ≥ 8 MPa)': 'chk_classeA', 'Esbeltez λ ≤ 30': 'chk_esb',
+              'Seção resiste (armadura simples)': 'chk_resiste', 'Ductilidade x/d ≤ 0,45': 'chk_ductil',
+              'Compressão na parede do bloco (0,8x ≤ hf)': 'chk_mesa', 'Seção coerente com o espaçamento': 'chk_coerente',
+              'Armadura cabe (espaçamento ≥ meio bloco)': 'chk_cabe', 'As,ef ≥ As de cálculo': 'chk_As',
+              'Cisalhamento τvd ≤ fvd': 'chk_tau', 'Bielas Vsd ≤ Vrd2': 'chk_bielas', 'Largura por barra ≤ 6t': 'chk_6t'}
 for lab, f, src in checks:
-    line(B, r, lab, f, '', '', 'key', None, None, src); r += 1
+    line(B, r, lab, f, '', '', 'key', None, NOME_CHK_B.get(lab), src); r += 1
 r += 1
 B.cell(row=r, column=1, value='Escolha do arranjo de barras: aba Arranjos. Painel entre barras: aba Painel não armado. Fissuração e flecha: aba ELS.').font = fS
 widths(B, {'A': 36, 'B': 44, 'C': 9, 'D': 60, 'E': 16})

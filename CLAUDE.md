@@ -120,6 +120,13 @@ e dizer ao Jose o que mudou e por quê.
   α/Fig. 7). Pontos dos agentes para o Jose confirmar: Fig. 12 desenhada com vão 1,00; Fig. 21 com t_enr 79 e
   construtivas com espera dobrada; Fig. 19 painel cinza (amarelo só para não armado); borda livre fraca; Fig. 24
   sem o h_fr; Fig. 15 miniaturas em escala esquemática.
+- **Flexão do balanço pela geometria real (Jose, 12/10: "resistência real do negócio na faixa de 1 metro"):** aba Muro
+  em balanço. Mesa = parede do bloco no metro (fd_m = 0,7·fpk/(Aliq/Abr)/γm, igual no parcial e no total); almas = furos
+  grauteados do metro (bw_m = 100/s_web × bw_f, total = 100) com fd_g = 0,7·fpk*/γm (DEDUÇÃO). 0,8x ≤ hf → só a mesa
+  (ln_mesa = Sim); senão seção T (M_mesa, M_alma, y_alma, x = (hf + y)/0,8), C_c e z = Md/C ≤ 0,95d. s_web = s digitado ou,
+  no automático, 6t (menos furos, a favor; sem conta circular). A "área de referência do fpk" saiu da flexão (fica no
+  Em do ELS e no painel). Verificações da aba com nome (chk_*). Pendente com o Jose: Grauteamento com 3 opções
+  (Total / furo sim, furo não / só com barra), independente do espaçamento do aço.
 - **Seções cotadas na memória (Jose, 12/10: "não pode jogar número do nada"):** `memoria/desenhoDaSecaoI.ts` —
   faixa de 1 m da flexão do balanço (barras a cada s, LN x, bloco 0,8x), seção I do ELS do balanço e as duas seções I
   do painel. O card de flexão do balanço abre com a cadeia do fd (fbk → fpk → fpk,liq → fk → fd → K·fd).
