@@ -23,12 +23,10 @@ import type { Vec2 } from '@/modelo/tipos';
 import { arranjoNaSecao, etaDaBarra, secaoDoContraforte, type FuroEmPlanta, type SecaoDoContraforte } from '@/modulacao/secaoDoContraforte';
 import { retanguloArredondado } from '@/modulacao/perfis';
 import { nbr } from './formato';
+import type { Desenho } from './tipos';
 
-export interface DesenhoDoCard {
-  /** SVG completo (string), pronto para pôr na página. */
-  svg: string;
-  titulo: string;
-}
+/** SVG completo (string), pronto para pôr na página, e o título dele (tipos.ts). */
+export type DesenhoDoCard = Desenho;
 
 const TINTA = '#1a1a1a';
 const MURO = '#d6d6d6';        // alvenaria da seção (bruta)

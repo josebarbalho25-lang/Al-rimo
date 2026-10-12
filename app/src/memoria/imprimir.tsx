@@ -41,6 +41,8 @@ export const CSS_IMPRESSAO = `
   .mp-raiz .mp-rosto, .mp-raiz .mp-indice, .mp-raiz .mp-glossario { break-inside: avoid-page; }
   /* a legenda "Fig. 7 — ..." ficava no pé de uma folha e o desenho na seguinte (medido na bancada) */
   .mp-raiz .mem-fig { break-inside: avoid; }
+  /* o desenho de uma seção vem logo antes dela: não se parte e não fica no pé da folha sem a conta que ilustra */
+  .mp-raiz .mem-desenho { break-inside: avoid; break-after: avoid; }
   /* figuras iguais pela ALTURA; o SVG de dentro da fórmula (raiz, chave) não se toca */
   .mp-raiz .mem-fig img, .mp-raiz .mem-fig svg { max-height: 42mm !important; width: auto !important; max-width: 100% !important; }
 }`;

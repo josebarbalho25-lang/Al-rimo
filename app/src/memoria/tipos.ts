@@ -63,16 +63,28 @@ export interface Passo {
   limiteExpr?: Expr;
 }
 
-export interface Secao { titulo: string; ref?: Ref; passos: Passo[] }
+/**
+  Figura GERADA para o muro atual — ex.: a seção do contraforte da montagem, cotada com os números das células. SVG em
+  texto (o autor continua puro e testável); vai para a tela, o papel e o Word como as outras.
+*/
+export interface Desenho {
+  svg: string;
+  titulo: string;
+  // largura na tela, em px (sem ela, 660). Quem desenha na escala da letra do texto pede a largura do próprio SVG,
+  // para a cota sair do tamanho da conta (Jose, 12/10: "visível por favor, tá pequeno").
+  largura?: number;
+}
+
+// `desenho` (opcional): a figura que ilustra ESTA seção, posta logo antes dela (Jose, 12/10: "distribui os desenhos" —
+// cada desenho perto da conta que ele mostra, e não todos juntos no topo do card).
+export interface Secao { titulo: string; ref?: Ref; passos: Passo[]; desenho?: Desenho }
 
 export interface Card {
   id: string;                    // 'balanco.flexao', 'contraforte.cisalhamento', 'fundacao.tombamento'
   titulo: string;                // 'Flexão · muro em balanço'
   ref?: Ref;
   figura?: string;               // 'Fig. 4' — o mesmo acervo do botão das entradas
-  // (opcional) figura GERADA para o muro atual — ex.: a seção do contraforte da montagem, cotada com os números das
-  // células. SVG em texto (o autor continua puro e testável); vai para a tela, o papel e o Word como as outras.
-  desenho?: { svg: string; titulo: string };
+  desenho?: Desenho;             // (opcional) a figura gerada do card inteiro, antes da primeira conta
   secoes: Secao[];
   avisos: string[];              // curtos
   aplicavel: boolean;            // ex.: cards de contraforte com Tipo_muro = Balanço → false (não aparece)

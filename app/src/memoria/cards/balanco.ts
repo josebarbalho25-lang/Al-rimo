@@ -14,7 +14,7 @@ import { arredBaixo, arredCima, cte, div, max, min, mul, pi, pot, raiz, soma, su
 import { memoriaDe, secao, type Memoria } from '../passo';
 import { nbr, nt } from '../formato';
 import { passoDaDobra } from './sapata';
-import { desenhoDaFlexao } from '../desenhoDaSecaoI';
+import { desenhoDaFaixaEmPlanta, desenhoDasForcasNaFaixa } from '../desenhoDaSecaoI';
 
 export const SIMBOLOS_BALANCO: Readonly<Record<string, string>> = {
   // ── materiais ──
@@ -426,13 +426,16 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
   const coerente = m.r.v(VER.coerente);
   if (typeof coerente === 'string' && comeca(coerente, 'ATENÇÃO')) avisos.push('Barra em todos os furos: grautear todos (seção cheia)');
 
-  const desenho = desenhoDaFlexao(m.r);
+  // Os desenhos distribuídos (Jose, 12/10: "distribui os desenhos"): a faixa em planta no topo do card; as forças
+  // junto da conta que as acha — a verificação da parede (compressão só nela) ou a seção T.
+  const forcas = desenhoDasForcasNaFaixa(m.r);
+  if (forcas) (mesaSo ? paredeDoBloco : secaoT).desenho = forcas;
+  const desenho = desenhoDaFaixaEmPlanta(m.r);
   return {
     id: 'balanco.flexao',
     titulo: 'Flexão · muro em balanço',
     ref: AULA_122,
     figura: 'Fig. 4',
-    // a faixa de 1 m desenhada e cotada, com a linha neutra e o bloco 0,8x (Jose, 12/10)
     ...(desenho ? { desenho } : {}),
     secoes: so([secaoResistenciaDaFlexao(m, f), paredeDoBloco, ...(mesaSo ? [] : [secaoT]), linhaNeutra, armadura, barras]),
     avisos,

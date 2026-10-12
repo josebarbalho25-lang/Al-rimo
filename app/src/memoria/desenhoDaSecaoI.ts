@@ -158,161 +158,194 @@ export function desenhoDasSecoesDoPainel(r: Resultado): DesenhoDoCard | null {
   return secoes.length ? folha(secoes, 'Seções I do painel (cm)') : null;
 }
 
-/**
-  A faixa de 1 m da flexão do balanço, em DUAS vistas empilhadas (Jose, 12/10: "visível por favor, tá pequeno"):
 
-  1. a faixa em PLANTA (b = 100 cm), com as barras a cada s nos furos grauteados e a zona comprimida sombreada — só as
-     cotas de largura (b, s, bw,f) e a espessura t;
-  2. as FORÇAS NA SEÇÃO, numa escala maior (a profundidade é o que importa): a parede comprimida (C mesa) e, em seção
-     T, as almas comprimidas (C alma), com a largura proporcional à força por cm (K·fd·b), a tração no aço (As·σs), a
-     linha neutra, as cotas de profundidade (hf, y ou 0,8x, x, d) e os braços até a barra. É a figura das linhas da
-     verificação da parede, da seção T e do equilíbrio.
+/*
+  A FLEXÃO DA FAIXA DE 1 M DO BALANÇO, em DOIS desenhos, cada um perto da conta que mostra (Jose, 12/10: "visível por
+  favor, tá pequeno" e depois "distribui os desenhos"):
 
-  A largura do desenho (~770) é a da coluna da memória na tela: a letra sai quase no tamanho da do texto. Números só
-  das células (x_ln, y_alma, ln_mesa, d_util, hf_bl, t_bloco, s_adot, bw_f, bw_m, ffd_m, ffd_g, phi_v).
+  1. a faixa em PLANTA (b = 100 cm), no topo do card: as paredes do bloco (mesas), os furos grauteados a cada s com a
+     barra, a zona comprimida sombreada e a linha neutra — só as cotas de largura (b, s, bw,f) e a espessura t;
+  2. as FORÇAS NA SEÇÃO, junto da verificação da parede (ou da seção T), numa escala maior — a profundidade é o que
+     importa: a parede comprimida (C mesa) e, em seção T, as almas comprimidas (C alma), com a largura proporcional à
+     força por cm de profundidade (K·fd·b), a tração no aço (As·σs), a linha neutra, as profundidades (hf, y, x, d) e
+     os braços até a barra.
+
+  Os dois têm a mesma largura (LARGURA_FLEXAO) e o card os mostra nela: a letra sai do tamanho da do texto, igual nos
+  dois. Números só das células (x_ln, y_alma, ln_mesa, d_util, hf_bl, t_bloco, s_adot, bw_f, bw_m, ffd_m, ffd_g, phi_v).
 */
-export function desenhoDaFlexao(r: Resultado): DesenhoDoCard | null {
-  if (r.v('Tipo_muro') !== 'Balanço') return null;
-  const t = r.num('t_bloco'), d = r.num('d_util'), hf = r.num('hf_bl'), sAd = r.num('s_adot');
-  if (!ok(t, d, hf, sAd) || !(sAd! > 0) || !(t! > 0)) return null;
-  const bw = r.num('bw_f') ?? r.num('bw_els') ?? 21;   // a alma de cada furo da conta da flexão (bw_f)
-  const x = r.num('x_ln');
-  const temX = x !== null && x > 0 && x < t!;
-  const cheia = String(r.v('Graute') ?? '').slice(0, 5).toLowerCase() === 'total';
-  const mesaSo = r.v('ln_mesa') === 'Sim';
-  const yAlma = r.num('y_alma');
-  const secaoT = !mesaSo && yAlma !== null && temX;
-  const FS = 15, FT = 16;                                 // letra das cotas e dos títulos
-  const COMP = 'fill="#f8cbad" fill-opacity="0.8" stroke="#c55a11" stroke-width="1.2"';
-  const LARANJA = '#c55a11';
-  const partes: string[] = [];
-  const lin = (x1: number, y1: number, x2: number, y2: number, cor = TINTA, sw = 1, extra = '') =>
-    `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${cor}" stroke-width="${sw}"${extra}/>`;
-  const tick = (xx: number, yy: number) => lin(xx - 4, yy + 4, xx + 4, yy - 4, COTA, 1.1);
-  /** Cota vertical com o rótulo DEITADO ao lado, na altura do meio (lê-se sem virar a cabeça). */
-  const cotaV = (xx: number, ya: number, yb: number, rot: string, lado: 1 | -1) =>
-    lin(xx, ya, xx, yb, COTA, 0.8) + tick(xx, ya) + tick(xx, yb) +
-    texto(xx + lado * 7, (ya + yb) / 2 + FS * 0.35, rot, FS, lado > 0 ? 'start' : 'end');
-  const cotaH = (xa: number, xb: number, yy: number, rot: string, embaixo: boolean) =>
-    lin(xa, yy, xb, yy, COTA, 0.8) + tick(xa, yy) + tick(xb, yy) +
-    texto((xa + xb) / 2, embaixo ? yy + FS + 3 : yy - 6, rot, FS);
+const LARGURA_FLEXAO = 770;
+const FS = 15;                                             // letra das cotas e dos rótulos
+const COMPRIMIDA = 'fill="#f8cbad" fill-opacity="0.8" stroke="#c55a11" stroke-width="1.2"';
+const LARANJA = '#c55a11';
+const TRACO_LN = ' stroke-dasharray="9 4 2 4"';
 
-  // ── 1. a faixa em planta ──
-  const b = 100, s = 6.4;                                  // px por cm na planta
-  const W = b * s, T = t! * s;
-  const x0 = 46, yS = 64, y0 = yS + 18, y1 = y0 + T;
-  partes.push(texto(8, 22, 'Faixa de 1 m em planta (cm)', FT, 'start'));
+const lin = (x1: number, y1: number, x2: number, y2: number, cor = TINTA, sw = 1, extra = '') =>
+  `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${cor}" stroke-width="${sw}"${extra}/>`;
+const zona = (x: number, y: number, w: number, h: number) =>
+  `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" ${COMPRIMIDA}/>`;
+const marca = (xx: number, yy: number) => lin(xx - 4, yy + 4, xx + 4, yy - 4, COTA, 1.1);
+/** Cota vertical com o rótulo DEITADO ao lado, na altura do meio (lê-se sem virar a cabeça). */
+const cotaV = (xx: number, ya: number, yb: number, rot: string, lado: 1 | -1) =>
+  lin(xx, ya, xx, yb, COTA, 0.8) + marca(xx, ya) + marca(xx, yb) +
+  texto(xx + lado * 7, (ya + yb) / 2 + FS * 0.35, rot, FS, lado > 0 ? 'start' : 'end');
+const cotaH = (xa: number, xb: number, yy: number, rot: string, embaixo: boolean) =>
+  lin(xa, yy, xb, yy, COTA, 0.8) + marca(xa, yy) + marca(xb, yy) +
+  texto((xa + xb) / 2, embaixo ? yy + FS + 3 : yy - 6, rot, FS);
+const seta = (xi: number, xf: number, yy: number, cor: string) => {
+  const dir = Math.sign(xf - xi) || 1;
+  return lin(xi, yy, xf, yy, cor, 1.8) + `<path d="M${xf.toFixed(2)},${yy.toFixed(2)} l${(-dir * 10).toFixed(2)},-5 l0,10 z" fill="${cor}"/>`;
+};
+const svgDe = (partes: string[], W: number, H: number) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${Math.ceil(H)}" style="width:100%;height:auto;display:block" font-family="Arial, Helvetica, sans-serif"><rect width="${W}" height="${Math.ceil(H)}" fill="#ffffff"/>${partes.join('')}</svg>`;
+
+/** Os números da flexão que os dois desenhos usam; null quando a conta não tem faixa para desenhar. */
+function faixaDaFlexao(r: Resultado) {
+  if (r.v('Tipo_muro') !== 'Balanço') return null;
+  const t = r.num('t_bloco'), d = r.num('d_util'), hf = r.num('hf_bl'), s = r.num('s_adot');
+  if (!ok(t, d, hf, s) || !(s! > 0) || !(t! > 0)) return null;
+  const x = r.num('x_ln'), y = r.num('y_alma');
+  const temX = x !== null && x > 0 && x < t!;
+  return {
+    t: t!, d: d!, hf: hf!, s: s!,
+    bw: r.num('bw_f') ?? r.num('bw_els') ?? 21,            // a alma de cada furo da conta da flexão
+    x: temX ? x : null,
+    y: y ?? 0,
+    cheia: String(r.v('Graute') ?? '').slice(0, 5).toLowerCase() === 'total',
+    // passou da parede: a compressão desce para os furos grauteados (ln_mesa, planilha)
+    secaoT: temX && r.v('ln_mesa') !== 'Sim' && y !== null,
+  };
+}
+
+/** 1. A faixa de 1 m em planta: o que é parede, o que é furo grauteado, onde está a barra e o que está comprimido. */
+export function desenhoDaFaixaEmPlanta(r: Resultado): DesenhoDoCard | null {
+  const f = faixaDaFlexao(r);
+  if (!f) return null;
+  const { t, d, hf, bw, x, y, cheia, secaoT } = f;
+  const b = 100, s = 6.4;                                  // px por cm: o metro ocupa 640 px
+  const W = b * s, T = t * s;
+  const x0 = 46, yCs = 26, yS = 40, y0 = yS + 18, y1 = y0 + T;
+  const partes: string[] = [];
   partes.push(rect(x0 - 10, yS, W + 20, 18, SOLO, 'none'));
   partes.push(lin(x0 - 10, y0, x0 + W + 10, y0, '#8d6e3f', 1.8));
-  const xs: number[] = [];
-  for (let k = 0; sAd! / 2 + k * sAd! < b; k++) xs.push(sAd! / 2 + k * sAd!);
+  const xs: number[] = [];                                 // as barras, a cada s
+  for (let k = 0; f.s / 2 + k * f.s < b; k++) xs.push(f.s / 2 + k * f.s);
   const almas: Array<[number, number]> = cheia ? [[0, b]] : xs.map((xb) => [Math.max(0, xb - bw / 2), Math.min(b, xb + bw / 2)]);
   if (cheia) partes.push(rect(x0, y0, W, T, GRAUTE, GRAUTE_LINHA, 1.2));
   else {
     partes.push(rect(x0, y0, W, T, VAZIO, TINTA, 0.8));
-    partes.push(rect(x0, y0, W, hf! * s, MESA, TINTA, 1));
-    partes.push(rect(x0, y1 - hf! * s, W, hf! * s, MESA, TINTA, 1));
+    partes.push(rect(x0, y0, W, hf * s, MESA, TINTA, 1));
+    partes.push(rect(x0, y1 - hf * s, W, hf * s, MESA, TINTA, 1));
     for (const [a0, a1] of almas) partes.push(rect(x0 + a0 * s, y0, (a1 - a0) * s, T, GRAUTE, GRAUTE_LINHA, 1.2));
   }
   // a zona comprimida, junto da face externa (embaixo): 0,8x na parede, ou a parede inteira + y nas almas
-  if (temX) {
-    if (!secaoT) partes.push(`<rect x="${x0}" y="${(y1 - 0.8 * x! * s).toFixed(2)}" width="${W.toFixed(2)}" height="${(0.8 * x! * s).toFixed(2)}" ${COMP}/>`);
+  if (x !== null) {
+    if (!secaoT) partes.push(zona(x0, y1 - 0.8 * x * s, W, 0.8 * x * s));
     else {
-      partes.push(`<rect x="${x0}" y="${(y1 - hf! * s).toFixed(2)}" width="${W.toFixed(2)}" height="${(hf! * s).toFixed(2)}" ${COMP}/>`);
-      for (const [a0, a1] of almas)
-        partes.push(`<rect x="${(x0 + a0 * s).toFixed(2)}" y="${(y1 - (hf! + yAlma!) * s).toFixed(2)}" width="${((a1 - a0) * s).toFixed(2)}" height="${(yAlma! * s).toFixed(2)}" ${COMP}/>`);
+      partes.push(zona(x0, y1 - hf * s, W, hf * s));
+      for (const [a0, a1] of almas) partes.push(zona(x0 + a0 * s, y1 - (hf + y) * s, (a1 - a0) * s, y * s));
     }
-    partes.push(lin(x0 - 8, y1 - x! * s, x0 + W + 8, y1 - x! * s, LARANJA, 1.3, ' stroke-dasharray="9 4 2 4"'));
-    partes.push(texto(x0 - 12, y1 - x! * s + 5, 'LN', 13, 'end'));
+    partes.push(lin(x0 - 8, y1 - x * s, x0 + W + 8, y1 - x * s, LARANJA, 1.3, TRACO_LN));
+    partes.push(texto(x0 - 12, y1 - x * s + 5, 'LN', 13, 'end'));
   }
   const rb = Math.max(3.5, ((r.num('phi_v') ?? 10) / 20) * s);
-  const yb = y1 - d! * s;
+  const yb = y1 - d * s;
   for (const xb of xs) partes.push(`<circle cx="${(x0 + xb * s).toFixed(2)}" cy="${yb.toFixed(2)}" r="${rb.toFixed(2)}" fill="${ACO}"/>`);
-  // cotas de largura e a espessura
+  // cotas: s em cima (sobre o solo), b e bw,f embaixo, t à direita
   if (xs.length > 1) {
-    const yCs = yS - 14, xa = x0 + xs[0] * s, xb2 = x0 + xs[1] * s;
-    partes.push(chamada(xa, yb, xa, yCs - 4), chamada(xb2, yb, xb2, yCs - 4));
-    partes.push(cotaH(xa, xb2, yCs, `s = ${cm(sAd!)}`, false));
+    const xa = x0 + xs[0] * s, xb = x0 + xs[1] * s;
+    partes.push(chamada(xa, yb, xa, yCs - 4), chamada(xb, yb, xb, yCs - 4));
+    partes.push(cotaH(xa, xb, yCs, `s = ${cm(f.s)}`, false));
   }
   let yBaixo = y1 + 30;
   partes.push(chamada(x0, y1, x0, yBaixo + 4), chamada(x0 + W, y1, x0 + W, yBaixo + 4));
   partes.push(cotaH(x0, x0 + W, yBaixo, 'b = 100', true));
-  if (!cheia && xs.length) {
-    const a0 = almas[0][0], a1 = almas[0][1];
+  // a alma cotada é uma inteira (a da ponta pode sair cortada pela borda da faixa)
+  const inteira = cheia ? undefined : almas.find(([a0, a1]) => a1 - a0 >= bw - 1e-6);
+  if (inteira) {
+    const [a0, a1] = inteira;
     yBaixo += 40;
     partes.push(chamada(x0 + a0 * s, y1, x0 + a0 * s, yBaixo + 4), chamada(x0 + a1 * s, y1, x0 + a1 * s, yBaixo + 4));
-    partes.push(cotaH(x0 + a0 * s, x0 + a1 * s, yBaixo, `bw,f = ${cm(bw)}`, true));
+    // com as casas da linha da memória (bw,f = 21,25), não arredondado a uma
+    partes.push(cotaH(x0 + a0 * s, x0 + a1 * s, yBaixo, `bw,f = ${nbr(bw, Math.abs(bw - Math.round(bw)) < 1e-9 ? 0 : 2)}`, true));
   }
   const xT = x0 + W + 24;
   partes.push(chamada(x0 + W, y0, xT + 4, y0), chamada(x0 + W, y1, xT + 4, y1));
-  partes.push(cotaV(xT, y0, y1, `t = ${cm(t!)}`, 1));
-  let Ht = yBaixo + FS + 16;
+  partes.push(cotaV(xT, y0, y1, `t = ${cm(t)}`, 1));
+  return { svg: svgDe(partes, LARGURA_FLEXAO, yBaixo + FS + 10), titulo: 'Faixa de 1 m em planta (cm)', largura: LARGURA_FLEXAO };
+}
 
-  // ── 2. as forças na seção (escala maior) ──
+/** 2. As forças na seção: os blocos comprimidos, o aço tracionado, a linha neutra, as profundidades e os braços. */
+export function desenhoDasForcasNaFaixa(r: Resultado): DesenhoDoCard | null {
+  const f = faixaDaFlexao(r);
   const fM = r.num('ffd_m'), fA = r.num('ffd_g'), bwM = r.num('bw_m');
-  if (temX && ok(fM)) {
-    const k = 14;                                          // px por cm na profundidade
-    const yF = Ht + 30;
-    partes.push(texto(8, yF, 'Forças na seção (cm)', FT, 'start'));
-    const yB = yF + 26 + t! * k;                           // face externa (comprimida), embaixo
-    const yTopo = yB - t! * k;                             // face do solo
-    const xa = 300, wM = 150;
-    const nivel = (prof: number) => yB - prof * k;         // profundidade medida da face comprimida
-    // a seção: a linha da espessura, com as duas faces
-    partes.push(rect(xa - 14, yTopo, 14, t! * k, MESA, TINTA, 0.8));
-    partes.push(lin(xa, yTopo, xa, yB, TINTA, 1.5));
-    // blocos comprimidos e as resultantes
-    const xSeta = xa + wM + 64;
-    const seta = (xi: number, xf: number, yy: number, cor: string) => {
-      const dir = Math.sign(xf - xi) || 1;
-      return lin(xi, yy, xf, yy, cor, 1.8) + `<path d="M${xf.toFixed(2)},${yy.toFixed(2)} l${(-dir * 10).toFixed(2)},-5 l0,10 z" fill="${cor}"/>`;
-    };
-    const braços: Array<[number, string]> = [];
-    if (secaoT && ok(fA, bwM)) {
-      const wA = wM * (fA! * bwM!) / (fM! * 100);
-      partes.push(`<rect x="${xa}" y="${nivel(hf!).toFixed(2)}" width="${wM}" height="${(hf! * k).toFixed(2)}" ${COMP}/>`);
-      partes.push(`<rect x="${xa}" y="${nivel(hf! + yAlma!).toFixed(2)}" width="${wA.toFixed(2)}" height="${(yAlma! * k).toFixed(2)}" ${COMP}/>`);
-      partes.push(seta(xSeta, xa + wM + 4, nivel(hf! / 2), LARANJA), texto(xSeta + 6, nivel(hf! / 2) + 5, 'C mesa', FS, 'start'));
-      partes.push(seta(xSeta, xa + wA + 4, nivel(hf! + yAlma! / 2), LARANJA), texto(xSeta + 6, nivel(hf! + yAlma! / 2) + 5, 'C alma', FS, 'start'));
-      braços.push([nivel(hf! / 2), 'd − hf/2'], [nivel(hf! + yAlma! / 2), 'd − hf − y/2']);
-    } else {
-      partes.push(`<rect x="${xa}" y="${nivel(0.8 * x!).toFixed(2)}" width="${wM}" height="${(0.8 * x! * k).toFixed(2)}" ${COMP}/>`);
-      partes.push(seta(xSeta, xa + wM + 4, nivel(0.4 * x!), LARANJA), texto(xSeta + 6, nivel(0.4 * x!) + 5, 'C', FS, 'start'));
-      braços.push([nivel(0.4 * x!), 'z = d − 0,4x']);
-    }
-    // a linha neutra e o aço
-    partes.push(lin(xa - 20, nivel(x!), xa + wM + 30, nivel(x!), LARANJA, 1.3, ' stroke-dasharray="9 4 2 4"'));
-    partes.push(texto(xa + wM + 34, nivel(x!) + 5, 'LN', 13, 'start'));
-    partes.push(`<circle cx="${xa}" cy="${nivel(d!).toFixed(2)}" r="5" fill="${ACO}"/>`);
-    partes.push(seta(xa + 7, xa + 80, nivel(d!), ACO), texto(xa + 86, nivel(d!) + 5, 'As·σs', FS, 'start'));
-    // profundidades, à esquerda (da face comprimida): hf e y (ou 0,8x), x, d
-    const cA = xa - 40, cB = xa - 135, cC = xa - 230;
-    partes.push(chamada(xa - 14, yB, cC - 4, yB));
-    if (secaoT) {
-      partes.push(chamada(xa - 14, nivel(hf!), cA - 4, nivel(hf!)), chamada(xa - 14, nivel(hf! + yAlma!), cA - 4, nivel(hf! + yAlma!)));
-      partes.push(cotaV(cA, nivel(hf!), yB, `hf = ${cm(hf!)}`, -1));
-      partes.push(cotaV(cA, nivel(hf! + yAlma!), nivel(hf!), `y = ${nbr(yAlma!, 2)}`, -1));
-    } else {
-      // a verificação da parede: 0,8x (o bloco comprimido) contra hf (a parede) — o hf cotado, o 0,8x escrito embaixo
-      partes.push(chamada(xa - 14, nivel(hf!), cA - 4, nivel(hf!)));
-      partes.push(cotaV(cA, nivel(hf!), yB, `hf = ${cm(hf!)}`, -1));
-      partes.push(texto(xa + wM / 2, yB + 20, `0,8x = ${nbr(0.8 * x!, 2)} ≤ hf`, FS));
-    }
-    partes.push(chamada(xa - 20, nivel(x!), cB - 4, nivel(x!)));
-    partes.push(cotaV(cB, nivel(x!), yB, `x = ${nbr(x!, 2)}`, -1));
-    partes.push(chamada(xa - 5, nivel(d!), cC - 4, nivel(d!)));
-    partes.push(cotaV(cC, nivel(d!), yB, `d = ${cm(d!)}`, -1));
-    // os braços até a barra, à direita
-    let xr = xSeta + 90;
-    partes.push(chamada(xa + 140, nivel(d!), xr + (braços.length - 1) * 120 + 4, nivel(d!)));   // depois do rótulo do aço
-    for (const [yy, rot] of braços) {
-      partes.push(chamada(xSeta + 60, yy, xr + 4, yy));
-      partes.push(cotaV(xr, nivel(d!), yy, rot, 1));
-      xr += 120;
-    }
-    Ht = yB + (secaoT ? 26 : 34);
+  if (!f || f.x === null || !ok(fM) || !(fM! > 0)) return null;
+  const { t, d, hf, x, y } = f;
+  const secaoT = f.secaoT && ok(fA, bwM);
+  const k = 14;                                            // px por cm de profundidade
+  const yTopo = 22, yB = yTopo + t * k;                    // face do solo (em cima) e face externa, comprimida (embaixo)
+  const nivel = (prof: number) => yB - prof * k;           // profundidade medida da face comprimida
+  const xa = 280, wM = 140;                                // a face da seção; o bloco da parede (K·fd,mesa·100)
+  // largura ∝ força por cm de profundidade: a alma é K·fd,alma·bw,m contra K·fd,mesa·100 da parede
+  const wA = secaoT ? (wM * fA! * bwM!) / (fM! * 100) : 0;
+  const wMax = Math.max(wM, wA);
+  const partes: string[] = [];
+  // a seção de perfil, com o solo em cima (a mesma orientação da planta)
+  partes.push(rect(xa - 22, yTopo - 12, 32, 12, SOLO, 'none'));
+  partes.push(lin(xa - 22, yTopo, xa + 10, yTopo, '#8d6e3f', 1.8));
+  partes.push(rect(xa - 14, yTopo, 14, t * k, MESA, TINTA, 0.8));
+  partes.push(lin(xa, yTopo, xa, yB, TINTA, 1.5));
+  // os blocos comprimidos e as resultantes
+  const xSeta = xa + wMax + 52;
+  const bracos: Array<[number, string]> = [];
+  if (secaoT) {
+    partes.push(zona(xa, nivel(hf), wM, hf * k), zona(xa, nivel(hf + y), wA, y * k));
+    partes.push(seta(xSeta, xa + wM + 4, nivel(hf / 2), LARANJA), texto(xSeta + 6, nivel(hf / 2) + 5, 'C mesa', FS, 'start'));
+    partes.push(seta(xSeta, xa + wA + 4, nivel(hf + y / 2), LARANJA), texto(xSeta + 6, nivel(hf + y / 2) + 5, 'C alma', FS, 'start'));
+    // o braço do C alma (o mais alto) na coluna de perto: a chamada do C mesa passa por baixo dela; na ordem inversa
+    // a chamada do C alma cortava o rótulo "d − hf/2" e lia-se "C alma ··· d − hf/2"
+    bracos.push([nivel(hf + y / 2), 'd − hf − y/2'], [nivel(hf / 2), 'd − hf/2']);
+  } else {
+    partes.push(zona(xa, nivel(0.8 * x), wM, 0.8 * x * k));
+    partes.push(seta(xSeta, xa + wM + 4, nivel(0.4 * x), LARANJA), texto(xSeta + 6, nivel(0.4 * x) + 5, 'C', FS, 'start'));
+    bracos.push([nivel(0.4 * x), 'z = d − 0,4x']);
   }
-  const Wt = 840;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${Wt} ${Math.ceil(Ht)}" style="width:100%;height:auto;display:block" font-family="Arial, Helvetica, sans-serif"><rect width="${Wt}" height="${Math.ceil(Ht)}" fill="#ffffff"/>${partes.join('')}</svg>`;
-  return { svg, titulo: secaoT ? 'Flexão da faixa de 1 m: seção T e as forças' : 'Flexão da faixa de 1 m: a parede do bloco e as forças' };
+  // a linha neutra e o aço. Os dois rótulos vão EM CIMA das linhas: com x perto de d (s = 60 do Jose, x = 9,37 e
+  // d = 9,5) a LN passa rente à barra, e o rótulo na ponta da linha encavalava no do aço e no do C.
+  const fimLN = xa + wMax + 30;
+  partes.push(lin(xa - 20, nivel(x), fimLN, nivel(x), LARANJA, 1.3, TRACO_LN));
+  partes.push(texto(fimLN, nivel(x) - 5, 'LN', 13, 'end'));
+  partes.push(`<circle cx="${xa}" cy="${nivel(d).toFixed(2)}" r="5" fill="${ACO}"/>`);
+  partes.push(seta(xa + 7, xa + 80, nivel(d), ACO), texto(xa + 44, nivel(d) - 9, 'As·σs', FS));
+  // as profundidades, à esquerda (da face comprimida): hf e y, x, d
+  const cA = xa - 34, cB = xa - 118, cC = xa - 202;
+  partes.push(chamada(xa - 14, yB, cC - 4, yB));
+  partes.push(chamada(xa - 14, nivel(hf), cA - 4, nivel(hf)));
+  partes.push(cotaV(cA, nivel(hf), yB, `hf = ${cm(hf)}`, -1));
+  if (secaoT) {
+    partes.push(chamada(xa - 14, nivel(hf + y), cA - 4, nivel(hf + y)));
+    partes.push(cotaV(cA, nivel(hf + y), nivel(hf), `y = ${nbr(y, 2)}`, -1));
+  } else {
+    // a verificação da parede: o bloco comprimido (0,8x) contra a parede (hf) — o hf cotado, o 0,8x escrito embaixo
+    partes.push(texto(xa + wM / 2, yB + 20, `0,8x = ${nbr(0.8 * x, 2)} ≤ hf`, FS));
+  }
+  partes.push(chamada(xa - 20, nivel(x), cB - 4, nivel(x)));
+  partes.push(cotaV(cB, nivel(x), yB, `x = ${nbr(x, 2)}`, -1));
+  partes.push(chamada(xa - 5, nivel(d), cC - 4, nivel(d)));
+  partes.push(cotaV(cC, nivel(d), yB, `d = ${cm(d)}`, -1));
+  // os braços até a barra, à direita
+  const xr0 = xSeta + 84, passo = 112;
+  partes.push(chamada(fimLN + 6, nivel(d), xr0 + (bracos.length - 1) * passo + 4, nivel(d)));   // depois do rótulo da LN
+  bracos.forEach(([yy, rot], i) => {
+    const xr = xr0 + i * passo;
+    partes.push(chamada(xSeta + 60, yy, xr + 4, yy));
+    partes.push(cotaV(xr, nivel(d), yy, rot, 1));
+  });
+  const Ht = yB + (secaoT ? 16 : 30);
+  // a alma mais forte que a parede (fd,alma·bw,m > fd,mesa·100) alarga o desenho: aí a folha cresce em vez de cortar
+  const Wt = Math.max(LARGURA_FLEXAO, Math.ceil(xr0 + (bracos.length - 1) * passo + 100));
+  return {
+    svg: svgDe(partes, Wt, Ht),
+    titulo: secaoT ? 'Forças na seção T (cm)' : 'Forças na parede do bloco (cm)',
+    largura: LARGURA_FLEXAO,
+  };
 }
