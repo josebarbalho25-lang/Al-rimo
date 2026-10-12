@@ -30,13 +30,16 @@ cf_x = 'IF(LEFT(pos_cf,4)="Ente",a_ater-t_m/2-(tenr_adot-t_bloco)/200,a_ater+t_m
 # (terra sobre o talão — descontado o volume do contraforte enterrado só até onde há terra — e a coluna d'água, com o
 # NA medido do topo do solo). O empuxo já vem do perfil, que é da altura de solo.
 VERT = [
-    ('Muro (peso próprio)', '=peso_par*H_muro*Lm', '=a_ater'),
-    ('Contraforte', '=IF(Tipo_muro="Contrafortes",gama_cf*eenr/100*(tenr_adot-t_bloco)/100*H_muro,0)', f'=IF(Tipo_muro="Contrafortes",{cf_x},a_ater)'),
+    ('Muro (peso próprio)', '=peso_us*H_muro*Lm', '=a_ater'),
+    ('Contraforte', '=IF(Tipo_muro="Contrafortes",gama_cf_us*eenr/100*(tenr_adot-t_bloco)/100*H_muro,0)', f'=IF(Tipo_muro="Contrafortes",{cf_x},a_ater)'),
     ('Sapata + dente', '=gama_c*(B_sap*h_sap+b_den*h_den)*Lm', '=B_sap/2'),
     ('Solo sobre o talão', '=gama_solo*H_solo*heel*Lm-IF(AND(Tipo_muro="Contrafortes",LEFT(pos_cf,4)="Ente"),gama_solo*eenr/100*MIN(heel,(tenr_adot-t_bloco)/100)*H_solo,0)', '=heel/2'),
     ('Sobrecarga sobre o talão', '=IF(q_est="Sim",q_sobre*heel*Lm,0)', '=heel/2'),
     ('Carga permanente no topo', '=P_topo*Lm', '=a_ater'),
     ('Subpressão (água)', '=-IF(Agua="Sim",gama_w*MAX(0,H_solo+h_sap-z_NA)*B_sap*Lm,0)', '=B_sap/2'),
+    # Aterro sobre a ponta (Jose, 12/10): só com a garantia do solo da frente. Desconta o contraforte APARENTE, que fica
+    # na ponta (espelho do enterrado no talão). Linha no FIM da tabela: as de cima mantêm o endereço que o app lê.
+    ('Aterro sobre a ponta', '=IF(pass_on="Sim",gama_solo*h_fr*toe*Lm-IF(AND(Tipo_muro="Contrafortes",LEFT(pos_cf,4)<>"Ente"),gama_solo*eenr/100*MIN(toe,(tenr_adot-t_bloco)/100)*h_fr,0),0)', '=B_sap-toe/2'),
 ]
 v0 = r
 for lab, fN_, fx in VERT:
@@ -53,20 +56,20 @@ for cc, nm_ in (('B', 'N_tot'), ('E', 'M_est'), ('G', 'M_vc')):
     Fd[f'{cc}{r}'] = f'=SUM({cc}{v0}:{cc}{v1})'; Fd[f'{cc}{r}'].font = fB; Fd[f'{cc}{r}'].fill = RES; Fd[f'{cc}{r}'].number_format = '0.000'; Fd[f'{cc}{r}'].border = BOX
     name(nm_, Fd, f'{cc}{r}')
 r += 1
-Fd.cell(row=r, column=1, value='Muro e contraforte na altura do muro; solo do talão e subpressão na altura de solo. Contraforte com γ grauteado e volume eenr × (tenr − t) × h muro. Solo do talão desconta o volume do contraforte enterrado. Subpressão uniforme (aproximação).').font = fS; r += 2
+Fd.cell(row=r, column=1, value='Muro e contraforte na altura do muro; solo do talão e subpressão na altura de solo. Contraforte com γ grauteado e volume eenr × (tenr − t) × h muro. Solo do talão desconta o volume do contraforte enterrado; aterro sobre a ponta (só com a garantia do solo da frente) desconta o aparente. Subpressão uniforme (aproximação).').font = fS; r += 2
 section(Fd, r, '3. Empuxo até a base da sapata'); r += 1
 Lf('σh na base do muro', '=sh_base', 'kPa', '', 'res', '0.00')
 Lf('σh na base da sapata', '=sh_base+h_sap*(Ka_*(gama_solo-IF(AND(Agua="Sim",H_solo+h_sap>z_NA),gama_w,0))+IF(AND(Agua="Sim",H_solo+h_sap>z_NA),gama_w,0))', 'kPa', 'Continua o perfil por mais h da sapata.', 'res', '0.00', 'sh_b2')
 Lf('Hk — empuxo total no módulo', '=(Vk_+(sh_base+sh_b2)/2*h_sap)*Lm', 'kN', '', 'key', '0.00', 'H_k')
 Lf('M tombador em relação à base da sapata', '=(Mk_+Vk_*h_sap+h_sap^2*(2*sh_base+sh_b2)/6)*Lm', 'kN·m', 'Mk na base do muro + Vk·h sapata + fatia da sapata. (A aba do Gilberto soma Vk·h.)', 'key', '0.00', 'M_tb')
-Lf('Passivo na frente (Kp·γ·(h + dente)²/2 ÷ 2,0)', '=IF(pass_on="Sim",Kp_*gama_solo*(h_sap+h_den)^2/2/2*Lm,0)', 'kN', 'Solo da frente no nível do topo da sapata. Reduzido por 2,0 (NBR 6122 7.6.3).', 'res', '0.00', 'E_p')
+Lf('Passivo na frente (Kp·γ·(h aterro + h + dente)²/2 ÷ 2,0)', '=IF(pass_on="Sim",Kp_*gama_solo*(h_fr+h_sap+h_den)^2/2/2*Lm,0)', 'kN', 'Solo da frente no nível do aterro sobre a ponta (0 = topo da sapata). Reduzido por 2,0 (NBR 6122 7.6.3).', 'res', '0.00', 'E_p')
 r += 1
 section(Fd, r, '4. Tombamento'); r += 1
 Lf('M estabilizante em relação ao pé', '=M_est', 'kN·m', 'Σ N·(B − x). Passivo não entra (a favor da segurança).', 'res', '0.00')
 Lf('FS = M estabilizante / M tombador', '=IF(M_tb>0,M_est/M_tb,99)', '', 'Mínimo nas Entradas.', 'key', '0.00', 'FS_t')
 Lf('M no centro da sapata (+ = para o pé)', '=M_tb+M_vc', 'kN·m', 'Como a aba do Gilberto: M tombador + Σ N·(x − B/2).', 'res', '0.000', 'M_cen')
 Lf('Excentricidade e = M/N', '=M_cen/N_tot', 'm', '+ = resultante para o pé; − = para o aterro.', 'key', '0.000', 'e_f')
-Lf('Limite do Gilberto: |e| ≤ B/4', '=B_sap/4', 'm', 'Na aba original só para o lado do pé; aqui nos dois lados.', 'res', '0.000')
+Lf('Limite do Gilberto: |e| ≤ B/4', '=B_sap/4', 'm', 'Na aba original só para o lado do pé; aqui nos dois lados.', 'res', '0.000', 'e_lim')
 r += 1
 section(Fd, r, '5. Deslizamento'); r += 1
 Lf("φ' do solo de apoio", '=IF(ISNUMBER(phi_base),phi_base,phi_solo)', '°', '', 'res', '0.0', 'phi_b')
@@ -95,7 +98,7 @@ Lf('fck', '=VALUE(MID(fck_fund,2,2))', 'MPa', 'Concreto da fundação (Entradas)
 Lf('fcd', '=fck_s/1.4', 'MPa', '', 'res', '0.00', 'fcd_s')
 Lf('d', '=h_sap*100-cob_sap-phi_sap/20', 'cm', '', 'res', '0.00', 'd_s')
 _S0 = r  # memória das fatias fica no fim; aqui só os resultados
-Lf('Mk na face do muro — ponta (traciona embaixo)', '=SUM(T_dM)', 'kN·m/m', 'Pressão do solo − peso da sapata, integrada em 20 fatias (memória no fim da aba).', 'res', '0.00', 'Mk_toe')
+Lf('Mk na face do muro — ponta (traciona embaixo)', '=SUM(T_dM)', 'kN·m/m', 'Pressão do solo − peso da sapata − aterro sobre a ponta, integrada em 20 fatias (memória no fim da aba).', 'res', '0.00', 'Mk_toe')
 Lf('Mk na face do muro — talão (traciona em cima)', '=SUM(H_dM)', 'kN·m/m', 'Solo + sobrecarga + sapata − pressão do solo. Talão em balanço (a favor da segurança; os contrafortes ajudariam).', 'res', '0.00', 'Mk_heel')
 for tag, lab, mk in (('t', 'ponta', 'Mk_toe'), ('h', 'talão', 'Mk_heel')):
     Lf(f'Md {lab} = 1,4·Mk', f'=1.4*MAX(0,{mk})', 'kN·m/m', '', 'res', '0.00', f'Md_{tag}s')
@@ -129,7 +132,7 @@ Lf('TRd2 = 0,5·αv2·fcd·Ae·he·sen2θ (θ = 45°)', '=0.5*(1-fck_s/250)*fcd_
 Lf('A90/s = TSd/(2·Ae·fywd) — por ramo', '=IF(T_sd>0,T_sd/(2*Ae_s*fyk_/gama_s*1000)*10000,0)', 'cm²/m', 'Estribo fechado, θ = 45°.', 'res', '0.00', 'A90_s')
 Lf('Asl = TSd·ue/(2·Ae·fyd) — total no perímetro', '=IF(T_sd>0,T_sd*ue_s/(2*Ae_s*fyk_/gama_s*1000)*10000,0)', 'cm²', 'Somar à armadura de flexão nas faces.', 'res', '0.00', 'Asl_s')
 Lf('Mínimo de estribo: ρsw = 0,2·fctm/fywk (bw = B)', '=IF(T_sd>0,0.2*0.3*fck_s^(2/3)/fyk_*B_sap*100*100/2,0)', 'cm²/m', 'Por ramo (NBR 6118 17.4.1.1.1). Com bw = largura toda fica alto em sapata larga — avaliar (dedução).', 'res', '0.00', 'A90_m')
-Lf('Ø do estribo de torção: espaçamento', '=IF(T_sd>0,MIN(20,ROUNDDOWN(PI()*phi_tor^2/400/MAX(A90_s,0.0001)*100,0)),"—")', 'cm', 'Pelo cálculo (sem o mínimo).', 'res', '0')
+Lf('Ø do estribo de torção: espaçamento', '=IF(T_sd>0,MIN(20,ROUNDDOWN(PI()*phi_tor^2/400/MAX(A90_s,0.0001)*100,0)),"—")', 'cm', 'Pelo cálculo (sem o mínimo).', 'res', '0', 's_tor_f')
 r += 1
 section(Fd, r, '9. Verificações'); r += 1
 CHKF = [
@@ -147,8 +150,11 @@ CHKF = [
     # no fim da lista: as linhas de cima têm endereço lido pelo app (espaçamento do estribo de torção)
     ('Torção: espessura equivalente he', '=IF(T_sd=0,"— (sem contrafortes)",IF(he_s>=2*c_eixo_s,"OK (A/u ≥ 2·c1)",IF(he_s<=MIN(B_sap,h_sap)-2*c_eixo_s,"OK (A/u < 2·c1: Ae pelos eixos das barras de canto)","NÃO OK — A/u > bw − 2·c1: aumentar a altura da sapata")))'),
 ]
+# Nome nas linhas que o app lê (antes por endereço: B101, B102, B104, B105 — uma linha nova acima as mudava de lugar).
+NOME_CHK = {'Tombamento: FS ≥ mínimo': 'chk_fs_t', 'Tombamento: |e| ≤ B/4 (Gilberto)': 'chk_e_t',
+            'Deslizamento: FS ≥ mínimo': 'chk_fs_d', 'Tensão: σ máx ≤ σadm': 'chk_sig'}
 for lab, f in CHKF:
-    Lf(lab, f, '', '', 'key')
+    Lf(lab, f, '', '', 'key', None, NOME_CHK.get(lab))
 r += 1
 # ---------- 10. esperas: dobra do pé na sapata ----------
 # Seção nova (09/10) DEPOIS das verificações e antes da memória das fatias: as seções 1 a 9 ficam nos mesmos endereços,
@@ -181,7 +187,7 @@ Lf('Dobra da espera: 2c + malha + D + 2φ ≤ h da sapata',
 r += 1
 # ---------- memória: fatias ----------
 section(Fd, r, 'Memória — pressão do solo integrada em 20 fatias por balanço (ponta e talão)', 8); r += 1
-Fd.cell(row=r, column=1, value='σ(x): trapézio se |e| ≤ B/6; triângulo a partir da borda mais comprimida se |e| > B/6. Ponta: q = σ − γc·h (para cima). Talão: q = γ·h solo + q + γc·h − σ (para baixo).').font = fS; r += 1
+Fd.cell(row=r, column=1, value='σ(x): trapézio se |e| ≤ B/6; triângulo a partir da borda mais comprimida se |e| > B/6. Ponta: q = σ − γc·h − γ·h aterro (para cima; o aterro só com a garantia do solo da frente). Talão: q = γ·h solo + q + γc·h − σ (para baixo).').font = fS; r += 1
 def sig(xc):
     d_ = f'IF(e_f>=0,B_sap-{xc},{xc})'
     return f'IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*{d_}/B_sap,MAX(0,s_hi*(1-{d_}/c_len)))'
@@ -193,7 +199,7 @@ for tag, lab in (('T', 'Ponta'), ('H', 'Talão')):
         if tag == 'T':
             Fd[f'B{r}'] = f'=a_ater+t_m/2+({i}-0.5)*toe/20'
             Fd[f'C{r}'] = '=' + sig(f'B{r}')
-            Fd[f'D{r}'] = f'=C{r}-gama_c*h_sap'
+            Fd[f'D{r}'] = f'=C{r}-gama_c*h_sap-IF(pass_on="Sim",gama_solo*h_fr,0)'
             Fd[f'E{r}'] = f'=B{r}-(a_ater+t_m/2)'
             Fd[f'F{r}'] = f'=D{r}*toe/20*E{r}'
             Fd[f'G{r}'] = f'=IF(E{r}>d_s/100,D{r}*toe/20,0)'

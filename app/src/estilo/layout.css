@@ -83,6 +83,46 @@
   display: flex;
   z-index: 2;
 }
+/* Lista recolhida (Jose, 12/10): a coluna vira uma faixa fina e o palco ocupa o resto. A entrada principal é a por
+   figuras (botão na barra de cima); a lista é para ajuste rápido e conferência. */
+.app[data-lista='recolhida'] {
+  grid-template-columns: calc(26px * var(--escala-ui)) minmax(0, 1fr);
+}
+.faixa-entradas {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  background: var(--surface);
+  border: 0;
+  border-right: 1px solid var(--line);
+  color: var(--muted);
+  cursor: pointer;
+}
+.faixa-entradas:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+.faixa-entradas svg {
+  transform: rotate(-90deg);
+}
+.faixa-entradas span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: var(--fs-nota);
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.btn-recolher {
+  margin-left: auto;
+}
+.btn-recolher svg {
+  transform: rotate(90deg);
+}
+
 .painel-entradas {
   flex: 1;
   min-width: 0;

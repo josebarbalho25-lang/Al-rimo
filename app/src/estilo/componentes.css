@@ -54,6 +54,80 @@
   gap: 5px;
 }
 
+/* Subtítulo do grupo dentro da aba (estado/abas.ts): "Medidas", "Água", "Espera". Rótulo, não texto: miúdo,
+   apagado, como o cabeçalho de bloco de um diálogo de CAD. O primeiro do grupo não ganha folga em cima. */
+.entrada-grupo {
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  padding-top: 8px;
+  border-bottom: 1px solid var(--line-2);
+  padding-bottom: 2px;
+}
+.grupo-corpo > .entrada-grupo:first-child,
+.pf-campos > .entrada-grupo:first-child {
+  padding-top: 0;
+}
+
+/* Escolha com desenho (entrada por figuras, Jose 12/10): rótulo e figura na 1ª linha, os botões na 2ª, a linha toda.
+   A placa é desenhada em papel claro e inverte no escuro como a prancheta. */
+.entrada.entrada-desenho {
+  grid-template-columns: minmax(0, 1fr) calc(22px * var(--escala-ui));
+  row-gap: 4px;
+}
+.entrada-desenho > .escolha-desenho {
+  grid-column: 1 / -1;
+}
+.escolha-desenho {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(84px * var(--escala-ui)), calc(124px * var(--escala-ui))));
+  gap: 6px;
+}
+.escolha-desenho > button {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  padding: 4px 4px 3px;
+  min-width: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--control-stroke);
+  border-radius: var(--radius-md);
+  color: var(--muted);
+  font-size: var(--fs-nota);
+  cursor: pointer;
+}
+.escolha-desenho > button:hover {
+  border-color: var(--control-stroke-2);
+  color: var(--ink);
+}
+.escolha-desenho > button.on {
+  border-color: var(--accent-3);
+  box-shadow: inset 0 0 0 1px var(--accent-3);
+  color: var(--ink);
+}
+.escolha-desenho > button:focus-visible {
+  outline: 2px solid var(--accent-3);
+  outline-offset: 1px;
+}
+.escolha-desenho .placa {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 2px;
+}
+.escolha-desenho > button > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+body[data-theme='dark'] .escolha-desenho .placa {
+  filter: invert(0.88) hue-rotate(180deg);
+}
+
 /* ── A LINHA DE ENTRADA ─────────────────────────────────────────────────────
    Quatro colunas fixas: rótulo | controle | unidade | figura. Os valores numa
    coluna só (cara de diálogo de engenharia, pedido dele no A-PORT), a unidade
@@ -763,7 +837,7 @@ body[data-theme='dark'] .prancheta.prancheta-cores {
    Modal grande: abas dos grupos em cima; figura à esquerda, campos à direita.
    As linhas são as do painel (.entrada); a figura é a .prancheta das outras. */
 .btn-por-figuras {
-  margin-left: auto;
+  align-self: center;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -773,6 +847,7 @@ body[data-theme='dark'] .prancheta.prancheta-cores {
   font-size: var(--fs-nota);
   color: var(--muted);
 }
+.btn-por-figuras.on,
 .btn-por-figuras:hover {
   color: var(--ink);
   background: var(--sel-bg);
@@ -809,6 +884,36 @@ body[data-theme='dark'] .prancheta.prancheta-cores {
   grid-template-columns: minmax(0, 1.6fr) minmax(calc(380px * var(--escala-ui)), 1fr);
   gap: calc(12px * var(--escala-ui));
   padding: calc(12px * var(--escala-ui));
+}
+.pf-figura-caixa {
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+}
+.pf-figura-caixa > .pf-figura {
+  flex: 1 1 auto;
+}
+/* A caixinha do número em cima da cota (como a cota dinâmica do CAD): rótulo curto, campo, unidade. */
+.editor-cota {
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, -115%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: var(--surface);
+  border: 1px solid var(--accent-3);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  font-size: var(--fs-rotulo);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.editor-cota .campo,
+.editor-cota select {
+  width: calc(84px * var(--escala-ui));
 }
 .pf-figura {
   min-height: 0;

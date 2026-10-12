@@ -423,7 +423,7 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
   const Ma = m.g('Ma_', 'M_a', 1, 'kN·cm');
   const Mr = m.g('Mr_', 'M_r', 1, 'kN·cm');
   const comSg = igual(m.texto('sg_on'), 'Sim');               // IF(sg_on="Sim";0,9·Psg/Ae;0)
-  const gpar = m.ent('peso_par', 'g_{par}');
+  const gpar = m.g('peso_us', 'g_{par}', 2, 'kN/m²');   // o peso usado: calculado ou digitado (cards/pesoProprio.ts)
   const h = m.ent('H_muro', 'h_{muro}');                        // peso da parede: altura do muro
   const tM = m.ent('t_bloco', 't', { fator: 0.01, casas: 2, unidade: 'm' });
   // ftk e σsg em kN/cm² na leitura: Im em cm⁴ e yt em cm dão Mr direto em kN·cm, como na aula

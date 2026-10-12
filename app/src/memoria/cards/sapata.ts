@@ -268,8 +268,12 @@ function secaoFatia(m: Memoria, f: Folhas, L: Lado) {
     ? sub(f.sMax, mul(par(sub(f.sMax, f.sMin)), div(dist, f.B)))
     : max(cte(0, 0), mul(f.sMax, par(sub(cte(1, 0), div(dist, f.Bc)))));
 
+  // aterro sobre a ponta (12/10): só com a garantia do solo da frente — IF(pass_on="Sim";γ·h_fr;0)
+  const aterro = i === 'p' && m.texto('pass_on') === 'Sim' && (m.num('h_fr') ?? 0) > 0;
   const liquida = i === 'p'
-    ? sub(sig, mul(f.gc, f.hS))                                         // solo empurra para cima, sapata pesa
+    ? aterro
+      ? sub(sub(sig, mul(f.gc, f.hS)), mul(f.gama, m.ent('h_fr', 'h_{fr}')))   // solo empurra; sapata e aterro pesam
+      : sub(sig, mul(f.gc, f.hS))                                       // solo empurra para cima, sapata pesa
     : sub(soma(mul(f.gama, f.H), f.q, mul(f.gc, f.hS)), sig);           // solo + sobrecarga + sapata − reação
 
   return secao('Fatia 1 de 20', [

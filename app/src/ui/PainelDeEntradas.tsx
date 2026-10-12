@@ -27,26 +27,45 @@ import type { Valor } from '@/motor/tipos';
 import type { Ajuste } from '@/modelo/tipos';
 import {
   campoEspelhado,
+  campoVisivel,
   entradaAtiva,
   entradaDoAjuste,
   opcoesDoCampo,
   secaoVisivel,
   valorTravado,
+  VALOR_AUTO,
   type Campo,
   type Opcao,
   type Secao,
 } from '@/estado/campos';
 import { avisoDoCampo } from '@/estado/avisosDaPlanilha';
+import { useInterface } from '@/estado/interface';
 import { CHAVES, ehMapaDeBooleanos, guardar, lembrar } from '@/estado/lembrete';
-import { escreverNoCampo } from '@/estado/numeros';
+import { casasDoFormato, escreverNoCampo, escreverNumero } from '@/estado/numeros';
 import { CAMPOS, leitorDoEstado, SECOES, useApp } from '@/estado/store';
 import { figuraDaEntrada } from '@/figuras/mapa';
 import { CampoNumero, Escolha, Lista } from './controles';
+import { EscolhaComDesenho, temDesenho } from './EscolhaComDesenho';
 import { Chevron, IconeAlerta, IconeFigura } from './icones';
 import { ModalDaFigura, type FiguraDaEntrada } from './ModalDaFigura';
-import { EntradaPorFiguras } from './EntradaPorFiguras';
 
 const existeCampo = (nome: string) => CAMPOS.has(nome);
+
+/**
+ * As linhas de uma aba: só as entradas do tipo de muro atual, com o subtítulo do grupo (estado/abas.ts) antes da
+ * primeira de cada grupo. O mesmo para a lista e para a entrada por figuras.
+ */
+export function linhasDaSecao(campos: readonly Campo[], ler: (nome: string) => Valor) {
+  const out: Array<{ grupo: string } | { campo: Campo }> = [];
+  let ultimo: string | undefined;
+  for (const c of campos) {
+    if (!campoVisivel(c, ler)) continue;
+    if (c.grupo && c.grupo !== ultimo) out.push({ grupo: c.grupo });
+    ultimo = c.grupo;
+    out.push({ campo: c });
+  }
+  return out;
+}
 
 /**
  * O que cada linha precisa além do campo: valor, opções vivas, trava, ajuste "→" e aviso. Compartilhado pelo
@@ -86,6 +105,14 @@ export function useLinhasDeEntrada() {
     return m;
   }, [resultado]);
 
+  // O número que a conta usou no lugar da entrada opcional vazia (campos.ts, VALOR_AUTO).
+  const valorAuto = (c: Campo): string | null => {
+    const usado = VALOR_AUTO[c.meta.nome];
+    const v = usado && resultado ? resultado.num(usado) : null;
+    // arredondado às casas do formato da célula: é o número que a conta ADOTOU, não um campo digitado
+    return v === null || v === undefined ? null : escreverNumero(v, casasDoFormato(c.meta.formato));
+  };
+
   const propsDoCampo = (c: Campo) => {
     const trava = valorTravado(c.meta.nome, ler);
     return {
@@ -97,6 +124,7 @@ export function useLinhasDeEntrada() {
       ajuste: ajustePorNome.get(c.meta.nome),
       aviso: avisoDoCampo(avisosDaConta, c.meta.nome),
       figura: figuraDaEntrada(c.meta.nome)?.titulo ?? null,
+      auto: valorAuto(c),
       definir,
     };
   };
@@ -118,8 +146,7 @@ export function useLinhasDeEntrada() {
 
 export function PainelDeEntradas() {
   const { ler, propsDaLinha } = useLinhasDeEntrada();
-  const [porFiguras, setPorFiguras] = useState(false);
-  const fecharPorFiguras = useCallback(() => setPorFiguras(false), []);
+  const alternarLista = useInterface((s) => s.alternarLista);
 
   // Aberto/fechado escolhido pelo usuário; o que ele nunca tocou fica fechado.
   // Só a ESCOLHA é guardada (não o padrão): assim o padrão pode mudar sem
@@ -144,9 +171,8 @@ export function PainelDeEntradas() {
     <aside className="painel-entradas">
       <div className="painel-cabeca">
         <span className="rotulo">Entradas</span>
-        <button type="button" className="btn-por-figuras" title="Entrada por figuras (piloto)" onClick={() => setPorFiguras(true)}>
-          <IconeFigura tamanho={14} />
-          Por figuras
+        <button type="button" className="btn-icone btn-recolher" title="Recolher a lista" aria-label="Recolher a lista" onClick={alternarLista}>
+          <Chevron />
         </button>
       </div>
       <div className="painel-corpo">
@@ -172,10 +198,11 @@ export function PainelDeEntradas() {
               </div>
               {aberto && (
                 <div className="grupo-corpo">
-                  {s.campos.map((c) => {
-                    const p = propsDaLinha(c);
+                  {linhasDaSecao(s.campos, ler).map((l) => {
+                    if ('grupo' in l) return <div className="entrada-grupo" key={`g:${l.grupo}`}>{l.grupo}</div>;
+                    const p = propsDaLinha(l.campo);
                     return (
-                      <LinhaDeEntrada key={c.meta.nome} {...p} figuraAberta={aberta?.nome === p.campo.meta.nome} abrirFigura={abrirFigura} />
+                      <LinhaDeEntrada key={l.campo.meta.nome} {...p} figuraAberta={aberta?.nome === p.campo.meta.nome} abrirFigura={abrirFigura} />
                     );
                   })}
                 </div>
@@ -185,7 +212,6 @@ export function PainelDeEntradas() {
         })}
       </div>
       {aberta && <ModalDaFigura figura={aberta.figura} aoFechar={fecharFigura} />}
-      {porFiguras && <EntradaPorFiguras aoFechar={fecharPorFiguras} />}
     </aside>
   );
 }
@@ -203,6 +229,8 @@ export const LinhaDeEntrada = memo(function LinhaDeEntrada({
   ajuste,
   aviso,
   figura,
+  auto = null,
+  comDesenho = false,
   figuraAberta,
   definir,
   abrirFigura,
@@ -219,6 +247,10 @@ export const LinhaDeEntrada = memo(function LinhaDeEntrada({
   aviso: string | null;
   /** Título da figura de referência, ou null quando a entrada não tem figura. */
   figura: string | null;
+  /** Entrada opcional: o valor que a conta usou quando o campo está vazio (aparece apagado no lugar do "auto"). */
+  auto?: string | null;
+  /** Entrada por figuras: a escolha que se desenha vira botões com desenho (EscolhaComDesenho). */
+  comDesenho?: boolean;
   figuraAberta: boolean;
   definir: (nome: string, v: Valor) => void;
   abrirFigura: (nome: string) => void;
@@ -226,10 +258,35 @@ export const LinhaDeEntrada = memo(function LinhaDeEntrada({
   const nome = campo.meta.nome;
   const mudar = (v: Valor) => definir(nome, v);
 
+  const botaoFigura = figura ? (
+    <button
+      type="button"
+      className={`btn-figura${figuraAberta ? ' on' : ''}`}
+      title={figura}
+      aria-label={`Figura de ${campo.curto}`}
+      onClick={() => abrirFigura(nome)}
+    >
+      <IconeFigura tamanho={16} />
+    </button>
+  ) : (
+    <span />
+  );
+
+  // Entrada por figuras: escolha que se desenha — rótulo em cima, os botões com desenho embaixo, a linha toda.
+  if (comDesenho && !travado && campo.controle !== 'numero' && temDesenho(nome, opcoes)) {
+    return (
+      <div className={`entrada entrada-desenho${ativa ? '' : ' apagada'}`} data-campo={nome}>
+        <label title={campo.dica}>{campo.curto}</label>
+        {botaoFigura}
+        <EscolhaComDesenho nome={nome} rotulo={campo.curto} opcoes={opcoes} valor={valor} aoEscolher={mudar} />
+      </div>
+    );
+  }
+
   let controle;
   switch (campo.controle) {
     case 'numero':
-      controle = <CampoNumero campo={campo} valor={valor} aoMudar={mudar} desabilitado={travado} />;
+      controle = <CampoNumero campo={campo} valor={valor} aoMudar={mudar} desabilitado={travado} auto={auto} />;
       break;
     case 'simnao':
     case 'escolha':
@@ -266,19 +323,7 @@ export const LinhaDeEntrada = memo(function LinhaDeEntrada({
         )}
       </div>
       {!largo && <span className="unidade">{campo.meta.unidade}</span>}
-      {figura ? (
-        <button
-          type="button"
-          className={`btn-figura${figuraAberta ? ' on' : ''}`}
-          title={figura}
-          aria-label={`Figura de ${campo.curto}`}
-          onClick={() => abrirFigura(nome)}
-        >
-          <IconeFigura tamanho={16} />
-        </button>
-      ) : (
-        <span />
-      )}
+      {botaoFigura}
     </div>
   );
 });

@@ -22,6 +22,9 @@ import { aceiteVigente } from '@/estado/termo';
 import { usePreferencias } from '@/estilo/preferenciasDaInterface';
 import { BarraDeEstado } from '@/ui/BarraDeEstado';
 import { AbasDoPalco, Palco } from '@/ui/Palco';
+import { useInterface } from '@/estado/interface';
+import { EntradaPorFiguras } from '@/ui/EntradaPorFiguras';
+import { Chevron } from '@/ui/icones';
 import { PainelDeEntradas } from '@/ui/PainelDeEntradas';
 import { PortaDoTermo } from '@/ui/TermoDeUso';
 import { TopBar } from '@/ui/TopBar';
@@ -52,17 +55,32 @@ function Casca() {
   const estilo = largura
     ? ({ '--entradas-w': `calc(${largura}px * var(--escala-ui))` } as CSSProperties)
     : undefined;
+  const recolhida = useInterface((s) => s.listaRecolhida);
+  const alternarLista = useInterface((s) => s.alternarLista);
+  const porFiguras = useInterface((s) => s.porFiguras);
+  const fecharPorFiguras = useInterface((s) => s.fecharPorFiguras);
 
   return (
-    <div className="app" style={estilo}>
+    <div className="app" style={estilo} data-lista={recolhida ? 'recolhida' : undefined}>
       <TopBar />
       <div className="coluna-entradas">
-        <PainelDeEntradas />
-        <AlcaDeLargura escala={escala} aoMudar={setLargura} />
+        {recolhida ? (
+          // A faixa fina: o 3D fica com a tela; um clique traz a lista de volta como estava.
+          <button type="button" className="faixa-entradas" title="Mostrar a lista" aria-label="Mostrar a lista" onClick={alternarLista}>
+            <Chevron />
+            <span>Entradas</span>
+          </button>
+        ) : (
+          <>
+            <PainelDeEntradas />
+            <AlcaDeLargura escala={escala} aoMudar={setLargura} />
+          </>
+        )}
       </div>
       <AbasDoPalco />
       <Palco />
       <BarraDeEstado />
+      {porFiguras && <EntradaPorFiguras aoFechar={fecharPorFiguras} />}
     </div>
   );
 }

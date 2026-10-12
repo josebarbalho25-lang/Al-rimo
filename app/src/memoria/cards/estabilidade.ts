@@ -26,6 +26,7 @@ import type { AutorDeCards, Card, Expr, Passo, Ref } from '../tipos';
 import { abs, cte, div, max, min, mul, neg, nome, pot, rad, soma, sub, tan } from '../expr';
 import { memoriaDe, secao, type Memoria, type PedidoDeVerificacao } from '../passo';
 import { nt } from '../formato';
+import { passoDoGamaCf, passosDoPeso } from './pesoProprio';
 
 const ABA = 'Fundação';
 const cel = (endereco: string) => `${ABA}!${endereco}`;
@@ -57,6 +58,8 @@ export const SIMBOLOS_ESTABILIDADE: Readonly<Record<string, string>> = {
   'N_{solo}': 'peso do solo sobre o talão no módulo',
   N_q: 'sobrecarga sobre o talão no módulo',
   'N_{topo}': 'carga permanente do topo do muro no módulo',
+  'N_{fr}': 'peso do aterro sobre a ponta no módulo',
+  'h_{fr}': 'altura do aterro sobre a ponta, acima do topo da sapata',
   N_w: 'subpressão da água sob a sapata no módulo (negativa)',
   'N_{tot}': 'resultante vertical na base da sapata, no módulo',
   'x_{cf}': 'posição do centro do contraforte, medida da borda aterrada',
@@ -97,7 +100,8 @@ function folhas(m: Memoria) {
     bden: m.ent('b_den', 'b_{den}'),
     hden: m.ent('h_den', 'h_{den}'),
     gc: m.ent('gama_c', '\\gamma_c'),
-    gcf: m.ent('gama_cf', '\\gamma_{cf}'),
+    // γ do contraforte e peso da parede: os USADOS (calculados ou digitados — cards/pesoProprio.ts)
+    gcf: m.g('gama_cf_us', '\\gamma_{cf}', 2, 'kN/m³'),
     P: m.ent('P_topo', 'P_{topo}'),
     // peça pesa na altura do MURO (parede, contraforte); terra e água, na altura de SOLO
     hm: m.ent('H_muro', 'h_{muro}'),
@@ -106,7 +110,7 @@ function folhas(m: Memoria) {
     gama: m.ent('gama_solo', '\\gamma'),
     gw: m.ent('gama_w', '\\gamma_w'),
     zna: m.ent('z_NA', 'z_{NA}'),
-    gpar: m.ent('peso_par', 'g_{par}'),
+    gpar: m.g('peso_us', 'g_{par}', 2, 'kN/m²'),
     // (tenr − t)/100 da planilha escrito em metros: t_enr − t com as duas em m, como se confere à mão
     tb: m.ent('t_bloco', 't', { fator: 0.01, casas: 2, unidade: 'm' }),
     t: m.g('t_m', 't', 2, 'm'),
@@ -128,7 +132,8 @@ function folhas(m: Memoria) {
     MN: m.g('M_vc', 'M_N', 3, 'kN·m'),
     Mcen: m.g('M_cen', 'M_{cen}', 3, 'kN·m'),
     e: m.g('e_f', 'e', 3, 'm'),
-    elim: nome(cel('B38'), 'e_{lim}', 3, 'm'),
+    elim: m.g('e_lim', 'e_{lim}', 3, 'm'),
+    hfr: m.ent('h_fr', 'h_{fr}'),
     xcf: nome(cel('C17'), 'x_{cf}', 3, 'm'),
   };
 }
@@ -154,6 +159,8 @@ function parcelas(m: Memoria, f: Folhas): Parcela[] {
     // P_topo·L sem IF na planilha: com P_topo = 0 a linha é zero e não acrescenta nada à conta
     (m.valor(cel('B21')) ?? 0) !== 0 && { linha: 21, simbolo: 'N_{topo}', x: f.xm },
     m.texto('Agua') === 'Sim' && { linha: 22, simbolo: 'N_w', x: null },
+    // aterro sobre a ponta: só com a garantia do solo da frente; aterro zero dá linha zero e fica fora
+    (m.valor(cel('B23')) ?? 0) !== 0 && { linha: 23, simbolo: 'N_{fr}', x: sub(f.B, div(f.bpta, DOIS)) },
   ];
   return lista.filter((p): p is Parcela => !!p);
 }
@@ -227,6 +234,10 @@ function cardCargas(r: Resultado): Card {
     20: mul(f.q, f.btal, f.L),
     21: mul(f.P, f.L),
     22: neg(mul(f.gw, max(cte(0, 0), sub(soma(f.hso, f.hs), f.zna)), f.B, f.L)),
+    23: contrafortes && !enterrado
+      // o contraforte aparente ocupa parte da ponta: desconta o volume dele no aterro (espelho do talão)
+      ? sub(mul(f.gama, f.hfr, f.bpta, f.L), mul(f.gama, f.eenr, min(f.bpta, almaCf), f.hfr))
+      : mul(f.gama, f.hfr, f.bpta, f.L),
   };
   const ps = parcelas(m, f);
   const passosParcelas: Passo[] = [];
@@ -241,6 +252,10 @@ function cardCargas(r: Resultado): Card {
         : soma(f.xm, meioT, meiaAlma), { casas: 3, unidade: 'm' }));
     }
   }
+  const peso = secao('Peso próprio', [
+    ...passosDoPeso(m),
+    ...(contrafortes ? passoDoGamaCf(m) : []),
+  ]);
   const verticais = secao('Cargas verticais por módulo', [
     ...passosParcelas,
     m.passo('N_tot', 'N_{tot}', soma(...ps.map(folhaDaParcela)), { casas: 3, unidade: 'kN' }),
@@ -262,7 +277,7 @@ function cardCargas(r: Resultado): Card {
     titulo: 'Fundação · cargas',
     ref: GILBERTO,
     figura: 'Fig. 15',
-    secoes: [geometria, verticais, empuxo],
+    secoes: [geometria, peso, verticais, empuxo],
     avisos: [],
     aplicavel: true,
   };
@@ -285,7 +300,7 @@ function cardTombamento(r: Resultado): Card {
   const momentoPositivo = (m.num('M_tb') ?? 0) > 0;          // IF(M_tb>0; M_est/M_tb; 99)
   const fsMin = m.ent('FS_tomb', 'FS_{tomb,m\\acute{\\imath}n}');
   const verifFS: PedidoDeVerificacao = {
-    chave: 'fundacao.tombamento', rotulo: 'Tombamento FS ≥ FS mín', limite: fsMin, relacao: '>=', celula: cel('B101'),
+    chave: 'fundacao.tombamento', rotulo: 'Tombamento FS ≥ FS mín', limite: fsMin, relacao: '>=', celula: 'chk_fs_t',
   };
 
   const fs = secao('Fator de segurança em torno do pé', [
@@ -306,10 +321,10 @@ function cardTombamento(r: Resultado): Card {
     tem célula para ele). O veredito é o da célula da planilha (B99).
   */
   const eNum = m.valor('e_f');
-  const elimNum = m.valor(cel('B38')) ?? 0;
+  const elimNum = m.valor('e_lim') ?? 0;
   const verifE: PedidoDeVerificacao = eNum !== null && eNum < 0
-    ? { chave: 'fundacao.excentricidade', rotulo: 'Tombamento |e| ≤ B/4', limite: -elimNum, relacao: '>=', celula: cel('B102') }
-    : { chave: 'fundacao.excentricidade', rotulo: 'Tombamento |e| ≤ B/4', limite: f.elim, relacao: '<=', celula: cel('B102') };
+    ? { chave: 'fundacao.excentricidade', rotulo: 'Tombamento |e| ≤ B/4', limite: -elimNum, relacao: '>=', celula: 'chk_e_t' }
+    : { chave: 'fundacao.excentricidade', rotulo: 'Tombamento |e| ≤ B/4', limite: f.elim, relacao: '<=', celula: 'chk_e_t' };
   const texE = eNum !== null && eNum < 0 ? `-e_{lim} = ${nt(-elimNum, 3)}\\,\\mathrm{m}` : undefined;
   const passoE = eNum !== null && m.passo('e_f', 'e', div(f.Mcen, f.N), {
     casas: 3, unidade: 'm', verif: verifE, ...(texE ? { limiteTex: texE } : {}),
@@ -323,7 +338,7 @@ function cardTombamento(r: Resultado): Card {
   const exc = secao('Excentricidade da resultante', [
     mN && m.passo('M_vc', 'M_N', mN, { casas: 3, unidade: 'kN·m' }),
     m.passo('M_cen', 'M_{cen}', soma(f.Mtb, f.MN), { casas: 3, unidade: 'kN·m' }),
-    eNum !== null && m.passo(cel('B38'), 'e_{lim}', div(f.B, cte(4, 0)), { casas: 3, unidade: 'm' }),
+    eNum !== null && m.passo('e_lim', 'e_{lim}', div(f.B, cte(4, 0)), { casas: 3, unidade: 'm' }),
     passoE,
   ], GILBERTO);
 
@@ -364,7 +379,7 @@ function cardDeslizamento(r: Resultado): Card {
     // N ≤ 0 (subpressão maior que o peso): a planilha zera o atrito com MAX(0; N)
     m.passo('R_at', 'R_{at}', [mul(f.N, tgDelta), mul(max(cte(0, 0), f.N), tgDelta)], { casas: 2, unidade: 'kN' }),
     comAdesao && m.passo('R_ad', 'R_{ad}', mul(m.ent('ades_b', 'c_a'), f.B, f.L), { casas: 2, unidade: 'kN' }),
-    comPassivo && m.passo('E_p', 'E_p', mul(div(div(mul(f.Kp, f.gama, pot(soma(f.hs, f.hden), 2)), DOIS), DOIS), f.L), {
+    comPassivo && m.passo('E_p', 'E_p', mul(div(div(mul(f.Kp, f.gama, pot(soma(f.hfr, f.hs, f.hden), 2)), DOIS), DOIS), f.L), {
       casas: 2, unidade: 'kN', ref: NBR_PASSIVO,
     }),
   ], GILBERTO);
@@ -378,7 +393,7 @@ function cardDeslizamento(r: Resultado): Card {
       ref: NBR_11682,
       verif: {
         chave: 'fundacao.deslizamento', rotulo: 'Deslizamento FS ≥ FS mín',
-        limite: m.ent('FS_desl', 'FS_{desl,m\\acute{\\imath}n}'), relacao: '>=', celula: cel('B104'),
+        limite: m.ent('FS_desl', 'FS_{desl,m\\acute{\\imath}n}'), relacao: '>=', celula: 'chk_fs_d',
       },
     }),
   ], GILBERTO);
@@ -420,7 +435,7 @@ function cardTensoes(r: Resultado): Card {
     const trapezio = Math.abs(e) <= B / 6;                 // IF(ABS(e_f) <= B_sap/6; trapézio; triângulo)
     if (Math.abs(e) >= B / 2) avisos.push('Resultante fora da base');
     const verifSigma: PedidoDeVerificacao = {
-      chave: 'fundacao.tensao', rotulo: 'σmáx ≤ σadm', limite: sAdm, relacao: '<=', celula: cel('B105'),
+      chave: 'fundacao.tensao', rotulo: 'σmáx ≤ σadm', limite: sAdm, relacao: '<=', celula: 'chk_sig',
     };
     const seisEB = div(mul(cte(6, 0), abs(f.e)), f.B);
     secoes.push(secao(trapezio ? 'Diagrama trapezoidal (|e| ≤ B/6)' : 'Diagrama triangular (|e| > B/6)', [
