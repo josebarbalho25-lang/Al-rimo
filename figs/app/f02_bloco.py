@@ -42,6 +42,9 @@ def desenhar():
                 with s.campo('t_bloco'):
                     s.dim_v(X(0) - 24, Y(0), Y(t), 't', side=-1, ext_from=(X(0), X(0)))
             else:
+                # parede do bloco (h_f) na área líquida, onde ela é o que sobra de concreto (Jose, 12/10); não é
+                # entrada, mas é a mesa da seção I (Fig. 3)
+                s.dim_v(X(L) + 22, Y(0), Y(hf), 'h_{f}', side=1, ext_from=(X(L), X(L)))
                 with s.campo('fpk_ref'):
                     s.text(X(L / 2), Y(t) + 44, f'A_{{liq}}/A_{{br}} = {rl}', size=T_PEQ + 2)
     # legenda: o que a hachura quer dizer
