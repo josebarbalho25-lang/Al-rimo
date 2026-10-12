@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import planilha from '@/motor/planilha.gerada.json';
 import { ENTRADAS_DO_MODELO } from '@/modelo/entradasDoModelo';
 import { figuraDaEntrada, figuras, motivoSemFigura, _mapa } from './mapa';
+import recortes from './recortes.gerado.json';
 
 const PASTA = fileURLToPath(new URL('../../public/figuras/', import.meta.url));
 const svgDe = (arquivo: string) => readFileSync(PASTA + arquivo, 'utf8');
@@ -132,5 +133,27 @@ describe('SVG das figuras do app (app/public/figuras)', () => {
       for (const t of textosDoSvg(svgDe(a))) if (t.trim().split(/\s+/).length > 6 && !/[=≤]/.test(t)) longos.push(`${a}: ${t}`);
     }
     expect(longos).toEqual([]);
+  });
+
+  // A memória mostra a figura recortada na caixa do JSON (figuraDoCard.ts). Caixa velha corta o desenho novo: se um
+  // SVG for refeito sem o gerar.py (que grava os dois juntos), o JSON e o data-desenho do arquivo se desencontram.
+  it('a caixa do desenho do JSON é a do SVG (data-desenho) e fica dentro da moldura', () => {
+    const erros: string[] = [];
+    for (const [id, caixa] of Object.entries(recortes as Record<string, number[]>)) {
+      const a = `${id}.svg`;
+      if (!arquivos.includes(a)) {
+        erros.push(`${id}: não há ${a}`);
+        continue;
+      }
+      const txt = svgDe(a);
+      const noSvg = /data-desenho="([^"]+)"/.exec(txt)?.[1].split(' ').map(Number);
+      if (!noSvg || noSvg.join() !== caixa.join()) erros.push(`${id}: JSON ${caixa.join(' ')} × SVG ${noSvg?.join(' ') ?? '—'}`);
+      const [vx, vy, vw, vh] = /viewBox="([^"]+)"/.exec(txt)![1].split(' ').map(Number);
+      const [x, y, w, h] = caixa;
+      if (x < vx || y < vy || x + w > vx + vw || y + h > vy + vh) erros.push(`${id}: caixa fora da moldura`);
+    }
+    // figura com data-desenho e sem caixa no JSON sairia com a moldura inteira na memória
+    for (const a of arquivos) if (/data-desenho=/.test(svgDe(a)) && !(a.replace('.svg', '') in recortes)) erros.push(`${a}: falta no JSON`);
+    expect(erros).toEqual([]);
   });
 });

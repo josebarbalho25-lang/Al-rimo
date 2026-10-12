@@ -165,7 +165,7 @@ export function desenhoDasSecoesDoPainel(r: Resultado): DesenhoDoCard | null {
 
   1. a faixa em PLANTA (b = 100 cm), no topo do card: as paredes do bloco (mesas), os furos grauteados a cada s com a
      barra, a zona comprimida sombreada e a linha neutra — só as cotas de largura (b, s, bw,f) e a espessura t;
-  2. as FORÇAS NA SEÇÃO, junto da verificação da parede (ou da seção T), numa escala maior — a profundidade é o que
+  2. as FORÇAS NA SEÇÃO, logo depois da verificação da parede, numa escala maior — a profundidade é o que
      importa: a parede comprimida (C mesa) e, em seção T, as almas comprimidas (C alma), com a largura proporcional à
      força por cm de profundidade (K·fd·b), a tração no aço (As·σs), a linha neutra, as profundidades (hf, y, x, d) e
      os braços até a barra.

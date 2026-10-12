@@ -13,6 +13,9 @@ import sys
 sys.dont_write_bytecode = True      # não deixar __pycache__ na pasta das figuras
 AQUI = os.path.dirname(os.path.abspath(__file__))
 SAIDA = os.path.normpath(os.path.join(AQUI, '..', '..', 'app', 'public', 'figuras'))
+# A caixa do desenho de cada figura (o data-desenho do SVG), para a memória de cálculo mostrar a figura recortada
+# sem abrir o arquivo: um JSON que o app importa. Gerar só algumas figuras atualiza só as caixas delas.
+RECORTES = os.path.normpath(os.path.join(AQUI, '..', '..', 'app', 'src', 'figuras', 'recortes.gerado.json'))
 sys.path.insert(0, AQUI)
 
 
@@ -25,6 +28,10 @@ def modulos():
 def main(pedidas):
     os.makedirs(SAIDA, exist_ok=True)
     resumo = {}
+    recortes = {}
+    if os.path.exists(RECORTES):
+        with open(RECORTES, encoding='utf8') as f:
+            recortes = json.load(f)
     for num, mod in modulos():
         if pedidas and num not in pedidas:
             continue
@@ -34,8 +41,11 @@ def main(pedidas):
         txt = fig.svg()
         with open(os.path.join(SAIDA, fig.pid + '.svg'), 'w', encoding='utf8', newline='\n') as f:
             f.write(txt)
+        recortes[fig.pid] = list(fig.recorte())
         resumo[fig.pid] = fig.campos()
         print(f'{fig.pid}  {len(txt) / 1024:5.1f} KB  campos: {", ".join(fig.campos()) or "—"}')
+    with open(RECORTES, 'w', encoding='utf8', newline='\n') as f:
+        f.write('{\n' + ',\n'.join(f'  "{k}": {json.dumps(v)}' for k, v in sorted(recortes.items())) + '\n}\n')
     return resumo
 
 

@@ -20,7 +20,8 @@ export function TabelaResumo({ cards }: { cards: Card[] }) {
   const th = { ...td, fontWeight: 600, color: R.tinta2, textAlign: 'left' as const };
   const num = { ...td, textAlign: 'right' as const, fontVariantNumeric: 'tabular-nums' as const, whiteSpace: 'nowrap' as const };
   return (
-    <table className="mem-resumo" style={{ width: '100%', borderCollapse: 'collapse', fontFamily: R.fonte }}>
+    // na tela, 1080 no máximo: o card cresceu por causa das figuras, e a tabela esticada afastava o número do nome
+    <table className="mem-resumo" style={{ width: '100%', maxWidth: papel ? undefined : 1080, borderCollapse: 'collapse', fontFamily: R.fonte }}>
       <thead>
         <tr>
           <th style={th}>Verificação</th>

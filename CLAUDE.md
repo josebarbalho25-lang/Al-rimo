@@ -130,6 +130,12 @@ e dizer ao Jose o que mudou e por quê.
 - **Seções cotadas na memória (Jose, 12/10: "não pode jogar número do nada"):** `memoria/desenhoDaSecaoI.ts` —
   faixa de 1 m da flexão do balanço (barras a cada s, LN x, bloco 0,8x), seção I do ELS do balanço e as duas seções I
   do painel. O card de flexão do balanço abre com a cadeia do fd (fbk → fpk → fpk,liq → fk → fd → K·fd).
+- **Figuras na memória (Jose, 12/10: "olha o tanto de espaço sobrando"; "coloca o desenho depois da seção 2"):** na
+  tela a figura do acervo sai recortada na caixa do desenho (`data-desenho` do SVG, copiado pelo `figs/app/gerar.py`
+  para `app/src/figuras/recortes.gerado.json`; o modal das entradas segue com a moldura única) e ocupa o vão à direita
+  da conta — largura da coluna e altura da conta, MEDIDAS no card (`memoria/CardMemoria.tsx`). Card até 1320 px.
+  Desenhos gerados (faixa da flexão, forças, seções) vão para a direita do grupo deles quando a coluna tem ≥ 600 px;
+  senão largura cheia antes do grupo. Forças da flexão: depois da verificação da parede. Papel e Word não mudaram.
 
 ## App (começou em 08/10/2026) — `app/` (Vite + React + TS + three, como o A-PORT)
 

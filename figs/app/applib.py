@@ -339,10 +339,18 @@ class Fig:
             cx += 34 + _larg_texto(rot, T_PEQ) + 28
 
     # ---- saída ---------------------------------------------------------------------------------------
-    def svg(s, folga=14, larg_min=LARG_MIN):
+    def recorte(s, folga=14):
+        """A caixa do desenho (sem a moldura), com folga: x, y, largura, altura no sistema do viewBox."""
         x0, y0, x1, y1 = s.caixa
         x0, y0 = math.floor(x0 - folga), math.floor(y0 - folga)
-        w, h = math.ceil(x1 + folga) - x0, math.ceil(y1 + folga) - y0
+        return x0, y0, math.ceil(x1 + folga) - x0, math.ceil(y1 + folga) - y0
+
+    def svg(s, folga=14, larg_min=LARG_MIN):
+        x0, y0, w, h = s.recorte(folga)
+        # data-desenho: a caixa do desenho sem a moldura. A memória de cálculo mostra a figura RECORTADA nela, no
+        # tamanho do vão ao lado da conta (Jose, 12/10: "olha o tanto de espaço sobrando") — a moldura única é do
+        # modal das entradas. O gerar.py copia a mesma caixa para app/src/figuras/recortes.gerado.json.
+        recorte = f'{x0} {y0} {w} {h}'
         # A MOLDURA ÚNICA (12/10): largura mínima de 1000 e a proporção ASPECTO em todas. O desenho fica centrado na
         # folga. Assim a letra sai do mesmo tamanho em todas as figuras e a caixa do modal não pula de aba em aba.
         # Figura que passar de 1000 de largura encolhe a letra: o desenho é que tem de caber (a régua de cima).
@@ -351,7 +359,7 @@ class Fig:
         x0 -= (W - w) // 2
         y0 -= (H - h) // 2
         w, h = W, H
-        return (f'<svg xmlns="http://www.w3.org/2000/svg" data-figura="{s.pid}" width="{w}" height="{h}" viewBox="{x0} {y0} {w} {h}">'
+        return (f'<svg xmlns="http://www.w3.org/2000/svg" data-figura="{s.pid}" data-desenho="{recorte}" width="{w}" height="{h}" viewBox="{x0} {y0} {w} {h}">'
                 f'<defs>{"".join(s.defs)}</defs>'
                 f'<rect data-fundo="" x="{x0}" y="{y0}" width="{w}" height="{h}" fill="#ffffff"/>'
                 f'<g id="{s.pid}-conteudo">' + ''.join(s.el) + '</g></svg>')

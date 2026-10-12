@@ -427,9 +427,10 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
   if (typeof coerente === 'string' && comeca(coerente, 'ATENÇÃO')) avisos.push('Barra em todos os furos: grautear todos (seção cheia)');
 
   // Os desenhos distribuídos (Jose, 12/10: "distribui os desenhos"): a faixa em planta no topo do card; as forças
-  // junto da conta que as acha — a verificação da parede (compressão só nela) ou a seção T.
+  // DEPOIS da verificação da parede ("coloca o desenho depois da seção 2") — primeiro a conta diz se a compressão
+  // cabe na parede, depois o desenho mostra; ele abre a seção seguinte (a seção T, ou o equilíbrio quando cabe).
   const forcas = desenhoDasForcasNaFaixa(m.r);
-  if (forcas) (mesaSo ? paredeDoBloco : secaoT).desenho = forcas;
+  if (forcas) (mesaSo ? linhaNeutra : secaoT).desenho = forcas;
   const desenho = desenhoDaFaixaEmPlanta(m.r);
   return {
     id: 'balanco.flexao',

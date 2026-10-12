@@ -48,7 +48,9 @@
 }
 .mem-acoes button:disabled { opacity: 0.5; cursor: default; }
 .mem-folha { overflow: auto; padding: 18px 26px 60px; min-width: 0; }
-.mem-folha > .mem-bloco { max-width: 1080px; margin: 0 auto 30px; padding-bottom: 26px; border-bottom: 1px solid var(--line, #d9dee4); }
+/* 1320 (era 1080): a figura do card ocupa o vão ao lado da conta (580), e com 1080 o vão era 470 — a letra do
+   desenho saía miúda e a figura não enchia o vão (Jose, 12/10). Em tela menor o card encolhe junto. */
+.mem-folha > .mem-bloco { max-width: 1320px; margin: 0 auto 30px; padding-bottom: 26px; border-bottom: 1px solid var(--line, #d9dee4); }
 .mem-folha > .mem-bloco:last-child { border-bottom: none; }
 
 @media (max-width: 760px) {
