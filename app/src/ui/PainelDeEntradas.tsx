@@ -26,6 +26,7 @@ import { memo, useCallback, useMemo, useState } from 'react';
 import type { Valor } from '@/motor/tipos';
 import type { Ajuste } from '@/modelo/tipos';
 import {
+  campoEspelhado,
   entradaAtiva,
   entradaDoAjuste,
   opcoesDoCampo,
@@ -85,7 +86,7 @@ export function useLinhasDeEntrada() {
     return m;
   }, [resultado]);
 
-  const propsDaLinha = (c: Campo) => {
+  const propsDoCampo = (c: Campo) => {
     const trava = valorTravado(c.meta.nome, ler);
     return {
       campo: c,
@@ -97,6 +98,19 @@ export function useLinhasDeEntrada() {
       aviso: avisoDoCampo(avisosDaConta, c.meta.nome),
       figura: figuraDaEntrada(c.meta.nome)?.titulo ?? null,
       definir,
+    };
+  };
+  // Linha espelho (o "l" da Geometria, Jose 12/10): mostra e edita o campo de verdade — espaçamento dos contrafortes
+  // ou comprimento do muro —, com a lista, o "→" e a figura dele; só o rótulo e o apagado são da linha.
+  const propsDaLinha = (c: Campo) => {
+    const e = campoEspelhado(c.meta.nome, ler);
+    const alvo = e ? CAMPOS.get(e.alvo) : undefined;
+    if (!e || !alvo) return propsDoCampo(c);
+    const daSecao = SECOES.find((s) => s.campos.some((x) => x.meta.nome === e.alvo))?.titulo ?? '';
+    return {
+      ...propsDoCampo(alvo),
+      campo: { ...alvo, curto: e.rotulo, dica: `${alvo.dica} — o mesmo campo do grupo ${daSecao}, que o desenho usa` },
+      ativa: e.ativa,
     };
   };
   return { ler, propsDaLinha };
@@ -158,14 +172,12 @@ export function PainelDeEntradas() {
               </div>
               {aberto && (
                 <div className="grupo-corpo">
-                  {s.campos.map((c) => (
-                    <LinhaDeEntrada
-                      key={c.meta.nome}
-                      {...propsDaLinha(c)}
-                      figuraAberta={aberta?.nome === c.meta.nome}
-                      abrirFigura={abrirFigura}
-                    />
-                  ))}
+                  {s.campos.map((c) => {
+                    const p = propsDaLinha(c);
+                    return (
+                      <LinhaDeEntrada key={c.meta.nome} {...p} figuraAberta={aberta?.nome === p.campo.meta.nome} abrirFigura={abrirFigura} />
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -217,7 +229,7 @@ export const LinhaDeEntrada = memo(function LinhaDeEntrada({
   let controle;
   switch (campo.controle) {
     case 'numero':
-      controle = <CampoNumero campo={campo} valor={valor} aoMudar={mudar} />;
+      controle = <CampoNumero campo={campo} valor={valor} aoMudar={mudar} desabilitado={travado} />;
       break;
     case 'simnao':
     case 'escolha':

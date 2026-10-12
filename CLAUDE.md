@@ -81,6 +81,14 @@ e dizer ao Jose o que mudou e por quê.
   também sugere Mello 100·(√N − 1), cada regra com a faixa de N (`sadm_20N`, `sadm_mel` + `_fx`), e a calculadora de
   consulta embaixo da Fig. 15 lê esses nomes (Jose, 10/10). ⚠️ `estabilidade.ts` e `modulacao/leitura.ts` ainda leem
   algumas células da aba Fundação por ENDEREÇO (B101, B102, B104, B105, B96): linha nova acima delas exige ajustar.
+- **l entre travamentos = o muro desenhado (Jose, 12/10).** Contrafortes: o he_ usa o espaçamento adotado
+  (`l_cf_adot`) e ignora o `l_trav`. Balanço travado nas duas pontas: l = comprimento do muro — a planilha não tem o
+  comprimento, então o app manda o L_total MODULAR como `l_trav` (store.ts, 2ª volta quando a modulação arredonda);
+  no Excel o projetista digita. No app a linha "l" da Geometria ESPELHA o campo de verdade (`campoEspelhado`:
+  `l_cf` com a lista, ou `L_total`) e o 3D refaz. Vãos que amarram (provado em `modulacao/vaosDaLista.test.ts`,
+  muro real, 34/54 e 59/79, enterrado e aparente, sem junta a prumo): bloco 19 → 0,80 a 4,00 de 0,20 em 0,20; bloco
+  14 → 0,95 a 3,75 de 0,40 em 0,40 (só nº par de meios módulos). Abaixo de 0,80 também amarra (14: 0,55; 19: 0,40 e
+  0,60), mas fica fora da lista pela decisão do vão mínimo.
 
 ## App (começou em 08/10/2026) — `app/` (Vite + React + TS + three, como o A-PORT)
 

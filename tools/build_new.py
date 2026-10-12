@@ -177,7 +177,7 @@ line(E, r, 'Travamento lateral transversal?', 'Não', '', 'Não = he = 2h (aula 
 dv_tl = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validation(dv_tl); dv_tl.add(f'B{r-1}')
 line(E, r, 'αv', 2.5, '', '1,0 se travada no topo e na base; 2,5 se travada só numa extremidade.', 'inp', '0.0', 'alfa_v'); r += 1
 line(E, r, 'αh', 1.0, '', '1,0 se travada dos dois lados; 2,5 se só de um lado.', 'inp', '0.0', 'alfa_h'); r += 1
-line(E, r, 'l (distância entre travamentos)', 3.0, 'm', 'Só usada com travamento lateral = Sim.', 'inp', '0.00', 'l_trav'); r += 1
+line(E, r, 'l (distância entre travamentos)', 3.0, 'm', 'Só usada com travamento lateral = Sim. Balanço: comprimento do muro travado nas duas pontas (no app vem do comprimento do muro). Contrafortes: vale o espaçamento adotado dos contrafortes (este campo é ignorado).', 'inp', '0.00', 'l_trav'); r += 1
 r += 1
 section(E, r, 'Solo e cargas'); r += 1
 line(E, r, 'Tipo de solo (para sugestões)', 'Argila', '', 'Areia, Argila ou Outro (usa a tabela de Gerscovich).', 'inp', None, 'Tipo_solo'); r += 1
@@ -680,7 +680,7 @@ r = 4
 section(B, r, 'Esforços'); r += 1
 line(B, r, 'Mk (empuxo)', '=Mk_', 'kN·m/m', 'Da aba Solo e Empuxo.', 'res', '0.00', None); r += 1
 line(B, r, 'Vk (empuxo)', '=Vk_', 'kN/m', '', 'res', '0.00', None); r += 1
-line(B, r, 'he (altura efetiva)', '=IF(Trav_lat="Sim",MIN(alfa_v*H_muro,0.7*SQRT(alfa_v*H_muro*alfa_h*l_trav)),2*H_muro)', 'm', 'h = altura do muro (o balanço é o muro inteiro, não só o trecho com solo). Sem travamento lateral: he = 2h. Com travamento: mín(αv·h; 0,7·√(αv·h·αh·l)).', 'res', '0.00', 'he_', 'Aula 12.2 / NBR 16868-1'); r += 1
+line(B, r, 'he (altura efetiva)', '=IF(Trav_lat="Sim",MIN(alfa_v*H_muro,0.7*SQRT(alfa_v*H_muro*alfa_h*IF(Tipo_muro="Contrafortes",l_cf_adot,l_trav))),2*H_muro)', 'm', 'h = altura do muro (o balanço é o muro inteiro, não só o trecho com solo). Sem travamento lateral: he = 2h. Com travamento: mín(αv·h; 0,7·√(αv·h·αh·l)); com contrafortes, l = espaçamento adotado dos contrafortes (Jose, 12/10).', 'res', '0.00', 'he_', 'Aula 12.2 / NBR 16868-1'); r += 1
 line(B, r, 'λ = he/t', '=he_/(t_bloco/100)', '', 'Não armada ≤ 24; armada ≤ 30.', 'res', '0.0', 'lambda_', 'Aula 12.2'); r += 1
 line(B, r, 'Nd na base', '=gama_f*peso_par*H_muro', 'kN/m', 'Peso próprio majorado (parede na altura do muro).', 'res', '0.00', 'Nd_'); r += 1
 line(B, r, 'M2d', '=Nd_*he_^2/(3600*t_bloco/100)', 'kN·m/m', 'Nd·he²/(3600·t). A compressão de N, que ajudaria, é desprezada.', 'res', '0.000', 'M2d_', 'ABCP 3.6.3.2'); r += 1

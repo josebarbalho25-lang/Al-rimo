@@ -18,6 +18,7 @@ import {
   ajustarAosTetos,
   valorAtual,
   valorTravado,
+  campoEspelhado,
 } from './campos';
 
 // O catálogo vem do JSON exportado da planilha (e não de '@/motor'), para o teste
@@ -389,5 +390,20 @@ describe('classe de solo com argila (Jose, 09/10)', () => {
   });
   it('"Não se aplica" é opção da lista da planilha (o combo consegue mostrar)', () => {
     expect(campoDe(meta('Classe_G'), 'planilha').opcoes.map((o) => o.valor)).toContain('Não se aplica');
+  });
+});
+
+describe('o "l" da Geometria espelha o muro desenhado (Jose, 12/10)', () => {
+  const ler = (a: Record<string, Valor>) => leitorDeValores(META, a, {});
+  it('contrafortes: é o espaçamento entre contrafortes (a lista que amarra), sempre ativo', () => {
+    expect(campoEspelhado('l_trav', ler({ Tipo_muro: 'Contrafortes', Trav_lat: 'Não' }))).toEqual({ alvo: 'l_cf', rotulo: 'Entre contrafortes l', ativa: true });
+  });
+  it('balanço: é o comprimento do muro, ativo só com travamento lateral', () => {
+    expect(campoEspelhado('l_trav', ler({ Tipo_muro: 'Balanço', Trav_lat: 'Sim' }))).toEqual({ alvo: 'L_total', rotulo: 'Comprimento do muro l', ativa: true });
+    expect(campoEspelhado('l_trav', ler({ Tipo_muro: 'Balanço', Trav_lat: 'Não' }))?.ativa).toBe(false);
+  });
+  it('os outros campos não espelham nada', () => {
+    expect(campoEspelhado('l_cf', ler({}))).toBeNull();
+    expect(campoEspelhado('H_muro', ler({}))).toBeNull();
   });
 });

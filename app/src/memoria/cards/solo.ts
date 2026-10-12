@@ -158,7 +158,9 @@ function cardEsforcosBalanco(r: Parameters<AutorDeCards>[0]): Card {
   const tM = m.ent('t_bloco', 't', { fator: 0.01, casas: 2, unidade: 'm' });   // a planilha guarda t em cm
   const av = m.ent('alfa_v', '\\alpha_v');
   const ah = m.ent('alfa_h', '\\alpha_h');
-  const l = m.ent('l_trav', '\\ell');
+  // Com contrafortes o travamento é o próprio contraforte: l = espaçamento adotado (planilha, he_; Jose 12/10)
+  const comCf = m.texto('Tipo_muro') === 'Contrafortes';
+  const l = comCf ? m.g('l_cf_adot', '\\ell_{cf}', 2, 'm') : m.ent('l_trav', '\\ell');
   const gf = m.ent('gama_f', '\\gamma_f');
   const gpar = m.ent('peso_par', 'g_{par}');
   const he = m.g('he_', 'h_e', 2, 'm');
@@ -171,7 +173,8 @@ function cardEsforcosBalanco(r: Parameters<AutorDeCards>[0]): Card {
     m.entrada('t_bloco', 't'),
     travado && m.entrada('alfa_v', '\\alpha_v'),
     travado && m.entrada('alfa_h', '\\alpha_h'),
-    travado && m.entrada('l_trav', '\\ell'),
+    travado && !comCf && m.entrada('l_trav', '\\ell'),
+    travado && comCf && m.passo('l_cf_adot', '\\ell_{cf}', null, { casas: 2, unidade: 'm', origem: 'adotado' }),
     m.passo('he_', 'h_e', travado
       ? min(mul(av, h), mul(cte(0.7, 1), raiz(mul(av, h, ah, l))))
       : mul(cte(2, 0), h), { casas: 2, unidade: 'm' }),

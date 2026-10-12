@@ -21,7 +21,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { secaoVisivel } from '@/estado/campos';
+import { campoEspelhado, secaoVisivel } from '@/estado/campos';
 import { SECOES } from '@/estado/store';
 import { figuraDaEntrada } from '@/figuras/mapa';
 import { CorteDoMuro } from '@/figuras/dinamicas/CorteDoMuro';
@@ -76,10 +76,12 @@ export function EntradaPorFiguras({ aoFechar }: { aoFechar: () => void }) {
   const figura = useMemo(() => {
     if (!secao) return null;
     const fixaDe = (nome: string | null) => (nome ? figuraDaEntrada(nome) : null);
-    const ativoAqui = ativo && secao.campos.some((c) => c.meta.nome === ativo) ? ativo : null;
+    // a linha espelho (o "l" da Geometria) é o campo que ela espelha: foco nela mostra a figura dele
+    const nomes = secao.campos.map((c) => campoEspelhado(c.meta.nome, ler)?.alvo ?? c.meta.nome);
+    const ativoAqui = ativo && nomes.includes(ativo) ? ativo : null;
     if (ABAS_DO_CORTE.has(secao.id) && (!ativoAqui || NO_CORTE.has(ativoAqui) || !fixaDe(ativoAqui))) return 'corte' as const;
     return fixaDe(ativoAqui) ?? secao.campos.map((c) => fixaDe(c.meta.nome)).find(Boolean) ?? null;
-  }, [secao, ativo]);
+  }, [secao, ativo, ler]);
 
   // O botão de figura de cada linha, aqui, só troca a figura da esquerda.
   const mostrarFigura = useCallback((nome: string) => setAtivo(nome), []);
@@ -127,14 +129,10 @@ export function EntradaPorFiguras({ aoFechar }: { aoFechar: () => void }) {
               if (nome) setAtivo(nome);
             }}
           >
-            {secao?.campos.map((c) => (
-              <LinhaDeEntrada
-                key={c.meta.nome}
-                {...propsDaLinha(c)}
-                figuraAberta={ativo === c.meta.nome}
-                abrirFigura={mostrarFigura}
-              />
-            ))}
+            {secao?.campos.map((c) => {
+              const p = propsDaLinha(c);
+              return <LinhaDeEntrada key={c.meta.nome} {...p} figuraAberta={ativo === p.campo.meta.nome} abrirFigura={mostrarFigura} />;
+            })}
             {secao?.id === 'solo' && <CalculadoraDoSolo />}
             {secao?.id === 'fundacao' && <CalculadoraDaTensao />}
           </div>
