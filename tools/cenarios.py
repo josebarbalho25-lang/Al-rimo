@@ -8,7 +8,12 @@ OPCOES/sortear = o domínio dos cenários sorteados (varredura.py procura erro; 
 valores que a planilha ACEITA: as listas da validação de dados — inclusive as que dependem de outra entrada (altura
 pelo tipo de muro; vão, contraforte e espaçamentos pelo bloco; Ø com espera pela sapata), que o sortear() resolve
 depois de sortear o bloco e a sapata."""
+import random
+
 import openpyxl
+
+# O que a aula 12.2 usa e o padrão da planilha não (Jose, 12/10: σsg somado e peso da parede calculado por padrão).
+AULA_122_ENTRADAS = {'sg_on': 'Não', 'peso_par': 3.0}
 
 VAL123 = {
     'H_muro': 2.6, 'H_solo': 2.6, 't_bloco': 14, 'Graute': 'Parcial (seção I)', 'Tipo_muro': 'Contrafortes',
@@ -38,6 +43,12 @@ OPCOES = {
     'bwv_dir': ['', 13.6], 'B_sap': [0.4, 1.0, 1.4, 2.5], 'h_sap': [0.2, 0.3, 0.5], 'a_ater': [0.05, 0.1, 0.5, 0.95, 1.5, 2.4], 'b_den': [0, 0.25], 'h_den': [0, 0.5],
     'P_topo': [0, 10], 'q_est': ['Sim', 'Não'], 'phi_base': ['', 30], 'dphi': [0.67, 1], 'ades_b': [0, 20], 'pass_on': ['Sim', 'Não'], 'SPT_b': [5, 20], 'sig_adm_dir': ['', 150],
     'cob_sap': [3, 5], 'phi_sap': [8, 10, 12.5, 16], 'phi_tor': [5, 6.3], 'bwh_els': [19, 20], 'fgk_dir': ['', 15, 30], 'psi_els': [1, 0.7], 'vao_ref': ['h', '2h'], 'sg_on': ['Sim', 'Não'], 'dxi': [1, 0.5], 'bw_dir': ['', 15],
+}
+# Entradas que chegaram depois do gabarito (12/10: peso próprio calculado). Sorteadas com um gerador PRÓPRIO, semeado
+# pelo cenário já sorteado: a sequência do sorteio principal não muda, e o sorteio17, o sorteio23... continuam sendo os
+# mesmos muros que os testes do app conhecem pelo nome.
+OPCOES_NOVAS = {
+    'reb_fac': ['Nenhum', 'Só na frente', 'Nas duas faces'], 'reb_esp': [1.5, 2.5], 'peso_par': ['', 3.5], 'gama_cf': ['', 20],
 }
 
 
@@ -89,6 +100,8 @@ def sortear(rnd):
     for k in PHI_ESPERA:
         if cabem and k in sc and sc[k] not in cabem:
             sc[k] = max([b for b in cabem if b <= sc[k]] or cabem[:1])
+    r2 = random.Random(repr(sorted(sc.items())))
+    sc.update({k: r2.choice(v) for k, v in OPCOES_NOVAS.items()})
     return {k: (None if v == '' else v) for k, v in sc.items()}
 
 

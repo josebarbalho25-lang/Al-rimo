@@ -13,7 +13,7 @@ Uso: python tools/testar.py              confere
 import json, os, subprocess, sys, tempfile
 AQUI = os.path.dirname(os.path.abspath(__file__)); RAIZ = os.path.dirname(AQUI)
 sys.path.insert(0, AQUI)
-from cenarios import VAL123, aplicar, ler
+from cenarios import AULA_122_ENTRADAS, VAL123, aplicar, ler
 from recalc_lo import recalc
 
 # valores do professor: nome -> (valor da aula, tolerância relativa)
@@ -25,8 +25,11 @@ REF = os.path.join(RAIZ, 'dados', 'referencia_regressao.json')
 ref = json.load(open(REF, encoding='utf8'))
 atualizar = '--atualizar' in sys.argv
 tmp = tempfile.mkdtemp(prefix='teste_')
-base = os.path.join(tmp, 'base.xlsx'); subprocess.run([sys.executable, os.path.join(AQUI, 'build_new.py'), base], check=True)
-val = os.path.join(tmp, 'val.xlsx'); aplicar(base, val, VAL123)
+gerada = os.path.join(tmp, 'gerada.xlsx'); subprocess.run([sys.executable, os.path.join(AQUI, 'build_new.py'), gerada], check=True)
+# A aula 12.2 não soma σsg e usa peso de parede 3,0 kN/m²; o padrão da planilha passou a somar e a calcular o peso
+# (Jose, 12/10). A base confere a aula com esses dois de volta ao que o professor usou.
+base = os.path.join(tmp, 'base.xlsx'); aplicar(gerada, base, AULA_122_ENTRADAS)
+val = os.path.join(tmp, 'val.xlsx'); aplicar(gerada, val, VAL123)
 falhas = 0
 for nome_caso, arq, aula, refc in (('12.2', base, AULA_122, ref['base']), ('VAL123', val, {}, ref['val123'])):
     calc = recalc(arq, os.path.join(tmp, 'rc_' + nome_caso))

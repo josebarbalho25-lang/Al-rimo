@@ -90,6 +90,20 @@ e dizer ao Jose o que mudou e por quê.
   14 → 0,95 a 3,75 de 0,40 em 0,40 (só nº par de meios módulos). Abaixo de 0,80 também amarra (14: 0,55; 19: 0,40 e
   0,60), mas fica fora da lista pela decisão do vão mínimo.
 
+- **Peso próprio da parede CALCULADO (Jose, 12/10):** "dado que a gente não precisa perder tempo fornecendo". Entradas:
+  `peso_us` = t·[22·Aliq/Abr + 24·(1 − Aliq/Abr)·f_gr] + 21·reboco·faces (kN/m²). f_gr = 1 com grauteamento total;
+  senão 1 − (1 − m/s)·(1 − 0,20/h) com as barras e canaletas ADOTADAS (balanço: `s_adot`, `h_pan`; contrafortes:
+  `s_pv`, `s_ph` do painel). Entrada nova só o reboco (`reb_fac` Nenhum/Só na frente/Nas duas faces, `reb_esp` cm).
+  24 graute e 21 argamassa = NBR 6120; 22 do concreto do bloco = DEDUÇÃO (catálogo ÷ volume). `peso_par` virou
+  opcional (digitado manda). O M2d usa `peso_ch` (todos os furos grauteados): a favor e sem conta circular com o
+  espaçamento automático. γ do contraforte idem (`gama_cf` opcional → `gama_cf_us` = 22·r + 24·(1 − r) ≈ 22,9).
+- **σsg somado por padrão (Jose, 12/10):** "o muro tem peso e isso contribui". `sg_on` padrão Sim. A aula 12.2 é
+  conferida com `AULA_122_ENTRADAS` (cenarios.py: σsg Não, peso 3,0). No app, entrada opcional vazia mostra o valor
+  usado no lugar do "auto" (`VALOR_AUTO` em estado/campos.ts).
+- **Proposta da entrada por figuras (12/10, aguardando o Jose):** https://claude.ai/artifact/XxiHij7TtwkNdtg5CrHmnw —
+  abas Muro / Solo e cargas / Materiais / Armadura (Contraforte + Painel) / Fundação / Drenagem / Critérios de cálculo,
+  lista lateral recolhível, escolhas com desenho, cota editável, padrão único das figuras, aterro sobre a ponta.
+
 ## App (começou em 08/10/2026) — `app/` (Vite + React + TS + three, como o A-PORT)
 
 - **A conta do app É a planilha.** `tools/exportar_motor.py` exporta as fórmulas para `app/src/motor/planilha.gerada.json`;

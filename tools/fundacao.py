@@ -30,8 +30,8 @@ cf_x = 'IF(LEFT(pos_cf,4)="Ente",a_ater-t_m/2-(tenr_adot-t_bloco)/200,a_ater+t_m
 # (terra sobre o talão — descontado o volume do contraforte enterrado só até onde há terra — e a coluna d'água, com o
 # NA medido do topo do solo). O empuxo já vem do perfil, que é da altura de solo.
 VERT = [
-    ('Muro (peso próprio)', '=peso_par*H_muro*Lm', '=a_ater'),
-    ('Contraforte', '=IF(Tipo_muro="Contrafortes",gama_cf*eenr/100*(tenr_adot-t_bloco)/100*H_muro,0)', f'=IF(Tipo_muro="Contrafortes",{cf_x},a_ater)'),
+    ('Muro (peso próprio)', '=peso_us*H_muro*Lm', '=a_ater'),
+    ('Contraforte', '=IF(Tipo_muro="Contrafortes",gama_cf_us*eenr/100*(tenr_adot-t_bloco)/100*H_muro,0)', f'=IF(Tipo_muro="Contrafortes",{cf_x},a_ater)'),
     ('Sapata + dente', '=gama_c*(B_sap*h_sap+b_den*h_den)*Lm', '=B_sap/2'),
     ('Solo sobre o talão', '=gama_solo*H_solo*heel*Lm-IF(AND(Tipo_muro="Contrafortes",LEFT(pos_cf,4)="Ente"),gama_solo*eenr/100*MIN(heel,(tenr_adot-t_bloco)/100)*H_solo,0)', '=heel/2'),
     ('Sobrecarga sobre o talão', '=IF(q_est="Sim",q_sobre*heel*Lm,0)', '=heel/2'),

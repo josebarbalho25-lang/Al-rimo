@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import dados from '@/motor/planilha.gerada.json';
 import type { EntradaMeta, Valor } from '@/motor/tipos';
+import { LUGAR } from './abas';
 import { ENTRADAS_DO_MODELO } from '@/modelo/entradasDoModelo';
 import {
   aplicarValor,
@@ -11,6 +12,7 @@ import {
   leitorDeValores,
   mesmoValor,
   montarSecoes,
+  campoVisivel,
   secaoVisivel,
   validarValor,
   _regras,
@@ -42,29 +44,31 @@ describe('junção das seções (planilha + modelo)', () => {
     expect(new Set(nomes)).toEqual(new Set(TODAS.map((m) => m.nome)));
   });
 
-  it('as seções saem na ordem do painel (a validação com cerâmico saiu em 09/10)', () => {
+  it('as abas saem na ordem do lançamento (Jose, 12/10: estado/abas.ts)', () => {
     expect(secoes.map((s) => s.id)).toEqual([
-      'geometria',
+      'muro',
       'solo',
-      'alvenaria',
-      'ancoragem',
-      'painelNaoArmado',
-      'els',
-      'contrafortes',
-      'painelContrafortes',
+      'materiais',
+      'armadura',
+      'contraforte',
+      'painel',
       'fundacao',
-      'modelo',
       'drenagem',
-      'coeficientes',
+      'criterios',
     ]);
   });
 
-  it('a origem diz para onde o valor vai (conta ou modelo)', () => {
-    const modelo = secoes.find((s) => s.id === 'modelo')!;
-    expect(modelo.campos.every((c) => c.origem === 'modelo')).toBe(true);
-    const geo = secoes.find((s) => s.id === 'geometria')!;
-    expect(geo.campos.every((c) => c.origem === 'planilha')).toBe(true);
-    expect(geo.campos[0].meta.nome).toBe('H_muro');
+  it('toda entrada tem lugar na tela (aba e grupo): nenhuma caiu no fim por falta de arrumação', () => {
+    const semGrupo = secoes.flatMap((s) => s.campos.filter((c) => !c.grupo).map((c) => c.meta.nome));
+    expect(semGrupo).toEqual([]);
+    for (const nome of LUGAR.keys()) expect(TODAS.some((m) => m.nome === nome), nome).toBe(true);
+  });
+
+  it('a aba Muro junta a geometria da conta e a do modelo, na ordem da tela', () => {
+    const muro = secoes.find((s) => s.id === 'muro')!;
+    expect(muro.campos[0].meta.nome).toBe('Tipo_muro');
+    expect(new Set(muro.campos.map((c) => c.origem))).toEqual(new Set(['planilha', 'modelo']));
+    expect(muro.campos.map((c) => c.meta.nome).indexOf('L_total')).toBe(muro.campos.map((c) => c.meta.nome).indexOf('H_muro') + 1);
   });
 
   it('títulos de seção sem citação de fonte (fonte é da memória)', () => {
@@ -87,19 +91,30 @@ describe('visibilidade das seções por Tipo_muro', () => {
     return secoes.filter((s) => secaoVisivel(s, ler)).map((s) => s.id);
   };
 
-  it('balanço esconde contrafortes e painel entre contrafortes', () => {
+  it('balanço esconde Contraforte e Painel e mostra a Armadura do balanço', () => {
     const v = visiveis('Balanço');
-    expect(v).not.toContain('contrafortes');
-    expect(v).not.toContain('painelContrafortes');
+    expect(v).not.toContain('contraforte');
+    expect(v).not.toContain('painel');
+    expect(v).toContain('armadura');
     expect(v).toContain('fundacao');
-    expect(v).toContain('painelNaoArmado');
   });
 
-  it('contrafortes mostra as duas', () => {
+  it('contrafortes troca a Armadura do balanço por Contraforte e Painel', () => {
     const v = visiveis('Contrafortes');
-    expect(v).toContain('contrafortes');
-    expect(v).toContain('painelContrafortes');
-    expect(v.length).toBe(secoes.length);
+    expect(v).toContain('contraforte');
+    expect(v).toContain('painel');
+    expect(v).not.toContain('armadura');
+  });
+
+  it('entrada de um tipo de muro só aparece com ele, mesmo em aba comum', () => {
+    const bal = leitorDeValores(META, { Tipo_muro: 'Balanço' }, {});
+    const cf = leitorDeValores(META, { Tipo_muro: 'Contrafortes' }, {});
+    const campo = (n: string) => secoes.flatMap((s) => s.campos).find((c) => c.meta.nome === n)!;
+    expect(campoVisivel(campo('l_cf'), bal)).toBe(false);
+    expect(campoVisivel(campo('l_cf'), cf)).toBe(true);
+    expect(campoVisivel(campo('sg_on'), cf)).toBe(false);
+    expect(campoVisivel(campo('sg_on'), bal)).toBe(true);
+    expect(campoVisivel(campo('H_muro'), cf)).toBe(true);
   });
 
   it('o padrão da planilha (aula 12.2) é balanço', () => {

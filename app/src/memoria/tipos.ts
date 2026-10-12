@@ -14,7 +14,7 @@ import type { Resultado } from '@/motor/tipos';
 
 /** Como a fonte é desenhada: "NBR 16868-1 · 11.2" / "ABCP · Tab. 3.2" / "Aula 12.3". */
 export interface Ref {
-  fonte: 'NBR 16868-1' | 'NBR 6118' | 'NBR 6122' | 'NBR 11682' | 'ABCP' | 'Aula 12.1' | 'Aula 12.2' | 'Aula 12.3'
+  fonte: 'NBR 16868-1' | 'NBR 6118' | 'NBR 6122' | 'NBR 11682' | 'NBR 6120' | 'ABCP' | 'Aula 12.1' | 'Aula 12.2' | 'Aula 12.3'
     | 'Libânio' | 'Gilberto' | 'Curso' | 'Dedução'
     // medida tirada dos templates de montagem que o Jose modelou no Revit (dados/encaixes_revit/)
     | 'Template do Revit';

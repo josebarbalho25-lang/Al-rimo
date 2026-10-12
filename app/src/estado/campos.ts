@@ -15,6 +15,7 @@
 import type { Alteracoes, EntradaMeta, Valor } from '@/motor/tipos';
 import { lerNumero } from './numeros';
 import { definicaoDaSecao, rotuloCompleto, rotuloCurto, semCitacao } from './rotulos';
+import { LUGAR, type TipoDeMuro } from './abas';
 
 export type Origem = 'planilha' | 'modelo';
 
@@ -57,13 +58,17 @@ export interface Campo {
   inteiro: boolean;
   /** Mínimo/máximo que o campo aceita, quando há (ver FAIXA). */
   faixa: Faixa | null;
+  /** Subtítulo do grupo em que a entrada mora na tela (estado/abas.ts); ausente = entrada que a tela ainda não arrumou. */
+  grupo?: string;
+  /** Só aparece com este tipo de muro (estado/abas.ts). */
+  soCom?: TipoDeMuro;
 }
 
 export interface Secao {
   id: string;
   titulo: string;
   ordem: number;
-  soCom?: 'Contrafortes';
+  soCom?: TipoDeMuro;
   campos: Campo[];
 }
 
@@ -221,17 +226,32 @@ export function montarSecoes(
   doModelo: readonly EntradaMeta[],
 ): Secao[] {
   const porId = new Map<string, Secao>();
+  const posicao = new Map<string, number>();
   const juntar = (meta: EntradaMeta, origem: Origem) => {
-    const def = definicaoDaSecao(meta.secao);
+    // A tela arruma pela ordem do lançamento (estado/abas.ts); a entrada que ela ainda não conhece cai na seção da
+    // faixa da planilha, no fim — não some.
+    const lugar = LUGAR.get(meta.nome);
+    const def = lugar
+      ? { id: lugar.aba.id, titulo: lugar.aba.titulo, ordem: lugar.ordemDaAba, soCom: lugar.aba.soCom }
+      : definicaoDaSecao(meta.secao);
     let s = porId.get(def.id);
     if (!s) {
-      s = { id: def.id, titulo: def.titulo, ordem: def.ordem, soCom: def.soCom, campos: [] };
+      s = { id: def.id, titulo: def.titulo, ordem: lugar ? def.ordem : Math.max(def.ordem, 500), soCom: def.soCom, campos: [] };
       porId.set(def.id, s);
     }
-    s.campos.push(campoDe(meta, origem));
+    const c = campoDe(meta, origem);
+    if (lugar) {
+      c.grupo = lugar.grupo;
+      if (lugar.soCom) c.soCom = lugar.soCom;
+      posicao.set(meta.nome, lugar.posicao);
+    }
+    s.campos.push(c);
   };
   for (const m of daPlanilha) juntar(m, 'planilha');
   for (const m of doModelo) juntar(m, 'modelo');
+  // dentro da aba, a ordem da tela; a entrada sem lugar vai depois, na ordem da fonte (sort estável)
+  const fim = Number.MAX_SAFE_INTEGER;
+  for (const s of porId.values()) s.campos.sort((a, b) => (posicao.get(a.meta.nome) ?? fim) - (posicao.get(b.meta.nome) ?? fim));
   // sort é estável: seções de mesma ordem (desconhecidas) ficam na ordem em que apareceram.
   return [...porId.values()].sort((a, b) => a.ordem - b.ordem);
 }
@@ -473,7 +493,12 @@ export function ajustarAosTetos(
 
 /* ── o que aparece e o que se apaga ───────────────────────────────────── */
 
-/** A seção aparece? (contrafortes e painel entre contrafortes só com Tipo_muro = Contrafortes) */
+/** A entrada aparece com o tipo de muro atual? (a armadura do balanço some com contrafortes, e vice-versa) */
+export function campoVisivel(campo: Pick<Campo, 'soCom'>, ler: LerValor): boolean {
+  return !campo.soCom || ler('Tipo_muro') === campo.soCom;
+}
+
+/** A seção aparece? (Armadura só no balanço; Contraforte e Painel só com contrafortes) */
 export function secaoVisivel(secao: Pick<Secao, 'soCom'>, ler: LerValor): boolean {
   if (!secao.soCom) return true;
   return ler('Tipo_muro') === secao.soCom;
@@ -514,6 +539,8 @@ const ATIVA_SE: Record<string, (ler: LerValor) => boolean> = {
   gama_w: (l) => l('Agua') === 'Sim',
   bal_cf: (l) => String(l('tipo_cf') ?? '').startsWith('Extrem'),
   gama_cf: (l) => l('Tipo_muro') === 'Contrafortes',
+  // espessura do reboco só pesa com reboco (Entradas, g_reb: IF(reb_fac=…;…;0))
+  reb_esp: (l) => l('reb_fac') !== 'Nenhum',
   Graute: soNoBalanco,
   bw_dir: (l) => soNoBalanco(l) && String(l('Graute') ?? '').startsWith('Parcial'),
   phi_v: soNoBalanco,
@@ -548,6 +575,20 @@ export function entradaAtiva(nome: string, ler: LerValor): boolean {
 */
 const TRAVADO_SE: Record<string, (ler: LerValor) => Valor | undefined> = {
   Classe_G: (l) => (l('Tipo_solo') === 'Argila' ? 'Não se aplica' : undefined),
+};
+
+/*
+  O "AUTO" COM NÚMERO (Jose, 12/10: o peso próprio deixou de ser digitado). A entrada opcional vazia mostrava só
+  "auto"; quando a planilha publica o valor que usou no lugar dela, o campo vazio mostra esse número, apagado como
+  todo texto de exemplo — o engenheiro vê o que a conta adotou sem abrir a memória, e digitar por cima continua
+  mandando. Mesma unidade da entrada (o nome da direita é a célula "usado" da planilha).
+*/
+export const VALOR_AUTO: Readonly<Record<string, string>> = {
+  peso_par: 'peso_us',
+  gama_cf: 'gama_cf_us',
+  sig_adm_dir: 's_adm',
+  s_pv_dir: 's_pv',
+  s_ph_dir: 's_ph',
 };
 
 /** O valor em que o campo fica travado na situação atual, ou undefined (campo livre). */

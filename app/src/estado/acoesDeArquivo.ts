@@ -55,11 +55,13 @@ function naoDeuPara(acao: string, e: unknown): string {
   return ruim(motivo ? `Não deu para ${acao}: ${motivo}` : `Não deu para ${acao}`);
 }
 
-export function novoProjeto(): void {
-  if (!perderAlteracoes('O muro tem alterações não salvas. Começar outro mesmo assim?')) return;
+/** Começa um muro novo. false = o usuário desistiu (tinha alteração não salva). */
+export function novoProjeto(): boolean {
+  if (!perderAlteracoes('O muro tem alterações não salvas. Começar outro mesmo assim?')) return false;
   alcaAtual = null;
   useApp.getState().carregar(projetoNovo(), null);
   avisar('Projeto novo');
+  return true;
 }
 
 export async function abrirProjeto(): Promise<void> {

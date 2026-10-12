@@ -20,6 +20,7 @@ import {
   novoProjeto,
   salvarProjeto,
 } from '@/estado/acoesDeArquivo';
+import { useInterface } from '@/estado/interface';
 import { useApp } from '@/estado/store';
 import { definirPreferencia, NOME_DO_TEMA, proximoTema, usePreferencias } from '@/estilo/preferenciasDaInterface';
 import { Configuracoes } from './Configuracoes';
@@ -28,6 +29,7 @@ import {
   IconeAbrir,
   IconeEngrenagem,
   IconeExportar,
+  IconeFigura,
   IconeImprimir,
   IconeNovo,
   IconeSalvar,
@@ -45,6 +47,8 @@ export function TopBar() {
   const [config, setConfig] = useState(false);
   const fecharConfig = useCallback(() => setConfig(false), []);
   const [termo, setTermo] = useState(false);
+  const abrirPorFiguras = useInterface((s) => s.abrirPorFiguras);
+  const porFiguras = useInterface((s) => s.porFiguras);
   const fecharTermo = useCallback(() => setTermo(false), []);
 
   return (
@@ -59,7 +63,8 @@ export function TopBar() {
       <div className="separador" />
 
       <div className="grupo-botoes">
-        <button className="btn-icone" title="Novo" onClick={novoProjeto}>
+        {/* Muro novo abre direto na entrada por figuras (Jose, 12/10). */}
+        <button className="btn-icone" title="Novo" onClick={() => novoProjeto() && abrirPorFiguras()}>
           <IconeNovo tamanho={16} />
         </button>
         <button className="btn-icone" title="Abrir  ·  Ctrl+O" onClick={() => void abrirProjeto()}>
@@ -71,6 +76,16 @@ export function TopBar() {
           onClick={() => void salvarProjeto()}
         >
           <IconeSalvar tamanho={16} />
+        </button>
+      </div>
+
+      <div className="separador" />
+
+      {/* A porta principal das entradas (Jose, 12/10): com nome, não só ícone — é o comando que mais se usa. */}
+      <div className="grupo-botoes">
+        <button type="button" className={`btn-por-figuras${porFiguras ? ' on' : ''}`} title="Entrada por figuras" onClick={abrirPorFiguras}>
+          <IconeFigura tamanho={15} />
+          Entradas
         </button>
       </div>
 

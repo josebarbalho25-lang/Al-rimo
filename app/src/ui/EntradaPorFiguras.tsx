@@ -28,10 +28,10 @@ import { CorteDoMuro } from '@/figuras/dinamicas/CorteDoMuro';
 import { CalculadoraDoSolo } from './CalculadoraDoSolo';
 import { CalculadoraDaTensao } from './CalculadoraDaTensao';
 import { IconeFechar } from './icones';
-import { LinhaDeEntrada, useLinhasDeEntrada } from './PainelDeEntradas';
+import { LinhaDeEntrada, linhasDaSecao, useLinhasDeEntrada } from './PainelDeEntradas';
 
 /** Abas em que o corte vivo é a figura. */
-const ABAS_DO_CORTE = new Set(['geometria', 'solo', 'fundacao']);
+const ABAS_DO_CORTE = new Set(['muro', 'solo', 'fundacao']);
 /** Campos que o corte vivo mostra (os outros campos dessas abas mostram a figura fixa deles). */
 const NO_CORTE = new Set(['H_muro', 'H_solo', 't_bloco', 'Tipo_muro', 'q_sobre', 'Agua', 'z_NA', 'B_sap', 'h_sap', 'a_ater']);
 
@@ -129,10 +129,12 @@ export function EntradaPorFiguras({ aoFechar }: { aoFechar: () => void }) {
               if (nome) setAtivo(nome);
             }}
           >
-            {secao?.campos.map((c) => {
-              const p = propsDaLinha(c);
-              return <LinhaDeEntrada key={c.meta.nome} {...p} figuraAberta={ativo === p.campo.meta.nome} abrirFigura={mostrarFigura} />;
-            })}
+            {secao &&
+              linhasDaSecao(secao.campos, ler).map((l) => {
+                if ('grupo' in l) return <div className="entrada-grupo" key={`g:${l.grupo}`}>{l.grupo}</div>;
+                const p = propsDaLinha(l.campo);
+                return <LinhaDeEntrada key={l.campo.meta.nome} {...p} figuraAberta={ativo === p.campo.meta.nome} abrirFigura={mostrarFigura} />;
+              })}
             {secao?.id === 'solo' && <CalculadoraDoSolo />}
             {secao?.id === 'fundacao' && <CalculadoraDaTensao />}
           </div>

@@ -26,6 +26,7 @@ import type { AutorDeCards, Card, Expr, Passo, Ref } from '../tipos';
 import { abs, cte, div, max, min, mul, neg, nome, pot, rad, soma, sub, tan } from '../expr';
 import { memoriaDe, secao, type Memoria, type PedidoDeVerificacao } from '../passo';
 import { nt } from '../formato';
+import { passoDoGamaCf, passosDoPeso } from './pesoProprio';
 
 const ABA = 'Fundação';
 const cel = (endereco: string) => `${ABA}!${endereco}`;
@@ -97,7 +98,8 @@ function folhas(m: Memoria) {
     bden: m.ent('b_den', 'b_{den}'),
     hden: m.ent('h_den', 'h_{den}'),
     gc: m.ent('gama_c', '\\gamma_c'),
-    gcf: m.ent('gama_cf', '\\gamma_{cf}'),
+    // γ do contraforte e peso da parede: os USADOS (calculados ou digitados — cards/pesoProprio.ts)
+    gcf: m.g('gama_cf_us', '\\gamma_{cf}', 2, 'kN/m³'),
     P: m.ent('P_topo', 'P_{topo}'),
     // peça pesa na altura do MURO (parede, contraforte); terra e água, na altura de SOLO
     hm: m.ent('H_muro', 'h_{muro}'),
@@ -106,7 +108,7 @@ function folhas(m: Memoria) {
     gama: m.ent('gama_solo', '\\gamma'),
     gw: m.ent('gama_w', '\\gamma_w'),
     zna: m.ent('z_NA', 'z_{NA}'),
-    gpar: m.ent('peso_par', 'g_{par}'),
+    gpar: m.g('peso_us', 'g_{par}', 2, 'kN/m²'),
     // (tenr − t)/100 da planilha escrito em metros: t_enr − t com as duas em m, como se confere à mão
     tb: m.ent('t_bloco', 't', { fator: 0.01, casas: 2, unidade: 'm' }),
     t: m.g('t_m', 't', 2, 'm'),
@@ -241,6 +243,10 @@ function cardCargas(r: Resultado): Card {
         : soma(f.xm, meioT, meiaAlma), { casas: 3, unidade: 'm' }));
     }
   }
+  const peso = secao('Peso próprio', [
+    ...passosDoPeso(m),
+    ...(contrafortes ? passoDoGamaCf(m) : []),
+  ]);
   const verticais = secao('Cargas verticais por módulo', [
     ...passosParcelas,
     m.passo('N_tot', 'N_{tot}', soma(...ps.map(folhaDaParcela)), { casas: 3, unidade: 'kN' }),
@@ -262,7 +268,7 @@ function cardCargas(r: Resultado): Card {
     titulo: 'Fundação · cargas',
     ref: GILBERTO,
     figura: 'Fig. 15',
-    secoes: [geometria, verticais, empuxo],
+    secoes: [geometria, peso, verticais, empuxo],
     avisos: [],
     aplicavel: true,
   };

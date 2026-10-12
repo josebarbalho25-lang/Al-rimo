@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import dados from '@/motor/planilha.gerada.json';
 import type { EntradaMeta } from '@/motor/tipos';
 import { ENTRADAS_DO_MODELO } from '@/modelo/entradasDoModelo';
+import { LUGAR } from './abas';
 import { definicaoDaSecao, ROTULO_CURTO, rotuloCompleto, rotuloCurto, rotuloDeReserva, semCitacao } from './rotulos';
 
 const PLANILHA = (dados as unknown as { entradas: EntradaMeta[] }).entradas;
@@ -30,7 +31,8 @@ describe('rótulo curto de cada entrada', () => {
   it('dentro de uma seção, dois campos não têm o mesmo rótulo', () => {
     const porSecao = new Map<string, string[]>();
     for (const m of TODAS) {
-      const id = definicaoDaSecao(m.secao).id;
+      // a aba da tela (estado/abas.ts); a da faixa da planilha só para quem a tela ainda não arrumou
+      const id = LUGAR.get(m.nome)?.aba.id ?? definicaoDaSecao(m.secao).id;
       porSecao.set(id, [...(porSecao.get(id) ?? []), rotuloCurto(m.nome, m.rotulo)]);
     }
     for (const [id, rotulos] of porSecao) expect(new Set(rotulos).size, id).toBe(rotulos.length);

@@ -9,6 +9,7 @@
 import type { AutorDeCards, Card, Expr } from '../tipos';
 import { cte, div, max, min, mul, nome, par, pot, rad, raiz, soma, sub, tan } from '../expr';
 import { memoriaDe, secao } from '../passo';
+import { passoDoPesoCheio } from './pesoProprio';
 import { avisoDaPlanilha } from '@/estado/avisosDaPlanilha';
 
 const ABA = 'Solo e Empuxo';
@@ -162,7 +163,8 @@ function cardEsforcosBalanco(r: Parameters<AutorDeCards>[0]): Card {
   const comCf = m.texto('Tipo_muro') === 'Contrafortes';
   const l = comCf ? m.g('l_cf_adot', '\\ell_{cf}', 2, 'm') : m.ent('l_trav', '\\ell');
   const gf = m.ent('gama_f', '\\gamma_f');
-  const gpar = m.ent('peso_par', 'g_{par}');
+  // o M2d usa o peso com TODOS os furos grauteados (planilha, peso_ch): sem conta circular com o espaçamento automático
+  const gpar = m.g('peso_ch', 'g_{par,ch}', 2, 'kN/m²');
   const he = m.g('he_', 'h_e', 2, 'm');
   const Mk = m.g('Mk_', 'M_k', 2, 'kN·m/m');
   const Nd = m.g('Nd_', 'N_d', 2, 'kN/m');
@@ -188,7 +190,7 @@ function cardEsforcosBalanco(r: Parameters<AutorDeCards>[0]): Card {
   const momento = secao('Momento de cálculo na base', [
     m.passo('Mk_', 'M_k', null, { casas: 2, unidade: 'kN·m/m', origem: 'calculado' }),
     m.entrada('gama_f', '\\gamma_f'),
-    somaM2d && m.entrada('peso_par', 'g_{par}'),
+    somaM2d && passoDoPesoCheio(m),
     somaM2d && m.passo('Nd_', 'N_d', mul(gf, gpar, h), { casas: 2, unidade: 'kN/m' }),
     somaM2d && m.passo('M2d_', 'M_{2d}', div(mul(Nd, pot(he, 2)), mul(cte(3600, 0), tM)), {
       casas: 3, unidade: 'kN·m/m', ref: { fonte: 'ABCP', item: '3.6.3.2' },
