@@ -310,6 +310,13 @@ e dizer ao Jose o que mudou e por quê.
   IFC/quantitativo com o muro real; Ag da conta pelo bloco desenhado (decidir).
   Relatórios dos agentes: `_trabalho/` (fora do git).
 
+- **Anotado do Jose (12/10, noite — fazer depois, ele avisa quando):**
+  1. Barra horizontal do painel (a da canaleta) no contraforte: hoje é traspasse + L; trocar por barra dobrada em U de
+     um contraforte ao outro, vários U em sequência, cada barra engastada duas vezes ("é mais fácil dobrar a barra em U
+     do que fazer um traspasse e depois um L").
+  2. Estribos desenhados quadrados: desenhar com as dobras reais da barra (raio de dobra, ganchos).
+  3. Estribo só quando a conta pede: em alvenaria estrutural não é usual estribo sem necessidade. Hoje o app põe
+     estribo mesmo quando o cisalhamento passa sem ele.
 - Receber a NBR 16868-1 em PDF: conferir numeração de itens, Anexo E (βf) e os contornos do ábaco do ELS (lidos do slide).
 - Confirmar os FS da NBR 11682 (tombamento 2,0, deslizamento 1,5 — "pelo que sei").
 - Fig. 24 (tombamento e deslizamento no traço do Bastos, Fig. 1.116) FEITA 10/10: planilha e app; abre em dphi, ades_b, pass_on, FS_tomb, FS_desl.
