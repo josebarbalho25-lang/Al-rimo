@@ -11,7 +11,8 @@
       largura da coluna e a altura da conta que sobra (nunca menos que FIG_MIN);
     - os desenhos gerados para o muro (faixa da flexão, seção do contraforte...) vão para a direita do grupo deles
       quando a coluna tem largura para a letra (LADO_DESENHO); em tela menor voltam à largura cheia, antes do grupo;
-    - o que está à direita acompanha a rolagem quando a conta é longa.
+    - a direita fica PARADA no alto do grupo. Ela chegou a acompanhar a rolagem (sticky) e o Jose viu as figuras
+      "dançando pra baixo e pra cima" ao rolar (12/10: "trava elas"): figura de referência não anda.
   O vão é MEDIDO (ResizeObserver no card e nas colunas da conta), não adivinhado: a conta muda de altura com o muro e
   com a fonte da fórmula. No papel nada disso: a figura vai inteira, da mesma altura em todos os cards (imprimir.tsx),
   e o Word lê a árvore do papel.
@@ -264,7 +265,7 @@ function ColunaDaDireita({ desenhos, fig, geo, alturaDaConta }: {
   }
   return (
     <div className="mem-lado" style={{ flex: '1 1 340px', minWidth: 0, alignSelf: 'stretch' }}>
-      <div style={{ position: 'sticky', top: 12 }}>
+      <div>
         {desenhos.map((d, i) => (
           <figure key={i} className="mem-desenho" style={{ margin: `0 auto ${ENTRE}px`, maxWidth: d.largura ?? 660 }}>
             <figcaption style={{ fontSize: R.nota, lineHeight: '16px', color: R.apagado, marginBottom: 4 }}>{d.titulo}</figcaption>
