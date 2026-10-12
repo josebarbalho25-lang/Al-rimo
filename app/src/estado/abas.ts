@@ -56,7 +56,7 @@ export const ABAS: readonly Aba[] = [
       { titulo: 'Solo contido', campos: ['H_solo', 'Tipo_solo', 'NSPT', 'Umidade', 'Classe_G', 'gama_solo', 'phi_solo', 'c_solo', 'Ka_dir'] },
       { titulo: 'Sobrecarga', campos: ['q_sobre'] },
       { titulo: 'Água', campos: ['Agua', 'z_NA', 'gama_w'] },
-      { titulo: 'Solo da frente', campos: ['pass_on'] },
+      { titulo: 'Solo da frente', campos: ['pass_on', 'h_fr'] },
     ],
   },
   {

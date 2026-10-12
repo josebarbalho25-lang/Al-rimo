@@ -119,6 +119,7 @@
     "dphi": { "figura": "fig24", "campo": "dphi" },
     "ades_b": { "figura": "fig24", "campo": "ades_b" },
     "pass_on": { "figura": "fig24", "campo": "pass_on" },
+    "h_fr": { "figura": "fig24" },
     "SPT_b": { "figura": "fig15", "campo": "SPT_b" },
     "sig_adm_dir": { "figura": "fig15", "campo": "sig_adm_dir" },
     "FS_tomb": { "figura": "fig24", "campo": "FS_tomb" },

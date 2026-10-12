@@ -49,6 +49,7 @@ OPCOES = {
 # mesmos muros que os testes do app conhecem pelo nome.
 OPCOES_NOVAS = {
     'reb_fac': ['Nenhum', 'Só na frente', 'Nas duas faces'], 'reb_esp': [1.5, 2.5], 'peso_par': ['', 3.5], 'gama_cf': ['', 20],
+    'h_fr': [0, 0.5, 1.2],
 }
 
 

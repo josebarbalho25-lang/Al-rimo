@@ -100,9 +100,17 @@ e dizer ao Jose o que mudou e por quê.
 - **σsg somado por padrão (Jose, 12/10):** "o muro tem peso e isso contribui". `sg_on` padrão Sim. A aula 12.2 é
   conferida com `AULA_122_ENTRADAS` (cenarios.py: σsg Não, peso 3,0). No app, entrada opcional vazia mostra o valor
   usado no lugar do "auto" (`VALOR_AUTO` em estado/campos.ts).
-- **Proposta da entrada por figuras (12/10, aguardando o Jose):** https://claude.ai/artifact/XxiHij7TtwkNdtg5CrHmnw —
+- **Aterro sobre a ponta (Jose, 12/10):** entrada `h_fr` (m acima do topo da sapata). Conta SÓ com `pass_on` = Sim
+  (a mesma garantia do passivo, agora "solo da frente garantido"): linha 23 da tabela de cargas verticais da Fundação
+  (γ·h_fr·ponta, x = B − ponta/2, desconta o contraforte APARENTE), fatias da ponta (q = σ − γc·h − γ·h_fr) e passivo
+  Kp·γ·(h_fr + h + dente)²/2 ÷ 2. As verificações da Fundação que o app lê ganharam nome (`chk_fs_t`, `chk_e_t`,
+  `chk_fs_d`, `chk_sig`, `e_lim`, `s_tor_f`): não há mais leitura por endereço da Fundação fora das linhas 12–23.
+- **Proposta da entrada por figuras (12/10, aprovada: "pode ir desenvolvendo"; recomendações aceitas):** https://claude.ai/artifact/XxiHij7TtwkNdtg5CrHmnw —
   abas Muro / Solo e cargas / Materiais / Armadura (Contraforte + Painel) / Fundação / Drenagem / Critérios de cálculo,
   lista lateral recolhível, escolhas com desenho, cota editável, padrão único das figuras, aterro sobre a ponta.
+  FEITO 12/10: abas (`estado/abas.ts`), lista recolhível, botão Entradas na barra de cima, Novo abre nas figuras,
+  escolhas com desenho (`ui/EscolhaComDesenho.tsx`), cota editável no corte vivo, aterro no corte vivo. FALTA: padrão
+  único das 24 figuras (regras na proposta; Jose quer avaliar quais melhorar) e as figuras vivas novas.
 
 ## App (começou em 08/10/2026) — `app/` (Vite + React + TS + three, como o A-PORT)
 

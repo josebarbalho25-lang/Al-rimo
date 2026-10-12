@@ -83,7 +83,8 @@ export function verificacao(valor: number | null, pedido: PedidoDeVerificacao, r
   const temNumeros = valor !== null && limite !== null && Number.isFinite(valor) && Number.isFinite(limite);
   let passa = temNumeros ? (relacao === '<=' ? valor <= limite : valor >= limite) : false;
   if (pedido.celula && r) {
-    const v = r.cel(pedido.celula);
+    // nome definido ou endereço (as verificações da Fundação passaram a ter nome em 12/10)
+    const v = lerValor(r, pedido.celula);
     if (typeof v === 'string') passa = v.trim().toUpperCase().startsWith('OK');
   }
   let util: number | null = null;

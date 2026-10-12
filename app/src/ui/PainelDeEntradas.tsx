@@ -45,6 +45,7 @@ import { casasDoFormato, escreverNoCampo, escreverNumero } from '@/estado/numero
 import { CAMPOS, leitorDoEstado, SECOES, useApp } from '@/estado/store';
 import { figuraDaEntrada } from '@/figuras/mapa';
 import { CampoNumero, Escolha, Lista } from './controles';
+import { EscolhaComDesenho, temDesenho } from './EscolhaComDesenho';
 import { Chevron, IconeAlerta, IconeFigura } from './icones';
 import { ModalDaFigura, type FiguraDaEntrada } from './ModalDaFigura';
 
@@ -229,6 +230,7 @@ export const LinhaDeEntrada = memo(function LinhaDeEntrada({
   aviso,
   figura,
   auto = null,
+  comDesenho = false,
   figuraAberta,
   definir,
   abrirFigura,
@@ -247,12 +249,39 @@ export const LinhaDeEntrada = memo(function LinhaDeEntrada({
   figura: string | null;
   /** Entrada opcional: o valor que a conta usou quando o campo está vazio (aparece apagado no lugar do "auto"). */
   auto?: string | null;
+  /** Entrada por figuras: a escolha que se desenha vira botões com desenho (EscolhaComDesenho). */
+  comDesenho?: boolean;
   figuraAberta: boolean;
   definir: (nome: string, v: Valor) => void;
   abrirFigura: (nome: string) => void;
 }) {
   const nome = campo.meta.nome;
   const mudar = (v: Valor) => definir(nome, v);
+
+  const botaoFigura = figura ? (
+    <button
+      type="button"
+      className={`btn-figura${figuraAberta ? ' on' : ''}`}
+      title={figura}
+      aria-label={`Figura de ${campo.curto}`}
+      onClick={() => abrirFigura(nome)}
+    >
+      <IconeFigura tamanho={16} />
+    </button>
+  ) : (
+    <span />
+  );
+
+  // Entrada por figuras: escolha que se desenha — rótulo em cima, os botões com desenho embaixo, a linha toda.
+  if (comDesenho && !travado && campo.controle !== 'numero' && temDesenho(nome, opcoes)) {
+    return (
+      <div className={`entrada entrada-desenho${ativa ? '' : ' apagada'}`} data-campo={nome}>
+        <label title={campo.dica}>{campo.curto}</label>
+        {botaoFigura}
+        <EscolhaComDesenho nome={nome} rotulo={campo.curto} opcoes={opcoes} valor={valor} aoEscolher={mudar} />
+      </div>
+    );
+  }
 
   let controle;
   switch (campo.controle) {
@@ -294,19 +323,7 @@ export const LinhaDeEntrada = memo(function LinhaDeEntrada({
         )}
       </div>
       {!largo && <span className="unidade">{campo.meta.unidade}</span>}
-      {figura ? (
-        <button
-          type="button"
-          className={`btn-figura${figuraAberta ? ' on' : ''}`}
-          title={figura}
-          aria-label={`Figura de ${campo.curto}`}
-          onClick={() => abrirFigura(nome)}
-        >
-          <IconeFigura tamanho={16} />
-        </button>
-      ) : (
-        <span />
-      )}
+      {botaoFigura}
     </div>
   );
 });

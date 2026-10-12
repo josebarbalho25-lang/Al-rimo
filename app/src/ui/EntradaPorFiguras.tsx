@@ -19,21 +19,23 @@
 //  tela de edição).
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { campoEspelhado, secaoVisivel } from '@/estado/campos';
-import { SECOES } from '@/estado/store';
+import { CAMPOS, SECOES } from '@/estado/store';
 import { figuraDaEntrada } from '@/figuras/mapa';
 import { CorteDoMuro } from '@/figuras/dinamicas/CorteDoMuro';
+import type { Valor } from '@/motor/tipos';
 import { CalculadoraDoSolo } from './CalculadoraDoSolo';
 import { CalculadoraDaTensao } from './CalculadoraDaTensao';
+import { CampoNumero, Escolha, Lista } from './controles';
 import { IconeFechar } from './icones';
 import { LinhaDeEntrada, linhasDaSecao, useLinhasDeEntrada } from './PainelDeEntradas';
 
 /** Abas em que o corte vivo é a figura. */
 const ABAS_DO_CORTE = new Set(['muro', 'solo', 'fundacao']);
 /** Campos que o corte vivo mostra (os outros campos dessas abas mostram a figura fixa deles). */
-const NO_CORTE = new Set(['H_muro', 'H_solo', 't_bloco', 'Tipo_muro', 'q_sobre', 'Agua', 'z_NA', 'B_sap', 'h_sap', 'a_ater']);
+const NO_CORTE = new Set(['H_muro', 'H_solo', 't_bloco', 'Tipo_muro', 'q_sobre', 'Agua', 'z_NA', 'B_sap', 'h_sap', 'a_ater', 'h_fr']);
 
 export function EntradaPorFiguras({ aoFechar }: { aoFechar: () => void }) {
   const { ler, propsDaLinha } = useLinhasDeEntrada();
@@ -42,6 +44,9 @@ export function EntradaPorFiguras({ aoFechar }: { aoFechar: () => void }) {
   const [ativo, setAtivo] = useState<string | null>(null);
   const [focar, setFocar] = useState<string | null>(null);
   const campos = useRef<HTMLDivElement>(null);
+  const caixaDaFigura = useRef<HTMLDivElement>(null);
+  // A cota clicada no corte vivo: a caixinha do número abre em cima dela, como no CAD (Jose, 12/10).
+  const [editando, setEditando] = useState<{ nome: string; x: number; y: number } | null>(null);
   const caixa = useRef<HTMLDivElement>(null);
 
   const secao = secoes.find((s) => s.id === aba) ?? secoes[0];
@@ -58,12 +63,11 @@ export function EntradaPorFiguras({ aoFechar }: { aoFechar: () => void }) {
     return () => window.removeEventListener('keydown', tecla, true);
   }, [aoFechar]);
 
-  // Clique numa cota: vai para a aba do campo e põe o cursor nele.
-  const irPara = useCallback((nome: string) => {
-    const dono = SECOES.find((s) => s.campos.some((c) => c.meta.nome === nome));
-    if (dono) setAba(dono.id);
+  // Clique numa cota: a caixinha do número abre ali mesmo, em cima da cota; a aba não troca (a figura fica).
+  const irPara = useCallback((nome: string, e: MouseEvent) => {
+    const r = caixaDaFigura.current?.getBoundingClientRect();
     setAtivo(nome);
-    setFocar(nome);
+    if (r) setEditando({ nome, x: e.clientX - r.left, y: e.clientY - r.top });
   }, []);
   useEffect(() => {
     if (!focar) return;
@@ -113,13 +117,23 @@ export function EntradaPorFiguras({ aoFechar }: { aoFechar: () => void }) {
           ))}
         </div>
         <div className="pf-corpo">
-          <div className="prancheta pf-figura">
-            {figura === 'corte' ? (
-              <CorteDoMuro ler={ler} aoClicar={irPara} ativo={ativo} />
-            ) : figura ? (
-              <img className="figura-img" src={figura.url} alt={figura.titulo} draggable={false} />
-            ) : null}
-            {figura && figura !== 'corte' && <div className="pf-legenda">{figura.titulo}</div>}
+          <div className="pf-figura-caixa" ref={caixaDaFigura}>
+            <div className="prancheta pf-figura">
+              {figura === 'corte' ? (
+                <CorteDoMuro ler={ler} aoClicar={irPara} ativo={ativo} />
+              ) : figura ? (
+                <img className="figura-img" src={figura.url} alt={figura.titulo} draggable={false} />
+              ) : null}
+              {figura && figura !== 'corte' && <div className="pf-legenda">{figura.titulo}</div>}
+            </div>
+            {/* fora da prancheta: ela inverte no tema escuro, a caixinha não */}
+            {editando && figura === 'corte' && (
+              <EditorDeCota
+                {...editando}
+                props={propsDaLinha(CAMPOS.get(editando.nome)!)}
+                aoFechar={() => setEditando(null)}
+              />
+            )}
           </div>
           <div
             className="pf-campos"
@@ -133,7 +147,7 @@ export function EntradaPorFiguras({ aoFechar }: { aoFechar: () => void }) {
               linhasDaSecao(secao.campos, ler).map((l) => {
                 if ('grupo' in l) return <div className="entrada-grupo" key={`g:${l.grupo}`}>{l.grupo}</div>;
                 const p = propsDaLinha(l.campo);
-                return <LinhaDeEntrada key={l.campo.meta.nome} {...p} figuraAberta={ativo === p.campo.meta.nome} abrirFigura={mostrarFigura} />;
+                return <LinhaDeEntrada key={l.campo.meta.nome} {...p} comDesenho figuraAberta={ativo === p.campo.meta.nome} abrirFigura={mostrarFigura} />;
               })}
             {secao?.id === 'solo' && <CalculadoraDoSolo />}
             {secao?.id === 'fundacao' && <CalculadoraDaTensao />}
@@ -142,5 +156,52 @@ export function EntradaPorFiguras({ aoFechar }: { aoFechar: () => void }) {
       </div>
     </div>,
     document.body,
+  );
+}
+
+/**
+ * A caixinha do número em cima da cota clicada: o mesmo controle da linha (número, lista ou escolha), com as mesmas
+ * travas. Cada tecla já vai para a conta e o desenho acompanha; Enter ou clique fora fecha; Esc desfaz e fecha.
+ */
+function EditorDeCota({
+  x,
+  y,
+  props: p,
+  aoFechar,
+}: {
+  nome: string;
+  x: number;
+  y: number;
+  props: ReturnType<ReturnType<typeof useLinhasDeEntrada>['propsDaLinha']>;
+  aoFechar: () => void;
+}) {
+  const caixa = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    caixa.current?.querySelector<HTMLElement>('input, select, button')?.focus();
+  }, []);
+  const c = p.campo;
+  const mudar = (v: Valor) => p.definir(c.meta.nome, v);
+  let controle;
+  if (c.controle === 'numero')
+    controle = <CampoNumero campo={c} valor={p.valor} aoMudar={mudar} desabilitado={p.travado} auto={p.auto} />;
+  else if (c.controle === 'lista')
+    controle = <Lista opcoes={p.opcoes} valor={p.valor} rotulo={c.curto} aoEscolher={(v) => { mudar(v); aoFechar(); }} desabilitado={p.travado} />;
+  else controle = <Escolha opcoes={p.opcoes} valor={p.valor} rotulo={c.curto} aoEscolher={(v) => { mudar(v); aoFechar(); }} />;
+  return (
+    <div
+      ref={caixa}
+      className="editor-cota"
+      style={{ left: x, top: y }}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) aoFechar();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') e.stopPropagation();   // Esc fecha a caixinha, não a janela inteira
+      }}
+    >
+      <span>{c.curto}</span>
+      {controle}
+      <span className="unidade">{c.meta.unidade}</span>
+    </div>
   );
 }

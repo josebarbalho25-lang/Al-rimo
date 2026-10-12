@@ -12,7 +12,7 @@
 //  em papel claro: no tema escuro a .prancheta inverte como as outras.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import type { Valor } from '@/motor/tipos';
 import { escreverNumero } from '@/estado/numeros';
 
@@ -28,7 +28,8 @@ const m = (v: number) => escreverNumero(v, 2);
 
 export function CorteDoMuro({ ler, aoClicar, ativo }: {
   ler: (nome: string) => Valor;
-  aoClicar: (nome: string) => void;
+  /** Clique numa cota: o campo e o ponto da tela (a entrada por figuras abre a caixinha do número ali). */
+  aoClicar: (nome: string, e: MouseEvent) => void;
   /** O campo em foco: a cota dele acende. */
   ativo: string | null;
 }) {
@@ -45,6 +46,8 @@ export function CorteDoMuro({ ler, aoClicar, ativo }: {
   const comCf = ler('Tipo_muro') === 'Contrafortes';
   const tenr = num(ler('tenr_'), 59) / 100;
   const cfEnterrado = String(ler('pos_cf') ?? '').startsWith('Ente');
+  // aterro sobre a ponta (12/10): a conta só o leva com a garantia do solo da frente; o desenho também
+  const hfr = ler('pass_on') === 'Sim' ? Math.min(hm, Math.max(0, num(ler('h_fr'), 0))) : 0;
 
   // ── o mundo em metros: x = 0 no eixo do muro, + para o solo; y = 0 no topo da sapata, + para cima ──
   const xPe = a - B;          // borda externa (pé)
@@ -70,12 +73,13 @@ export function CorteDoMuro({ ler, aoClicar, ativo }: {
   const xW0 = X(-t / 2), xW1 = X(t / 2);
   const yTopoSap = Y(0), yBaseSap = Y(-hs), yTopoMuro = Y(hm), yTopoSolo = Y(hsolo);
   const yFundo = Y(ymin + 0.05);
+  const yFrente = Y(hfr);
 
   // ── cotas clicáveis ──
   const cota = (campo: string, filhos: ReactNode) => (
     <g
       className={`cota-viva${ativo === campo ? ' on' : ''}`}
-      onClick={() => aoClicar(campo)}
+      onClick={(e) => aoClicar(campo, e)}
       role="button"
       aria-label={`Ir para ${campo}`}
     >
@@ -131,14 +135,14 @@ export function CorteDoMuro({ ler, aoClicar, ativo }: {
         </pattern>
       </defs>
 
-      {/* solo contido (direita) e solo da frente (esquerda, no nível do topo da sapata) */}
+      {/* solo contido (direita) e solo da frente (esquerda, no topo da sapata ou no aterro sobre a ponta) */}
       <polygon
-        points={`${xW1},${yTopoSolo} ${X(xSolo)},${yTopoSolo} ${X(xSolo)},${yFundo} ${X(xmin + 0.1)},${yFundo} ${X(xmin + 0.1)},${yTopoSap} ${xW0},${yTopoSap} ${xW0},${yTopoSap} ${xW1},${yTopoSap}`}
+        points={`${xW1},${yTopoSolo} ${X(xSolo)},${yTopoSolo} ${X(xSolo)},${yFundo} ${X(xmin + 0.1)},${yFundo} ${X(xmin + 0.1)},${yFrente} ${xW0},${yFrente} ${xW0},${yTopoSap} ${xW1},${yTopoSap}`}
         fill="url(#dm-solo)"
         stroke="none"
       />
       <line x1={xW1} y1={yTopoSolo} x2={X(xSolo)} y2={yTopoSolo} stroke={C.soil} strokeWidth={2} />
-      <line x1={X(xmin + 0.1)} y1={yTopoSap} x2={X(xPe)} y2={yTopoSap} stroke={C.soil} strokeWidth={2} />
+      <line x1={X(xmin + 0.1)} y1={yFrente} x2={hfr > 0 ? xW0 : X(xPe)} y2={yFrente} stroke={C.soil} strokeWidth={2} />
 
       {/* contraforte (atrás do plano do corte) */}
       {comCf && (
@@ -217,6 +221,7 @@ export function CorteDoMuro({ ler, aoClicar, ativo }: {
       {cota('H_muro', cotaV(xW0 - 50, yTopoMuro, yTopoSap, 'h muro', `${m(hm)} m`, -1, xW0))}
       {cota('H_solo', cotaV(X(xSolo) + (yNA !== null ? 105 : 30), yTopoSolo, yTopoSap, 'h solo', `${m(hsolo)} m`, 1, X(xSolo)))}
       {cota('h_sap', cotaV(X(xPe) - 25, yTopoSap, yBaseSap, 'h', `${m(hs)} m`, -1, X(xPe)))}
+      {hfr > 0 && cota('h_fr', cotaV(X(xPe) - 25, yFrente, yTopoSap, 'h aterro', `${m(hfr)} m`, -1, X(xPe)))}
       {cota('t_bloco', cotaH(yTopoMuro - 30, xW0, xW1, 't', `${escreverNumero(t * 100, 0)} cm`, yTopoMuro))}
       {cota('B_sap', cotaH(yBaseSap + 22, X(xPe), X(xTalao), 'B', `${m(B)} m`, yBaseSap))}
       {cota('a_ater', cotaH(yBaseSap + 62, X(0), X(xTalao), 'a', `${m(a)} m`, yBaseSap))}

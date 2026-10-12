@@ -541,6 +541,8 @@ const ATIVA_SE: Record<string, (ler: LerValor) => boolean> = {
   gama_cf: (l) => l('Tipo_muro') === 'Contrafortes',
   // espessura do reboco só pesa com reboco (Entradas, g_reb: IF(reb_fac=…;…;0))
   reb_esp: (l) => l('reb_fac') !== 'Nenhum',
+  // o aterro da frente só conta com a garantia do solo da frente (Fundação: IF(pass_on="Sim";…;0))
+  h_fr: (l) => l('pass_on') === 'Sim',
   Graute: soNoBalanco,
   bw_dir: (l) => soNoBalanco(l) && String(l('Graute') ?? '').startsWith('Parcial'),
   phi_v: soNoBalanco,
