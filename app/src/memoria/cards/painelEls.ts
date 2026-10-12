@@ -18,6 +18,7 @@ import type { PlanilhaExportada } from '@/motor/tipos';
 import type { AutorDeCards, Card, Expr, Passo, Ref, Secao } from '../tipos';
 import { cbrt, celulasDoIntervalo, cte, div, inteiro, max, min, mul, neg, par, pot, raiz, soma, sub } from '../expr';
 import { memoriaDe, secao, type Memoria } from '../passo';
+import { desenhoDaSecaoI } from '../desenhoDaSecaoI';
 
 export const SIMBOLOS_PAINELELS: Readonly<Record<string, string>> = {
   // ── painel não armado (Anexo E) ──
@@ -517,11 +518,14 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
     }),
   ], AULA_122);
 
+  const desenho = desenhoDaSecaoI(r);
   return {
     id: 'painelEls.els',
     titulo: 'ELS · fissuração e deslocamento · balanço',
     ref: AULA_122,
     figura: 'Fig. 10',
+    // a seção da faixa desenhada e cotada, com os números das mesmas células (Jose, 12/10)
+    ...(desenho ? { desenho } : {}),
     secoes: comPassos([secaoFaixa, fissuracao, inercia, deslocamento]),
     avisos: [],
     aplicavel,

@@ -1,78 +1,85 @@
 # Fig. 3 (app) — seção e grauteamento (planta de uma fiada, bloco 19 × 39) e a seção de cálculo da faixa.
-# K: o valor mostrado é o da NBR quando a entrada fica em branco (1,5 parcial; 2,0 total) — é a regra da
-# planilha (k_flex), não número de exemplo.
-from applib import Fig, C, T_TIT, T_TXT, T_PEQ
+# Régua comum (12/10, applib):
+#   - bloco a K_BLOCO (era 5 px/cm; agora o 19 × 39 tem o mesmo tamanho das Figs. 2, 4 e 14). Nessa escala três
+#     blocos e a seção de cálculo não cabem na moldura: ficam dois blocos, o bastante para a faixa b_m centrada na
+#     barra do meio caber inteira;
+#   - planta com o solo em cima (hachura, não mais a palavra), como toda planta do app;
+#   - sai o "K (NBR) = 1,5 / 2,0": era regra da norma escrita na figura; o campo K_dir fica na seção de cálculo,
+#     que é o que decide o K (seção I → 1,5; cheia → 2,0);
+#   - a faixa tracejada era vermelha: vermelho é só aço, então ela passa à cor de cota;
+#   - títulos por titulo_vista e a legenda pela legenda().
+from applib import Fig, C, K_BLOCO
 
-S = 5.0
+K = K_BLOCO / 100        # px por cm
+T, L, HF = 19, 39, 3.5   # bloco 19 × 39, parede h_f
+LH = (L - 3 * HF) / 2    # comprimento do furo
+XB = HF + LH / 2         # eixo do 1º furo, onde passa a barra
+YB = 5                   # barra a 5 cm da face do solo (aula 12.2: d = 14)
+R_BARRA = 0.625 * K + 1.5
+SOLO = 30                # px: faixa de solo atrás da parede, em planta
 
 
 def bloco(s, x0, y0, grauteados):
-    t, L, hf = 19, 39, 3.5
-    X = lambda v: x0 + v * S
-    Y = lambda v: y0 + v * S
-    s.rect(X(0), Y(0), L * S, t * S, fill=C['blockfill'], stroke=C['block'], sw=1.2)
-    for i, (a, b) in enumerate([(3.5, 17.75), (21.25, 35.5)]):
+    X = lambda v: x0 + v * K
+    Y = lambda v: y0 + v * K
+    s.rect(X(0), Y(0), L * K, T * K, fill=C['blockfill'], stroke=C['block'], sw=1.2)
+    for i, a in enumerate((HF, 2 * HF + LH)):
         g = i in grauteados
-        s.rect(X(a), Y(hf), (b - a) * S, (t - 2 * hf) * S, fill=C['groutfill'] if g else C['hollow'],
+        s.rect(X(a), Y(HF), LH * K, (T - 2 * HF) * K, fill=C['groutfill'] if g else C['hollow'],
                stroke=C['grout'] if g else C['block'], sw=1.0, extra='rx="4"')
-    s.rect(X(39), Y(0), 1 * S, t * S, fill=C['claro'], stroke='none')
 
 
-def painel(s, y0, total):
-    x0 = 90
+def linha(s, x0, y0, total):
+    """Uma linha da figura: a planta de dois blocos (com o solo) e, à direita, a seção de cálculo da faixa."""
+    yt = y0 - SOLO - 16           # base dos títulos: logo acima do solo
     with s.campo('Graute'):
-        s.text(x0 - 40, y0 - 50, 'Total — seção cheia' if total else 'Parcial — seção I', size=T_TIT, anchor='start',
-               weight='bold', color=C['grout'] if total else C['line'])
-    with s.campo('K_dir'):
-        s.text(x0 + 225, y0 - 50, 'K (NBR) = 2,0' if total else 'K (NBR) = 1,5', size=T_TXT, anchor='start', color=C['note'])
-    s.text(x0, y0 - 16, 'solo', size=T_PEQ + 2, anchor='start', color=C['soil'], weight='bold')
-    s.text(x0, y0 + 19 * S + 26, 'face externa', size=T_PEQ + 2, anchor='start', color=C['note'])
-    for k in range(3):
-        bloco(s, x0 + k * 40 * S, y0, [0, 1] if total else [0])
-        s.circle(x0 + (k * 40 + 10.625) * S, y0 + 5 * S, 0.625 * S + 1.4)
-    c = 40 + 10.625
-    xa, xb = x0 + (c - 20) * S, x0 + (c + 20) * S
-    s.rect(xa, y0 - 8, xb - xa, 19 * S + 16, stroke=C['steel'], sw=1.4, extra='stroke-dasharray="6,4"')
+        s.titulo_vista(x0, yt, 'Graute total' if total else 'Graute parcial')
+    n = 2
+    s.solo([(x0, y0 - SOLO), (x0 + (40 * n - 1) * K, y0 - SOLO), (x0 + (40 * n - 1) * K, y0), (x0, y0)])
+    for k in range(n):
+        bloco(s, x0 + k * 40 * K, y0, [0, 1] if total else [0])
+        if k < n - 1:   # junta vertical de 1 cm entre os blocos
+            s.rect(x0 + (k * 40 + L) * K, y0, 1 * K, T * K, fill=C['claro'], stroke='none')
+        s.circle(x0 + (k * 40 + XB) * K, y0 + YB * K, R_BARRA)
+    # faixa de cálculo: b_m = s, centrada na barra do 2º bloco
+    c = 40 + XB
+    xa, xb = x0 + (c - 20) * K, x0 + (c + 20) * K
+    s.rect(xa, y0 - 6, xb - xa, T * K + 12, stroke=C['dim'], sw=1.4, extra='stroke-dasharray="6,4"')
+    yc = y0 + T * K
     with s.campo('s_dir', 'AsMin_crit'):
-        s.dim_h(xa, xb, y0 + 19 * S + 44, 'b_{m} = s')
+        s.dim_h(xa, xb, yc + 34, 'b_{m} = s', ext_from=(yc + 6, yc + 6))
     if not total:
         with s.campo('bw_dir', 'bwv_dir'):
-            s.dim_h(x0 + 40 * S, x0 + 61.25 * S, y0 + 19 * S + 80, 'b_{w}', ext_from=(y0 + 19 * S, y0 + 19 * S))
+            s.dim_h(x0 + 40 * K, x0 + (40 + 2 * HF + LH) * K, yc + 74, 'b_{w}', ext_from=(yc, yc))
+        # parede do bloco = mesa da seção I
+        xh = x0 + (40 * n - 1) * K
+        s.dim_v(xh + 22, y0, y0 + HF * K, 'h_{f}', side=1, ext_from=(xh, xh))
     with s.campo('t_bloco', 'AsMin_crit'):
-        s.dim_v(x0 - 22, y0, y0 + 19 * S, 't', side=-1, ext_from=(x0, x0))
+        s.dim_v(x0 - 22, y0, yc, 't', side=-1, ext_from=(x0, x0))
     with s.campo('d_dir', 'AsMin_crit'):
-        s.dim_v(x0 - 56, y0 + 5 * S, y0 + 19 * S, 'd', side=-1, ext_from=(x0 + 10.625 * S, x0))
-    if not total:
-        xh = x0 + 120 * S + 22
-        s.line(x0 + 119 * S, y0, xh + 6, y0, stroke=C['dim'], sw=0.7)
-        s.line(x0 + 119 * S, y0 + 3.5 * S, xh + 6, y0 + 3.5 * S, stroke=C['dim'], sw=0.7)
-        s.add(f'<line x1="{xh:.2f}" y1="{y0 - 12:.2f}" x2="{xh:.2f}" y2="{y0 + 3.5 * S:.2f}" stroke="{C["dim"]}" stroke-width="1" marker-end="{s.u("tick")}"/>')
-        s.text(xh + 8, y0 + 3.5 * S / 2 + 6, 'h_{f}', size=T_PEQ + 2, anchor='start', color=C['dim'])
-    # seção de cálculo da faixa
-    sx = x0 + 120 * S + 90
-    s.text(sx + 20 * S, y0 - 16, 'seção de cálculo', size=T_PEQ + 2, color=C['note'])
-    if total:
-        s.rect(sx, y0, 40 * S, 19 * S, fill=C['groutfill'], stroke=C['grout'], sw=1.4)
-    else:
-        bw = 21.25; o = (40 - bw) / 2
-        pts = [(0, 0), (40, 0), (40, 3.5), (40 - o, 3.5), (40 - o, 15.5), (40, 15.5), (40, 19), (0, 19), (0, 15.5), (o, 15.5), (o, 3.5), (0, 3.5)]
-        s.poly([(sx + a * S, y0 + b * S) for a, b in pts], fill=C['blockfill'], stroke=C['line'], sw=1.4)
-        s.rect(sx + (o + 3.5) * S, y0 + 3.5 * S, 14.25 * S, 12 * S, fill=C['groutfill'], stroke=C['grout'], sw=1.0)
-    s.circle(sx + 20 * S, y0 + 5 * S, 0.625 * S + 1.4)
+        s.dim_v(x0 - 58, y0 + YB * K, yc, 'd', side=-1, ext_from=(x0 + XB * K, x0))
+    # seção de cálculo da faixa (sem solo: é a seção idealizada, não uma vista da obra)
+    sx = xb + 150
+    s.titulo_vista(sx, yt, 'Seção cheia' if total else 'Seção I')
+    with s.campo('K_dir'):
+        if total:
+            s.rect(sx, y0, 40 * K, T * K, fill=C['groutfill'], stroke=C['grout'], sw=1.4)
+        else:
+            bw = 2 * HF + LH
+            o = (40 - bw) / 2
+            pts = [(0, 0), (40, 0), (40, HF), (40 - o, HF), (40 - o, T - HF), (40, T - HF), (40, T), (0, T),
+                   (0, T - HF), (o, T - HF), (o, HF), (0, HF)]
+            s.poly([(sx + a * K, y0 + b * K) for a, b in pts], fill=C['blockfill'], stroke=C['line'], sw=1.4)
+            s.rect(sx + (o + HF) * K, y0 + HF * K, LH * K, (T - 2 * HF) * K, fill=C['groutfill'], stroke=C['grout'], sw=1.0)
+        s.circle(sx + 20 * K, y0 + YB * K, R_BARRA)
     with s.campo('s_dir'):
-        s.dim_h(sx, sx + 40 * S, y0 + 19 * S + 44, 'b_{m}', ext_from=(y0 + 19 * S, y0 + 19 * S))
+        s.dim_h(sx, sx + 40 * K, yc + 34, 'b_{m}', ext_from=(yc, yc))
 
 
 def desenhar():
     s = Fig(3, 1000, 640)
-    painel(s, 120, total=False)
-    painel(s, 420, total=True)
-    ly = 640
-    x = 90
-    for f, st, t in ((C['blockfill'], C['block'], 'bloco'), (C['groutfill'], C['grout'], 'graute'), (C['hollow'], C['block'], 'furo vazio')):
-        s.rect(x, ly - 13, 22, 14, fill=f, stroke=st)
-        s.text(x + 30, ly, t, size=T_PEQ + 1, anchor='start')
-        x += 150
-    s.circle(x + 7, ly - 6, 5)
-    s.text(x + 20, ly, 'barra vertical', size=T_PEQ + 1, anchor='start')
+    x0 = 100
+    linha(s, x0, 110, total=False)
+    linha(s, x0, 390, total=True)
+    s.legenda(x0 - 58, 610, [('bloco', 'bloco'), ('graute', 'graute'), ('aco', 'barra vertical')])
     return s

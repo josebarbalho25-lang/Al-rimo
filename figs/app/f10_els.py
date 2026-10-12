@@ -1,46 +1,48 @@
-# Fig. 10 (app) — ELS do balanço: carga de serviço, flecha imediata e diferida, fissura na base. A coluna
-# "Roteiro" da planilha (14 linhas) é passo a passo de cálculo: o lugar dela é a memória, não a figura.
-# Ficam só as relações curtas que dizem o que cada entrada muda.
-from applib import Fig, C, T_TXT, T_PEQ
+# Fig. 10 (app) — ELS do balanço: carga de serviço, flecha imediata e diferida, fissura na base do lado do solo e a
+# compressão do peso próprio (σsg).
+# Régua comum (12/10): a coluna de fórmulas saiu (vai para a memória); o σsg agora é desenhado DENTRO da parede, na
+# base — antes a seta ficava fora do muro, sobre a ponta da sapata, e se lia como aterro (Jose, 12/10); a fissura
+# é cinza (vermelho é só aço); o solo aparece, à direita, como em todo corte.
+from applib import Fig, C, T_TXT, K_GERAL as K
 
 
 def desenhar():
-    s = Fig(10, 1000, 560)
-    xw, yb, hp = 240, 470, 380
-    s.rect(xw - 70, yb, 180, 32, fill=s.CONC, stroke=C['line'])
-    s.rect(xw, yb - hp, 26, hp, fill=C['blockfill'], stroke=C['line'], sw=1.4)
-    # carga de serviço (empuxo)
+    s = Fig(10, 1000, 640)
+    t, h = 0.19, 2.4
+    xw, yb = 420, 500
+    tw = t * K
+    xs = xw + tw
+    yt = yb - h * K
+    xr = 820
+    s.solo([(xs, yt), (xr, yt), (xr, yb + 70), (xw - 140, yb + 70), (xw - 140, yb), (xs, yb)])
+    s.line(xs, yt, xr, yt, stroke=C['soil'], sw=2)
+    s.line(xw - 140, yb, xw, yb, stroke=C['soil'], sw=2)
+    s.sapata(xw - 0.6 * K, yb, 0.6 + t + 0.9, 0.3)
     with s.campo('psi_els'):
-        s.poly([(xw + 26, yb - hp), (xw + 38, yb - hp), (xw + 140, yb), (xw + 26, yb)], fill=C['empuxo'], stroke=C['load'], sw=1.2, extra='fill-opacity="0.55"')
-        for i in range(1, 6):
-            y = yb - hp + i * hp / 6
-            s.arrow(xw + 36 + 102 * i / 6, y, xw + 29, y, sw=1.3)
-    # deformadas: imediata e diferida (o balanço deflete para o lado de fora)
+        s.empuxo(xs, yt, yb, larg=140)
+    s.parede(xw, yb, t, h, canaletas=(h - 0.19,))
+    # deformadas da face externa: imediata e diferida (o balanço deflete para o lado de fora); saem da face, e não do
+    # eixo, para não passar por cima do σsg desenhado dentro da parede
+    xe = xw
+
     def deformada(amp):
-        return [(xw + 13 - amp * ((yb - y) / hp) ** 2 * (3 - (yb - y) / hp) / 2, y) for y in range(yb, yb - hp - 1, -10)]
+        return [(xe - amp * ((yb - y) / (h * K)) ** 2 * (3 - (yb - y) / (h * K)) / 2, y) for y in range(int(yb), int(yt) - 1, -10)]
+
     s.pline(deformada(45), stroke=C['load'], sw=2, extra='stroke-dasharray="7,5"')
+    s.text(xe - 45 + 2, yt - 14, 'δ_{0}', size=20, anchor='middle', color=C['load'])
     with s.campo('dxi'):
-        s.pline(deformada(95), stroke=C['steel'], sw=2, extra='stroke-dasharray="3,4"')
-        s.text(xw + 13 - 95 - 10, yb - hp - 34, 'δ_{∞}', size=20, anchor='middle', color=C['steel'])
-    s.text(xw + 13 - 45 + 4, yb - hp - 34, 'δ_{0}', size=20, anchor='start', color=C['load'])
+        s.pline(deformada(95), stroke=C['dim'], sw=2, extra='stroke-dasharray="3,4"')
+        s.text(xe - 95 - 4, yt - 14, 'δ_{∞}', size=20, anchor='middle', color=C['dim'])
+    # limite: a linha do δ_adm, além da diferida
+    with s.campo('div_adm'):
+        xa = xe - 140
+        s.line(xa, yt - 4, xa, yt + 70, stroke=C['note'], sw=1.2, extra='stroke-dasharray="2,4"')
+        s.text(xa - 6, yt + 40, 'δ_{adm}', size=T_TXT, anchor='end', color=C['note'])
     with s.campo('vao_ref'):
-        s.dim_v(xw + 190, yb - hp, yb, 'h', side=1, ext_from=(xw + 26, xw + 26))
-    # fissura na base, face do solo, e a compressão do peso próprio
+        s.dim_v(xr + 30, yt, yb, 'h', side=1, ext_from=(xr, xr))
+    # fissura na base, do lado do solo (face tracionada), e a compressão do peso próprio dentro da parede
     with s.campo('sg_on'):
-        s.line(xw + 12, yb - 2, xw + 26, yb - 2, stroke=C['steel'], sw=3)
-        s.arrow(xw - 26, yb - 70, xw - 26, yb - 8, color=C['load'], sw=2)
-        s.text(xw - 34, yb - 34, 'σ_{sg}', size=T_TXT, anchor='end', color=C['load'])
-    # relações (rótulo curto)
-    lx = 520
-    with s.campo('psi_els'):
-        s.text(lx, 100, 'M_{a} = (M_{a}/M_{k})·M_{k}', size=20, anchor='start', color=C['load'])
-    with s.campo('vao_ref'):
-        s.text(lx, 150, 'vão = h  ou  2h', size=20, anchor='start')
-    with s.campo('div_adm', 'vao_ref'):
-        s.text(lx, 200, 'δ_{adm} = vão / limite', size=20, anchor='start')
-    with s.campo('dxi'):
-        s.text(lx, 250, 'δ_{∞} = δ_{0}·(1 + Δξ) ≤ δ_{adm}', size=20, anchor='start')
-    with s.campo('sg_on'):
-        s.text(lx, 300, 'M_{r} = (f_{tk} + σ_{sg})·I/y_{t}', size=20, anchor='start')
-    s.text(lx, 350, 'M_{a} > M_{r}  →  estádio II', size=20, anchor='start')
+        s.fissura(xs, yb - 3, xs - tw * 0.55, yb - 24, n=4)
+        s.arrow(xw + tw * 0.4, yb - 90, xw + tw * 0.4, yb - 6, color=C['load'], sw=2)
+        s.text(xw - 12, yb - 44, 'σ_{sg}', size=T_TXT, anchor='end', color=C['load'], halo=True)
     return s

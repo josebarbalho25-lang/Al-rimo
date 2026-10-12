@@ -26,6 +26,7 @@ import type { figuraDaEntrada } from '@/figuras/mapa';
 import { IconeFechar } from './icones';
 import { CalculadoraDoSolo } from './CalculadoraDoSolo';
 import { CalculadoraDaTensao } from './CalculadoraDaTensao';
+import { SO_TABELA, TabelaDeReferencia } from './TabelasDeReferencia';
 
 /** A figura de uma entrada (com id) ou de uma peça do quantitativo (sem id: nunca é a dos solos). */
 export type FiguraDaEntrada = Omit<NonNullable<ReturnType<typeof figuraDaEntrada>>, 'id'> & { id?: string };
@@ -68,9 +69,13 @@ export function ModalDaFigura({ figura, aoFechar }: { figura: FiguraDaEntrada; a
           </button>
         </div>
         <div className="figura-corpo">
-          <div className="prancheta figura-placa">
-            <img className="figura-img" src={figura.url} alt={figura.titulo} draggable={false} />
-          </div>
+          {!SO_TABELA.has(figura.id ?? '') && (
+            <div className="prancheta figura-placa">
+              <img className="figura-img" src={figura.url} alt={figura.titulo} draggable={false} />
+            </div>
+          )}
+          {/* a tabela que era figura (fbk, argamassa, α): da tela, lida das células, e clicar preenche (12/10) */}
+          <TabelaDeReferencia figura={figura.id} />
           {/* tabelas de solo: a consulta de Ka/Kp e da argila fica embaixo, sem mexer no formulário (Jose, 09/10) */}
           {figura.id === 'fig22' && <CalculadoraDoSolo />}
           {/* sapata: σadm pelo SPT da base, pelas duas regras práticas (Jose, 10/10) */}

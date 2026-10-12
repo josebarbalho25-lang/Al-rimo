@@ -890,6 +890,62 @@ body[data-theme='dark'] .prancheta.prancheta-cores {
   min-height: 0;
   min-width: 0;
   display: flex;
+  flex-direction: column;
+  gap: calc(8px * var(--escala-ui));
+}
+/* As tabelas que eram figura (ui/TabelasDeReferencia.tsx): números alinhados, cabeçalho apagado, o valor atual
+   aceso; clicar preenche a entrada. */
+.tabela-ref {
+  align-self: center;
+  border-collapse: collapse;
+  font-size: var(--fs-corpo);
+  font-variant-numeric: tabular-nums;
+  margin: 4px 0;
+}
+.tabela-ref th,
+.tabela-ref td {
+  padding: 3px 8px;
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.tabela-ref thead th {
+  color: var(--muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--line-strong);
+}
+.tabela-ref th[scope='row'] {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 600;
+}
+.tabela-ref td.esq {
+  text-align: left;
+}
+.tabela-ref .un {
+  color: var(--muted-2);
+  font-size: var(--fs-nota);
+}
+.tabela-ref button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0 2px;
+  cursor: pointer;
+}
+.tabela-ref tr.clicavel {
+  cursor: pointer;
+}
+.tabela-ref tr.clicavel:hover,
+.tabela-ref thead th:hover {
+  background: var(--surface-2);
+}
+.tabela-ref .on,
+.tabela-ref tr.on > * {
+  color: var(--ink);
+  background: var(--sel-bg);
+  font-weight: 600;
 }
 .pf-figura-caixa > .pf-figura {
   flex: 1 1 auto;

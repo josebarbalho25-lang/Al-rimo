@@ -30,6 +30,7 @@ import { CalculadoraDoSolo } from './CalculadoraDoSolo';
 import { CalculadoraDaTensao } from './CalculadoraDaTensao';
 import { CampoNumero, Escolha, Lista } from './controles';
 import { IconeFechar } from './icones';
+import { SO_TABELA, TabelaDeReferencia } from './TabelasDeReferencia';
 import { LinhaDeEntrada, linhasDaSecao, useLinhasDeEntrada } from './PainelDeEntradas';
 
 /** Abas em que o corte vivo é a figura. */
@@ -118,6 +119,7 @@ export function EntradaPorFiguras({ aoFechar }: { aoFechar: () => void }) {
         </div>
         <div className="pf-corpo">
           <div className="pf-figura-caixa" ref={caixaDaFigura}>
+            {!(figura && figura !== 'corte' && SO_TABELA.has(figura.id)) && (
             <div className="prancheta pf-figura">
               {figura === 'corte' ? (
                 <CorteDoMuro ler={ler} aoClicar={irPara} ativo={ativo} />
@@ -126,6 +128,8 @@ export function EntradaPorFiguras({ aoFechar }: { aoFechar: () => void }) {
               ) : null}
               {figura && figura !== 'corte' && <div className="pf-legenda">{figura.titulo}</div>}
             </div>
+            )}
+            {figura && figura !== 'corte' && <TabelaDeReferencia figura={figura.id} />}
             {/* fora da prancheta: ela inverte no tema escuro, a caixinha não */}
             {editando && figura === 'corte' && (
               <EditorDeCota

@@ -1,39 +1,46 @@
-# Fig. 4 (app) — posição da barra vertical do balanço. A fig04 da planilha é a mais "tutorial" (faixa
-# vermelha, "Por que importa", "Como garantir na obra"); aqui sobra só o desenho: o certo e o errado lado a lado,
-# com d em cada um. Os sinais de certo/errado são desenhados (✔/✘ não existem no Arial).
-from applib import Fig, C, T_TIT, T_PEQ
+# Fig. 4 (app) — posição da barra vertical do balanço: encostada no lado do solo (d = t − c, o que a aula usa) ou
+# no meio do furo (d = t/2, o padrão quando d fica em branco). A fig04 da planilha é a mais "tutorial" (faixa
+# vermelha, "Por que importa", "Como garantir na obra"); aqui sobra só o desenho.
+# Régua comum (12/10, applib): bloco inteiro a K_BLOCO (era a célula a 11 px/cm — agora do mesmo tamanho das
+# Figs. 2, 3 e 14); planta com o solo em cima (hachura); saem as molduras verde/vermelha e o ✓/✗ desenhados à
+# mão — as duas posições são escolha do usuário, não certo × errado: o título de cada vista diz qual é.
+from applib import Fig, C, T_SIM, K_BLOCO
 
-S = 11.0
+K = K_BLOCO / 100        # px por cm
+T, L, HF = 19, 39, 3.5
+LH = (L - 3 * HF) / 2
+XB = HF + LH / 2         # eixo do furo grauteado
+R_BARRA = 0.625 * K + 1.5
+SOLO = 30                # px: faixa de solo atrás da parede, em planta
 
 
-def celula(s, x0, y0, bary, ok):
-    t, hf, L = 19, 3.5, 21.25
-    X = lambda v: x0 + v * S
-    Y = lambda v: y0 + v * S
-    s.rect(X(0), Y(0), L * S, t * S, fill=C['blockfill'], stroke=C['block'], sw=1.4)
-    s.rect(X(3.5), Y(hf), 14.25 * S, 12 * S, fill=C['groutfill'], stroke=C['grout'], sw=1.2, extra='rx="5"')
-    s.circle(X(10.625), Y(bary), 0.625 * S + 1.6)
-    s.text(X(L / 2), Y(0) - 14, 'solo', size=T_PEQ + 2, color=C['soil'], weight='bold')
-    s.text(X(L / 2), Y(t) + 26, 'face externa', size=T_PEQ + 2, color=C['note'])
+def vista(s, x0, y0, titulo, yb, encostada):
+    """Um bloco em planta, furo da barra grauteado; yb = eixo da barra, em cm a partir da face do solo."""
+    X = lambda v: x0 + v * K
+    Y = lambda v: y0 + v * K
+    s.titulo_vista(X(0), y0 - SOLO - 16, titulo)
+    s.solo([(X(0), Y(0) - SOLO), (X(L), Y(0) - SOLO), (X(L), Y(0)), (X(0), Y(0))])
+    s.rect(X(0), Y(0), L * K, T * K, fill=C['blockfill'], stroke=C['block'], sw=1.4)
+    s.rect(X(HF), Y(HF), LH * K, (T - 2 * HF) * K, fill=C['groutfill'], stroke=C['grout'], sw=1.2, extra='rx="4"')
+    s.rect(X(2 * HF + LH), Y(HF), LH * K, (T - 2 * HF) * K, fill=C['hollow'], stroke=C['block'], sw=1.0, extra='rx="4"')
+    s.circle(X(XB), Y(yb), R_BARRA)
+    # cotas em cadeia do mesmo lado (face do solo → barra → face externa): a soma das duas é t, e o olho lê de
+    # uma vez onde a barra está
+    xc = X(0) - 26
     with s.campo('d_dir'):
-        s.dim_v(X(0) - 30, Y(bary), Y(t), 'd' if ok else 'd = t/2', side=-1, ext_from=(X(10.625), X(0)))
-    if ok:
-        s.dim_v(X(L) + 26, Y(0), Y(bary), 'c', side=1, ext_from=(X(10.625), X(L)))
-    else:
-        s.dim_v(X(L) + 26, Y(0), Y(bary), 't/2', side=1, ext_from=(X(10.625), X(L)))
+        cota(s, xc, Y(yb), Y(T), 'd' if encostada else 't/2', (X(XB), X(0)))
+    cota(s, xc, Y(0), Y(yb), 'c' if encostada else 't/2', (X(0), X(XB)))
+
+
+def cota(s, x, y1, y2, rotulo, ext):
+    """Cota vertical com o rótulo EM PÉ à esquerda. "t/2" tem 3 caracteres e a dim_v o giraria (ela só deixa em pé
+    símbolo de até 2 letras); girado ao lado de um "d" em pé, ele parecia outra coisa."""
+    s.dim_v(x, y1, y2, '', side=-1, ext_from=ext)
+    s.text(x - 8, (y1 + y2) / 2 + T_SIM * 0.35, rotulo, size=T_SIM, anchor='end', color=C['dim'])
 
 
 def desenhar():
-    s = Fig(4, 1000, 460)
-    # certo
-    s.rect(40, 40, 440, 370, fill=C['ok_fill'], stroke=C['ok'], sw=2)
-    s.pline([(66, 76), (76, 87), (96, 62)], stroke=C['ok'], sw=4)
-    s.text(270, 82, 'encostada no lado do solo', size=T_TIT, weight='bold', color=C['ok'])
-    celula(s, 143, 160, 5.0, True)
-    # errado
-    s.rect(520, 40, 440, 370, fill=C['erro_fill'], stroke=C['erro'], sw=2)
-    s.line(548, 62, 570, 86, stroke=C['erro'], sw=4)
-    s.line(570, 62, 548, 86, stroke=C['erro'], sw=4)
-    s.text(750, 82, 'centralizada', size=T_TIT, weight='bold', color=C['erro'])
-    celula(s, 623, 160, 9.5, False)
+    s = Fig(4, 1000, 640)
+    vista(s, 140, 260, 'Encostada no lado do solo', 5.0, True)
+    vista(s, 140 + L * K + 210, 260, 'Centralizada', T / 2, False)
     return s

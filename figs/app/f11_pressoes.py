@@ -1,52 +1,84 @@
 # Fig. 11 (app) — pressões no muro (Rankine): sem coesão, com coesão e com água. Saem as frases de
 # conselho ("use só com ensaio", "drenagem eficiente evita..."): o aviso do solo já está no topo das Entradas.
-from applib import Fig, C, T_TIT, T_TXT, T_PEQ
+# Régua comum (12/10, applib): os três diagramas viraram três cortes iguais ao da Fig. 1 — parede(), sapata() e solo
+# à direita em K_GERAL, diagrama na face do solo com setas para o muro. Saíram os subtítulos com fórmula (σ'h = ...,
+# u = γw·(z − zNA)) e a frase "tração desprezada": a memória mostra a conta. A água deixou a cor do graute: pressão
+# d'água em C['pressao'] com traço C['water']; o NA pela na() da applib.
+from applib import Fig, C, T_TIT, T_SIM, K_GERAL as K
 
-Y0, HP = 130, 340
-K = 9.0
+T, HSO = 0.19, 2.0               # parede e altura de solo (m)
+HM = HSO + 0.2                   # o muro passa um pouco do solo, como na Fig. 1
+PONTA, TALAO, HS = 0.25, 0.5, 0.30
+LARG = 110                       # largura do diagrama na base (px) — a de c' = 0; os outros se medem por ela
+YB = 480                         # topo da sapata (pé da parede), igual nas três vistas
 
 
-def eixo(s, x, titulo, formula, campos_titulo, dx_rot=10):
+def corte(s, x, titulo, campos_titulo):
+    """Um corte da régua: parede, sapata, solo à direita (terreno em h_solo) e o solo da frente no topo da sapata.
+    Devolve (x da face do solo, y do terreno, x da borda direita do solo)."""
+    tw = T * K
+    xs = x + tw
+    yt = YB - HSO * K
+    xl, xr = x - (PONTA + 0.15) * K, xs + LARG + 40
+    s.solo([(xl, YB), (xs, YB), (xs, yt), (xr, yt), (xr, YB + 0.45 * K), (xl, YB + 0.45 * K)])
+    s.line(xs, yt, xr, yt, stroke=C['soil'], sw=2)
+    s.line(xl, YB, x, YB, stroke=C['soil'], sw=2)
+    s.sapata(x - PONTA * K, YB, PONTA + T + TALAO, HS)
+    s.parede(x, YB, T, HM, barra=False)
     with s.campo(*campos_titulo):
-        s.text(x + 100, Y0 - 62, titulo, size=T_TIT, weight='bold')
-    s.text(x + 100, Y0 - 32, formula, size=T_TXT, color=C['note'])
-    s.line(x, Y0, x, Y0 + HP, stroke=C['line'], sw=2.6)
-    s.line(x - 30, Y0, x + 230, Y0, stroke=C['soil'], sw=1.6)
-    s.text(x - dx_rot, Y0 + HP + 6, 'base', size=T_TXT, anchor='end', color=C['note'])
-    s.text(x - dx_rot, Y0 + 14, 'topo', size=T_TXT, anchor='end', color=C['note'])
+        s.titulo_vista(xl, YB - HM * K - 62, titulo)
+    return xs, yt, xr
+
+
+def diagrama(s, xs, perfil, n=6):
+    """Diagrama de pressão do solo na face xs, com o mesmo traço e as mesmas setas da empuxo() da applib — que só
+    desenha o triângulo cheio. perfil = [(y, largura)] de cima para baixo; seta só onde há pressão."""
+    pts = [(xs + w, y) for y, w in perfil]
+    s.poly(pts + [(xs, perfil[-1][0]), (xs, perfil[0][0])], fill=C['empuxo'], stroke=C['load'], sw=1.4,
+           extra='fill-opacity="0.75"')
+    y0, y1 = perfil[0][0], perfil[-1][0]
+    for i in range(1, n + 1):
+        y = y0 + i / (n + 1) * (y1 - y0)
+        for (ya, wa), (yb_, wb) in zip(perfil, perfil[1:]):
+            if ya <= y <= yb_:
+                w = wa + (wb - wa) * (y - ya) / (yb_ - ya)
+                break
+        if w > 12:
+            s.arrow(xs + w - 2, y, xs + 3, y, sw=1.3)
 
 
 def desenhar():
-    s = Fig(11, 1000, 560)
-    # (a) c' = 0
-    xa = 80
-    eixo(s, xa, "c' = 0", "σ'_{h} = K_{a}·(q + γ·z)", ['c_solo'])
+    s = Fig(11, 1000, 640)
+    hpx = HSO * K
+
+    # ── c' = 0: o triângulo de Rankine com a sobrecarga no terreno ──
+    xs, yt, xr = corte(s, 150, "c' = 0", ['c_solo'])
     with s.campo('Ka_dir'):
-        s.poly([(xa, Y0), (xa + 0.8 * K, Y0), (xa + 16 * K, Y0 + HP), (xa, Y0 + HP)], fill=C['empuxo'], stroke=C['load'], sw=1.4)
+        s.empuxo(xs, yt, YB, larg=LARG)
     with s.campo('q_sobre'):
-        s.text(xa + 0.8 * K + 8, Y0 + 20, 'K_{a}·q', size=T_TXT, anchor='start', color=C['load'])
-    # (b) c' > 0
-    xb = 395
-    eixo(s, xb, "c' > 0", "σ'_{h} = K_{a}·σ'_{v} − 2c'·√K_{a}", ['c_solo'], dx_rot=46)
-    z0 = 0.35 * HP
+        s.sobrecarga(xs + 16, xr - 10, yt)
+
+    # ── c' > 0: pressão nula até z0 (a tração do topo é desprezada), depois cresce até a base ──
+    xs, yt, xr = corte(s, 450, "c' > 0", ['c_solo'])
+    z0 = 0.35 * hpx
     with s.campo('c_solo'):
-        s.poly([(xb, Y0), (xb - 4 * K, Y0), (xb, Y0 + z0)], fill='none', stroke=C['load'], sw=1.4, extra='stroke-dasharray="5,4"')
-        s.poly([(xb, Y0 + z0), (xb + 10 * K, Y0 + HP), (xb, Y0 + HP)], fill=C['empuxo'], stroke=C['load'], sw=1.4)
-        s.dim_v(xb + 110, Y0, Y0 + z0, 'z_{0}', side=1, ext_from=(xb, xb))
-        s.text(xb - 4 * K - 6, Y0 + 66, 'tração', size=T_PEQ, anchor='end', color=C['load'])
-        s.text(xb - 4 * K - 6, Y0 + 84, 'desprezada', size=T_PEQ, anchor='end', color=C['load'])
-    # (c) com NA
-    xc = 705
-    eixo(s, xc, 'com NA', "σ_{h} = σ'_{h} + u", ['Agua'])
-    zna = 0.4 * HP
-    s.poly([(xc, Y0), (xc + 0.8 * K, Y0), (xc + 7 * K, Y0 + zna), (xc + 10.5 * K, Y0 + HP), (xc, Y0 + HP)], fill=C['empuxo'], stroke=C['load'], sw=1.4)
+        diagrama(s, xs, [(yt + z0, 0), (YB, LARG * 0.68)])
+        s.dim_v(xs + 72, yt, yt + z0, 'z_{0}', side=1, ext_from=(xs, xs), halo=True)
+        s.text(xr - 34, YB - 30, "c'", size=21, color=C['soil'], halo=True)
+
+    # ── com NA: abaixo do NA a efetiva cresce mais devagar (γ') e soma-se a pressão d'água u ──
+    xs, yt, xr = corte(s, 750, 'Com NA', ['Agua'])
+    zna = 0.4 * hpx
+    w_na = 6 + (LARG - 6) * 0.4
+    w_base = w_na + (LARG - 6) * 0.6 * 0.5
+    w_u = 0.42 * LARG
+    diagrama(s, xs, [(yt, 6), (yt + zna, w_na), (YB, w_base)])
     with s.campo('Agua', 'gama_w'):
-        s.poly([(xc + 7 * K, Y0 + zna), (xc + 10.5 * K, Y0 + HP), (xc + 16.5 * K, Y0 + HP)], fill=C['groutfill'], stroke=C['water'], sw=1.4)
+        s.poly([(xs + w_na, yt + zna), (xs + w_base + w_u, YB), (xs + w_base, YB)], fill=C['pressao'],
+               stroke=C['water'], sw=1.4)
     with s.campo('gama_w'):
-        s.text(xc + 17 * K, Y0 + HP - 12, 'u = γ_{w}·(z − z_{NA})', size=T_TXT, anchor='start', color=C['water'])
+        s.text(xs + w_base + w_u * 0.55, YB - 12, 'u', size=T_SIM, color=C['water'], weight='bold', halo=True)
     with s.campo('z_NA', 'Agua'):
-        s.line(xc - 30, Y0 + zna, xc + 230, Y0 + zna, stroke=C['water'], sw=1.6, extra='stroke-dasharray="9,6"')
-        s.poly([(xc + 196, Y0 + zna - 15), (xc + 212, Y0 + zna - 15), (xc + 204, Y0 + zna - 2)], fill=C['water'], stroke='none')
-        s.text(xc + 218, Y0 + zna - 6, 'NA', size=T_TXT, anchor='start', color=C['water'], weight='bold')
-        s.dim_v(xc + 262, Y0, Y0 + zna, 'z_{NA}', side=1, ext_from=(xc + 232, xc + 232))
+        s.na(xs, xr, yt + zna)
+        s.dim_v(xr + 26, yt, yt + zna, 'z_{NA}', side=1, ext_from=(xr, xr))
     return s

@@ -29,6 +29,7 @@ import type { PlanilhaExportada } from '@/motor/tipos';
 import type { AutorDeCards, Card, Expr, Passo, Ref } from '../tipos';
 import { arredBaixo, avaliar, cbrt, celulasDoIntervalo, cte, div, inteiro, max, min, mul, neg, nome, par, pi, pot, raiz, soma, sub } from '../expr';
 import { memoriaDe, secao, type Memoria, type PedidoDeVerificacao } from '../passo';
+import { desenhoDasSecoesDoPainel } from '../desenhoDaSecaoI';
 
 /*
   Só os símbolos que nenhum outro grupo descreve. Os que este grupo USA e outros já descrevem (não redefinir aqui):
@@ -879,11 +880,14 @@ function cardEls(m: Memoria): Card {
     }),
   ], NBR('E.5.1, Fig. E.1'));
 
+  const desenhoDoPainel = desenhoDasSecoesDoPainel(m.r);
   return limpo({
     id: 'painelCf.els',
     titulo: 'Painel · ELS',
     ref: AULA,
     figura: 'Fig. 13',
+    // as duas seções I desenhadas e cotadas, com os números das mesmas células (Jose, 12/10)
+    ...(desenhoDoPainel ? { desenho: desenhoDoPainel } : {}),
     secoes: [material, vertical, horizontal, secFlecha, abaco],
     avisos: [],
     aplicavel: true,

@@ -14,6 +14,7 @@ import { arredBaixo, arredCima, cte, div, max, min, mul, pi, pot, raiz, soma, su
 import { memoriaDe, secao, type Memoria } from '../passo';
 import { nbr, nt } from '../formato';
 import { passoDaDobra } from './sapata';
+import { desenhoDaFlexao } from '../desenhoDaSecaoI';
 
 export const SIMBOLOS_BALANCO: Readonly<Record<string, string>> = {
   // ── materiais ──
@@ -203,17 +204,23 @@ const fpkUsado = (f: Folhas, c: Ctx): Expr => (c.usaLiq ? f.fpkLiq : fpkDaTabela
 
 // ───────────────────────────── 1 · materiais e seção ─────────────────────────────
 
-function cardMateriais(m: Memoria, f: Folhas, c: Ctx): Card {
+/*
+  A cadeia do fd: fbk → fpk (tabela) → fpk,liq → fk → fd → K·fd. Vai no card de materiais E no de flexão (Jose, 12/10:
+  "da onde vem o fd utilizado?" — o card de flexão usava K·fd sem mostrar de onde vinha). Os mesmos passos, as mesmas
+  células: o teste confere os dois cards contra a planilha.
+*/
+function secaoResistencia(m: Memoria, f: Folhas, c: Ctx, comVerificacao = true) {
   const num = (id: string) => m.valor(id) !== null;
   const kDigitado = m.num('K_dir') !== null;                      // ISNUMBER(K_dir)
-  const dDigitado = m.num('d_dir') !== null;                      // ISNUMBER(d_dir)
   const daTabela = 'tabela';
   const refBloco = BLOCOS_122;
-
-  const resistencia = secao('Resistência da alvenaria', [
+  return secao('Resistência da alvenaria', [
     m.passo('fbk_', 'f_{bk}', null, {
       casas: 1, unidade: 'MPa', origem: 'entrada', ref: { fonte: 'Aula 12.1', item: 'slide 2' },
-      verif: { chave: 'balanco.classeA', rotulo: 'Bloco classe A: fbk ≥ 8 MPa', limite: 8, relacao: '>=', celula: VER.classeA, casasLimite: 0 },
+      // a verificação da classe A entra uma vez só na tabela-resumo: no card de materiais
+      ...(comVerificacao
+        ? { verif: { chave: 'balanco.classeA', rotulo: 'Bloco classe A: fbk ≥ 8 MPa', limite: 8, relacao: '>=' as const, celula: VER.classeA, casasLimite: 0 } }
+        : {}),
     }),
     c.total
       ? m.passo('fpk_chei', 'f_{pk}^{*}', null, { casas: 1, unidade: 'MPa', origem: daTabela, ref: { fonte: 'ABCP', item: 'Tab. 3.2' } })
@@ -227,6 +234,14 @@ function cardMateriais(m: Memoria, f: Folhas, c: Ctx): Card {
     m.passo('k_flex', 'K', null, { casas: 2, origem: kDigitado ? 'entrada' : 'tabela', ref: kDigitado ? undefined : NBR('6.2.2.4') }),
     num('ffd_') && m.passo('ffd_', 'K\\,f_d', mul(f.K, f.fd), { casas: 3, unidade: 'MPa', ref: CURSO_04 }),
   ]);
+}
+
+function cardMateriais(m: Memoria, f: Folhas, c: Ctx): Card {
+  const num = (id: string) => m.valor(id) !== null;
+  const dDigitado = m.num('d_dir') !== null;                      // ISNUMBER(d_dir)
+  const daTabela = 'tabela';
+  const refBloco = BLOCOS_122;
+  const resistencia = secaoResistencia(m, f, c);
 
   // fsd = fyd no bloco de concreto (todo Ø)
   const fyd = div(f.fyk, f.gs);
@@ -355,12 +370,15 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
   const coerente = m.r.cel(VER.coerente);
   if (typeof coerente === 'string' && comeca(coerente, 'ATENÇÃO')) avisos.push('Barra em todos os furos: grautear todos (seção cheia)');
 
+  const desenho = desenhoDaFlexao(m.r);
   return {
     id: 'balanco.flexao',
     titulo: 'Flexão · muro em balanço',
     ref: AULA_122,
     figura: 'Fig. 4',
-    secoes: so([linhaNeutra, armadura, barras]),
+    // a faixa de 1 m desenhada e cotada, com a linha neutra e o bloco 0,8x (Jose, 12/10)
+    ...(desenho ? { desenho } : {}),
+    secoes: so([secaoResistencia(m, f, c, false), linhaNeutra, armadura, barras]),
     avisos,
     aplicavel: c.balanco,
   };

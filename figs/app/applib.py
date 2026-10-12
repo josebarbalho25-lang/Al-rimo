@@ -30,6 +30,27 @@ C = dict(line='#262626', dim='#404040', block='#7f7f7f', blockfill='#d9d9d9', gr
          cinza='#a6a6a6', cinza2='#bfbfbf', claro='#f2f2f2', concreto='#ececec', pressao='#ddebf7', barra2='#ff6f6f')
 FONT = "font-family:Arial,'DejaVu Sans',sans-serif"
 
+# ── A RÉGUA COMUM (Jose, 12/10: "padronizar as figuras para ficarem harmônicas") ───────────────────────────────
+# Proposta aprovada em https://claude.ai/artifact/XxiHij7TtwkNdtg5CrHmnw (seção 5). Antes, cada figura desenhava a
+# mesma peça do seu jeito e na sua escala (parede de 21 a 93 px; bloco de 19 cm em 5 escalas). Agora:
+#   - UMA ESCALA POR TIPO DE VISTA: corte/elevação geral do muro em K_GERAL px/m; detalhe ampliado (ancoragem,
+#     armadura da sapata) em K_DETALHE; bloco em planta em K_BLOCO px/m (o 19 × 39 sempre do mesmo tamanho);
+#   - UMA MOLDURA: toda figura sai na mesma proporção (ASPECTO) e com a mesma largura mínima, então a caixa do
+#     modal não muda de tamanho de uma aba para outra e a letra fica do mesmo tamanho em todas;
+#   - CADA PEÇA DE UM JEITO SÓ: parede, sapata, solo, empuxo, sobrecarga, NA, fissura, junta, título de vista e
+#     legenda saem dos métodos abaixo — figura nenhuma redesenha à mão;
+#   - SOLO À DIREITA nos cortes (como o corte vivo do app);
+#   - COR COM UM SIGNIFICADO: vermelho só aço (com espera e barra juntas, espera vermelha e barra rosa, como a
+#     Fig. 9); fissura e junta em cinza-escuro; cor de empuxo só em pressão; painel não armado sempre C['sub'];
+#     contraforte em corte/planta é graute (azul), em vista é cinza (C['cinza2']);
+#   - SÓ DESENHO, SÍMBOLO E COTA: nada de fórmula, lista ou tabela dentro da figura (vão para a memória ou para
+#     tabela do app). Símbolos iguais aos da memória: h_{muro}, h_{solo}, h_{s} (sapata), B, a, t, t_{enr}.
+K_GERAL = 150       # px por metro — corte e elevação gerais do muro
+K_DETALHE = 400     # px por metro — detalhe ampliado
+K_BLOCO = 600       # px por metro — bloco em planta (6 px/cm)
+ASPECTO = 1000 / 640
+LARG_MIN = 1000
+
 # Tamanhos (unidades do viewBox). Com o recorte, as figuras ficam entre ~850 e ~1050 de largura.
 T_TIT = 20      # título de painel ("Parcial — seção I")
 T_SIM = 20      # símbolo de cota (h, t, l, B...)
@@ -207,17 +228,129 @@ class Fig:
         s.text(tx, ty, label, size=size, anchor=anchor, color=color, weight=weight)
         return wt
 
+    # ---- peças padrão (a régua comum) ---------------------------------------------------------------
+    # Coordenadas em px do desenho; medidas reais em m com a escala K da vista. Solo sempre à DIREITA da parede.
+
+    def parede(s, x, y_base, t, h, K=K_GERAL, canaletas=(), barra=True, espera=None, cor_barra=None):
+        """Parede em corte: face externa em x, base em y_base, espessura t e altura h em m. canaletas = alturas
+        (m, do pé) das fiadas de canaleta grauteada; barra = vertical do lado do solo a 5 cm da face;
+        espera = comprimento (m) que desce na sapata, com gancho para o solo; None = sem espera.
+        Devolve (x da face externa, x da face do solo, y do topo)."""
+        tw, hw = t * K, h * K
+        s.rect(x, y_base - hw, tw, hw, fill=C['blockfill'], stroke=C['line'], sw=1.4)
+        hc = 0.19 * K
+        for yc in canaletas:
+            s.rect(x, y_base - yc * K - hc, tw, hc, fill=C['groutfill'], stroke=C['grout'], sw=1)
+        xb = x + tw - 0.05 * K
+        if barra:
+            s.line(xb, y_base - hw + 0.03 * K, xb, y_base, stroke=cor_barra or C['steel'], sw=2.6)
+        if espera:
+            s.pline([(xb, y_base - 0.3 * K), (xb, y_base + espera * K), (xb + 0.2 * K, y_base + espera * K)],
+                    stroke=C['steel'], sw=2.6)
+        return x, x + tw, y_base - hw
+
+    def sapata(s, x, y_topo, b, h, K=K_GERAL):
+        """Sapata em corte: concreto pontilhado, borda preta. Devolve (x direito, y da base)."""
+        s.rect(x, y_topo, b * K, h * K, fill=s.CONC, stroke=C['line'], sw=1.4)
+        return x + b * K, y_topo + h * K
+
+    def solo(s, pts, topo=None):
+        """Solo: hachura marrom no polígono; topo = [(x0, y), (x1, y)] desenha a linha do terreno."""
+        s.poly(pts, fill=s.SOLO, stroke='none')
+        if topo:
+            s.line(topo[0][0], topo[0][1], topo[1][0], topo[1][1], stroke=C['soil'], sw=2)
+
+    def empuxo(s, x_face, y_topo, y_base, larg=None, n=6, lado=1):
+        """Diagrama de empuxo triangular na face do solo (lado=+1: solo à direita, setas para a esquerda)."""
+        larg = larg if larg is not None else min(150, max(60, 0.4 * (y_base - y_topo)))
+        x1 = x_face + lado * larg
+        s.poly([(x_face, y_topo), (x_face + lado * 6, y_topo), (x1, y_base), (x_face, y_base)],
+               fill=C['empuxo'], stroke=C['load'], sw=1.4, extra='fill-opacity="0.75"')
+        for i in range(1, n + 1):
+            f = i / (n + 1)
+            y = y_topo + f * (y_base - y_topo)
+            s.arrow(x_face + lado * (6 + (larg - 6) * f - 2), y, x_face + lado * 3, y, sw=1.3)
+
+    def sobrecarga(s, x0, x1, y_solo, rotulo='q'):
+        """Sobrecarga uniforme sobre o terreno: régua laranja com setas e o símbolo à direita."""
+        s.line(x0, y_solo - 45, x1, y_solo - 45, stroke=C['load'], sw=1.5)
+        x = x0 + 4
+        while x <= x1 - 4:
+            s.arrow(x, y_solo - 45, x, y_solo - 3, sw=1.5)
+            x += 36
+        s.text(x1 + 8, y_solo - 39, rotulo, size=22, anchor='start', color=C['load'], weight='bold')
+
+    def na(s, x0, x1, y):
+        """Nível d'água: tracejado azul, triângulo e 'NA' na ponta direita."""
+        s.line(x0, y, x1, y, stroke=C['water'], sw=1.8, extra='stroke-dasharray="9,6"')
+        s.poly([(x1 - 64, y - 15), (x1 - 48, y - 15), (x1 - 56, y - 2)], fill=C['water'], stroke='none')
+        s.text(x1 - 42, y - 6, 'NA', size=T_TXT, anchor='start', color=C['water'], weight='bold', halo=True)
+
+    def fissura(s, x0, y0, x1, y1, n=5):
+        """Fissura: ziguezague cinza-escuro (o vermelho é só do aço)."""
+        dx, dy = x1 - x0, y1 - y0
+        L = math.hypot(dx, dy) or 1
+        pts = []
+        for i in range(n + 1):
+            f = i / n
+            off = (4 if i % 2 else -4) if 0 < i < n else 0
+            pts.append((x0 + dx * f - dy / L * off, y0 + dy * f + dx / L * off))
+        s.pline(pts, stroke=C['dim'], sw=1.8)
+
+    def junta(s, x, y0, y1):
+        """Junta de controle: traço-ponto cinza-escuro."""
+        s.line(x, y0, x, y1, stroke=C['dim'], sw=1.6, extra='stroke-dasharray="12,4,2,4"')
+
+    def titulo_vista(s, x, y, texto):
+        """Nome da vista ('Planta', 'Corte', 'Parcial — seção I'): sempre em cima, à esquerda, mesmo estilo."""
+        s.text(x, y, texto, size=T_TIT, anchor='start', color=C['line'], weight='bold')
+
+    def legenda(s, x, y, itens):
+        """Legenda embaixo, à esquerda, numa linha: itens = [(tipo, rótulo)], tipo em 'aco', 'aco2', 'graute',
+        'bloco', 'solo', 'concreto', 'apoio', 'engaste', 'livre', 'naoarmado', 'fissura', 'junta'."""
+        cx = x
+        for tipo, rot in itens:
+            yy = y - 6
+            if tipo in ('aco', 'aco2'):
+                s.line(cx, yy, cx + 26, yy, stroke=C['steel'] if tipo == 'aco' else C['barra2'], sw=2.6)
+            elif tipo == 'graute':
+                s.rect(cx, yy - 7, 26, 14, fill=C['groutfill'], stroke=C['grout'], sw=1)
+            elif tipo == 'bloco':
+                s.rect(cx, yy - 7, 26, 14, fill=C['blockfill'], stroke=C['line'], sw=1)
+            elif tipo == 'solo':
+                s.rect(cx, yy - 7, 26, 14, fill=s.SOLO, stroke='none')
+            elif tipo == 'concreto':
+                s.rect(cx, yy - 7, 26, 14, fill=s.CONC, stroke=C['line'], sw=1)
+            elif tipo == 'naoarmado':
+                s.rect(cx, yy - 7, 26, 14, fill=C['sub'], stroke=C['sub_line'], sw=1)
+            elif tipo == 'apoio':
+                s.line(cx, yy, cx + 26, yy, stroke=C['line'], sw=2.4)
+            elif tipo == 'engaste':
+                s.line(cx, yy, cx + 26, yy, stroke=C['line'], sw=2.4)
+                for k in range(4):
+                    s.line(cx + 3 + k * 7, yy, cx + k * 7, yy + 6, stroke=C['line'], sw=1)
+            elif tipo == 'livre':
+                s.line(cx, yy, cx + 26, yy, stroke=C['cinza'], sw=1.4, extra='stroke-dasharray="4,3"')
+            elif tipo == 'fissura':
+                s.fissura(cx, yy, cx + 26, yy, n=4)
+            elif tipo == 'junta':
+                s.line(cx, yy, cx + 26, yy, stroke=C['dim'], sw=1.6, extra='stroke-dasharray="12,4,2,4"')
+            s.text(cx + 34, y, rot, size=T_PEQ, anchor='start', color=C['note'])
+            cx += 34 + _larg_texto(rot, T_PEQ) + 28
+
     # ---- saída ---------------------------------------------------------------------------------------
-    def svg(s, folga=14, larg_min=900):
+    def svg(s, folga=14, larg_min=LARG_MIN):
         x0, y0, x1, y1 = s.caixa
         x0, y0 = math.floor(x0 - folga), math.floor(y0 - folga)
         w, h = math.ceil(x1 + folga) - x0, math.ceil(y1 + folga) - y0
-        # Largura mínima do viewBox = largura do modal (~900 px): assim a letra sai do MESMO tamanho em todas as
-        # figuras (escala ~1). Sem isto, uma figura estreita (Fig. 9, 544 de largura) era ampliada 1,65× e a
-        # letra ficava gigante ao lado das outras. O desenho fica centrado na folga.
-        if w < larg_min:
-            x0 -= (larg_min - w) // 2
-            w = larg_min
+        # A MOLDURA ÚNICA (12/10): largura mínima de 1000 e a proporção ASPECTO em todas. O desenho fica centrado na
+        # folga. Assim a letra sai do mesmo tamanho em todas as figuras e a caixa do modal não pula de aba em aba.
+        # Figura que passar de 1000 de largura encolhe a letra: o desenho é que tem de caber (a régua de cima).
+        W = max(larg_min, w, math.ceil(h * ASPECTO))
+        H = math.ceil(W / ASPECTO)
+        x0 -= (W - w) // 2
+        y0 -= (H - h) // 2
+        w, h = W, H
         return (f'<svg xmlns="http://www.w3.org/2000/svg" data-figura="{s.pid}" width="{w}" height="{h}" viewBox="{x0} {y0} {w} {h}">'
                 f'<defs>{"".join(s.defs)}</defs>'
                 f'<rect data-fundo="" x="{x0}" y="{y0}" width="{w}" height="{h}" fill="#ffffff"/>'

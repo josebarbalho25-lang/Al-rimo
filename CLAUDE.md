@@ -111,6 +111,18 @@ e dizer ao Jose o que mudou e por quê.
   FEITO 12/10: abas (`estado/abas.ts`), lista recolhível, botão Entradas na barra de cima, Novo abre nas figuras,
   escolhas com desenho (`ui/EscolhaComDesenho.tsx`), cota editável no corte vivo, aterro no corte vivo. FALTA: padrão
   único das 24 figuras (regras na proposta; Jose quer avaliar quais melhorar) e as figuras vivas novas.
+- **Régua comum das figuras (Jose, 12/10: "pode ser todas"; "ficaram menos poluídas"):** `figs/app/applib.py`, bloco
+  "A RÉGUA COMUM" — moldura única 1000 × 640, K_GERAL 150 / K_DETALHE 400 / K_BLOCO 600 px/m, peças padrão (parede,
+  sapata, solo, empuxo, sobrecarga, na, fissura, junta, titulo_vista, legenda), solo à direita nos cortes e em cima nas
+  plantas, vermelho só aço (espera vermelha + barra do muro rosa), sem fórmula/tabela no desenho. Refeitas 1–21 e 24;
+  a 22 (solos) ficou para a outra sessão do Jose. Antes × depois: https://claude.ai/artifact/EtiZjvYevsFzfm61yGfWhg.
+  Tabelas que eram figura viraram tabela clicável no app (`ui/TabelasDeReferencia.tsx`: fbk/Fig. 23, ftk/Fig. 8,
+  α/Fig. 7). Pontos dos agentes para o Jose confirmar: Fig. 12 desenhada com vão 1,00; Fig. 21 com t_enr 79 e
+  construtivas com espera dobrada; Fig. 19 painel cinza (amarelo só para não armado); borda livre fraca; Fig. 24
+  sem o h_fr; Fig. 15 miniaturas em escala esquemática.
+- **Seções cotadas na memória (Jose, 12/10: "não pode jogar número do nada"):** `memoria/desenhoDaSecaoI.ts` —
+  faixa de 1 m da flexão do balanço (barras a cada s, LN x, bloco 0,8x), seção I do ELS do balanço e as duas seções I
+  do painel. O card de flexão do balanço abre com a cadeia do fd (fbk → fpk → fpk,liq → fk → fd → K·fd).
 
 ## App (começou em 08/10/2026) — `app/` (Vite + React + TS + three, como o A-PORT)
 
