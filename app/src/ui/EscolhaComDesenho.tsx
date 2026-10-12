@@ -135,6 +135,21 @@ const DESENHOS: Record<string, (v: Valor) => ReactNode | null> = {
       {[20, 56, 92].map((x) => <rect key={x} x={x} y={10} width={8} height={40} fill={C.apagado} stroke={C.linha} strokeWidth={1.2} />)}
     </g>
   ) : null,
+  // área de referência do fpk (Jose, 12/10): bruta = o retângulo todo, furos incluídos; líquida = só o concreto
+  fpk_ref: (v) => {
+    const s = String(v ?? '');
+    const liquida = s.startsWith('Líq');
+    if (!liquida && !s.startsWith('Brut')) return null;
+    return (
+      <g>
+        <rect x={29} y={15} width={62} height={30} fill={C.apagado} stroke={C.linha} strokeWidth={1.2} />
+        {[33.5, 61.5].map((x) => (
+          <rect key={x} x={x} y={20.5} width={25} height={19} rx={2}
+            fill={liquida ? '#ffffff' : 'none'} stroke={C.linha} strokeWidth={1} strokeDasharray={liquida ? undefined : '3 2'} />
+        ))}
+      </g>
+    );
+  },
   t_bloco: (v) => (Number(v) === 14 || Number(v) === 19 ? bloco(29, 30 - (Number(v) * 1.6) / 2, Number(v)) : null),
   Graute: (v) => {
     const s = String(v ?? '');
