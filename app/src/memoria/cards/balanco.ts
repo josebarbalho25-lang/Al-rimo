@@ -335,13 +335,19 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
     : soma(div(sub(f.L, mul(cte(3, 0), f.hf)), cte(2, 0)), mul(cte(2, 0), f.hf));
   const xMesa = mul(cte(1.25, 2), f.d, sub(cte(1, 0), raiz(sub(cte(1, 0), f.kmd))));
 
-  const linhaNeutra = secao(mesaSo ? 'Linha neutra (b = 100 cm) · compressão na parede do bloco' : 'Linha neutra (b = 100 cm) · seção T', [
+  // Três seções (Jose, 12/10: "então esse primeiro cálculo é verificação do bloco"): 1) a parede do bloco sozinha —
+  // a compressão cabe nela (0,8x ≤ hf)?; 2) se não cabe, a seção T com os furos grauteados; 3) o equilíbrio (C, z, aço).
+  const paredeDoBloco = secao(mesaSo
+    ? 'Verificação da parede do bloco (b = 100 cm) · a compressão cabe na parede: 0,8x ≤ hf'
+    : 'Verificação da parede do bloco (b = 100 cm) · não cabe: 0,8x > hf, vai para a seção T', [
     v('arg_x') !== null && m.passo('arg_x', 'k_{md}', div(f.Md100, mul(cte(0.5, 1), cte(100, 0), pot(f.d, 2), f.Kfd01)), {
       casas: 3, ref: { fonte: 'ABCP', item: '3.4' },
       verif: { chave: 'balanco.flexao.resiste', rotulo: 'Seção resiste (mesa ou seção T)', limite: null, relacao: '<=', celula: VER.resiste },
     }),
     mesaSo && xN !== null && m.passo('x_ln', 'x', xMesa, { casas: 2, unidade: 'cm', ref: NBR('11.3.3') }),
     !mesaSo && xR !== null && m.passo('x_r', 'x_{mesa}', xMesa, { casas: 2, unidade: 'cm', ref: NBR('11.3.3') }),
+  ]);
+  const secaoT = secao('Seção T (parede do bloco + furos grauteados do metro)', [
     !mesaSo && v('s_web') !== null && m.passo('s_web', 's_{alma}', null, { casas: 0, unidade: 'cm', origem: 'adotado' }),
     !mesaSo && !total && v('bw_f') !== null && m.passo('bw_f', 'b_{w,f}', bwF, { casas: 2, unidade: 'cm', ref: AULA_122 }),
     !mesaSo && v('bw_m') !== null && m.passo('bw_m', 'b_{w,m}', total
@@ -352,6 +358,8 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
     !mesaSo && v('y_alma') !== null && m.passo('y_alma', 'y',
       sub(dMenosHf, raiz(sub(pot(dMenosHf, 2), div(mul(cte(2, 0), Malma), mul(KfdAlma, bwM))))), { casas: 2, unidade: 'cm' }),
     !mesaSo && xN !== null && m.passo('x_ln', 'x', div(soma(f.hf, y), cte(0.8, 1)), { casas: 2, unidade: 'cm', ref: NBR('11.3.4') }),
+  ]);
+  const linhaNeutra = secao('Equilíbrio da faixa (b = 100 cm)', [
     v('C_c') !== null && m.passo('C_c', 'C', mesaSo
       ? mul(f.Kfd01, cte(100, 0), cte(0.8, 1), f.x)
       : soma(mul(f.Kfd01, cte(100, 0), f.hf), mul(KfdAlma, bwM, y)), { casas: 2, unidade: 'kN/m' }),
@@ -426,7 +434,7 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
     figura: 'Fig. 4',
     // a faixa de 1 m desenhada e cotada, com a linha neutra e o bloco 0,8x (Jose, 12/10)
     ...(desenho ? { desenho } : {}),
-    secoes: so([secaoResistenciaDaFlexao(m, f), linhaNeutra, armadura, barras]),
+    secoes: so([secaoResistenciaDaFlexao(m, f), paredeDoBloco, ...(mesaSo ? [] : [secaoT]), linhaNeutra, armadura, barras]),
     avisos,
     aplicavel: c.balanco,
   };
