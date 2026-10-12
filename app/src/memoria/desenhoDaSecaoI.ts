@@ -237,7 +237,58 @@ export function desenhoDaFlexao(r: Resultado): DesenhoDoCard | null {
     partes.push(chamada(x0 + W, y1 - hf! * s, xH + 4, y1 - hf! * s), chamada(x0 + W, y1, xH + 4, y1));
     partes.push(cota(xH, y1 - hf! * s, xH, y1, `hf = ${cm(hf!)}`, 1));
   }
-  const Wt = Math.ceil(x0 + W + 170), Ht = Math.ceil(yCb + 26);
+  let Wt = Math.ceil(x0 + W + 170), Ht = Math.ceil(yCb + 26);
+
+  /*
+    SEÇÃO T (Jose, 12/10: "a gente vai ter de desenhar isso daqui"): a mesma faixa ganha as cotas que a conta da seção
+    T usa — a alma de cada furo (bw,f) e o y nas almas, em cadeia com o hf — e, ao lado, as FORÇAS: o bloco comprimido
+    da parede (C_mesa, na altura hf) e o das almas (C_alma, na altura y), com a largura proporcional à força por cm de
+    altura (K·fd·b), a tração no aço e os dois braços até a barra. É a figura das linhas M_mesa e M_alma.
+  */
+  const fM = r.num('ffd_m'), fA = r.num('ffd_g'), bwM = r.num('bw_m');
+  if (!mesaSo && yAlma !== null && x !== null && ok(fM, fA, bwM)) {
+    const yTopoMesa = y1 - hf! * s, yTopoAlma = y1 - (hf! + yAlma) * s;
+    // y em cadeia com o hf, na mesma coluna (com graute total o hf não saiu acima: a parede continua sendo a mesa)
+    const xH = x0 + W + 90;
+    if (cheia) {
+      partes.push(chamada(x0 + W, yTopoMesa, xH + 4, yTopoMesa), chamada(x0 + W, y1, xH + 4, y1));
+      partes.push(cota(xH, yTopoMesa, xH, y1, `hf = ${cm(hf!)}`, 1));
+    }
+    partes.push(chamada(x0 + W, yTopoAlma, xH + 4, yTopoAlma));
+    partes.push(cota(xH, yTopoAlma, xH, yTopoMesa, `y = ${nbr(yAlma, 2)}`, 1));
+    // alma de um furo, embaixo, numa segunda linha de cota
+    if (!cheia && xs.length) {
+      const a0 = Math.max(0, xs[0] - bw / 2), a1 = Math.min(b, xs[0] + bw / 2), yCw = yCb + 26;
+      partes.push(chamada(x0 + a0 * s, y1, x0 + a0 * s, yCw + 4), chamada(x0 + a1 * s, y1, x0 + a1 * s, yCw + 4));
+      partes.push(cota(x0 + a0 * s, yCw, x0 + a1 * s, yCw, `bw,f = ${cm(bw)}`, 1));
+      Ht = Math.ceil(yCw + 24);
+    }
+    // o diagrama de forças, à direita
+    const xa = x0 + W + 210, larg = 80;
+    const wM = larg, wA = larg * (fA! * bwM!) / (fM! * 100);
+    partes.push(texto(xa - 10, 16 + 18, 'Forças na faixa', 12, 'start'));
+    partes.push(`<line x1="${xa.toFixed(2)}" y1="${y0.toFixed(2)}" x2="${xa.toFixed(2)}" y2="${y1.toFixed(2)}" stroke="${TINTA}" stroke-width="1.2"/>`);
+    partes.push(`<rect x="${xa.toFixed(2)}" y="${yTopoMesa.toFixed(2)}" width="${wM.toFixed(2)}" height="${(hf! * s).toFixed(2)}" ${COMP}/>`);
+    partes.push(`<rect x="${xa.toFixed(2)}" y="${yTopoAlma.toFixed(2)}" width="${wA.toFixed(2)}" height="${(yAlma * s).toFixed(2)}" ${COMP}/>`);
+    const seta = (xi: number, xf: number, yy: number, cor: string) => {
+      const dir = Math.sign(xf - xi) || 1;
+      return `<line x1="${xi.toFixed(2)}" y1="${yy.toFixed(2)}" x2="${xf.toFixed(2)}" y2="${yy.toFixed(2)}" stroke="${cor}" stroke-width="1.6"/>`
+        + `<path d="M${xf.toFixed(2)},${yy.toFixed(2)} l${(-dir * 8).toFixed(2)},-4 l0,8 z" fill="${cor}"/>`;
+    };
+    const yCm = y1 - (hf! / 2) * s, yCa = y1 - (hf! + yAlma / 2) * s;
+    const xSeta = xa + larg + 46;
+    partes.push(seta(xSeta, xa + wM + 4, yCm, '#c55a11'), texto(xSeta + 4, yCm + 4, 'C mesa', 11, 'start'));
+    partes.push(seta(xSeta, xa + wA + 4, yCa, '#c55a11'), texto(xSeta + 4, yCa + 4, 'C alma', 11, 'start'));
+    partes.push(`<line x1="${(xa - 6).toFixed(2)}" y1="${(y1 - x * s).toFixed(2)}" x2="${(xa + larg + 20).toFixed(2)}" y2="${(y1 - x * s).toFixed(2)}" stroke="#c55a11" stroke-width="1.2" stroke-dasharray="8 4 2 4"/>`);
+    partes.push(`<circle cx="${xa.toFixed(2)}" cy="${yb.toFixed(2)}" r="${rb.toFixed(2)}" fill="${ACO}"/>`);
+    partes.push(seta(xa + 6, xa + 60, yb, ACO), texto(xa + 64, yb + 4, 'As·σs', 11, 'start'));
+    // os dois braços até a barra
+    const xB1 = xSeta + 70, xB2 = xSeta + 140;
+    partes.push(chamada(xa + 60, yb, xB2 + 4, yb), chamada(xSeta + 50, yCm, xB1 + 4, yCm), chamada(xSeta + 50, yCa, xB2 + 4, yCa));
+    partes.push(cota(xB1, yb, xB1, yCm, 'd − hf/2', 1));
+    partes.push(cota(xB2, yb, xB2, yCa, 'd − hf − y/2', 1));
+    Wt = Math.ceil(xB2 + 120);   // folga para o rótulo deitado da cota curta
+  }
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${Wt} ${Ht}" style="width:100%;height:auto;display:block" font-family="Arial, Helvetica, sans-serif"><rect width="${Wt}" height="${Ht}" fill="#ffffff"/>${partes.join('')}</svg>`;
-  return { svg, titulo: 'Seção da flexão: faixa de 1 m (cm)' };
+  return { svg, titulo: mesaSo ? 'Seção da flexão: faixa de 1 m (cm)' : 'Seção da flexão: faixa de 1 m em seção T e as forças (cm)' };
 }
