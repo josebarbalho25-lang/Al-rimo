@@ -20,6 +20,7 @@ import type { AutorDeCards, Card, Expr, Passo, Ref } from '../tipos';
 import { arredBaixo, avaliar, cte, div, max, min, mul, nome, par, pi, pot, raiz, soma, sub } from '../expr';
 import { memoriaDe, secao } from '../passo';
 import type { Memoria } from '../passo';
+import { desenhoDaFlexaoDaSapata, desenhoDoCortanteDaSapata } from '../desenhoDaSapata';
 
 /*
   Dono único dos símbolos da aba Fundação que os dois grupos desenham (B, h_s, a, b_t, b_p, γ_c, B_c, σmáx, σmín):
@@ -323,12 +324,16 @@ function cardFlexao(r: Parameters<AutorDeCards>[0], L: Lado): Card {
     xResiste && temNumero(m, L.As) && m.passo(L.As, `A_{s,${i}}`, asExpr, { casas: 2, unidade: 'cm²/m', ref: NBR('17.2.2') }),
   ], NBR());
 
+  // o balanço desenhado com as fatias (Jose, 13/10: "quanto mais lúdico, melhor"), antes da fatia 1 aberta
+  const fatia = secaoFatia(m, f, L);
+  const des = desenhoDaFlexaoDaSapata(r, i === 'p' ? 'ponta' : 'talao');
+  if (des) (fatia ?? momento).desenho = des;
+
   return {
     id: `sapata.flexao.${i === 'p' ? 'ponta' : 'talao'}`,
     titulo: `Sapata · flexão ${i === 'p' ? 'da ponta' : 'do talão'}`,
     ref: NBR(),
-    figura: 'Fig. 15',
-    secoes: [i === 'p' && secaoMateriais(m, f), secaoFatia(m, f, L), momento].filter((s) => !!s && s.passos.length > 0) as Card['secoes'],
+    secoes: [i === 'p' && secaoMateriais(m, f), fatia, momento].filter((s) => !!s && s.passos.length > 0) as Card['secoes'],
     avisos: [],
     aplicavel: true,
   };
@@ -409,12 +414,15 @@ function cardCortante(r: Parameters<AutorDeCards>[0]): Card {
     });
   };
 
+  const solicitantes = secao('Cortante de cálculo a d da face', [solicitante(PONTA), solicitante(TALAO)]);
+  const desV = desenhoDoCortanteDaSapata(r);
+  if (desV) solicitantes.desenho = desV;
+
   return {
     id: 'sapata.cortante',
     titulo: 'Sapata · cortante',
     ref: NBR('19.4.1'),
-    figura: 'Fig. 15',
-    secoes: [resistencia, secao('Cortante de cálculo a d da face', [solicitante(PONTA), solicitante(TALAO)])],
+    secoes: [resistencia, solicitantes],
     avisos: [],
     aplicavel: true,
   };

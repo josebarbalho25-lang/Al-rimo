@@ -3,8 +3,8 @@
 
   Ordem: lê a conta → modula (regra única, modular.ts) → arruma as fiadas (fiadas.ts, com os encaixes da tabela)
   → põe as barras procurando o furo de verdade de cada fiada (armaduras.ts + cavidades.ts; nas fiadas de canaleta,
-  a corrida do muro e a barra em L de cada contraforte) → grauteia (parcial:
-  furo com barra; total: todos; contraforte: sempre todos) → fura o fundo da canaleta onde a barra sobe e quebra a
+  a corrida do muro e a barra em L de cada contraforte) → grauteia (furo com barra sempre; a parede na grade do
+  graute a cada X — 20 = todos; contraforte: sempre todos) → fura o fundo da canaleta onde a barra sobe e quebra a
   parede dela no encontro com o contraforte, com o graute no lugar (canaletas.ts) → sapata, drenagem e terreno
   (entorno.ts).
 
@@ -212,10 +212,37 @@ function alvenaria(ctx: Ctx, tr: TrechoModulado, fiadas: FiadaMontada[], mapa: M
 
 // ── graute ───────────────────────────────────────────────────────────────────
 
+/*
+  GRADE DO GRAUTE DA PAREDE (Jose, 13/10: "graute a cada X"). Furo da parede é grauteado se fica a um múltiplo de X
+  da barra MAIS PRÓXIMA (de qualquer lado): as barras caem na grade (a lista do espaçamento só oferece múltiplos de
+  X), então entre duas barras a grade é a mesma vista de uma ou da outra. A mais próxima, e não a da esquerda, porque
+  o painel recomeça depois de cada contraforte e as barras das pontas (a última do balanço, a do lado do contraforte)
+  ficam fora do passo s: cada trecho segue a barra dele. A distância vai em furos: round(Δx/m) — os furos ficam a 195 e 205 mm alternados (bloco de 390
+  + junta de 10), e a soma de dois dá 400 exatos, então o arredondamento nunca acumula. Só furo da PAREDE (y entre as
+  faces); o contraforte é sempre todo grauteado por conta própria. É a mesma fração m/X do peso da conta.
+*/
+function grauteDaGrade(fiada: readonly Cavidade[], xsDasBarras: readonly number[], passo: number, t: number, m: number): void {
+  const furos = fiada.filter((c) => c.tipo === 'furo' && c.cy > 0 && c.cy < t);
+  if (!furos.length) return;
+  const ref = (x: number): number => {
+    if (!xsDasBarras.length) return furos[0].cx;
+    let r = xsDasBarras[0];
+    for (const xb of xsDasBarras) if (Math.abs(xb - x) < Math.abs(r - x)) r = xb;
+    return r;
+  };
+  for (const c of furos) {
+    const k = Math.round(Math.abs(c.cx - ref(c.cx)) / m);
+    if (k % passo === 0) c.grauteada = true;
+  }
+}
+
 function graute(ctx: Ctx, tr: TrechoModulado, fiadas: FiadaMontada[], mapa: MapaDeCavidades, vs: Vertical[], ini: number): void {
   const { mod, p, pecas } = ctx;
   const t = mod.cat.t;
   for (const v of vs) mapa.marcar(v.x, v.y, 0, zTopoBarra(ctx));
+  // grade do graute da parede (graute a cada X, Jose 13/10): contada a partir das barras da parede, que caem nela
+  const xsDasBarras = [...new Set(vs.filter((v) => v.y > 0 && v.y < t).map((v) => v.x))].sort((a, b) => a - b);
+  const passo = Math.max(1, Math.round(p.s_graute / mod.m));
   for (let i = 0; i < mapa.nFiadas; i++) {
     // o furo do muro na célula do contraforte também leva graute (brief §5.6)
     for (const no of tr.nos) {
@@ -223,6 +250,7 @@ function graute(ctx: Ctx, tr: TrechoModulado, fiadas: FiadaMontada[], mapa: Mapa
       if (a && a.cav.tipo === 'furo') a.cav.grauteada = true;
     }
     if (p.grauteTotal) for (const c of mapa.fiada(i)) c.grauteada = true;
+    else grauteDaGrade(mapa.fiada(i), xsDasBarras, passo, t, mod.m);
   }
 
   const porPeca = new Map<number, Cavidade[]>();

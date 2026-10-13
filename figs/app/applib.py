@@ -27,7 +27,8 @@ C = dict(line='#262626', dim='#404040', block='#7f7f7f', blockfill='#d9d9d9', gr
          note='#595959', empuxo='#f8cbad', empuxo2='#fbe5d6', mesa='#f4b183', mesa_txt='#843c0c',
          passivo='#548235', passivo_fill='#e2efda', passivo_txt='#385723', sub='#fff2cc', sub_line='#bf9000',
          sub_txt='#7f6000', ok='#2e7d32', ok_fill='#eaf5ea', erro='#c00000', erro_fill='#fdecea',
-         cinza='#a6a6a6', cinza2='#bfbfbf', claro='#f2f2f2', concreto='#ececec', pressao='#ddebf7', barra2='#ff6f6f')
+         cinza='#a6a6a6', cinza2='#bfbfbf', claro='#f2f2f2', concreto='#ececec', pressao='#ddebf7', barra2='#ff6f6f',
+         reboco='#e9e1d1')   # argamassa do reboco (13/10): bege-claro, nem bloco nem graute
 FONT = "font-family:Arial,'DejaVu Sans',sans-serif"
 
 # ── A RÉGUA COMUM (Jose, 12/10: "padronizar as figuras para ficarem harmônicas") ───────────────────────────────
@@ -307,7 +308,7 @@ class Fig:
 
     def legenda(s, x, y, itens):
         """Legenda embaixo, à esquerda, numa linha: itens = [(tipo, rótulo)], tipo em 'aco', 'aco2', 'graute',
-        'bloco', 'solo', 'concreto', 'apoio', 'engaste', 'livre', 'naoarmado', 'fissura', 'junta'."""
+        'bloco', 'solo', 'concreto', 'apoio', 'engaste', 'livre', 'naoarmado', 'fissura', 'junta', 'reboco'."""
         cx = x
         for tipo, rot in itens:
             yy = y - 6
@@ -335,6 +336,8 @@ class Fig:
                 s.fissura(cx, yy, cx + 26, yy, n=4)
             elif tipo == 'junta':
                 s.line(cx, yy, cx + 26, yy, stroke=C['dim'], sw=1.6, extra='stroke-dasharray="12,4,2,4"')
+            elif tipo == 'reboco':
+                s.rect(cx, yy - 7, 26, 14, fill=C['reboco'], stroke=C['dim'], sw=0.8)
             s.text(cx + 34, y, rot, size=T_PEQ, anchor='start', color=C['note'])
             cx += 34 + _larg_texto(rot, T_PEQ) + 28
 

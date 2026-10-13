@@ -417,6 +417,14 @@ const EMPATE_PARA_BAIXO = new Set(['s_dir', 's_pv_dir', 's_ph_dir', 'h_pan']);
 */
 export const LISTA_PELA_SAPATA: ReadonlySet<string> = new Set(['phi_v', 'phi_pv', 'phi_cf', 'phi_cc']);
 
+/*
+  ESPAÇAMENTO DAS BARRAS NA GRADE DO GRAUTE (Jose, 13/10: "bloqueia de acordo com o campo de graute"). A lista do
+  espaçamento só tem múltiplos do graute a cada X. Trocou o graute e o espaçamento saiu da lista → o MAIOR múltiplo
+  abaixo dele (mais barra, a favor), como a planilha faz no s adotado (ROUNDDOWN); só sobe quando não há nenhum
+  abaixo (graute a cada 80 com barra a 60: a lista é só 80).
+*/
+const ESPACAMENTO_NA_GRADE: ReadonlySet<string> = new Set(['s_dir', 's_pv_dir']);
+
 /** O que a troca automática fez num campo, para a tela mostrar ("→ 54"). */
 export interface AjusteDeLista {
   nome: string;
@@ -453,7 +461,9 @@ export function ajustarAsListas(
       if (d < -1e-9 || (Math.abs(d) <= 1e-9 && (paraBaixo ? o < melhor : o > melhor))) melhor = o;
     }
     const abaixo = nums.filter((o) => o < v);
-    if (LISTA_PELA_SAPATA.has(campo.meta.nome) && abaixo.length > 0) melhor = Math.max(...abaixo);
+    if ((LISTA_PELA_SAPATA.has(campo.meta.nome) || ESPACAMENTO_NA_GRADE.has(campo.meta.nome)) && abaixo.length > 0) {
+      melhor = Math.max(...abaixo);
+    }
     novas = aplicarValor(novas, campo.meta, melhor);
     ajustes.push({ nome: campo.meta.nome, de: v, para: melhor });
   }
@@ -514,8 +524,8 @@ export function secaoVisivel(secao: Pick<Secao, 'soCom'>, ler: LerValor): boolea
     · balanço na ponta → Contrafortes!B9/B39: só com tipo_cf = Extremidade
     · γ do contraforte → só pesa com Tipo_muro = Contrafortes (está na seção
                        da fundação, que aparece nos dois tipos)
-    · bw da seção I → só com Graute = Parcial (seção cheia não tem alma)
-    · o que é só do BALANÇO (grauteamento, bw, Ø vertical, s, d, K na flexão,
+    · bw da seção I → só sem grauteamento total (seção cheia não tem alma)
+    · o que é só do BALANÇO (bw, Ø vertical, s, d, K na flexão,
       M2d, o painel não armado entre canaletas menos a argamassa, σsg) → com
       contrafortes a conta passa para as abas Contrafortes e Fundação, que
       não os leem. Aceso, "Ø vertical" e "K na flexão" apareciam DUAS vezes
@@ -530,8 +540,16 @@ export function secaoVisivel(secao: Pick<Secao, 'soCom'>, ler: LerValor): boolea
   contrafortes, só com cinta.
 */
 const soNoBalanco = (l: LerValor) => l('Tipo_muro') !== 'Contrafortes';
+// graute a cada X (13/10): 20 cm (o meio módulo) = todos os furos, seção cheia
+const grauteTotal = (l: LerValor) => {
+  const x = l('Graute');
+  return typeof x === 'number' && x <= 20;
+};
 
-const ATIVA_SE: Record<string, (ler: LerValor) => boolean> = {
+/** O número que a CONTA deu (nome definido da planilha); null sem conta ou com "—". */
+export type LerConta = (nome: string) => number | null;
+
+const ATIVA_SE: Record<string, (ler: LerValor, conta?: LerConta) => boolean> = {
   alfa_v: (l) => l('Trav_lat') === 'Sim',
   alfa_h: (l) => l('Trav_lat') === 'Sim',
   l_trav: (l) => l('Trav_lat') === 'Sim',
@@ -539,15 +557,19 @@ const ATIVA_SE: Record<string, (ler: LerValor) => boolean> = {
   gama_w: (l) => l('Agua') === 'Sim',
   bal_cf: (l) => String(l('tipo_cf') ?? '').startsWith('Extrem'),
   gama_cf: (l) => l('Tipo_muro') === 'Contrafortes',
-  // área de referência do fpk: com grauteamento total no balanço a planilha usa fpk* e ignora a escolha
-  // (fpk_liq = fpk_tab); no painel entre contrafortes (sempre seção I) ela vale sempre
-  fpk_ref: (l) => l('Tipo_muro') === 'Contrafortes' || String(l('Graute') ?? '').startsWith('Parcial'),
+  // área de referência do fpk: com grauteamento total a planilha usa fpk* e ignora a escolha — no balanço
+  // (fpk_liq = fpk_tab) e, desde 13/10, também no painel entre contrafortes (fpk_pn = fpk*)
+  fpk_ref: (l) => !grauteTotal(l),
   // espessura do reboco só pesa com reboco (Entradas, g_reb: IF(reb_fac=…;…;0))
   reb_esp: (l) => l('reb_fac') !== 'Nenhum',
   // o aterro da frente só conta com a garantia do solo da frente (Fundação: IF(pass_on="Sim";…;0))
   h_fr: (l) => l('pass_on') === 'Sim',
-  Graute: soNoBalanco,
-  bw_dir: (l) => soNoBalanco(l) && String(l('Graute') ?? '').startsWith('Parcial'),
+  // posição do dente: só com dente (largura e altura > 0)
+  x_den: (l) => Number(l('b_den') ?? 0) > 0 && Number(l('h_den') ?? 0) > 0,
+  bw_dir: (l) => soNoBalanco(l) && !grauteTotal(l),
+  // alma da seção I do ELS do painel: seção cheia não tem alma (Contrafortes: bw_ev, bw_eh = bm com total)
+  bwv_dir: (l) => !grauteTotal(l),
+  bwh_els: (l) => !grauteTotal(l),
   phi_v: soNoBalanco,
   s_dir: soNoBalanco,
   d_dir: soNoBalanco,
@@ -563,13 +585,19 @@ const ATIVA_SE: Record<string, (ler: LerValor) => boolean> = {
   barbaca_s: (l) => l('barbaca_on') === 'Sim',
   dreno_esp: (l) => l('dreno_on') === 'Sim',
   dreno_folga: (l) => l('dreno_on') === 'Sim',
+  // estribo do contraforte só quando a conta pede (Jose, 13/10; planilha 05 do Carini): com Asw/s de cálculo = 0 a
+  // planilha zera Asw,ef e o nº de estribos e o muro sai sem estribo — Ø, ramos e s não mexem em nada. É a única
+  // regra que lê a CONTA e não uma entrada; sem conta (ou com "—") o campo fica aceso, como antes.
+  phi_est: (_, conta) => conta?.('Asw_c') !== 0,
+  ramos_est: (_, conta) => conta?.('Asw_c') !== 0,
+  s_est: (_, conta) => conta?.('Asw_c') !== 0,
   // a tabela de Gerscovich não tem argila: com Argila a planilha escreve "—" na sugestão pela classe
   Classe_G: (l) => l('Tipo_solo') !== 'Argila',
 };
 
-export function entradaAtiva(nome: string, ler: LerValor): boolean {
+export function entradaAtiva(nome: string, ler: LerValor, conta?: LerConta): boolean {
   const regra = ATIVA_SE[nome];
-  return regra ? regra(ler) : true;
+  return regra ? regra(ler, conta) : true;
 }
 
 /*
@@ -594,6 +622,12 @@ export const VALOR_AUTO: Readonly<Record<string, string>> = {
   sig_adm_dir: 's_adm',
   s_pv_dir: 's_pv',
   s_ph_dir: 's_ph',
+  // fgk preso à linha do fbk da Fig. 23 (Jose, 13/10: "vincular com a seleção na tabela, mas deixa aberto"): vazio
+  // mostra o fgk da tabela e acompanha a troca do fbk; digitado manda. É o fgk_ da planilha:
+  // IF(ISNUMBER(fgk_dir); fgk_dir; PROCV(fbk_; tabela)).
+  fgk_dir: 'fgk_',
+  // K da flexão horizontal do painel (13/10): vazio = 0,5 (seção horizontal não toda grauteada) ou 1,0 (total)
+  K_ph: 'K_ph_us',
 };
 
 /** O valor em que o campo fica travado na situação atual, ou undefined (campo livre). */

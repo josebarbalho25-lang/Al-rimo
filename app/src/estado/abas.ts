@@ -44,7 +44,8 @@ const C = 'Contrafortes' as const;
 export const ABAS: readonly Aba[] = [
   {
     id: 'muro', titulo: 'Muro', grupos: [
-      { titulo: 'Tipo e bloco', campos: ['Tipo_muro', 't_bloco'] },
+      // grauteamento da parede: vale para o balanço e para o painel entre contrafortes (Jose, 13/10)
+      { titulo: 'Tipo e bloco', campos: ['Tipo_muro', 't_bloco', 'Graute'] },
       { titulo: 'Medidas', campos: ['H_muro', 'L_total', 'junta_cada'] },
       { titulo: 'Topo', campos: ['cinta_topo', 'phi_cinta'] },
       { titulo: 'Travamento lateral', campos: ['Trav_lat', 'alfa_v', 'alfa_h', 'l_trav'] },
@@ -68,7 +69,7 @@ export const ABAS: readonly Aba[] = [
   },
   {
     id: 'armadura', titulo: 'Armadura', soCom: B, grupos: [
-      { titulo: 'Seção', campos: ['Graute', 'bw_dir'] },
+      { titulo: 'Seção', campos: ['bw_dir'] },
       { titulo: 'Barras verticais', campos: ['phi_v', 's_dir', 'd_dir'] },
       { titulo: 'Canaletas', campos: ['h_pan'] },
     ],
@@ -90,7 +91,7 @@ export const ABAS: readonly Aba[] = [
   },
   {
     id: 'fundacao', titulo: 'Fundação', grupos: [
-      { titulo: 'Geometria', campos: ['B_sap', 'h_sap', 'a_ater', 'b_den', 'h_den'] },
+      { titulo: 'Geometria', campos: ['B_sap', 'h_sap', 'a_ater', 'b_den', 'h_den', 'x_den'] },
       { titulo: 'Cargas', campos: ['P_topo', 'q_est'] },
       { titulo: 'Solo de apoio', campos: ['SPT_b', 'sig_adm_dir', 'phi_base', 'dphi', 'ades_b'] },
       { titulo: 'Espera', campos: ['zona_ad', 'gancho_', 'traspasse_dir'] },

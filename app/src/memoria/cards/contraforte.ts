@@ -622,25 +622,28 @@ function cardCisalhamento(r: Parameters<AutorDeCards>[0]): Card {
         }),
       ], NBR('11.4.3'));
 
-  const adotado = secao('Estribo adotado', [
-    ps('phi_est', '\\phi_{est}', null, {
-      casas: casasDaEntrada('phi_est'),
-      unidade: 'mm',
-      origem: 'entrada',
-      ref: NBR('12.4'),
-      verif: verifica(m, 'junta', { chave: 'contraforte.estriboJunta', rotulo: 'Estribo na junta Ø ≤ 6,3', limite: 6.3, relacao: '<=', casasLimite: 1 }),
-    }),
-    m.entrada('ramos_est', 'n_{ram}'),
-    m.entrada('s_est', 's_{est}'),
-    ps('Asw_e', '(A_{sw}/s)_{ef}', mul(div(mul(nram, pi(), pot(phiEstCm, 2)), mul(cte(4, 0), s)), cte(100, 0)), {
-      casas: 2,
-      unidade: 'cm²/m',
-      // "Dispensa pela conta" não é OK nem NÃO OK: sem estribo de cálculo a linha não verifica nada
-      verif: dispensa ? undefined : verifica(m, 'estribos', { chave: 'contraforte.estribos', rotulo: 'Estribo Asw,ef ≥ Asw,calc', limite: Aswc, relacao: '>=' }),
-    }),
-    ps('Vrd3_cf', 'V_{Rd3,cf}', soma(Va, div(mul(cte(0.75, 2), fywdK, d, Aswe), cte(100, 0))), { casas: 2, unidade: 'kN', ref: NBR('11.4.3') }),
-    ps('n_est', 'n_{est}', arredCima(div(hCm, s)), { casas: 0 }),
-  ]);
+  // Dispensa pela conta = muro SEM estribo (Jose, 13/10; planilha 05 do Carini): Ø, ramos e s das Entradas não
+  // entram (a planilha zera Asw,ef e o nº de estribos), então a seção só registra o nº de estribos = 0.
+  const adotado = dispensa
+    ? secao('Estribo adotado', [ps('n_est', 'n_{est}', null, { casas: 0, origem: 'calculado' })])
+    : secao('Estribo adotado', [
+        ps('phi_est', '\\phi_{est}', null, {
+          casas: casasDaEntrada('phi_est'),
+          unidade: 'mm',
+          origem: 'entrada',
+          ref: NBR('12.4'),
+          verif: verifica(m, 'junta', { chave: 'contraforte.estriboJunta', rotulo: 'Estribo na junta Ø ≤ 6,3', limite: 6.3, relacao: '<=', casasLimite: 1 }),
+        }),
+        m.entrada('ramos_est', 'n_{ram}'),
+        m.entrada('s_est', 's_{est}'),
+        ps('Asw_e', '(A_{sw}/s)_{ef}', mul(div(mul(nram, pi(), pot(phiEstCm, 2)), mul(cte(4, 0), s)), cte(100, 0)), {
+          casas: 2,
+          unidade: 'cm²/m',
+          verif: verifica(m, 'estribos', { chave: 'contraforte.estribos', rotulo: 'Estribo Asw,ef ≥ Asw,calc', limite: Aswc, relacao: '>=' }),
+        }),
+        ps('Vrd3_cf', 'V_{Rd3,cf}', soma(Va, div(mul(cte(0.75, 2), fywdK, d, Aswe), cte(100, 0))), { casas: 2, unidade: 'kN', ref: NBR('11.4.3') }),
+        ps('n_est', 'n_{est}', arredCima(div(hCm, s)), { casas: 0 }),
+      ]);
 
   return {
     id: 'contraforte.cisalhamento',

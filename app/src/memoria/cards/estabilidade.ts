@@ -27,6 +27,7 @@ import { abs, cte, div, max, min, mul, neg, nome, pot, rad, soma, sub, tan } fro
 import { memoriaDe, secao, type Memoria, type PedidoDeVerificacao } from '../passo';
 import { nt } from '../formato';
 import { passoDoGamaCf, passosDoPeso } from './pesoProprio';
+import { desenhoDasDistanciasAoCentro, desenhoDasForcasQueEstabilizam, desenhoDasForcasQueTombam, desenhoDasTensoes } from '../desenhoDaSapata';
 
 const ABA = 'Fundação';
 const cel = (endereco: string) => `${ABA}!${endereco}`;
@@ -54,7 +55,9 @@ export const SIMBOLOS_ESTABILIDADE: Readonly<Record<string, string>> = {
   'P_{topo}': 'carga vertical permanente no topo do muro, por metro',
   'N_{muro}': 'peso próprio do muro no módulo',
   'N_{cf}': 'peso do contraforte grauteado',
-  'N_{sap}': 'peso da sapata e do dente no módulo',
+  'N_{sap}': 'peso da sapata no módulo',
+  'N_{den}': 'peso do dente no módulo',
+  'x_{den}': 'posição do eixo do dente a partir do centro da sapata (+ para o pé)',
   'N_{solo}': 'peso do solo sobre o talão no módulo',
   N_q: 'sobrecarga sobre o talão no módulo',
   'N_{topo}': 'carga permanente do topo do muro no módulo',
@@ -66,7 +69,7 @@ export const SIMBOLOS_ESTABILIDADE: Readonly<Record<string, string>> = {
   // ── empuxo até a base da sapata ──
   '\\sigma_{h,s}': 'pressão horizontal total na base da sapata',
   H_k: 'empuxo horizontal até a base da sapata, no módulo',
-  'M_{tomb}': 'momento tombador do empuxo em relação à base da sapata',
+  'M_{tomb}': 'momento de tombamento do empuxo em relação à base da sapata',
   // ── tombamento ──
   'M_{est}': 'momento estabilizante das cargas verticais em relação ao pé',
   'FS_{tomb}': 'fator de segurança ao tombamento',
@@ -75,6 +78,24 @@ export const SIMBOLOS_ESTABILIDADE: Readonly<Record<string, string>> = {
   'M_{cen}': 'momento total em relação ao centro da base (+ para o pé)',
   e: 'excentricidade da resultante na base (+ para o pé)',
   'e_{lim}': 'excentricidade limite B/4 (critério do Gilberto)',
+  // braços até o pé (13/10): a mesma legenda do desenho das forças que estabilizam
+  'x_{p,muro}': 'braço do peso do muro até o pé',
+  'x_{p,cf}': 'braço do peso do contraforte até o pé',
+  'x_{p,sap}': 'braço do peso da sapata até o pé',
+  'x_{p,solo}': 'braço do peso do solo sobre o talão até o pé',
+  'x_{p,q}': 'braço da sobrecarga sobre o talão até o pé',
+  'x_{p,topo}': 'braço da carga do topo do muro até o pé',
+  'x_{p,w}': 'braço da subpressão até o pé',
+  'x_{p,fr}': 'braço do aterro sobre a ponta até o pé',
+  'x_{p,den}': 'braço do peso do dente até o pé',
+  // distâncias ao centro da base (13/10), + do lado do pé
+  'd_{c,muro}': 'distância do peso do muro ao centro da base (+ lado do pé)',
+  'd_{c,cf}': 'distância do contraforte ao centro da base (+ lado do pé)',
+  'd_{c,solo}': 'distância do solo sobre o talão ao centro da base (+ lado do pé)',
+  'd_{c,q}': 'distância da sobrecarga ao centro da base (+ lado do pé)',
+  'd_{c,topo}': 'distância da carga do topo ao centro da base (+ lado do pé)',
+  'd_{c,fr}': 'distância do aterro sobre a ponta ao centro da base (+ lado do pé)',
+  'd_{c,den}': 'distância do dente ao centro da base (+ lado do pé)',
   // ── deslizamento ──
   "\\varphi'_b": 'ângulo de atrito efetivo do solo de apoio',
   'k_{\\delta}': "relação δ_b/φ' adotada para o atrito na base",
@@ -99,6 +120,7 @@ function folhas(m: Memoria) {
     xm: m.ent('a_ater', 'a'),
     bden: m.ent('b_den', 'b_{den}'),
     hden: m.ent('h_den', 'h_{den}'),
+    xden: m.ent('x_den', 'x_{den}'),
     gc: m.ent('gama_c', '\\gamma_c'),
     // γ do contraforte e peso da parede: os USADOS (calculados ou digitados — cards/pesoProprio.ts)
     gcf: m.g('gama_cf_us', '\\gamma_{cf}', 2, 'kN/m³'),
@@ -161,6 +183,8 @@ function parcelas(m: Memoria, f: Folhas): Parcela[] {
     m.texto('Agua') === 'Sim' && { linha: 22, simbolo: 'N_w', x: null },
     // aterro sobre a ponta: só com a garantia do solo da frente; aterro zero dá linha zero e fica fora
     (m.valor(cel('B23')) ?? 0) !== 0 && { linha: 23, simbolo: 'N_{fr}', x: sub(f.B, div(f.bpta, DOIS)) },
+    // dente na posição dele (13/10): x = B/2 + x_den, medido da borda aterrada; sem dente a linha é zero e fica fora
+    (m.valor(cel('B24')) ?? 0) !== 0 && { linha: 24, simbolo: 'N_{den}', x: soma(div(f.B, DOIS), f.xden) },
   ];
   return lista.filter((p): p is Parcela => !!p);
 }
@@ -208,6 +232,7 @@ function cardCargas(r: Resultado): Card {
     m.entrada('a_ater', 'a'),
     m.entrada('b_den', 'b_{den}'),
     m.entrada('h_den', 'h_{den}'),
+    (m.num('b_den') ?? 0) > 0 && (m.num('h_den') ?? 0) > 0 && m.entrada('x_den', 'x_{den}'),
     contrafortes
       ? m.passo('Lm', 'L_{mod}', m.g('l_cf_adot', '\\ell_{cf}', 2, 'm'), { casas: 2, unidade: 'm' })
       : m.passo('Lm', 'L_{mod}', null, { casas: 2, unidade: 'm', origem: 'adotado' }),
@@ -226,7 +251,7 @@ function cardCargas(r: Resultado): Card {
   const exprParcela: Record<number, Expr> = {
     16: mul(f.gpar, f.hm, f.L),
     17: mul(f.gcf, f.eenr, almaCf, f.hm),
-    18: mul(f.gc, soma(mul(f.B, f.hs), mul(f.bden, f.hden)), f.L),
+    18: mul(f.gc, f.B, f.hs, f.L),
     19: contrafortes && enterrado
       // o contraforte enterrado ocupa parte do talão: desconta o volume dele no peso do solo (só até onde há solo)
       ? sub(mul(f.gama, f.hso, f.btal, f.L), mul(f.gama, f.eenr, min(f.btal, almaCf), f.hso))
@@ -238,6 +263,7 @@ function cardCargas(r: Resultado): Card {
       // o contraforte aparente ocupa parte da ponta: desconta o volume dele no aterro (espelho do talão)
       ? sub(mul(f.gama, f.hfr, f.bpta, f.L), mul(f.gama, f.eenr, min(f.bpta, almaCf), f.hfr))
       : mul(f.gama, f.hfr, f.bpta, f.L),
+    24: mul(f.gc, f.bden, f.hden, f.L),
   };
   const ps = parcelas(m, f);
   const passosParcelas: Passo[] = [];
@@ -291,11 +317,6 @@ function cardTombamento(r: Resultado): Card {
   const ps = parcelas(m, f);
   const meioB = div(f.B, DOIS);
 
-  // Σ N·(B − x): com x = B/2 o braço B − B/2 é B/2 exato (a subtração é exata em ponto flutuante)
-  const mEst = soma(...ps.map((p) => mul(folhaDaParcela(p), p.x ? sub(f.B, p.x) : meioB)));
-  // Σ N·(x − B/2): sapata e subpressão (x = B/2) dão braço zero e ficam fora
-  const comBraco = ps.filter((p) => p.x !== null);
-  const mN = comBraco.length ? soma(...comBraco.map((p) => mul(folhaDaParcela(p), sub(p.x as Expr, meioB)))) : null;
 
   const momentoPositivo = (m.num('M_tb') ?? 0) > 0;          // IF(M_tb>0; M_est/M_tb; 99)
   const fsMin = m.ent('FS_tomb', 'FS_{tomb,m\\acute{\\imath}n}');
@@ -303,15 +324,51 @@ function cardTombamento(r: Resultado): Card {
     chave: 'fundacao.tombamento', rotulo: 'Tombamento FS ≥ FS mín', limite: fsMin, relacao: '>=', celula: 'chk_fs_t',
   };
 
-  const fs = secao('Fator de segurança em torno do pé', [
-    m.passo('M_est', 'M_{est}', mEst, { casas: 3, unidade: 'kN·m' }),
+  /*
+    BRAÇOS ATÉ O PÉ, escritos a partir do pé (Jose, 13/10: "no desenho você bate o olho e vê a distância; na fórmula a
+    referência pega a distância da outra ponta, ou divide a sapata por dois"). A planilha mede x da borda aterrada e
+    usa B − x (coluna D da tabela de cargas); o número é o mesmo, mas aqui cada braço sai da geometria vista do pé —
+    ponta, meia parede, talão —, com o nome da legenda do desenho. M_est fica Σ N × x_p, termo a termo.
+  */
+  const enterrado = m.texto('pos_cf').startsWith('Ente');
+  const meiaT = div(f.t, DOIS);
+  const almaCf = sub(f.tenr, f.tb);
+  const BRACO: Record<number, { sim: string; expr: Expr }> = {
+    16: { sim: 'x_{p,muro}', expr: soma(f.bpta, meiaT) },
+    17: { sim: 'x_{p,cf}', expr: enterrado ? soma(f.bpta, f.t, div(almaCf, DOIS)) : sub(f.bpta, div(almaCf, DOIS)) },
+    18: { sim: 'x_{p,sap}', expr: meioB },
+    19: { sim: 'x_{p,solo}', expr: soma(f.bpta, f.t, div(f.btal, DOIS)) },
+    20: { sim: 'x_{p,q}', expr: soma(f.bpta, f.t, div(f.btal, DOIS)) },
+    21: { sim: 'x_{p,topo}', expr: soma(f.bpta, meiaT) },
+    22: { sim: 'x_{p,w}', expr: meioB },
+    23: { sim: 'x_{p,fr}', expr: div(f.bpta, DOIS) },
+    24: { sim: 'x_{p,den}', expr: sub(meioB, f.xden) },
+  };
+  // Muro todo sobre a sapata (ponta e talão sem o MAX(0; …) da planilha agindo): a geometria vista do pé vale. Muro
+  // saindo da sapata (a verificação "Muro apoiado na sapata" reprova): ponta ou talão cortados a zero e a soma
+  // ponta + t + … deixa de ser a distância — aí fica a forma da planilha, B − x.
+  const Bv = m.num('B_sap') ?? 0, av = m.num('a_ater') ?? 0, tv = m.num('t_m') ?? 0;
+  const sobreASapata = av - tv / 2 >= 0 && Bv - av - tv / 2 >= 0;
+  const bracos = ps.map((p) => m.passo(cel(`D${p.linha}`), BRACO[p.linha].sim,
+    sobreASapata ? BRACO[p.linha].expr : p.x ? sub(f.B, p.x) : meioB, { casas: 3, unidade: 'm' }));
+  const mEstPorBraco = soma(...ps.map((p) => mul(folhaDaParcela(p), nome(cel(`D${p.linha}`), BRACO[p.linha].sim, 3, 'm'))));
+  const secBracos = secao('Braços até o pé', bracos, GILBERTO);
+
+  // Duas seções, cada uma com o seu desenho (Jose, 13/10: "duas figuras separadas, uma para as forças que tombam e
+  // outra para as que estabilizam"): o momento das cargas verticais em torno do pé, e depois o do empuxo e o FS.
+  const estab = secao('Momento estabilizante em torno do pé', [
+    m.passo('M_est', 'M_{est}', mEstPorBraco, { casas: 3, unidade: 'kN·m' }),
+  ], GILBERTO);
+  const desEstab = desenhoDasForcasQueEstabilizam(r);
+  if (desEstab) secBracos.desenho = desEstab;
+  const fs = secao('Momento de tombamento e fator de segurança', [
     m.passo('M_tb', 'M_{tomb}', mul(
       soma(f.Mk, mul(f.Vk, f.hs), div(mul(pot(f.hs, 2), soma(mul(DOIS, f.shBase), f.shSap)), cte(6, 0))),
       f.L,
     ), { casas: 2, unidade: 'kN·m' }),
     momentoPositivo
       ? m.passo('FS_t', 'FS_{tomb}', div(f.Mest, f.Mtb), { casas: 2, ref: NBR_11682, verif: verifFS })
-      // sem momento tombador a planilha publica 99 (convenção: nada tomba)
+      // sem momento de tombamento a planilha publica 99 (convenção: nada tomba)
       : m.passo('FS_t', 'FS_{tomb}', null, { casas: 2, origem: 'adotado', ref: NBR_11682, verif: verifFS }),
   ], GILBERTO);
 
@@ -335,6 +392,28 @@ function cardTombamento(r: Resultado): Card {
     passoE.verif.util = elimNum !== 0 ? (100 * Math.abs(eNum)) / elimNum : null;
   }
 
+  const desTomb = desenhoDasForcasQueTombam(r);
+  if (desTomb) fs.desenho = desTomb;
+
+  /*
+    DISTÂNCIAS AO CENTRO (13/10, a mesma ideia dos braços): o centro está a B/2 do pé, a carga a x_p do pé, então a
+    distância entre os dois é B/2 − x_p — positiva do lado do pé, negativa do lado do talão (a convenção do e). A
+    planilha guarda x − B/2 (coluna F), o mesmo número. Carga no centro (sapata, subpressão, dente no meio) não entra.
+  */
+  const DIST: Record<number, string> = {
+    16: 'd_{c,muro}', 17: 'd_{c,cf}', 19: 'd_{c,solo}', 20: 'd_{c,q}', 21: 'd_{c,topo}', 23: 'd_{c,fr}', 24: 'd_{c,den}',
+  };
+  const foraDoCentro = ps.filter((p) => DIST[p.linha] && Math.abs(m.valor(cel(`F${p.linha}`)) ?? 0) > 1e-12);
+  const distancias = foraDoCentro.map((p) => m.passo(cel(`F${p.linha}`), DIST[p.linha],
+    sobreASapata ? sub(meioB, nome(cel(`D${p.linha}`), BRACO[p.linha].sim, 3, 'm')) : sub(p.x as Expr, meioB),
+    { casas: 3, unidade: 'm' }));
+  const mN = foraDoCentro.length
+    ? soma(...foraDoCentro.map((p) => mul(folhaDaParcela(p), nome(cel(`F${p.linha}`), DIST[p.linha], 3, 'm'))))
+    : null;
+  const secDist = secao('Distâncias ao centro (+ do lado do pé)', distancias, GILBERTO);
+  const desCentro = desenhoDasDistanciasAoCentro(r);
+  if (desCentro) secDist.desenho = desCentro;
+
   const exc = secao('Excentricidade da resultante', [
     mN && m.passo('M_vc', 'M_N', mN, { casas: 3, unidade: 'kN·m' }),
     m.passo('M_cen', 'M_{cen}', soma(f.Mtb, f.MN), { casas: 3, unidade: 'kN·m' }),
@@ -346,8 +425,7 @@ function cardTombamento(r: Resultado): Card {
     id: 'fundacao.tombamento',
     titulo: 'Fundação · tombamento',
     ref: GILBERTO,
-    figura: 'Fig. 15',
-    secoes: [fs, exc],
+    secoes: [secBracos, estab, fs, ...(distancias.length ? [secDist] : []), exc],
     avisos: [],
     aplicavel: true,
   };
@@ -360,7 +438,10 @@ function cardDeslizamento(r: Resultado): Card {
   const f = folhas(m);
   const phiBaseDigitado = m.num('phi_base') !== null;       // ISNUMBER(phi_base)
   const comAdesao = (m.num('ades_b') ?? 0) !== 0;          // adesão opcional, 0 por padrão (escolha do Jose)
-  const comPassivo = m.texto('pass_on') === 'Sim';
+  const frenteGarantida = m.texto('pass_on') === 'Sim';
+  // sem a garantia, o dente do centro para trás (x_den ≤ 0) mobiliza o passivo dele (Jose, 13/10: "para escavar até
+  // a metade da sapata o cara tem que ser um tatu") — a planilha publica E_p > 0 só nesses dois casos
+  const comPassivo = (m.num('E_p') ?? 0) > 0;
 
   const phib = m.g('phi_b', "\\varphi'_b", 1, '°');
   const delb = m.g('del_b', '\\delta_b', 1, '°');
@@ -379,7 +460,7 @@ function cardDeslizamento(r: Resultado): Card {
     // N ≤ 0 (subpressão maior que o peso): a planilha zera o atrito com MAX(0; N)
     m.passo('R_at', 'R_{at}', [mul(f.N, tgDelta), mul(max(cte(0, 0), f.N), tgDelta)], { casas: 2, unidade: 'kN' }),
     comAdesao && m.passo('R_ad', 'R_{ad}', mul(m.ent('ades_b', 'c_a'), f.B, f.L), { casas: 2, unidade: 'kN' }),
-    comPassivo && m.passo('E_p', 'E_p', mul(div(div(mul(f.Kp, f.gama, pot(soma(f.hfr, f.hs, f.hden), 2)), DOIS), DOIS), f.L), {
+    comPassivo && m.passo('E_p', 'E_p', mul(div(div(mul(f.Kp, f.gama, pot(frenteGarantida ? soma(f.hfr, f.hs, f.hden) : f.hden, 2)), DOIS), DOIS), f.L), {
       casas: 2, unidade: 'kN', ref: NBR_PASSIVO,
     }),
   ], GILBERTO);
@@ -402,7 +483,7 @@ function cardDeslizamento(r: Resultado): Card {
     id: 'fundacao.deslizamento',
     titulo: 'Fundação · deslizamento',
     ref: GILBERTO,
-    figura: 'Fig. 15',
+    figura: 'Fig. 24',
     secoes: fs ? [resistencias, fs] : [resistencias],
     avisos: [],
     aplicavel: true,
@@ -438,7 +519,7 @@ function cardTensoes(r: Resultado): Card {
       chave: 'fundacao.tensao', rotulo: 'σmáx ≤ σadm', limite: sAdm, relacao: '<=', celula: 'chk_sig',
     };
     const seisEB = div(mul(cte(6, 0), abs(f.e)), f.B);
-    secoes.push(secao(trapezio ? 'Diagrama trapezoidal (|e| ≤ B/6)' : 'Diagrama triangular (|e| > B/6)', [
+    const diagrama = secao(trapezio ? 'Diagrama trapezoidal (|e| ≤ B/6)' : 'Diagrama triangular (|e| > B/6)', [
       m.passo('s_med', '\\sigma_{m\\acute{e}d}', div(f.N, mul(f.B, f.L)), { casas: 1, unidade: 'kPa' }),
       !trapezio && m.passo('c_len', 'B_c', mul(cte(3, 0), sub(div(f.B, DOIS), abs(f.e))), { casas: 3, unidade: 'm' }),
       m.passo('s_hi', '\\sigma_{m\\acute{a}x}', trapezio
@@ -448,14 +529,16 @@ function cardTensoes(r: Resultado): Card {
         ? m.passo('s_lo', '\\sigma_{m\\acute{\\imath}n}', mul(sMed, sub(cte(1, 0), seisEB)), { casas: 1, unidade: 'kPa' })
         // triângulo: parte da base descola (informativo na planilha, não reprova)
         : m.passo('s_lo', '\\sigma_{m\\acute{\\imath}n}', null, { casas: 1, unidade: 'kPa', origem: 'calculado' }),
-    ], GILBERTO));
+    ], GILBERTO);
+    const desTensoes = desenhoDasTensoes(r);
+    if (desTensoes) diagrama.desenho = desTensoes;
+    secoes.push(diagrama);
   }
 
   return {
     id: 'fundacao.tensoes',
     titulo: 'Fundação · tensões no solo',
     ref: GILBERTO,
-    figura: 'Fig. 15',
     secoes,
     avisos,
     aplicavel: true,

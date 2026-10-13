@@ -389,6 +389,8 @@ function cardMomentos(m: Memoria): Card {
 
 function passoFpk(m: Memoria): Passo {
   const fpk = m.g('fpk_oco', 'f_{pk}', 1, 'MPa');
+  // graute a cada 20 = todos os furos (13/10): o painel é seção cheia, prisma cheio
+  if (m.texto('gr_tot') === 'Sim') return m.passo('fpk_pn', 'f_{pk,p}', m.g('fpk_chei', 'f_{pk}^{*}', 1, 'MPa'), { casas: 2, unidade: 'MPa' });
   return comeca(m.texto('fpk_ref'), 'Líqu')                                     // LEFT(fpk_ref;4)="Líqu"
     ? m.passo('fpk_pn', 'f_{pk,p}', div(fpk, m.g('r_liq', 'A_{liq}/A_{br}', 2)), { casas: 2, unidade: 'MPa', ref: NBR('11.3.5') })
     : m.passo('fpk_pn', 'f_{pk,p}', fpk, { casas: 2, unidade: 'MPa' });
@@ -527,13 +529,16 @@ function cardHorizontal(m: Memoria): Card {
     m.entrada('t_bloco', 't'),
     !centralizada && m.entrada('c_pv', 'c_p'),
     m.entrada('phi_ph', '\\phi_h'),
-    m.entrada('K_ph', 'K_h'),
+    m.num('K_ph') !== null && m.entrada('K_ph', 'K_h'),
     digitado && m.entrada('s_ph_dir', 's_{h,dig}'),
   ]);
 
   const resist = secao('Resistências', [
     // K = 0,5: fk horizontal = 50% do vertical quando a seção horizontal não é toda grauteada
-    m.passo('Kfd_ph', 'K_hf_d', div(mul(m.ent('K_ph', 'K_h'), cte(0.7, 1), fpkP), m.ent('gama_m', '\\gamma_m')), {
+    // 0,5 se a seção horizontal não é toda grauteada, 1,0 com todos os furos (graute a cada 20, 13/10); em branco
+    // nas Entradas = esse automático, digitado manda
+    m.num('K_ph') === null && m.passo('K_ph_us', 'K_h', null, { casas: 2, origem: 'adotado', ref: NBR('6.2.2.4') }),
+    m.passo('Kfd_ph', 'K_hf_d', div(mul(m.g('K_ph_us', 'K_h', 2), cte(0.7, 1), fpkP), m.ent('gama_m', '\\gamma_m')), {
       casas: 3, unidade: 'MPa', ref: NBR('6.2.2.4'),
     }),
     m.passo('fsd_ph', 'f_{sd,h}', fsdExpr(m), { casas: 1, unidade: 'MPa', ref: NBR('11.3.3') }),
@@ -797,12 +802,16 @@ function cardEls(m: Memoria): Card {
     : soma(div(sub(m.g('L_bloco', 'L_{bloco}', 0, 'cm'), mul(cte(3, 0), hf)), cte(2, 0)), mul(cte(2, 0), hf));
   const bmH = m.g('bm_eh', 'b_{m,h}', 1, 'cm');
   const almaH = m.ent('bwh_els', 'h_{can}');
+  // graute a cada X (13/10): todos os furos → seção cheia (bw = bm); senão s_v/X almas na faixa vertical
+  const cheia = m.texto('gr_tot') === 'Sim';
+  const nAlmV = m.num('n_alm_v') ?? 1;
+  const almaVn = nAlmV > 1 ? mul(m.g('n_alm_v', 'n_{alm}', 0), almaV) : almaV;
 
   const vertical = secaoDaDirecao(m, {
     s: 'v', e: 'ev',
     titulo: 'Seção I vertical (faixa s_v)',
     bmFonte: m.g('s_pv', 's_v', 0, 'cm'),
-    bw: [almaV, min(bmV, almaV)],
+    bw: cheia ? [bmV] : [almaVn, min(bmV, almaVn)],
     momento: m.g('Mdyei_p', 'M_{dyei}', 1, 'kN·cm/m'),
     ftk: m.g('ftk_nor', 'f_{tk,\\perp}', 3, 'kN/cm²', { fator: 0.1 }),
     as1: m.g('a_pv', 'a_{s,v}', 3, 'cm²'),
@@ -813,7 +822,7 @@ function cardEls(m: Memoria): Card {
     s: 'h', e: 'eh',
     titulo: 'Seção I horizontal (faixa s_h)',
     bmFonte: m.g('s_ph', 's_h', 0, 'cm'),
-    bw: [almaH, min(bmH, almaH)],
+    bw: cheia ? [bmH] : [almaH, min(bmH, almaH)],
     momento: m.g('M_ph', 'M_h', 1, 'kN·cm/m'),
     ftk: m.g('ftk_par', 'f_{tk,\\parallel}', 3, 'kN/cm²', { fator: 0.1 }),
     as1: m.g('a_ph', 'a_{s,h}', 3, 'cm²'),

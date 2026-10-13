@@ -241,3 +241,24 @@ describe('a planilha real', () => {
     expect(ms).toBeLessThan(500);
   });
 });
+
+/*
+  Toda função que a planilha usa tem de existir no avaliador do app. Sem isso a célula vira #NOME? no app, o IFERROR
+  da planilha esconde o erro atrás de um "—" e só o gabarito do Excel percebe — e pela célula, não pela causa
+  (aconteceu em 13/10: ROUND e MOD na grade do graute). Aqui a mensagem diz qual função falta: ou a fórmula usa
+  outra (INT, ROUNDDOWN…), ou o motor aprende a nova, sondada no Excel como as outras.
+*/
+describe('funções da planilha × motor', () => {
+  it('nenhuma função que o motor não conhece', async () => {
+    const { FUNCOES } = await import('./excel/funcoes');
+    const celulas = (dados as unknown as { celulas: Record<string, unknown> }).celulas;
+    const usadas = new Set<string>();
+    for (const v of Object.values(celulas)) {
+      if (typeof v !== 'string' || !v.startsWith('=')) continue;
+      // tira os textos entre aspas ("Seção I (…)" tem parêntese e não é função)
+      const sem = v.replace(/"[^"]*"/g, '""');
+      for (const m of sem.matchAll(/([A-Z][A-Z0-9.]*)\(/g)) usadas.add(m[1]);
+    }
+    expect([...usadas].filter((f) => !(f in FUNCOES)).sort()).toEqual([]);
+  });
+});

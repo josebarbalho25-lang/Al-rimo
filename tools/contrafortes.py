@@ -238,11 +238,14 @@ Lc('ρw,mín (0,07% em fgk 15 a 0,14% em fgk 40)', '=MIN(0.14,MAX(0.07,0.07+(fgk
 Lc('Asw,mín = ρw·bw', '=rhow_cf/100*bw_cf*100', 'cm²/m', '', 'res', '0.00', 'Asw_m')
 Lc('Asw/s de cálculo', '=IF(Vd_cf<=Va_cf,0,MAX(Asw_n,Asw_m))', 'cm²/m', 'Zero se Vd ≤ Va (dispensa estribo pela conta).', 'key', '0.00', 'Asw_c')
 Lc('Ø necessário com os ramos e o espaçamento das Entradas', '=SQRT(s_est*4*Asw_c/100/(ramos_est*PI()))*10', 'mm', '', 'res', '0.0', 'phi_wn')
-Lc('Asw/s efetivo', '=ramos_est*PI()*phi_est^2/400/s_est*100', 'cm²/m', '', 'res', '0.00', 'Asw_e')
+# Estribo só quando a conta pede (Jose, 13/10; planilha 05 do Carini: "Dispensa Estribos" se fvd ≥ τvd, que é o
+# mesmo Vd ≤ Va daqui; o mínimo ρw·bw só vale do lado "com armadura"). Em alvenaria não se põe estribo sem
+# necessidade: com Asw_c = 0 o muro sai SEM estribo — Asw,ef, Vrd3 = Va, nº de estribos 0 — e o app não desenha nenhum.
+Lc('Asw/s efetivo', '=IF(Asw_c=0,0,ramos_est*PI()*phi_est^2/400/s_est*100)', 'cm²/m', 'Zero sem estribo (dispensa pela conta).', 'res', '0.00', 'Asw_e')
 Lc('Vrd3 = Va + 0,75·fywd·d·Asw/s', '=Va_cf+0.75*fywd/10*d_cf*Asw_e/100', 'kN', '', 'res', '0.00', 'Vrd3_cf')
-Lc('Estribo fechado (sugestão): largura × altura', '=FIXED(eenr-7,0)&" × "&FIXED(h_cf-9,0)&" cm"', '', 'Largura = eenr − 7; altura = tenr − 9.', 'res')
-Lc('Perímetro do estribo (sem ganchos)', '=2*((eenr-7)+(h_cf-9))', 'cm', 'Somar os ganchos do detalhe.', 'res', '0')
-Lc('Nº de estribos na altura', '=ROUNDUP(H_muro*100/s_est,0)', '', 'Um por junta de assentamento a cada s, na altura do muro.', 'res', '0', 'n_est')
+Lc('Estribo fechado (sugestão): largura × altura', '=IF(Asw_c=0,"Sem estribo (dispensa pela conta)",FIXED(eenr-7,0)&" × "&FIXED(h_cf-9,0)&" cm")', '', 'Largura = eenr − 7; altura = tenr − 9.', 'res')
+Lc('Perímetro do estribo (sem ganchos)', '=IF(Asw_c=0,0,2*((eenr-7)+(h_cf-9)))', 'cm', 'Somar os ganchos do detalhe.', 'res', '0')
+Lc('Nº de estribos na altura', '=IF(Asw_c=0,0,ROUNDUP(H_muro*100/s_est,0))', '', 'Um por junta de assentamento a cada s, na altura do muro; zero sem estribo (dispensa pela conta).', 'res', '0', 'n_est')
 r += 1
 section(C, r, '7. ELS do contraforte'); r += 1
 Lc('Em = (Em/fpk)·fpk', '=Em_coef*fpk_cf', 'MPa', 'T: seção bruta ↔ fpk bruto.', 'res', '0', 'Em_cf', 'Aula 12.3')
@@ -306,7 +309,8 @@ Lc("Mdxe — horizontal, engaste lateral (← μ'y)", "=" + mom("μ'y"), 'kN·cm
 Lc("Mdxeb — horizontal, engaste lateral na borda (← μ'yb)", "=" + mom("μ'yb"), 'kN·cm/m', '', 'res', '0.0', 'Mdxeb_p')
 r += 1
 section(C, r, '9. Painel — flexão vertical (barras nos furos)'); r += 1
-Lc('fpk do painel', '=IF(LEFT(fpk_ref,4)="Líqu",fpk_oco/r_liq,fpk_oco)', 'MPa', 'Seção I → fpk líquido (Entradas: área de referência).', 'res', '0.00', 'fpk_pn')
+# grauteamento do painel (13/10): total → seção cheia, prisma cheio (fpk*); parcial e alternado → seção I, como antes
+Lc('fpk do painel', '=IF(gr_tot="Sim",fpk_chei,IF(LEFT(fpk_ref,4)="Líqu",fpk_oco/r_liq,fpk_oco))', 'MPa', 'Seção I → fpk líquido ou bruto (Entradas: área de referência); grauteamento total → seção cheia, fpk*.', 'res', '0.00', 'fpk_pn')
 Lc('Kfd vertical = K·0,7·fpk/γm', '=K_pv*0.7*fpk_pn/gama_m', 'MPa', '', 'res', '0.000', 'Kfd_pv')
 Lc('d vertical', '=IF(LEFT(pos_pv,1)="2",t_bloco-c_pv,t_bloco/2)', 'cm', '2 barras a c das faces → d = t − c; 1 barra centralizada → t/2.', 'key', '0.0', 'd_pv')
 Lc('Momento para a barra do lado do solo', '=IF(LEFT(pos_pv,1)="2",Mdyei_p,MAX(Mdyei_p,Mdy_p))', 'kN·cm/m', '', 'res', '0.0', 'M_pvs')
@@ -345,10 +349,11 @@ def arr_table(tag, d_nm, kfd_nm, mom_nm, bms, phi_nm, extra_d=None):
         r += 1
     return r0, r - 1
 C.cell(row=r, column=1, value='Arranjos (faixa bm = múltiplo do espaçamento dos furos; barra do lado do solo, momento da base)').font = fB; r += 1
-pv0, pv1 = arr_table('pv', 'd_pv', 'Kfd_pv', 'M_pvs', [f's_furo*{k}' for k in (1, 2, 3, 4)], 'phi_pv')
+# faixas = múltiplos do graute a cada X (a barra cai num furo grauteado; Jose, 13/10), até 6t no automático
+pv0, pv1 = arr_table('pv', 'd_pv', 'Kfd_pv', 'M_pvs', [f'Graute*{k}' for k in (1, 2, 3, 4)], 'phi_pv')
 # O digitado também cai na grade dos furos, para baixo (mesma regra do s_adot do balanço): barra fora do furo não
 # existe na obra, e a conta tem de ser a do muro que o 3D desenha.
-Lc('Espaçamento vertical adotado', f'=IF(ISNUMBER(s_pv_dir),ROUNDDOWN(s_pv_dir/s_furo,0)*s_furo,SUMPRODUCT(MAX((F{pv0}:F{pv1}="OK")*A{pv0}:A{pv1})))', 'cm', 'Entradas (ajustado para baixo ao múltiplo dos furos) ou automático (maior faixa em que o Ø das Entradas atende).', 'key', '0', 's_pv')
+Lc('Espaçamento vertical adotado', f'=IF(ISNUMBER(s_pv_dir),ROUNDDOWN(s_pv_dir/Graute,0)*Graute,SUMPRODUCT(MAX((F{pv0}:F{pv1}="OK")*(A{pv0}:A{pv1}<=6*t_bloco)*A{pv0}:A{pv1})))', 'cm', 'Entradas (ajustado para baixo ao múltiplo dos furos) ou automático (maior faixa em que o Ø das Entradas atende).', 'key', '0', 's_pv')
 Lc('Md da faixa — lado do solo', '=M_pvs*s_pv/100', 'kN·cm', '', 'res', '0.0', 'Md_pvs')
 Lc('x', '=IFERROR(1.25*d_pv*(1-SQRT(1-Md_pvs/(0.5*s_pv*d_pv^2*Kfd_pv/10))),"não resiste")', 'cm', '', 'res', '0.00', 'x_pv')
 Lc('fsd da barra vertical', '=fyk_/gama_s', 'MPa', '', 'res', '0.0', 'fsd_pv')
@@ -359,7 +364,8 @@ Lc('Área da barra vertical', '=PI()*phi_pv^2/400', 'cm²', '', 'res', '0.000', 
 Lc('Barras por furo', '=IF(LEFT(pos_pv,1)="2",2,1)', '', '', 'res', '0', 'nb_pv')
 r += 1
 section(C, r, '10. Painel — flexão horizontal (barras nas canaletas)'); r += 1
-Lc('Kfd horizontal = K·0,7·fpk/γm', '=K_ph*0.7*fpk_pn/gama_m', 'MPa', 'K = 0,5: seção horizontal não toda grauteada.', 'res', '0.000', 'Kfd_ph', 'Manual ABCP')
+Lc('K horizontal', '=IF(ISNUMBER(K_ph),K_ph,IF(gr_tot="Sim",1,0.5))', '', 'Entradas ou, em branco: 0,5 com a seção horizontal não toda grauteada (manual ABCP); 1,0 com grauteamento total.', 'res', '0.00', 'K_ph_us', 'Manual ABCP')
+Lc('Kfd horizontal = K·0,7·fpk/γm', '=K_ph_us*0.7*fpk_pn/gama_m', 'MPa', '', 'res', '0.000', 'Kfd_ph', 'Manual ABCP')
 Lc('d horizontal', '=IF(LEFT(pos_ph,4)="Cent",t_bloco/2,t_bloco-c_pv)', 'cm', 'Centralizada na canaleta → d = t/2; encostada na face externa → d = t − c.', 'key', '0.0', 'd_ph')
 Lc('Momento horizontal de cálculo', '=IF(LEFT(pos_ph,4)="Cent",MAX(Mdx_p,Mdxe_p),Mdx_p)', 'kN·cm/m', 'Barra centralizada atende os dois sinais (vão e engaste lateral).', 'res', '0.0', 'M_ph')
 C.cell(row=r, column=1, value='Arranjos (faixa bm = espaçamento das canaletas; última coluna = As com a barra encostada na face, d = t − c)').font = fB; r += 1
@@ -399,11 +405,12 @@ Lc('σtd,nor = Md,nor/W', '=Mnor_sp/(100*t_bloco^2/6)*10', 'MPa', '', 'res', '0.
 Lc('ftd,nor = ftk⊥/γm', '=ftk_nor/gama_m', 'MPa', '', 'res', '0.000')
 r += 1
 section(C, r, '12. Painel — ELS nas duas direções (planilha 06, aba I)'); r += 1
-Lc('Em do painel = (Em/fpk)·fpk', '=Em_coef*fpk_pn', 'MPa', 'Seção I ↔ fpk líquido.', 'res', '0', 'Em_pn')
+Lc('Em do painel = (Em/fpk)·fpk', '=Em_coef*fpk_pn', 'MPa', 'Seção I ↔ fpk líquido ou bruto; seção cheia ↔ fpk*.', 'res', '0', 'Em_pn')
 Lc('n = Es/Em', '=210000/Em_pn', '', '', 'res', '0.00', 'n_pn')
 # --- vertical
 Lc('VERTICAL — bm', '=s_pv', 'cm', '', 'res', '0.0', 'bm_ev')
-Lc('bw (furo grauteado + septos)', '=MIN(bm_ev,IF(ISNUMBER(bwv_dir),bwv_dir,(L_bloco-3*hf_bl)/2+2*hf_bl))', 'cm', '', 'res', '0.00', 'bw_ev')
+Lc('Furos grauteados na faixa', '=MAX(1,INT(bm_ev/Graute+0.5))', '', 'Faixa de uma barra (bm = s, múltiplo do graute a cada X): s/X furos grauteados, cada um uma alma.', 'res', '0', 'n_alm_v')
+Lc('bw (furo grauteado + septos)', '=IF(gr_tot="Sim",bm_ev,MIN(bm_ev,n_alm_v*IF(ISNUMBER(bwv_dir),bwv_dir,(L_bloco-3*hf_bl)/2+2*hf_bl)))', 'cm', 'Uma alma por furo grauteado da faixa; grauteamento total → seção cheia.', 'res', '0.00', 'bw_ev')
 Lc("As1 / As2 (d' = c)", '=FIXED(a_pv,3)&" / "&FIXED(IF(nb_pv=2,a_pv,0),3)', 'cm²', '', 'res')
 Lc('Ma = (Ma/Mk)·Mdyei/γf·bm', '=psi_els*Mdyei_p/gama_f*bm_ev/100', 'kN·cm', '', 'res', '0.0', 'Ma_ev')
 Lc('Im', '=bm_ev*t_bloco^3/12-(bm_ev-bw_ev)*(t_bloco-2*hf_bl)^3/12', 'cm⁴', '', 'res', '0', 'Im_ev')
@@ -427,7 +434,7 @@ def els_block(tag, bm, bw, As1, d, As2, dl, Ma, Mr, Im):
 els_block('ev', 'bm_ev', 'bw_ev', 'a_pv', 'd_pv', 'IF(nb_pv=2,a_pv,0)', 'c_pv', 'Ma_ev', 'Mr_ev', 'Im_ev')
 # --- horizontal
 Lc('HORIZONTAL — bm', '=s_ph', 'cm', '', 'res', '0.0', 'bm_eh')
-Lc('bw (canaleta grauteada)', '=MIN(bm_eh,bwh_els)', 'cm', '', 'res', '0.00', 'bw_eh')
+Lc('bw (canaleta grauteada)', '=IF(gr_tot="Sim",bm_eh,MIN(bm_eh,bwh_els))', 'cm', 'Todos os furos grauteados → seção cheia. Nos parciais a seção horizontal continua só com a canaleta (furo grauteado não corre na horizontal).', 'res', '0.00', 'bw_eh')
 Lc('Ma = (Ma/Mk)·M/γf·bm', '=psi_els*M_ph/gama_f*bm_eh/100', 'kN·cm', '', 'res', '0.0', 'Ma_eh')
 Lc('Im', '=bm_eh*t_bloco^3/12-(bm_eh-bw_eh)*(t_bloco-2*hf_bl)^3/12', 'cm⁴', '', 'res', '0', 'Im_eh')
 Lc('Mr = ftk∥·Im/(h/2)', '=ftk_par/10*Im_eh/(t_bloco/2)', 'kN·cm', '', 'res', '0.0', 'Mr_eh')
@@ -460,7 +467,7 @@ Lc('Momento da base do painel (engaste na sapata)', '=Mdyei_p', 'kN·cm/m', 'De 
 Lc('Md e Vd na base do contraforte', '=FIXED(Md_cf,2)&" kN·m  /  "&FIXED(Vd_cf,2)&" kN"', '', '', 'res')
 r += 1
 section(C, r, '14. Detalhamento (resumo)'); r += 1
-Lc('Contraforte', '=n_cf&"Ø"&'+fphi('phi_cf')+'&" na ponta (d = "&FIXED(d_cf,1)&" cm) + "&n_cc&"Ø"&'+fphi('phi_cc')+'&" construtivas; estribos Ø"&'+fphi('phi_est')+'&" c/"&FIXED(s_est,0)&" ("&ramos_est&" ramos) nas juntas"', '', '', 'key')
+Lc('Contraforte', '=n_cf&"Ø"&'+fphi('phi_cf')+'&" na ponta (d = "&FIXED(d_cf,1)&" cm) + "&n_cc&"Ø"&'+fphi('phi_cc')+'&" construtivas; "&IF(Asw_c=0,"sem estribos (dispensa pela conta)","estribos Ø"&'+fphi('phi_est')+'&" c/"&FIXED(s_est,0)&" ("&ramos_est&" ramos) nas juntas")', '', '', 'key')
 Lc('Painel — vertical', '=IF(nb_pv=2,"Ø"&'+fphi('phi_pv')+'&" c/"&FIXED(s_pv,0)&" em CADA face (2 barras por furo, a "&'+fphi('c_pv')+'&" cm das faces)","Ø"&'+fphi('phi_pv')+'&" c/"&FIXED(s_pv,0)&" centralizada")', '', '', 'key')
 Lc('Painel — horizontal', '="Ø"&'+fphi('phi_ph')+'&" c/"&FIXED(s_ph,0)&" em canaleta grauteada, "&IF(LEFT(pos_ph,4)="Cent","centralizada","encostada na face externa")', '', '', 'key')
 r += 1
@@ -474,7 +481,7 @@ CHK = [
     ('Contraforte: As ≤ As,máx do furo', '=IF(As_cfx2<=As_cfx,"OK ("&FIXED(As_cfx2,2)&" ≤ "&FIXED(As_cfx,2)&")","NÃO OK — distribuir em mais furos ou aumentar Ø/graute")'),
     ('Contraforte: bielas Vd ≤ Vrd2', '=IF(Vd_cf<=Vrd2_cf,"OK ("&FIXED(Vd_cf,1)&" ≤ "&FIXED(Vrd2_cf,1)&")","NÃO OK — aumentar a seção")'),
     ('Contraforte: estribos', '=IF(Asw_c=0,"Dispensa pela conta (Vd ≤ Va)",IF(Asw_e>=Asw_c-0.005,"OK ("&FIXED(Asw_e,2)&" ≥ "&FIXED(Asw_c,2)&" cm²/m)","NÃO OK — aumentar Ø, ramos ou reduzir s"))'),
-    ('Estribo cabe na junta (Ø ≤ 6,3 mm)', '=IF(phi_est<=6.3,"OK","NÃO OK — Ø > 6,3 não cabe na junta de assentamento")'),
+    ('Estribo cabe na junta (Ø ≤ 6,3 mm)', '=IF(Asw_c=0,"— (sem estribo)",IF(phi_est<=6.3,"OK","NÃO OK — Ø > 6,3 não cabe na junta de assentamento"))'),
     ('Contraforte: ELS δ∞ ≤ δadm', '=IF(dinf_cf<=dadm_cf,"OK ("&FIXED(dinf_cf,1)&" ≤ "&FIXED(dadm_cf,1)&" mm)","NÃO OK")'),
     ('Painel: γ dentro da tabela (0,30–2,00)', '=IF(AND(gam_p>=0.3,gam_p<=2),"OK","NÃO OK — fora da tabela: mudar espaçamento dos contrafortes")'),
     ('Painel vertical: barra do lado do solo', '=IF(ISNUMBER(As_pvs),IF(a_pv>=MAX(As_pvs,As_pvm)-0.0005,"OK","NÃO OK"),"NÃO OK — não resiste")'),

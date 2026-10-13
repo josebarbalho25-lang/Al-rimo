@@ -113,6 +113,8 @@ export function useLinhasDeEntrada() {
     return v === null || v === undefined ? null : escreverNumero(v, casasDoFormato(c.meta.formato));
   };
 
+  // o número da conta, para as regras de campo apagado que dependem do resultado (estribo dispensado)
+  const lerConta = (nome: string): number | null => (resultado ? resultado.num(nome) ?? null : null);
   const propsDoCampo = (c: Campo) => {
     const trava = valorTravado(c.meta.nome, ler);
     return {
@@ -120,7 +122,7 @@ export function useLinhasDeEntrada() {
       opcoes: opcoesVivas.get(c.meta.nome) ?? c.opcoes,
       valor: trava ?? ler(c.meta.nome),
       travado: trava !== undefined,
-      ativa: entradaAtiva(c.meta.nome, ler),
+      ativa: entradaAtiva(c.meta.nome, ler, lerConta),
       ajuste: ajustePorNome.get(c.meta.nome),
       aviso: avisoDoCampo(avisosDaConta, c.meta.nome),
       figura: figuraDaEntrada(c.meta.nome)?.titulo ?? null,

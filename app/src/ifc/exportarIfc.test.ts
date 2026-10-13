@@ -336,7 +336,7 @@ describe.skipIf(!temPython)('exportarIfc — validador ifcopenshell', () => {
     expect(rel.nomes.IfcMaterial).toEqual(expect.arrayContaining(['Bloco de concreto fbk 8 MPa', 'Graute fgk 20 MPa', 'Concreto C25', 'Aço CA-50']));
     const pm = rel.psets.T1;
     expect(pm.AlRimo_Muro.fbk).toBe(8);
-    expect(pm.AlRimo_Muro.Graute).toBe('Parcial (seção I)');
+    expect(pm.AlRimo_Muro.Graute).toBe('A cada 40 cm');
     expect(pm.Pset_ReinforcementBarPitchOfWall.VerticalBarPitch).toBeCloseTo(0.4, 9);
     expect(pm.Pset_ReinforcementBarPitchOfWall.HorizontalBarPitch).toBeCloseTo(0.8, 9);
     expect(rel.psets['T1.GF.c000'].AlRimo_Graute.fgk).toBe(20);

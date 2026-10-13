@@ -7,6 +7,9 @@ planilha do Eng. Gilberto, adaptado.
 
 Objetivo final: app gratuito (3D, quantitativo, vista frontal, corte lateral, isométrico, memória de cálculo editável e
 auditável citando item de norma e fórmula) para atrair público para o Pró-Viga 3D. **Fica separado do A-PORT.**
+**Intenção nova (Jose, 13/10):** comercializar — produto físico instalável, licença perpétua, "ver se consigo vender
+por 100 reais". Muda: termo de uso (hoje licença gratuita), empacotar o app como programa instalável, controle de
+licença, e rever os limites do "app gratuito" (alturas 3,0/4,0). Ainda não decidido o como; anotar e esperar ele.
 
 ## Como trabalhar com o Jose
 
@@ -81,6 +84,20 @@ e dizer ao Jose o que mudou e por quê.
   também sugere Mello 100·(√N − 1), cada regra com a faixa de N (`sadm_20N`, `sadm_mel` + `_fx`), e a calculadora de
   consulta embaixo da Fig. 15 lê esses nomes (Jose, 10/10). ⚠️ `estabilidade.ts` e `modulacao/leitura.ts` ainda leem
   algumas células da aba Fundação por ENDEREÇO (B101, B102, B104, B105, B96): linha nova acima delas exige ajustar.
+- **Dente com posição e passivo (Jose, 13/10):** entrada `x_den` = eixo do dente a partir do CENTRO da sapata, + para o
+  pé (|x| ≤ (B − b)/2, verificação "Dente dentro da sapata"). O peso do dente saiu da linha da sapata: linha própria
+  "Dente" (24, no fim da tabela de cargas) em x = B/2 + x_den. Passivo: com o solo da frente garantido, a face toda
+  Kp·γ·(h_fr + h + h_den)²/2 ÷ 2 (como antes); SEM a garantia, o dente do centro para trás (x_den ≤ 0) conta
+  Kp·γ·h_den²/2 ÷ 2 ("para escavar até a metade da sapata o cara tem que ser um tatu"); para a ponta, nada. O FS de
+  deslizamento da aula 12.2 e do VAL123 subiu de ~0,91 para 1,11 por isso (referência atualizada à mão na base).
+  3D e cortes desenham o dente na posição (entorno.ts). Desenhos da sapata na memória (`memoria/desenhoDaSapata.ts`):
+  forças que estabilizam (setas numeradas, legenda N + braço até o pé, cotas), forças que tombam (empuxo até a base,
+  H na altura y = M tomb/H, giro no pé) e tensões (centro da base, e, núcleo B/6, trapézio/triângulo). Pontos de
+  giro: tombamento no PÉ; excentricidade e tensões no CENTRO; armadura da sapata na FACE DO MURO.
+  Memória "lúdica" (Jose, 13/10): braços escritos A PARTIR DO PÉ (x_p = ponta + t/2…) e distâncias ao CENTRO
+  (d_c = B/2 − x_p), com o desenho de cargas cotado de cada referência; flexão da ponta/talão (balanço com peso e
+  solo fatia a fatia, Mk na face) e cortante (seção a d da face, fatias além de d) desenhados. Fig. 15 só no card de
+  cargas; deslizamento com a Fig. 24. "Momento tombador" virou "momento de tombamento" em todo lugar.
 - **l entre travamentos = o muro desenhado (Jose, 12/10).** Contrafortes: o he_ usa o espaçamento adotado
   (`l_cf_adot`) e ignora o `l_trav`. Balanço travado nas duas pontas: l = comprimento do muro — a planilha não tem o
   comprimento, então o app manda o L_total MODULAR como `l_trav` (store.ts, 2ª volta quando a modulação arredonda);
@@ -91,9 +108,9 @@ e dizer ao Jose o que mudou e por quê.
   0,60), mas fica fora da lista pela decisão do vão mínimo.
 
 - **Peso próprio da parede CALCULADO (Jose, 12/10):** "dado que a gente não precisa perder tempo fornecendo". Entradas:
-  `peso_us` = t·[22·Aliq/Abr + 24·(1 − Aliq/Abr)·f_gr] + 21·reboco·faces (kN/m²). f_gr = 1 com grauteamento total;
-  senão 1 − (1 − m/s)·(1 − 0,20/h) com as barras e canaletas ADOTADAS (balanço: `s_adot`, `h_pan`; contrafortes:
-  `s_pv`, `s_ph` do painel). Entrada nova só o reboco (`reb_fac` Nenhum/Só na frente/Nas duas faces, `reb_esp` cm).
+  `peso_us` = t·[22·Aliq/Abr + 24·(1 − Aliq/Abr)·f_gr] + 21·reboco·faces (kN/m²). f_gr = 1 com graute a cada 20;
+  senão 1 − (1 − m/X)·(1 − 0,20/h) com a GRADE DO GRAUTE (X, ver abaixo) e as canaletas adotadas (balanço: `h_pan`;
+  contrafortes: `s_ph` do painel). Entrada nova só o reboco (`reb_fac` Nenhum/Só na frente/Nas duas faces, `reb_esp` cm).
   24 graute e 21 argamassa = NBR 6120; 22 do concreto do bloco = DEDUÇÃO (catálogo ÷ volume). `peso_par` virou
   opcional (digitado manda). O M2d usa `peso_ch` (todos os furos grauteados): a favor e sem conta circular com o
   espaçamento automático. γ do contraforte idem (`gama_cf` opcional → `gama_cf_us` = 22·r + 24·(1 − r) ≈ 22,9).
@@ -117,16 +134,39 @@ e dizer ao Jose o que mudou e por quê.
   plantas, vermelho só aço (espera vermelha + barra do muro rosa), sem fórmula/tabela no desenho. Refeitas 1–21 e 24;
   a 22 (solos) ficou para a outra sessão do Jose. Antes × depois: https://claude.ai/artifact/EtiZjvYevsFzfm61yGfWhg.
   Tabelas que eram figura viraram tabela clicável no app (`ui/TabelasDeReferencia.tsx`: fbk/Fig. 23, ftk/Fig. 8,
-  α/Fig. 7). Pontos dos agentes para o Jose confirmar: Fig. 12 desenhada com vão 1,00; Fig. 21 com t_enr 79 e
+  α/Fig. 7). Fig. 23 (Jose, 13/10): linhas na ordem da planilha 01 do Carini (fbk, fa, fgk, fpk/fbk, fpk*/fpk, fpk,
+  fpk*), fa e eficiências DIGITADAS como no curso em Referências E:G (só consulta; a divisão daria 1,76 onde o curso
+  diz 1,75), zebra, legenda com desenho (bloco, argamassa e graute em corpo de prova, prisma oco e cheio). fgk
+  vazio mostra o da tabela pelo fbk e acompanha a troca (VALOR_AUTO); digitado manda. Argamassa segue entrada por
+  classe da NBR (Jose, 13/10: "temos o limite da norma"); fa é só consulta. Pontos dos agentes para o Jose confirmar: Fig. 12 desenhada com vão 1,00; Fig. 21 com t_enr 79 e
   construtivas com espera dobrada; Fig. 19 painel cinza (amarelo só para não armado); borda livre fraca; Fig. 24
   sem o h_fr; Fig. 15 miniaturas em escala esquemática.
 - **Flexão do balanço pela geometria real (Jose, 12/10: "resistência real do negócio na faixa de 1 metro"):** aba Muro
   em balanço. Mesa = parede do bloco no metro (fd_m = 0,7·fpk/(Aliq/Abr)/γm, igual no parcial e no total); almas = furos
   grauteados do metro (bw_m = 100/s_web × bw_f, total = 100) com fd_g = 0,7·fpk*/γm (DEDUÇÃO). 0,8x ≤ hf → só a mesa
-  (ln_mesa = Sim); senão seção T (M_mesa, M_alma, y_alma, x = (hf + y)/0,8), C_c e z = Md/C ≤ 0,95d. s_web = s digitado ou,
-  no automático, 6t (menos furos, a favor; sem conta circular). A "área de referência do fpk" saiu da flexão (fica no
-  Em do ELS e no painel). Verificações da aba com nome (chk_*). Pendente com o Jose: Grauteamento com 3 opções
-  (Total / furo sim, furo não / só com barra), independente do espaçamento do aço.
+  (ln_mesa = Sim); senão seção T (M_mesa, M_alma, y_alma, x = (hf + y)/0,8), C_c e z = Md/C ≤ 0,95d. s_web = X, o
+  graute a cada (desde 13/10; antes s digitado ou 6t). A "área de referência do fpk" saiu da flexão (fica no
+  Em do ELS e no painel). Verificações da aba com nome (chk_*).
+- **GRAUTE EM GRADE (Jose, 13/10: "vamos fazer um campo de graute; na hora da armadura, bloqueia de acordo"):** a
+  entrada `Graute` virou número — "Graute a cada" X cm, lista 20, 40, 60, 80, 100 até 6t (bloco 14 vai a 80;
+  Referências BB, `lst_gr`). 20 = todos os furos (`gr_tot` = Sim: seção cheia, fpk*, K 2,0, painel com K_ph 1,0);
+  40 = furo sim, furo não; 60 = um sim, dois não… Vale para a PAREDE (balanço e painel entre contrafortes); o
+  CONTRAFORTE é sempre todo grauteado, em qualquer situação (Jose). A barra cai num furo da grade: a lista do
+  espaçamento (`lst_s`, balanço e painel) só tem múltiplos de X; s_adot/s_pv descem para a grade; no app o "→"
+  desce (mais barra) e só sobe sem opção abaixo. A mesma grade dá: peso (f_furo = m/X), almas da flexão (100/X por
+  metro), almas do ELS (n_alm = s/X na faixa, balanço e painel vertical), K_ph automático (opcional: 0,5 / 1,0 com
+  todos) e o 3D (gerar.ts `grauteDaGrade`: furo da parede a múltiplo de X da barra mais próxima). Aba Arranjos
+  ganhou a coluna "na grade do graute?" (as faixas seguem as da aula). Arquivo antigo (texto): Total → 20; Parcial
+  → a grade das barras do arquivo (s ≤ 6t) ou 40. Figura nova: Fig. 25 (fileira de 10 blocos com as 5 grades);
+  escolha com desenho (fiada de 3 blocos). Padrão 40 = aula 12.2 (barras a 40), números da aula iguais.
+- **Figuras do peso próprio (Jose, 13/10: "o que as figuras relacionadas têm a ver?" — o peso abria a Fig. 7, de
+  esbeltez; "tem só do contraforte e só da parede"):** Fig. 26 (reboco, espessura, peso da parede) = planta da faixa de
+  1 m com a grade do graute e o reboco nas faces + corte com as canaletas grauteadas; Fig. 27 (γ do contraforte) =
+  planta só do contraforte, todo grauteado, com a parede apagada atrás. Cor nova da régua: `C['reboco']` (applib, e
+  na legenda). Estáticas, no acervo (só no app; a planilha não tem a figura).
+  Ficou de fora, por ser escolha de engenharia (anotar com o Jose quando for o caso): fpk/Em só sobem com X = 20
+  (graute parcial não dá crédito no fpk — μ do Carini poderia interpolar); K único para mesa e alma; a mesa do T
+  do contraforte (a parede) segue fpk vazado mesmo com X = 20; cisalhamento do balanço com b = 100 qualquer X.
 - **Seções cotadas na memória (Jose, 12/10: "não pode jogar número do nada"):** `memoria/desenhoDaSecaoI.ts` —
   faixa de 1 m da flexão do balanço (barras a cada s, LN x, bloco 0,8x), seção I do ELS do balanço e as duas seções I
   do painel. O card de flexão do balanço abre com a cadeia do fd (fbk → fpk → fpk,liq → fk → fd → K·fd).
@@ -310,13 +350,33 @@ e dizer ao Jose o que mudou e por quê.
   IFC/quantitativo com o muro real; Ag da conta pelo bloco desenhado (decidir).
   Relatórios dos agentes: `_trabalho/` (fora do git).
 
+- **ONDE PARAMOS (13/10, noite — Jose pausou; commit LOCAL na branch `desenho-peso`, nada no GitHub):**
+  Revisão "auto sempre a favor da segurança", Grupo 1 um por um. Item 1, TRASPASSE, decidido: "NBR 6118: 2,0 × ℓb
+  no graute" (muro padrão: 21 → 68 cm). EM ANDAMENTO: planilha feita (aba Fundação, seção 10: fbd_gr, lbphi_gr, a0t,
+  r_pv, r_cf, l0t_v/_pv/_cf/_cc, lbphi_c) e app ligado (`traspasse(ctx, φ, emenda)` em modulacao/armaduras.ts; esperas
+  pelas células; canaleta no graute e longitudinal da sapata no concreto, com As,calc/As,ef = 1); exportar_motor
+  rodado e tsc limpo. FALTA: golden + golden_alvos + testar + vitest (Excel estava com a outra sessão); memória
+  (passos do traspasse no card de ancoragem do balanço e no de esperas dos contrafortes; o traspasse_dir no app mostrar
+  o valor usado no lugar do "auto"; nota do campo em modelo/entradasDoModelo.ts ainda diz "ℓb adotado"). A perna em L
+  da barra da canaleta do contraforte ainda usa o ℓb da sapata (vai mudar com a barra em U, anotação 1 abaixo).
+  Depois: Grupo 1 itens 2–5 (σadm 20·N com teto, mínimo do estribo de torção, Kp/γ do dente pelo solo de apoio,
+  φ_base auto); Grupo 2 ("Novo" em branco + aula 12.2 como exemplo); Grupos 3/4 um por um com o Jose.
+  A cópia principal (porta 5180) tem, SEM commit, um subconjunto do que está nesta branch (Fig. 23, estribo, graute
+  em grade, peso, Figs. 25–27) — a junção no main fica para amanhã com o Jose, junto com a `sapata-molas` da outra
+  sessão. Os "* (1).json" soltos em dados/golden do main são cópias duplicadas: não entram.
+- **Faxina decidida (13/10): dividir o gerador da planilha por aba** (hoje build_new.py + contrafortes.py +
+  fundacao.py num namespace só — linhas de 2000+ caracteres, leitura por endereço, colisão de nome). Um arquivo por
+  aba, cada um com os nomes de que precisa. Prova: spec_planilha.json e golden idênticos antes/depois. SÓ DEPOIS da
+  junção da sessão "sapata sobre molas" (branch sapata-molas), que mexe no gerador.
 - **Anotado do Jose (12/10, noite — fazer depois, ele avisa quando):**
   1. Barra horizontal do painel (a da canaleta) no contraforte: hoje é traspasse + L; trocar por barra dobrada em U de
      um contraforte ao outro, vários U em sequência, cada barra engastada duas vezes ("é mais fácil dobrar a barra em U
      do que fazer um traspasse e depois um L").
   2. Estribos desenhados quadrados: desenhar com as dobras reais da barra (raio de dobra, ganchos).
-  3. Estribo só quando a conta pede: em alvenaria estrutural não é usual estribo sem necessidade. Hoje o app põe
-     estribo mesmo quando o cisalhamento passa sem ele.
+  3. ~~Estribo só quando a conta pede~~ FEITO 13/10 (planilha 05 do Carini: "Dispensa Estribos" se fvd ≥ τvd = o
+     nosso Vd ≤ Va): com Asw_c = 0 a planilha zera Asw,ef e n_est (Vrd3 = Va), o resumo diz "sem estribos", o app
+     não desenha estribo (3D/IFC/quantitativo) e apaga Ø/ramos/s nas Entradas (única regra de campo apagado que lê
+     a CONTA: `ATIVA_SE` com `LerConta`). Conta sem número ("—") continua desenhando. 14 de 39 cenários dispensam.
 - Receber a NBR 16868-1 em PDF: conferir numeração de itens, Anexo E (βf) e os contornos do ábaco do ELS (lidos do slide).
 - Confirmar os FS da NBR 11682 (tombamento 2,0, deslizamento 1,5 — "pelo que sei").
 - Fig. 24 (tombamento e deslizamento no traço do Bastos, Fig. 1.116) FEITA 10/10: planilha e app; abre em dphi, ades_b, pass_on, FS_tomb, FS_desl.

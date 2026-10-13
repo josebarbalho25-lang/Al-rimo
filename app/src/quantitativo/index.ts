@@ -101,8 +101,7 @@ function extra(m: Modelo, nome: string): Valor {
 const AVISOS_QUE_MUDAM_QUANTIDADE = new Set([
   'TORCAO_LONGITUDINAL',   // aço de torção longitudinal fora do desenho → fora da lista de ferros
   'SAPATA_ESPACAMENTO',    // armadura da sapata num espaçamento adotado, não no da conta
-  'TRASPASSE_ADOTADO',     // emendas com traspasse deduzido → comprimento de barra deduzido
-  'ANCORAGEM_CF',          // idem nas barras do contraforte e do painel
+  'TRASPASSE_ADOTADO',     // conta do traspasse sem número → emendas com 50φ, comprimento de barra deduzido
   'CONTA_SEM_VALOR',       // peça desenhada com valor de obra porque a conta não deu número
   // Os de baixo vieram com a modulação dos gabaritos do Revit (09/10) e não chegavam ao CSV:
   'ESTRIBO_RAMOS',         // a conta pede mais ramos que o estribo fechado desenhado → aço de estribo a menos

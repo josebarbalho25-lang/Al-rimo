@@ -10,7 +10,7 @@ import { br, type TrechoModulado } from './modular';
 import { arred, circulo, retangulo } from './perfis';
 import { corrida, distribuir, estribo, reta } from './barras';
 import { ESPESSURA_MANTA, SOBRA_TERRENO, fmt, geoPrismaReto, pad, type Ctx } from './contexto';
-import { avisarTraspasseProporcional, traspasse } from './armaduras';
+import { traspasse } from './armaduras';
 
 export const temDente = (p: Parametros): boolean => p.b_den > 0 && p.h_den > 0;
 
@@ -23,9 +23,11 @@ export function sapata(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number): 
   const L = tr.x1 - tr.x0;
   let contorno: Vec2[];
   if (temDente(p)) {
-    // dente centrado em B/2 (Fig. 15, e o peso dele em x = B/2 na aba Fundação)
-    const yd0 = Math.max(Ype, YbA - B / 2 - p.b_den / 2);
-    const yd1 = Math.min(YbA, yd0 + p.b_den);
+    // dente com o eixo a x_den do centro da sapata, + para o pé (Jose, 13/10; o peso dele na aba Fundação está em
+    // x = B/2 + x_den, medido da borda aterrada). O pé fica no Y menor: + para o pé = Y diminui. Cortado na sapata.
+    const yc = YbA - B / 2 - p.x_den;
+    const yd0 = Math.max(Ype, yc - p.b_den / 2);
+    const yd1 = Math.min(YbA, yc + p.b_den / 2);
     const zb = -h - p.h_den;
     contorno = [[yd0, zb], [yd1, zb], [yd1, -h], [YbA, -h], [YbA, 0], [Ype, 0], [Ype, -h], [yd0, -h]];
   } else {
@@ -54,8 +56,7 @@ export function sapata(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number): 
     });
     const zL = face === 'I' ? -h + c + p.phi_sap + p.phi_sap2 / 2 : -c - p.phi_sap - p.phi_sap2 / 2;
     distribuir(Ype + c, YbA - c, s2).forEach((y, k) => {
-      const bs = corrida(`${T}.L${face}${pad(k + 1, 2)}.`, 'SAP_LONG', p.phi_sap2, tr.x0 + c, tr.x1 - c, y, zL, traspasse(ctx, p.phi_sap2), [0, p.phi_sap2, 0], tr.indice);
-      if (bs.length > 1) avisarTraspasseProporcional(ctx);
+      const bs = corrida(`${T}.L${face}${pad(k + 1, 2)}.`, 'SAP_LONG', p.phi_sap2, tr.x0 + c, tr.x1 - c, y, zL, traspasse(ctx, p.phi_sap2, 'concreto'), [0, p.phi_sap2, 0], tr.indice);
       ctx.barras.push(...bs);
     });
   }
@@ -210,7 +211,7 @@ export function conferenciasGerais(ctx: Ctx, Ype: number, YbA: number): void {
   if (p.lb !== null && disponivel < p.lb - 0.5) {
     ctx.avisos.push({ codigo: 'ESPERA_NAO_CABE', texto: `Espera: ${br(disponivel / 10, 1)} cm na sapata para ℓb = ${br(p.lb / 10, 1)} cm` });
   }
-  if (p.traspasse === null && p.lb === null) {
+  if (p.traspasse === null && (p.lbphi_gr === null || p.a0t === null)) {
     ctx.avisos.push({ codigo: 'TRASPASSE_ADOTADO', texto: 'Traspasse: ℓb da conta indisponível — adotado 50φ (dedução)' });
   }
   // barbacã pedido e não desenhado (drenagem.ts conta por trecho; o aviso é um só, do muro todo)
@@ -223,9 +224,6 @@ export function conferenciasGerais(ctx: Ctx, Ype: number, YbA: number): void {
     });
   }
   if (p.contrafortes) {
-    if (p.traspasse === null) {
-      ctx.avisos.push({ codigo: 'ANCORAGEM_CF', texto: 'Traspasse das barras do contraforte e do painel: ℓb da barra vertical proporcional ao Ø (dedução)' });
-    }
     const fora = p.enterrado ? mod.tenr > YbA + 0.5 : t - mod.tenr < Ype - 0.5;
     if (fora) ctx.avisos.push({ codigo: 'CF_FORA_DA_SAPATA', texto: 'Contraforte passa da borda da sapata' });
   }

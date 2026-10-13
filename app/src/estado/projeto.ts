@@ -118,6 +118,24 @@ export type Aberto =
     }
   | { ok: false; motivo: string };
 
+/*
+  ENTRADA QUE MUDOU DE FORMA. O arquivo guarda o valor como estava; se a planilha muda a entrada, o arquivo antigo
+  cairia em "entrada ignorada" e abriria no padrão. Aqui o valor velho vira o novo antes da validação.
+    · Graute (13/10): era texto ("Parcial (seção I)" / "Total (seção cheia)") e virou a grade "graute a cada X cm".
+      Total → 20 (todos os furos). Parcial era o graute só nos furos com barra → a grade das barras que o arquivo
+      tinha (s do balanço ou s vertical do painel), e o muro abre com os mesmos números; sem s digitado, 40.
+*/
+function renomeado(nome: string, v: unknown, todas: Record<string, unknown>): unknown {
+  if (nome !== 'Graute' || typeof v !== 'string') return v;
+  if (v.trim().toLowerCase().startsWith('total')) return 20;
+  const contrafortes = todas.Tipo_muro === 'Contrafortes';
+  const s = contrafortes ? todas.s_pv_dir : todas.s_dir;
+  // a lista do graute vai até 6t, na grade de 20: bloco 19 → 100, bloco 14 → 80
+  const t = typeof todas.t_bloco === 'number' ? todas.t_bloco : 19;
+  const teto = Math.floor((6 * t) / 20) * 20;
+  return typeof s === 'number' && s >= 20 && s <= teto && s % 20 === 0 ? s : 40;
+}
+
 /**
  * Lê o texto do arquivo. Cada valor passa pela MESMA porta do campo da tela
  * (`validarValor`): o arquivo é texto, pode ter sido editado à mão, e a conta
@@ -157,7 +175,7 @@ export function desserializarProjeto(
         descartados.push(k);
         continue;
       }
-      const lido = validarValor(c, v);
+      const lido = validarValor(c, renomeado(k, v, fonte as Record<string, unknown>));
       if (lido.ok) saida[k] = lido.valor;
       else recusados.push(k);
     }

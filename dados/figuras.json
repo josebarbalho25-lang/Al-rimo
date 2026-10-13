@@ -24,13 +24,16 @@
     { "id": "fig21", "numero": 21, "titulo": "Contraforte em corte vertical", "arquivo": "fig21.svg" },
     { "id": "fig22", "numero": 22, "titulo": "Solos: valores de referência", "arquivo": "fig22.svg" },
     { "id": "fig23", "numero": 23, "titulo": "Blocos: resistências de referência", "arquivo": "fig23.svg" },
-    { "id": "fig24", "numero": 24, "titulo": "Tombamento e deslizamento", "arquivo": "fig24.svg", "planilha": "fig24_tomb_desl" }
+    { "id": "fig24", "numero": 24, "titulo": "Tombamento e deslizamento", "arquivo": "fig24.svg", "planilha": "fig24_tomb_desl" },
+    { "id": "fig25", "numero": 25, "titulo": "Graute a cada", "arquivo": "fig25.svg" },
+    { "id": "fig26", "numero": 26, "titulo": "Peso próprio da parede", "arquivo": "fig26.svg" },
+    { "id": "fig27", "numero": 27, "titulo": "Peso próprio do contraforte", "arquivo": "fig27.svg" }
   ],
   "entradas": {
     "H_muro": { "figura": "fig01", "campo": "H_muro" },
     "H_solo": { "figura": "fig01", "campo": "H_solo" },
     "t_bloco": { "figura": "fig02", "campo": "t_bloco" },
-    "Graute": { "figura": "fig03", "campo": "Graute" },
+    "Graute": { "figura": "fig25", "campo": "Graute" },
     "bw_dir": { "figura": "fig03", "campo": "bw_dir" },
     "Tipo_muro": { "figura": "fig20", "campo": "Tipo_muro" },
     "Trav_lat": { "figura": "fig07", "campo": "Trav_lat" },
@@ -53,7 +56,9 @@
 
     "fbk_": { "figura": "fig23", "campo": "fbk_" },
     "fpk_ref": { "figura": "fig02", "campo": "fpk_ref" },
-    "peso_par": { "figura": "fig07", "campo": "peso_par" },
+    "reb_fac": { "figura": "fig26", "campo": "reb_fac" },
+    "reb_esp": { "figura": "fig26", "campo": "reb_esp" },
+    "peso_par": { "figura": "fig26", "campo": "peso_par" },
     "fgk_dir": { "figura": "fig23", "campo": "fgk_dir" },
     "phi_v": { "figura": "fig05", "campo": "phi_v" },
     "s_dir": { "figura": "fig05", "campo": "s_dir" },
@@ -111,8 +116,9 @@
     "a_ater": { "figura": "fig15", "campo": "a_ater" },
     "b_den": { "figura": "fig15", "campo": "b_den" },
     "h_den": { "figura": "fig15", "campo": "h_den" },
+    "x_den": { "figura": "fig15" },
     "gama_c": { "figura": "fig15", "campo": "gama_c" },
-    "gama_cf": { "figura": "fig21", "campo": "gama_cf" },
+    "gama_cf": { "figura": "fig27", "campo": "gama_cf" },
     "P_topo": { "figura": "fig15", "campo": "P_topo" },
     "q_est": { "figura": "fig15", "campo": "q_est" },
     "phi_base": { "figura": "fig15", "campo": "phi_base" },
@@ -143,8 +149,6 @@
     "imper_on": { "figura": "fig17", "campo": "imper_on" }
   },
   "sem_figura": {
-    "reb_fac": "reboco: entra no desenho do corte na padronização das figuras (proposta de 12/10)",
-    "reb_esp": "reboco: entra no desenho do corte na padronização das figuras (proposta de 12/10)",
     "fyk_": "aço CA-50: não há o que desenhar",
     "gama_f": "coeficiente de norma: decisão do Jose pendente (sem botão, tabela de norma ou fora do app)",
     "gama_m": "coeficiente de norma: decisão do Jose pendente",

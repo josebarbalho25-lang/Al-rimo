@@ -33,7 +33,8 @@ def linha(s, x0, y0, total):
     """Uma linha da figura: a planta de dois blocos (com o solo) e, à direita, a seção de cálculo da faixa."""
     yt = y0 - SOLO - 16           # base dos títulos: logo acima do solo
     with s.campo('Graute'):
-        s.titulo_vista(x0, yt, 'Graute total' if total else 'Graute parcial')
+        # graute a cada X (13/10): 20 = todos os furos (seção cheia); 40 = furo sim, furo não com a barra a 40 (seção I)
+        s.titulo_vista(x0, yt, 'Graute a cada 20 (todos)' if total else 'Graute a cada 40')
     n = 2
     s.solo([(x0, y0 - SOLO), (x0 + (40 * n - 1) * K, y0 - SOLO), (x0 + (40 * n - 1) * K, y0), (x0, y0)])
     for k in range(n):

@@ -187,7 +187,7 @@ type Folhas = ReturnType<typeof folhas>;
 
 /** O estado da conta que decide QUAL conta contar (espelho dos IFs da planilha). */
 function contexto(m: Memoria) {
-  const total = comeca(m.texto('Graute'), 'Total');              // LEFT(Graute,5)="Total"
+  const total = m.texto('gr_tot') === 'Sim';                     // graute a cada 20 = todos os furos (13/10)
   const liquida = comeca(m.texto('fpk_ref'), 'Líqu');            // LEFT(fpk_ref,4)="Líqu"
   const t = m.num('t_bloco') ?? 0;
   const d = m.num('d_util') ?? 0;
@@ -321,7 +321,7 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
   // Na mesa (0,8x ≤ hf) só a parede do bloco trabalha; passou disso, seção T: a parede inteira + as almas grauteadas
   // do metro (ln_mesa, planilha). A verificação "seção resiste" é a da célula (mesa ou T).
   const mesaSo = m.texto('ln_mesa') === 'Sim';
-  const total = m.texto('Graute').slice(0, 5).toLowerCase() === 'total';
+  const total = m.texto('gr_tot') === 'Sim';
   const xR = v('x_r');
   const KfdAlma = f.KfdAlma01;
   const y = m.g('y_alma', 'y', 2, 'cm');
@@ -348,7 +348,7 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
     !mesaSo && xR !== null && m.passo('x_r', 'x_{mesa}', xMesa, { casas: 2, unidade: 'cm', ref: NBR('11.3.3') }),
   ]);
   const secaoT = secao('Seção T (parede do bloco + furos grauteados do metro)', [
-    !mesaSo && v('s_web') !== null && m.passo('s_web', 's_{alma}', null, { casas: 0, unidade: 'cm', origem: 'adotado' }),
+    !mesaSo && v('s_web') !== null && m.passo('s_web', 's_{alma}', m.ent('Graute', 's_{gr}'), { casas: 0, unidade: 'cm' }),
     !mesaSo && !total && v('bw_f') !== null && m.passo('bw_f', 'b_{w,f}', bwF, { casas: 2, unidade: 'cm', ref: AULA_122 }),
     !mesaSo && v('bw_m') !== null && m.passo('bw_m', 'b_{w,m}', total
       ? cte(100, 0)
@@ -398,8 +398,9 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
     asCalc !== null && m.passo('As_calc', 'A_{s,calc}', max(f.AsNec, f.AsMin), { casas: 2, unidade: 'cm²/m' }),
   ]);
 
-  // s_calc = IFERROR(As,barra/As,calc·100; 0); s = múltiplo de m, para baixo; As,ef = IF(s>0; As,barra·100/s; 0)
+  // s_calc = IFERROR(As,barra/As,calc·100; 0); s = múltiplo do graute a cada X, para baixo (13/10); As,ef = IF(s>0; As,barra·100/s; 0)
   const sCalcConta = asCalc !== null && asCalc > 0;
+  const gr = m.ent('Graute', 's_{gr}');
   const barras = secao('Barras adotadas', [
     m.entrada('phi_v', '\\phi'),
     m.passo('As_barra', 'A_{s1}', div(mul(pi(), pot(f.phiCm, 2)), cte(4, 0)), { casas: 3, unidade: 'cm²' }),
@@ -407,11 +408,12 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
       ? m.passo('s_calc', 's_{calc}', mul(div(f.Asb, f.AsCalc), cte(100, 0)), { casas: 1, unidade: 'cm' })
       : m.passo('s_calc', 's_{calc}', null, { casas: 1, unidade: 'cm', origem: 'calculado' }),
     sDigitado && m.entrada('s_dir', 's_{dig}'),
+    m.entrada('Graute', 's_{gr}'),
     m.passo('s_adot', 's', sDigitado
-      ? mul(arredBaixo(div(f.sdir, f.mmod)), f.mmod)
-      : mul(min(arredBaixo(div(f.scalc, f.mmod)), arredBaixo(div(mul(cte(6, 0), f.t), f.mmod))), f.mmod), {
+      ? mul(arredBaixo(div(f.sdir, gr)), gr)
+      : mul(min(arredBaixo(div(f.scalc, gr)), arredBaixo(div(mul(cte(6, 0), f.t), gr))), gr), {
       casas: 0, unidade: 'cm', ref: NBR('11.3.5'),
-      verif: { chave: 'balanco.flexao.cabe', rotulo: 'Barra cabe na grade: s ≥ m', limite: f.mmod, relacao: '>=', celula: VER.cabe },
+      verif: { chave: 'balanco.flexao.cabe', rotulo: 'Barra na grade do graute: s ≥ s_gr', limite: gr, relacao: '>=', celula: VER.cabe },
     }),
     m.passo('As_ef', 'A_{s,ef}', sAdot > 0 ? div(mul(f.Asb, cte(100, 0)), f.s) : null, {
       casas: 2, unidade: 'cm²/m', origem: 'calculado',
@@ -424,7 +426,7 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
   const avisos: string[] = [];
   if (c.encostada) avisos.push('Barra encostada no lado do solo (d > t/2): indicar em planta, corte e notas');
   const coerente = m.r.v(VER.coerente);
-  if (typeof coerente === 'string' && comeca(coerente, 'ATENÇÃO')) avisos.push('Barra em todos os furos: grautear todos (seção cheia)');
+  if (typeof coerente === 'string' && comeca(coerente, 'ATENÇÃO')) avisos.push('Barra fora da grade do graute');
 
   // Os desenhos distribuídos (Jose, 12/10: "distribui os desenhos"): a faixa em planta no topo do card; as forças
   // DEPOIS da verificação da parede ("coloca o desenho depois da seção 2") — primeiro a conta diz se a compressão

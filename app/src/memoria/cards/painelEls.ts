@@ -387,7 +387,7 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
   // IF(s_adot>0;...;"— (sem espaçamento de barras válido)")
   const aplicavel = m.texto('Tipo_muro') === 'Balanço' && sAdot !== null && sAdot > 0;
 
-  const cheia = igual(m.texto('Graute').slice(0, 5), 'Total');     // LEFT(Graute;5)="Total"
+  const cheia = m.texto('gr_tot') === 'Sim';                      // graute a cada 20 = todos os furos (13/10)
   const s = m.g('s_adot', 's', 0, 'cm');
   const bm = m.g('bm_els', 'b_m', 1, 'cm');
   const bw = m.g('bw_els', 'b_w', 2, 'cm');
@@ -398,13 +398,14 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
   const As = m.g('As_barra', 'A_{s1}', 3, 'cm²');
   const Im = m.g('Im_', 'I_m', 0, 'cm⁴');
 
-  // bw: IF(Total;bm;MIN(bm;IF(ISNUMBER(bw_dir);bw_dir;(L − 3hf)/2 + 2hf)))
+  // bw: IF(gr_tot="Sim";bm;MIN(bm;n_alm·IF(ISNUMBER(bw_dir);bw_dir;(L − 3hf)/2 + 2hf))); n_alm = s/X furos
+  // grauteados na faixa da barra (graute a cada X, 13/10) — com uma alma só a linha fica a da aula
   const bwDigitado = m.num('bw_dir') !== null;
-  const bwExpr = cheia
-    ? bm
-    : min(bm, bwDigitado
-      ? m.ent('bw_dir', 'b_{w,inf}')
-      : soma(div(sub(L, mul(cte(3, 0), hf)), cte(2, 0)), mul(cte(2, 0), hf)));
+  const nAlm = m.num('n_alm') ?? 1;
+  const bwUma = bwDigitado
+    ? m.ent('bw_dir', 'b_{w,inf}')
+    : soma(div(sub(L, mul(cte(3, 0), hf)), cte(2, 0)), mul(cte(2, 0), hf));
+  const bwExpr = cheia ? bm : min(bm, nAlm > 1 ? mul(m.g('n_alm', 'n_{alm}', 0), bwUma) : bwUma);
   // Mesma fórmula de Im nos dois casos; com bw = bm a alma é a seção toda e o segundo termo é zero
   const alma = !cheia && m.num('bw_els') !== m.num('bm_els');
   const brutaRet = div(mul(bm, pot(t, 3)), cte(12, 0));
@@ -413,6 +414,7 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
     : brutaRet;
   const secaoFaixa = secao(cheia ? 'Seção da faixa · retangular cheia' : 'Seção da faixa · seção I', [
     tem('bm_els') && m.passo('bm_els', 'b_m', s, { casas: 1, unidade: 'cm' }),
+    !cheia && nAlm > 1 && m.passo('n_alm', 'n_{alm}', div(bm, m.ent('Graute', 's_{gr}')), { casas: 0 }),
     tem('bw_els') && m.passo('bw_els', 'b_w', bwExpr, { casas: 2, unidade: 'cm', ref: AULA_122 }),
     tem('Im_') && m.passo('Im_', 'I_m', imExpr, { casas: 0, unidade: 'cm⁴' }),
   ], CURSO_06);

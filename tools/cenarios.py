@@ -16,7 +16,7 @@ import openpyxl
 AULA_122_ENTRADAS = {'sg_on': 'Não', 'peso_par': 3.0}
 
 VAL123 = {
-    'H_muro': 2.6, 'H_solo': 2.6, 't_bloco': 14, 'Graute': 'Parcial (seção I)', 'Tipo_muro': 'Contrafortes',
+    'H_muro': 2.6, 'H_solo': 2.6, 't_bloco': 14, 'Graute': 40, 'Tipo_muro': 'Contrafortes',
     'Ka_dir': 0.4, 'gama_solo': 20, 'q_sobre': 0, 'c_solo': 0, 'Agua': 'Não', 'fbk_': 10, 'fpk_ref': 'Líquida (curso)',
     'K_dir': 1, 'AsMin_crit': 'Curso', 'M2d_on': 'Não', 'arg_cls': 'acima de 7,0 MPa', 'fgk_dir': 20, 'h_pan': 0.8,
     'psi_els': 1, 'vao_ref': '2h',
@@ -31,7 +31,7 @@ PHI_FURO = [6.3, 8, 10, 12.5, 16, 20]
 OPCOES = {
     't_bloco': [14, 19], 'Trav_lat': ['Sim', 'Não'],
     'Ka_dir': ['', 0.33, 0.5], 'phi_solo': [20, 30, 35], 'c_solo': [0, 10, 25], 'q_sobre': [0, 5, 20], 'Agua': ['Sim', 'Não'], 'z_NA': [0, 0.5, 1.5],
-    'fbk_': [4, 6, 8, 10, 12, 16, 24], 'Graute': ['Parcial (seção I)', 'Total (seção cheia)'], 'fpk_ref': ['Líquida (curso)', 'Bruta (NBR)'],
+    'fbk_': [4, 6, 8, 10, 12, 16, 24], 'Graute': ['parcial', 20], 'fpk_ref': ['Líquida (curso)', 'Bruta (NBR)'],
     'phi_v': PHI_FURO, 'd_dir': ['', 9.5, 14], 'K_dir': ['', 1, 1.5],
     'AsMin_crit': ['Curso', 'NBR'], 'M2d_on': ['Sim', 'Não'], 'fck_fund': ['C20', 'C25', 'C30'], 'zona_ad': ['Boa', 'Má'], 'gancho_': ['Sim', 'Não'],
     'h_pan': [0.4, 0.8, 1.2, 1.6], 'arg_cls': ['1,5 a 3,4 MPa', '3,5 a 7,0 MPa', 'acima de 7,0 MPa'], 'caso_pan': [13, 18, 11], 'beta_dir': ['', 0.1],
@@ -103,6 +103,19 @@ def sortear(rnd):
             sc[k] = max([b for b in cabem if b <= sc[k]] or cabem[:1])
     r2 = random.Random(repr(sorted(sc.items())))
     sc.update({k: r2.choice(v) for k, v in OPCOES_NOVAS.items()})
+    # graute a cada X (13/10): o sorteio principal escolhe parcial × todos (20) — sequência de antes; o parcial vira
+    # uma grade de 40 a 6t no gerador próprio, e as barras descem para a grade (a lista da planilha só oferece
+    # múltiplos do graute; o app faz o mesmo com o "→")
+    if sc['Graute'] == 'parcial':
+        sc['Graute'] = r2.choice([x for x in (40, 60, 80, 100) if x <= 6 * sc['t_bloco']])
+    for k in ('s_dir', 's_pv_dir'):
+        if isinstance(sc.get(k), (int, float)):
+            sc[k] = max(sc['Graute'], sc[k] // sc['Graute'] * sc['Graute'])
+    # posição do dente (13/10), do centro da sapata, + para o pé: no centro, para trás (passivo sempre) ou para a
+    # frente (passivo só com a garantia do solo da frente) — sempre dentro da sapata, |x| ≤ (B − b)/2
+    if (sc.get('b_den') or 0) > 0 and (sc.get('h_den') or 0) > 0:
+        folga = max(0.0, (sc['B_sap'] - sc['b_den']) / 2)
+        sc['x_den'] = round(r2.choice([0.0, -folga, folga / 2]), 3)
     return {k: (None if v == '' else v) for k, v in sc.items()}
 
 

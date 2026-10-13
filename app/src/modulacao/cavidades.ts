@@ -5,7 +5,7 @@
     1. a barra vertical cai dentro de um furo em toda fiada que ela atravessa? (senão, ela é puxada para dentro e
        o desenho avisa que o d mudou);
     2. qual é o cobrimento de graute entre a barra e a parede do bloco? (aviso abaixo de 15 mm — ABCP);
-    3. quais furos levam graute no grauteamento parcial (os que têm barra).
+    3. quais furos levam graute: os que têm barra sempre, e os da grade do graute a cada X (gerar.ts, grauteDaGrade).
 */
 import { H_FIADA } from './catalogo';
 import { distanciaAoFuro } from './perfis';

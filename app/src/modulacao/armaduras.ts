@@ -209,8 +209,8 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
   // tracionada: enterrado → da ponta para o muro; aparente → do muro (junto ao solo) para a ponta (Fig. 12)
   const furosTracao = enterrado ? [...celulas].reverse().concat([t / 2]) : [t / 2, ...celulas];
   const furosCompressao = [...furosTracao].reverse();
-  const l0P = traspasse(ctx, p.phi_cf);
-  const l0C = traspasse(ctx, p.phi_cc);
+  const l0P = traspasse(ctx, p.phi_cf, 'cf');
+  const l0C = traspasse(ctx, p.phi_cc, 'cc');
 
   for (const no of tr.nos) {
     const base = `T${tr.indice}.CF${no.cf}`;
@@ -254,17 +254,19 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
       else if (gc.folga < COB_GRAUTE - 0.05) avisarFolga(ctx, gc.folga, idsC);
     }
 
-    // estribos fechados na junta de assentamento, um a cada s_est, a partir da junta sobre a sapata
+    // estribos fechados na junta de assentamento, um a cada s_est, a partir da junta sobre a sapata — só quando a
+    // conta pede (leitura.ts, `estribos`): estribo sem necessidade não é usual em alvenaria (Jose, 13/10)
     const meia = t / 2 - RECUO_ESTRIBO_LATERAL;
     const ya = yDe(RECUO_ESTRIBO);
     const yb = yDe(mod.tenr - RECUO_ESTRIBO);
     const passoJ = Math.max(1, Math.round(mod.s_est / H_FIADA));
-    for (let i = 0; i < mod.n_fiadas; i += passoJ) {
+    for (let i = 0; p.estribos && i < mod.n_fiadas; i += passoJ) {
       const z = i * H_FIADA + JUNTA / 2;
       ctx.barras.push(estribo(`${base}.E${pad(i, 2)}`, 'CF_ESTRIBO', p.phi_est,
         [[no.xc - meia, ya, z], [no.xc + meia, ya, z], [no.xc + meia, yb, z], [no.xc - meia, yb, z]], tr.indice, no.cf));
     }
   }
+  if (!p.estribos) return;
   if (p.phi_est > 6.3) ctx.avisos.push({ codigo: 'ESTRIBO_NA_JUNTA', texto: `Estribo Ø${br(p.phi_est, 1)} na junta de 10 mm` });
   // na largura do bloco só cabe um estribo fechado (2 ramos); mais ramos não têm desenho simples — DEDUÇÃO
   if (p.ramos_est !== 2) ctx.avisos.push({ codigo: 'ESTRIBO_RAMOS', texto: `Estribo do contraforte com ${p.ramos_est} ramos: desenhado fechado, 2 ramos` });
@@ -272,12 +274,38 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
 
 // ── esperas ──────────────────────────────────────────────────────────────────
 
-/** Traspasse espera × barra: o digitado; senão o ℓb da conta (Ø da barra do balanço) proporcional ao Ø — DEDUÇÃO. */
-export function traspasse(ctx: Ctx, phi: number): number {
+/**
+ * Onde fica a emenda: as esperas têm a linha delas na planilha (v = balanço, pv = painel, cf = principal do
+ * contraforte, cc = construtivas); as outras emendas, no graute (horizontal da canaleta) ou no concreto da sapata.
+ */
+export type Emenda = 'v' | 'pv' | 'cf' | 'cc' | 'graute' | 'concreto';
+
+/**
+ * Traspasse (mm). O digitado manda — quem defasa as emendas digita menos. Senão, a conta da NBR 6118 9.5.2.2.1
+ * (Jose, 13/10: "2,0 × ℓb no graute"; aba Fundação, seção 10): ℓ0t = α0t·ℓb·As,calc/As,ef ≥ máx(0,3·α0t·ℓb; 15φ;
+ * 20 cm). Esperas: a célula da planilha. Outras emendas: o mesmo α0t e o ℓb em diâmetros do material onde a emenda
+ * fica, com As,calc/As,ef = 1 (a favor: a corrida da canaleta e a longitudinal da sapata não têm As de cálculo por
+ * barra). Sem a conta: 50φ, com aviso (entorno.ts).
+ */
+export function traspasse(ctx: Ctx, phi: number, emenda: Emenda): number {
   const { p } = ctx;
   if (p.traspasse !== null) return p.traspasse;
-  if (p.lb !== null) return Math.ceil((p.lb * phi) / p.phi_v);
+  if (emenda !== 'graute' && emenda !== 'concreto') {
+    const l = p.l0t[emenda];
+    if (l !== null && l > 0) return l;
+  }
+  const lbphi = emenda === 'concreto' ? p.lbphi_c : p.lbphi_gr;
+  if (lbphi !== null && lbphi > 0 && p.a0t !== null && p.a0t > 0) {
+    return Math.ceil(Math.max(p.a0t * lbphi * phi, 15 * phi, 200) / 10) * 10;
+  }
   return 50 * phi;
+}
+
+/** A emenda da espera de uma barra vertical: pelo papel da barra (o painel e o balanço usam o mesmo papel). */
+function emendaDaEspera(ctx: Ctx, v: Vertical): Emenda {
+  if (v.barra.papel === 'CF_PRINCIPAL') return 'cf';
+  if (v.barra.papel === 'CF_CONSTRUTIVA') return 'cc';
+  return ctx.p.contrafortes ? 'pv' : 'v';
 }
 
 /**
@@ -297,7 +325,7 @@ export function esperas(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidades, vs:
   let n = 0;
   const fora: string[] = [];
   for (const v of vs) {
-    const l0 = traspasse(ctx, v.phi);
+    const l0 = traspasse(ctx, v.phi, emendaDaEspera(ctx, v));
     let pos: [number, number] | null = v.esperaEm ?? null;
     if (pos && mapa.folga(pos[0], pos[1], v.phi / 2, 0, l0) < 0) fora.push(v.barra.id);
     if (!pos) {
@@ -376,8 +404,7 @@ export function horizontais(ctx: Ctx, tr: TrechoModulado, fiadas: FiadaMontada[]
   for (const f of fiadas) {
     if (!canaleta[f.i]) continue;
     const { phi, y, z, lado } = barraDaCanaletaDoMuro(ctx, f);
-    const barras = corrida(`T${tr.indice}.H.f${pad(f.i, 2)}.`, 'HORIZ', phi, tr.x0 + COB_PONTA, tr.x1 - COB_PONTA, y, z, traspasse(ctx, phi), [0, lado, 0], tr.indice);
-    if (barras.length > 1) avisarTraspasseProporcional(ctx);
+    const barras = corrida(`T${tr.indice}.H.f${pad(f.i, 2)}.`, 'HORIZ', phi, tr.x0 + COB_PONTA, tr.x1 - COB_PONTA, y, z, traspasse(ctx, phi, 'graute'), [0, lado, 0], tr.indice);
     ctx.barras.push(...barras);
   }
 }
@@ -460,10 +487,4 @@ export function barrasDasCanaletasDosContrafortes(ctx: Ctx, tr: TrechoModulado, 
     ctx.avisos.push({ codigo: 'CANALETA_CF', texto: `Barra da canaleta do contraforte: Ø da canaleta do muro, perna em L = ${perna} (dedução)` });
   }
   if (curtas.length) ctx.avisos.push({ codigo: 'CANALETA_CF_PERNA', texto: 'Perna em L da barra da canaleta do contraforte encurtada (vão curto)', ids: curtas });
-}
-
-export function avisarTraspasseProporcional(ctx: Ctx): void {
-  if (ctx.p.traspasse === null) {
-    ctx.avisos.push({ codigo: 'TRASPASSE_ADOTADO', texto: 'Traspasse das emendas: ℓb da conta proporcional ao Ø (dedução)' });
-  }
 }

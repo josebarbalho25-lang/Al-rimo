@@ -2,7 +2,7 @@
 //  ui/EscolhaComDesenho.tsx — a escolha que se faz olhando o desenho (Jose, 12/10)
 // ---------------------------------------------------------------------------
 //  Na entrada por figuras, a entrada cujas opções SE DESENHAM (balanço ou
-//  contrafortes, bloco 14 ou 19, graute parcial ou total, contraforte enterrado
+//  contrafortes, bloco 14 ou 19, graute a cada X, contraforte enterrado
 //  ou aparente...) vira uma fileira de botões, cada um com o desenhinho da
 //  opção e o nome curto embaixo. Na lista da esquerda continua o controle de
 //  sempre (botões de texto ou combo): lá é ajuste rápido.
@@ -151,11 +151,13 @@ const DESENHOS: Record<string, (v: Valor) => ReactNode | null> = {
     );
   },
   t_bloco: (v) => (Number(v) === 14 || Number(v) === 19 ? bloco(29, 30 - (Number(v) * 1.6) / 2, Number(v)) : null),
+  // graute a cada X (Jose, 13/10): uma fiada de 3 blocos em planta (6 furos, a cada 20 cm), o 1º furo grauteado e
+  // os outros a cada X — 20 todos, 40 furo sim furo não, 60 um sim dois não… 100 o 1º e o 6º
   Graute: (v) => {
-    const s = String(v ?? '');
-    if (s.startsWith('Parcial')) return <g>{bloco(-2, 15, 19, [false, true])}{bloco(62, 15, 19, [false, false])}</g>;
-    if (s.startsWith('Total')) return <g>{bloco(-2, 15, 19, [true, true])}{bloco(62, 15, 19, [true, true])}</g>;
-    return null;
+    const x = Number(v);
+    if (!Number.isFinite(x) || x < 20 || x % 20 !== 0) return null;
+    const passo = x / 20;
+    return <g>{[0, 1, 2].map((b) => bloco(0.5 + b * 40, 20.5, 19, [(2 * b) % passo === 0, (2 * b + 1) % passo === 0], 1))}</g>;
   },
   pos_cf: (v) => {
     const s = String(v ?? '');
@@ -185,7 +187,8 @@ const DESENHOS: Record<string, (v: Valor) => ReactNode | null> = {
 /** A entrada tem desenho para TODAS as opções de agora? (senão fica o controle de sempre) */
 export function temDesenho(nome: string, opcoes: readonly Opcao[]): boolean {
   const d = DESENHOS[nome];
-  return !!d && opcoes.length > 1 && opcoes.length <= 4 && opcoes.every((o) => o.valor !== null && d(o.valor) !== null);
+  // até 5: o graute a cada X tem 20, 40, 60, 80 e 100 (bloco 19)
+  return !!d && opcoes.length > 1 && opcoes.length <= 5 && opcoes.every((o) => o.valor !== null && d(o.valor) !== null);
 }
 
 export function EscolhaComDesenho({

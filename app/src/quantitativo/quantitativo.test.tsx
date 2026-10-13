@@ -398,7 +398,9 @@ describe('com a modulação de verdade', () => {
         expect(dif, `${c} ${p.id}`).toBeLessThan(1e-6);
       }
     }
-  });
+    // os 63 cenários num teste só: sozinho leva segundos, mas com a máquina ocupada (servidor subindo, Excel do
+    // gabarito) passava do prazo padrão e caía como falha sem ser (13/10)
+  }, 120_000);
 
   // Graute pelo CATÁLOGO do Revit do Jose (volume da família → área dos furos e do U), não pelas geometrias do Modelo:
   // pega furo do 34/54 trocado, a cortada da 19 com o fundo da inteira, e junta de canaleta contada duas vezes.

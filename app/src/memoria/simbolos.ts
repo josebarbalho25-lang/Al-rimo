@@ -31,6 +31,10 @@ const SIMBOLOS_BASE: Readonly<Record<string, string>> = {
   'g_{par}': 'peso próprio da parede por área (o usado: calculado, ou o digitado)',
   // peso próprio calculado (12/10): bloco + graute + reboco — cards/pesoProprio.ts
   'f_{gr}': 'fração dos furos do bloco grauteada',
+  // graute a cada X (13/10): a grade dos furos grauteados da parede (balanço e painel)
+  's_{gr}': 'graute a cada: espaçamento dos furos grauteados da parede',
+  'f_{furo}': 'fração dos furos grauteados numa fiada comum (m/X)',
+  'n_{alm}': 'furos grauteados (almas) na faixa de uma barra',
   'g_{alv}': 'peso da alvenaria por área (bloco + graute)',
   'e_{reb}': 'espessura do reboco em cada face',
   'g_{reb}': 'peso do reboco por área',

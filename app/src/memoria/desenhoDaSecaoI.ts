@@ -55,7 +55,9 @@ const rect = (x: number, y: number, w: number, h: number, fill: string, stroke =
   `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
 
 /** Uma seção I (ou cheia) em cm: faixa bm, alma bw, mesas hf, espessura t, barras a d (e a d2) da face comprimida. */
-interface SecaoI { bm: number; bw: number; hf: number; t: number; d: number; d2: number | null; phi: number | null; cheia: boolean; titulo: string }
+/** `almas`/`passo`: a seção I com mais de um furo grauteado na faixa (graute a cada X menor que o espaçamento das
+ *  barras, 13/10) — n almas de bw/n, a cada `passo` a partir da barra do meio; as das bordas saem pela metade. */
+interface SecaoI { bm: number; bw: number; hf: number; t: number; d: number; d2: number | null; phi: number | null; cheia: boolean; titulo: string; almas?: number; passo?: number }
 
 /** O desenho de UMA seção, a partir de (ox, 0); devolve as partes e a largura ocupada. */
 function desenharSecao(p: SecaoI, ox: number, s: number): { partes: string[]; largura: number; altura: number } {
@@ -76,7 +78,7 @@ function desenharSecao(p: SecaoI, ox: number, s: number): { partes: string[]; la
     partes.push(rect(x0, y0, W, T, VAZIO, TINTA, 0.8));
     partes.push(rect(x0, y0, W, hf * s, MESA, TINTA, 1));
     partes.push(rect(x0, y1 - hf * s, W, hf * s, MESA, TINTA, 1));
-    partes.push(rect(xc - (bw * s) / 2, y0, bw * s, T, GRAUTE, GRAUTE_LINHA, 1.2));
+    for (const [a0, a1] of almasDaFaixa(p)) partes.push(rect(x0 + a0 * s, y0, (a1 - a0) * s, T, GRAUTE, GRAUTE_LINHA, 1.2));
   }
   // as barras, a d (e a d2) da face comprimida
   const rb = Math.max(3, ((phi ?? 10) / 20) * s);
@@ -90,8 +92,10 @@ function desenharSecao(p: SecaoI, ox: number, s: number): { partes: string[]; la
   partes.push(cota(x0, yCb, x0 + W, yCb, `bm = ${cm(bm)}`, 1));
   if (!cheia) {
     const yCw = yS - 10;
-    partes.push(chamada(xc - (bw * s) / 2, y0, xc - (bw * s) / 2, yCw - 4), chamada(xc + (bw * s) / 2, y0, xc + (bw * s) / 2, yCw - 4));
-    partes.push(cota(xc - (bw * s) / 2, yCw, xc + (bw * s) / 2, yCw, `bw = ${cm(bw)}`, -1));
+    // a alma do meio; com n almas o rótulo diz n × a de cada furo (a soma é o bw da conta)
+    const n = p.almas ?? 1, bw1 = bw / n;
+    partes.push(chamada(xc - (bw1 * s) / 2, y0, xc - (bw1 * s) / 2, yCw - 4), chamada(xc + (bw1 * s) / 2, y0, xc + (bw1 * s) / 2, yCw - 4));
+    partes.push(cota(xc - (bw1 * s) / 2, yCw, xc + (bw1 * s) / 2, yCw, n > 1 ? `bw = ${n} × ${cm(bw1)}` : `bw = ${cm(bw)}`, -1));
   }
   const xT = x0 + W + 30;
   partes.push(chamada(x0 + W, y0, xT + 4, y0), chamada(x0 + W, y1, xT + 4, y1));
@@ -105,6 +109,19 @@ function desenharSecao(p: SecaoI, ox: number, s: number): { partes: string[]; la
     partes.push(cota(xH, y0, xH, y0 + hf * s, `hf = ${cm(hf)}`, -1));
   }
   return { partes, largura: x0 + W + 70 - ox, altura: yCb + 26 };
+}
+
+/** As almas da faixa em cm a partir da borda: a do meio (a da barra) e, com n > 1, as outras a cada `passo`. */
+function almasDaFaixa(p: SecaoI): Array<[number, number]> {
+  const n = p.almas ?? 1;
+  const bw1 = p.bw / n;
+  const centros = [p.bm / 2];
+  if (n > 1 && p.passo && p.passo > 0) {
+    for (let k = 1; p.bm / 2 + k * p.passo - bw1 / 2 < p.bm; k++) centros.push(p.bm / 2 + k * p.passo, p.bm / 2 - k * p.passo);
+  }
+  return centros
+    .map((c): [number, number] => [Math.max(0, c - bw1 / 2), Math.min(p.bm, c + bw1 / 2)])
+    .filter(([a0, a1]) => a1 > a0);
 }
 
 function folha(secoes: SecaoI[], titulo: string): DesenhoDoCard {
@@ -130,9 +147,11 @@ export function desenhoDaSecaoI(r: Resultado): DesenhoDoCard | null {
   if (r.v('Tipo_muro') !== 'Balanço') return null;
   const bm = r.num('bm_els'), bw = r.num('bw_els'), hf = r.num('hf_bl'), t = r.num('t_bloco'), d = r.num('d_util');
   if (!ok(bm, bw, hf, t, d) || !(bm! > 0) || !(t! > 0)) return null;
-  const cheia = String(r.v('Graute') ?? '').slice(0, 5).toLowerCase() === 'total' || bw! >= bm! - 1e-9;
+  // graute a cada 20 = todos os furos (gr_tot, 13/10); senão n_alm furos grauteados na faixa, a cada X
+  const cheia = r.v('gr_tot') === 'Sim' || bw! >= bm! - 1e-9;
   const titulo = cheia ? 'Faixa bm · retangular cheia' : 'Faixa bm · seção I';
-  return folha([{ bm: bm!, bw: bw!, hf: hf!, t: t!, d: d!, d2: null, phi: r.num('phi_v'), cheia, titulo }], `Seção da faixa (cm)`);
+  return folha([{ bm: bm!, bw: bw!, hf: hf!, t: t!, d: d!, d2: null, phi: r.num('phi_v'), cheia, titulo,
+    almas: r.num('n_alm') ?? 1, passo: r.num('Graute') ?? undefined }], `Seção da faixa (cm)`);
 }
 
 /**
@@ -149,11 +168,12 @@ export function desenhoDasSecoesDoPainel(r: Resultado): DesenhoDoCard | null {
   if (ok(hf, t, v.bm, v.bw, v.d) && v.bm! > 0) {
     const duas = r.num('nb_pv') === 2;
     secoes.push({ bm: v.bm!, bw: v.bw!, hf: hf!, t: t!, d: v.d!, d2: duas ? t! - v.d! : null, phi: r.num('phi_pv'),
-      cheia: v.bw! >= v.bm! - 1e-9, titulo: 'Vertical · faixa s_v' });
+      cheia: r.v('gr_tot') === 'Sim' || v.bw! >= v.bm! - 1e-9, titulo: 'Vertical · faixa s_v',
+      almas: r.num('n_alm_v') ?? 1, passo: r.num('Graute') ?? undefined });
   }
   if (ok(hf, t, h.bm, h.bw, h.d) && h.bm! > 0) {
     secoes.push({ bm: h.bm!, bw: h.bw!, hf: hf!, t: t!, d: h.d!, d2: null, phi: r.num('phi_ph'),
-      cheia: h.bw! >= h.bm! - 1e-9, titulo: 'Horizontal · faixa s_h' });
+      cheia: r.v('gr_tot') === 'Sim' || h.bw! >= h.bm! - 1e-9, titulo: 'Horizontal · faixa s_h' });
   }
   return secoes.length ? folha(secoes, 'Seções I do painel (cm)') : null;
 }
@@ -163,8 +183,8 @@ export function desenhoDasSecoesDoPainel(r: Resultado): DesenhoDoCard | null {
   A FLEXÃO DA FAIXA DE 1 M DO BALANÇO, em DOIS desenhos, cada um perto da conta que mostra (Jose, 12/10: "visível por
   favor, tá pequeno" e depois "distribui os desenhos"):
 
-  1. a faixa em PLANTA (b = 100 cm), no topo do card: as paredes do bloco (mesas), os furos grauteados a cada s com a
-     barra, a zona comprimida sombreada e a linha neutra — só as cotas de largura (b, s, bw,f) e a espessura t;
+  1. a faixa em PLANTA (b = 100 cm), no topo do card: as paredes do bloco (mesas), os furos grauteados a cada X (graute
+     a cada, 13/10) e as barras a cada s, a zona comprimida sombreada e a linha neutra — só as cotas de largura (b, s, bw,f) e a espessura t;
   2. as FORÇAS NA SEÇÃO, logo depois da verificação da parede, numa escala maior — a profundidade é o que
      importa: a parede comprimida (C mesa) e, em seção T, as almas comprimidas (C alma), com a largura proporcional à
      força por cm de profundidade (K·fd·b), a tração no aço (As·σs), a linha neutra, as profundidades (hf, y, x, d) e
@@ -210,7 +230,9 @@ function faixaDaFlexao(r: Resultado) {
     bw: r.num('bw_f') ?? r.num('bw_els') ?? 21,            // a alma de cada furo da conta da flexão
     x: temX ? x : null,
     y: y ?? 0,
-    cheia: String(r.v('Graute') ?? '').slice(0, 5).toLowerCase() === 'total',
+    cheia: r.v('gr_tot') === 'Sim',
+    // graute a cada X (13/10): os furos grauteados (almas) a cada X, as barras a cada s (múltiplo de X)
+    sg: r.num('s_web') ?? r.num('Graute') ?? s!,
     // passou da parede: a compressão desce para os furos grauteados (ln_mesa, planilha)
     secaoT: temX && r.v('ln_mesa') !== 'Sim' && y !== null,
   };
@@ -229,7 +251,12 @@ export function desenhoDaFaixaEmPlanta(r: Resultado): DesenhoDoCard | null {
   partes.push(lin(x0 - 10, y0, x0 + W + 10, y0, '#8d6e3f', 1.8));
   const xs: number[] = [];                                 // as barras, a cada s
   for (let k = 0; f.s / 2 + k * f.s < b; k++) xs.push(f.s / 2 + k * f.s);
-  const almas: Array<[number, number]> = cheia ? [[0, b]] : xs.map((xb) => [Math.max(0, xb - bw / 2), Math.min(b, xb + bw / 2)]);
+  // os furos grauteados: a grade de X que passa pelas barras (a primeira a s/2), dos dois lados, cortada na faixa
+  const centrosG: number[] = [];
+  if (f.sg > 0) for (let c = f.s / 2 - Math.floor((f.s / 2 + bw / 2) / f.sg) * f.sg; c - bw / 2 < b; c += f.sg) centrosG.push(c);
+  const almas: Array<[number, number]> = cheia
+    ? [[0, b]]
+    : centrosG.map((c): [number, number] => [Math.max(0, c - bw / 2), Math.min(b, c + bw / 2)]).filter(([a0, a1]) => a1 > a0);
   if (cheia) partes.push(rect(x0, y0, W, T, GRAUTE, GRAUTE_LINHA, 1.2));
   else {
     partes.push(rect(x0, y0, W, T, VAZIO, TINTA, 0.8));
@@ -259,6 +286,14 @@ export function desenhoDaFaixaEmPlanta(r: Resultado): DesenhoDoCard | null {
   let yBaixo = y1 + 30;
   partes.push(chamada(x0, y1, x0, yBaixo + 4), chamada(x0 + W, y1, x0 + W, yBaixo + 4));
   partes.push(cotaH(x0, x0 + W, yBaixo, 'b = 100', true));
+  // com a grade do graute mais fina que as barras, a cota entre dois furos grauteados vizinhos
+  const inteiras = almas.filter(([a0, a1]) => a1 - a0 >= bw - 1e-6);
+  if (!cheia && f.sg < f.s - 1e-9 && inteiras.length > 1) {
+    const ca = (inteiras[0][0] + inteiras[0][1]) / 2, cb = (inteiras[1][0] + inteiras[1][1]) / 2;
+    yBaixo += 40;
+    partes.push(chamada(x0 + ca * s, y1, x0 + ca * s, yBaixo + 4), chamada(x0 + cb * s, y1, x0 + cb * s, yBaixo + 4));
+    partes.push(cotaH(x0 + ca * s, x0 + cb * s, yBaixo, `graute a cada ${cm(f.sg)}`, true));
+  }
   // a alma cotada é uma inteira (a da ponta pode sair cortada pela borda da faixa)
   const inteira = cheia ? undefined : almas.find(([a0, a1]) => a1 - a0 >= bw - 1e-6);
   if (inteira) {

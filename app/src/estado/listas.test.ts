@@ -15,8 +15,17 @@ const opcoes = (nome: string, a: Alteracoes = {}) => {
 describe('listas dependentes', () => {
   it('são as da planilha: altura, vão, contraforte, os espaçamentos e os Ø com espera', () => {
     const dependentes = CAMPOS.filter((c) => c.opcoesRef).map((c) => c.meta.nome).sort();
-    expect(dependentes).toEqual(['H_muro', 'l_cf', 'phi_cc', 'phi_cf', 'phi_pv', 'phi_v', 's_dir', 's_pv_dir', 'tenr_']);
+    expect(dependentes).toEqual(['Graute', 'H_muro', 'l_cf', 'phi_cc', 'phi_cf', 'phi_pv', 'phi_v', 's_dir', 's_pv_dir', 'tenr_']);
     for (const c of CAMPOS.filter((x) => x.opcoesRef)) expect(c.controle, c.meta.nome).toBe('lista');
+  });
+
+  it('graute a cada X (Jose, 13/10): a lista vai até 6t, e a das barras só tem múltiplos dele', () => {
+    expect(opcoes('Graute', { t_bloco: 19 })).toEqual([20, 40, 60, 80, 100]);
+    expect(opcoes('Graute', { t_bloco: 14 })).toEqual([20, 40, 60, 80]);
+    expect(opcoes('s_dir', { Graute: 40 })).toEqual([null, 40, 80]);
+    expect(opcoes('s_dir', { Graute: 20 })).toEqual([null, 20, 40, 60, 80, 100]);
+    expect(opcoes('s_pv_dir', { t_bloco: 14, Graute: 40 })).toEqual([null, 40, 80]);
+    expect(opcoes('s_dir', { Graute: 100 })).toEqual([null, 100]);
   });
 
   it('o intervalo vira células, linha a linha', () => {
@@ -49,9 +58,10 @@ describe('listas dependentes', () => {
     expect(opcoes('l_cf', { t_bloco: 14 })).toEqual([0.95, 1.35, 1.75, 2.15, 2.55, 2.95, 3.35, 3.75]);
   });
 
-  it('barras: auto + múltiplos de m até 6t', () => {
-    expect(opcoes('s_dir')).toEqual([null, 20, 40, 60, 80, 100]);
-    expect(opcoes('s_pv_dir', { t_bloco: 14 })).toEqual([null, 20, 40, 60, 80]);
+  it('barras: auto + múltiplos do graute a cada X até 6t (com graute em todos os furos, os de m)', () => {
+    expect(opcoes('s_dir', { Graute: 20 })).toEqual([null, 20, 40, 60, 80, 100]);
+    expect(opcoes('s_pv_dir', { t_bloco: 14, Graute: 20 })).toEqual([null, 20, 40, 60, 80]);
+    expect(opcoes('s_dir')).toEqual([null, 40, 80]);                 // padrão: graute a cada 40
   });
 
   it('valor que saiu da lista vai para a opção mais próxima (empate: o lado da segurança)', () => {
@@ -76,6 +86,13 @@ describe('listas dependentes', () => {
     const c: Alteracoes = { s_dir: 50 };
     const rc = calcular(c);
     expect(ajustarAsListas(CAMPOS, c, (ref) => rc.cel(ref)).ajustes).toEqual([{ nome: 's_dir', de: 50, para: 40 }]);
+    // trocou o graute: a barra desce para a grade (mais barra), só sobe sem opção abaixo (Jose, 13/10)
+    const d: Alteracoes = { Graute: 40, s_dir: 60 };
+    const rd = calcular(d);
+    expect(ajustarAsListas(CAMPOS, d, (ref) => rd.cel(ref)).ajustes).toEqual([{ nome: 's_dir', de: 60, para: 40 }]);
+    const e: Alteracoes = { Graute: 80, s_dir: 100 };
+    const re = calcular(e);
+    expect(ajustarAsListas(CAMPOS, e, (ref) => re.cel(ref)).ajustes).toEqual([{ nome: 's_dir', de: 100, para: 80 }]);
   });
 
   /*

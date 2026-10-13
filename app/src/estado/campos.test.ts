@@ -21,6 +21,7 @@ import {
   valorAtual,
   valorTravado,
   campoEspelhado,
+  VALOR_AUTO,
 } from './campos';
 
 // O catálogo vem do JSON exportado da planilha (e não de '@/motor'), para o teste
@@ -124,6 +125,16 @@ describe('visibilidade das seções por Tipo_muro', () => {
   });
 });
 
+describe('o "auto" com número (VALOR_AUTO)', () => {
+  // o campo vazio mostra a célula "usado" da planilha: ela tem de existir e a entrada tem de ser opcional
+  const nomes = (dados as unknown as { nomes: Record<string, string> }).nomes;
+  it.each(Object.entries(VALOR_AUTO))('%s → %s', (entrada, usado) => {
+    expect(campoDe(META.get(entrada)!, 'planilha').opcional, entrada).toBe(true);
+    expect(nomes[usado], usado).toBeDefined();
+  });
+  it('fgk vazio mostra o fgk da tabela pelo fbk (Jose, 13/10)', () => expect(VALOR_AUTO.fgk_dir).toBe('fgk_'));
+});
+
 describe('entradas que a conta ignora ficam apagadas', () => {
   it('αv, αh e l só com travamento lateral', () => {
     const sem = leitorDeValores(META, { Trav_lat: 'Não' }, {});
@@ -143,7 +154,29 @@ describe('entradas que a conta ignora ficam apagadas', () => {
     expect(entradaAtiva('gama_cf', leitorDeValores(META, {}, {}))).toBe(false);
     expect(entradaAtiva('gama_cf', leitorDeValores(META, { Tipo_muro: 'Contrafortes' }, {}))).toBe(true);
     expect(entradaAtiva('bw_dir', leitorDeValores(META, {}, {}))).toBe(true);
-    expect(entradaAtiva('bw_dir', leitorDeValores(META, { Graute: 'Total (seção cheia)' }, {}))).toBe(false);
+    expect(entradaAtiva('bw_dir', leitorDeValores(META, { Graute: 20 }, {}))).toBe(false);
+  });
+  it('estribo do contraforte só quando a conta pede (Jose, 13/10): Asw/s de cálculo = 0 apaga Ø, ramos e s', () => {
+    const cf = leitorDeValores(META, { Tipo_muro: 'Contrafortes' }, {});
+    const conta = (asw: number | null) => (nome: string) => (nome === 'Asw_c' ? asw : null);
+    for (const n of ['phi_est', 'ramos_est', 's_est']) {
+      expect(entradaAtiva(n, cf), n).toBe(true);
+      expect(entradaAtiva(n, cf, conta(null)), n).toBe(true);
+      expect(entradaAtiva(n, cf, conta(0)), n).toBe(false);
+      expect(entradaAtiva(n, cf, conta(1.25)), n).toBe(true);
+    }
+  });
+  it('graute a cada X (Jose, 13/10): vale nos dois tipos; com 20 (todos os furos) a seção é cheia e as almas se apagam', () => {
+    for (const tipo of ['Balanço', 'Contrafortes']) {
+      expect(entradaAtiva('Graute', leitorDeValores(META, { Tipo_muro: tipo }, {})), tipo).toBe(true);
+    }
+    const cf = (x: number) => leitorDeValores(META, { Tipo_muro: 'Contrafortes', Graute: x }, {});
+    for (const n of ['bwv_dir', 'bwh_els', 'fpk_ref']) {
+      expect(entradaAtiva(n, cf(40)), n).toBe(true);
+      expect(entradaAtiva(n, cf(20)), n).toBe(false);
+    }
+    expect(entradaAtiva('fpk_ref', leitorDeValores(META, { Graute: 20 }, {}))).toBe(false);
+    expect(entradaAtiva('fpk_ref', leitorDeValores(META, {}, {}))).toBe(true);
   });
   it('entradas do modelo seguem as chaves do modelo', () => {
     expect(entradaAtiva('dreno_esp', leitorDeValores(META, {}, {}))).toBe(true);
@@ -153,7 +186,7 @@ describe('entradas que a conta ignora ficam apagadas', () => {
   it('com contrafortes, o que é só do balanço se apaga (achado da revisão: aceso e não mexia em nada)', () => {
     const bal = leitorDeValores(META, {}, {});
     const cf = leitorDeValores(META, { Tipo_muro: 'Contrafortes' }, {});
-    const soDoBalanco = ['Graute', 'bw_dir', 'phi_v', 's_dir', 'd_dir', 'K_dir', 'M2d_on', 'h_pan', 'caso_pan', 'beta_dir', 'sig_pan', 'sg_on'];
+    const soDoBalanco = ['bw_dir', 'phi_v', 's_dir', 'd_dir', 'K_dir', 'M2d_on', 'h_pan', 'caso_pan', 'beta_dir', 'sig_pan', 'sg_on'];
     for (const n of soDoBalanco) {
       expect(entradaAtiva(n, bal), n).toBe(true);
       expect(entradaAtiva(n, cf), n).toBe(false);
@@ -214,7 +247,6 @@ describe('o controle de cada entrada', () => {
     expect(c.opcoes.map((o) => o.valor)).toEqual(meta('fpk_ref').opcoes);
     // "Curso | NBR" é o nome do critério, não citação entre parênteses: fica
     expect(campoDe(meta('AsMin_crit'), 'planilha').opcoes.map((o) => o.rotulo)).toEqual(['Curso', 'NBR']);
-    expect(campoDe(meta('Graute'), 'planilha').opcoes[0].rotulo).toBe('Parcial (seção I)');
   });
 });
 

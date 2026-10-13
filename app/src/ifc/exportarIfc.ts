@@ -368,7 +368,9 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
   const contidos: Ref[] = [];
   const tipoMuro = R.txt('Tipo_muro') ?? (modelo.dims.contrafortes.length ? 'Contrafortes' : 'Balanço');
   const ehBalanco = /^balan/i.test(tipoMuro);
-  const graute = R.txt('Graute');
+  // graute a cada X cm (13/10): 20 = todos os furos
+  const grX = R.num('Graute');
+  const graute = grX !== null ? (grX <= 20 ? 'Todos os furos' : `A cada ${grX} cm`) : R.txt('Graute');
   const nomePorDono = new Map<string, string>();     // 'muro/T1' → 'Muro T1' (para AlRimo_Barra.Elemento)
   const contrafortesOrd = [...modelo.dims.contrafortes].sort((a, b) => a.x - b.x);
 

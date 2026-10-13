@@ -895,12 +895,72 @@ body[data-theme='dark'] .prancheta.prancheta-cores {
 }
 /* As tabelas que eram figura (ui/TabelasDeReferencia.tsx): números alinhados, cabeçalho apagado, o valor atual
    aceso; clicar preenche a entrada. */
+/* `margin-inline: auto` centraliza também no modal da figura, que é bloco e não flex (o align-self só vale na
+   caixa das entradas por figuras). */
 .tabela-ref {
   align-self: center;
   border-collapse: collapse;
   font-size: var(--fs-corpo);
   font-variant-numeric: tabular-nums;
-  margin: 4px 0;
+  margin: 4px auto;
+}
+/* Zebra (Jose, 13/10): o olho corre a linha do fpk sem pular para a do fpk*. Fundo na LINHA, não na célula, para
+   a coluna acesa (.on, na célula) pintar por cima. Tinta misturada no transparente: vale nos três temas. */
+.tabela-ref tbody tr:nth-child(odd) {
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+}
+/* Tabela + legenda como uma peça só, centralizada; a legenda alinha pela borda esquerda da tabela. Na coluna
+   estreita das entradas por figuras as 12 colunas do fbk não cabem: rola dentro da coluna em vez de invadir os
+   campos ao lado. */
+.tabela-ref-grupo {
+  align-self: center;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  overflow-x: auto;
+}
+/* Legenda com desenho (Fig. 23): um cartão por símbolo — o desenho na prancheta, o símbolo, o nome. Cartões de
+   largura fixa, centralizados; na coluna estreita quebram em duas linhas em vez de espremer o desenho. */
+.legenda-desenhos {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: calc(8px * var(--escala-ui));
+  margin: calc(10px * var(--escala-ui)) 0 0;
+  padding: calc(10px * var(--escala-ui)) 0 0;
+  border-top: 1px solid var(--line);
+}
+.legenda-desenhos li {
+  width: calc(112px * var(--escala-ui));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+  font-size: var(--fs-nota);
+  line-height: 1.25;
+}
+.legenda-desenhos .prancheta {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  margin-bottom: 2px;
+}
+.legenda-desenhos svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.legenda-desenhos b {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.legenda-desenhos span {
+  color: var(--muted);
 }
 .tabela-ref th,
 .tabela-ref td {
@@ -937,9 +997,10 @@ body[data-theme='dark'] .prancheta.prancheta-cores {
 .tabela-ref tr.clicavel {
   cursor: pointer;
 }
+/* Passar o mouse acende em azul, não em cinza: cinza é a zebra. */
 .tabela-ref tr.clicavel:hover,
 .tabela-ref thead th:hover {
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--accent-3) 10%, transparent);
 }
 .tabela-ref .on,
 .tabela-ref tr.on > * {

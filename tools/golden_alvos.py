@@ -28,13 +28,13 @@ ALVOS = {
     # Ka 0,75 fecha arg_x = 1 na conta exata, e a soma das 40 fatias dá 0,9999999999999998.
     'alvo_compara15_flexao': {
         't_bloco': 19, 'H_muro': 1, 'gama_solo': 18, 'q_sobre': 0, 'c_solo': 0, 'Agua': 'Não', 'Ka_dir': 0.75,
-        'K_dir': 1, 'd_dir': 7.5, 'fbk_': 4, 'fpk_ref': 'Bruta (NBR)', 'Graute': 'Parcial (seção I)', 'M2d_on': 'Não',
+        'K_dir': 1, 'd_dir': 7.5, 'fbk_': 4, 'fpk_ref': 'Bruta (NBR)', 'Graute': 40, 'M2d_on': 'Não',
     },
     # Fundação!G136 (G129 até a seção 10 da aba entrar, 09/10): E136 > d_s/100 com os dois iguais a menos do último
     # bit — Excel diz FALSO (0); o double cru daria −0,105.
     'alvo_compara15_sapata_a': {
         'H_muro': 2, 't_bloco': 14, 'Trav_lat': 'Sim', 'Ka_dir': 0.33, 'phi_solo': 30, 'c_solo': 10,
-        'q_sobre': 0, 'Agua': 'Não', 'z_NA': 0.7, 'fbk_': 12, 'Graute': 'Total (seção cheia)',
+        'q_sobre': 0, 'Agua': 'Não', 'z_NA': 0.7, 'fbk_': 12, 'Graute': 20,
         'fpk_ref': 'Líquida (curso)', 'phi_v': 16, 's_dir': 80, 'd_dir': 14, 'K_dir': 1, 'AsMin_crit': 'NBR',
         'M2d_on': 'Sim', 'fck_fund': 'C30', 'zona_ad': 'Má', 'gancho_': 'Sim', 'h_pan': 0.8,
         'arg_cls': '3,5 a 7,0 MPa', 'caso_pan': 11, 'beta_dir': 0.1, 'sig_pan': 0.1,
@@ -53,7 +53,7 @@ ALVOS = {
     # contrafortes em 14x39; a regra dos 15 dígitos na comparação continua provada pelo sapata_a.
     'alvo_compara15_sapata_b': {
         'H_muro': 1, 't_bloco': 14, 'Trav_lat': 'Não', 'Ka_dir': 0.33, 'phi_solo': 30, 'c_solo': 10,
-        'q_sobre': 2, 'Agua': 'Sim', 'z_NA': 0.3, 'fbk_': 6, 'Graute': 'Parcial (seção I)', 'fpk_ref': 'Bruta (NBR)',
+        'q_sobre': 2, 'Agua': 'Sim', 'z_NA': 0.3, 'fbk_': 6, 'Graute': 80, 'fpk_ref': 'Bruta (NBR)',
         'phi_v': 16, 's_dir': 80, 'd_dir': 9.5, 'K_dir': 1.5, 'AsMin_crit': 'NBR', 'M2d_on': 'Sim',
         'fck_fund': 'C30', 'zona_ad': 'Boa', 'gancho_': 'Não', 'h_pan': 1.6, 'arg_cls': '3,5 a 7,0 MPa', 'caso_pan': 11,
         'beta_dir': 0.1, 'sig_pan': 0.1, 'Tipo_muro': 'Contrafortes', 'l_cf': 3.75, 'tenr_': 54,
@@ -71,7 +71,7 @@ ALVOS = {
     # a altura passou a ser lista de fiadas inteiras e 2,2 m com c/20 cai na mesma borda.
     'alvo_arredcima15_estribos': {
         'H_muro': 2.2, 't_bloco': 14, 'Trav_lat': 'Sim', 'Ka_dir': 0.3, 'phi_solo': 35, 'c_solo': 0,
-        'q_sobre': 0, 'Agua': 'Não', 'z_NA': 0.3, 'fbk_': 24, 'Graute': 'Total (seção cheia)',
+        'q_sobre': 0, 'Agua': 'Não', 'z_NA': 0.3, 'fbk_': 24, 'Graute': 20,
         'fpk_ref': 'Líquida (curso)', 'phi_v': 16, 's_dir': 80, 'd_dir': None, 'K_dir': 1.5, 'AsMin_crit': 'NBR',
         'M2d_on': 'Sim', 'fck_fund': 'C30', 'zona_ad': 'Boa', 'gancho_': 'Sim', 'h_pan': 1.2,
         'arg_cls': 'acima de 7,0 MPa', 'caso_pan': 18, 'beta_dir': None, 'sig_pan': 0,
@@ -123,7 +123,7 @@ ALVOS_COBERTURA = {
     # Ø20 em todas as tabelas (Arranjos F6:F9 "> Ø20"), Tipo_solo Outro e as sugestões do solo nos extremos. Até 08/10
     # era o alvo_cob_val_lisas_phi20, no modo validação (cerâmico liso, 0,5·fyd), que saiu com o cerâmico.
     'alvo_cob_phi20_solo_outro': {
-        't_bloco': 14, 'Graute': 'Total (seção cheia)', 'Ka_dir': 0.5,
+        't_bloco': 14, 'Graute': 20, 'Ka_dir': 0.5,
         'q_sobre': 20, 'Tipo_muro': 'Contrafortes', 'l_cf': 3.75, 'tenr_': 54, 'phi_cf': 20, 'lat_pan': 'Engastadas', 'phi_pv': 20,
         'phi_ph': 20, 'K_ph': 1, 'phi_v': 20, 's_dir': None, 'AsMin_crit': 'NBR', 'caso_pan': 11,
         'Tipo_solo': 'Outro', 'NSPT': 45, 'Umidade': 'Seca', 'Classe_G': 'Pedregulho arenoso',
@@ -144,7 +144,7 @@ ALVOS_COBERTURA = {
     },
     # ρ ≤ 2% e fvk ≤ 0,7 ativos (Muro em balanço!B61)
     'alvo_cob_rho_maximo': {
-        'H_muro': 1, 'Tipo_muro': 'Contrafortes', 'gama_solo': 18, 'q_sobre': 0, 'phi_v': 20, 's_dir': 20, 'd_dir': 7,
+        'H_muro': 1, 'Tipo_muro': 'Contrafortes', 'gama_solo': 18, 'q_sobre': 0, 'phi_v': 20, 's_dir': 20, 'Graute': 20, 'd_dir': 7,
         'B_sap': 2.2,
     },
 }

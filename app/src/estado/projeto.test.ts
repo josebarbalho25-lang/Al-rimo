@@ -48,6 +48,23 @@ describe('salvar e abrir — ida e volta', () => {
     expect(j.id).toBe(muro.id);
   });
 
+  it('grauteamento antigo em texto abre na grade (13/10): total → 20; parcial → a grade das barras do arquivo', () => {
+    const abreCom = (alteracoes: Record<string, unknown>) => {
+      const a = abrir(serializarProjeto({ ...muro, alteracoes: alteracoes as never }, VERSAO));
+      expect(a.ok).toBe(true);
+      if (!a.ok) return null;
+      expect(a.recusados).toEqual([]);
+      return a.projeto.alteracoes.Graute;
+    };
+    expect(abreCom({ Graute: 'Total (seção cheia)' })).toBe(20);
+    expect(abreCom({ Graute: 'Parcial (seção I)', s_dir: 60 })).toBe(60);
+    expect(abreCom({ Graute: 'Parcial (seção I)' })).toBe(40);
+    expect(abreCom({ Graute: 'Parcial (seção I)', Tipo_muro: 'Contrafortes', s_pv_dir: 80, s_dir: 60 })).toBe(80);
+    // bloco 14: a grade vai até 80 (6t = 84)
+    expect(abreCom({ Graute: 'Parcial (seção I)', t_bloco: 14, s_dir: 100 })).toBe(40);
+    expect(abreCom({ Graute: 60 })).toBe(60);
+  });
+
   it('nome que a conta de hoje não conhece fica de fora e é contado', () => {
     const texto = serializarProjeto(
       { ...muro, alteracoes: { ...muro.alteracoes, nome_antigo: 3 }, extras: { ...muro.extras, H_muro: 9 } },

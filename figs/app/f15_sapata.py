@@ -5,7 +5,7 @@
 # Régua comum (12/10, applib): solo à DIREITA (antes estava à esquerda), em K_GERAL, com parede(), sapata(), solo(),
 # empuxo() e sobrecarga() da applib. O talão fica sob o aterro (à direita), a ponta e o passivo na frente (à esquerda).
 # "FS" deixou de rotular seta e arco (fator de segurança não é força): a base mostra a resistência R e o pé o momento
-# tombador M_tomb, e os campos FS_desl/FS_tomb ficam no grupo deles. Símbolos da memória: h_s, b_den, h_den, P_topo,
+# de tombamento M_tomb, e os campos FS_desl/FS_tomb ficam no grupo deles. Símbolos da memória: h_s, b_den, h_den, P_topo,
 # φ'_b, N_SPT, σ_máx/σ_mín. As miniaturas das posições ganharam título de vista no lugar da legenda em texto.
 import math
 from applib import Fig, C, T_SIM, T_TXT, T_PEQ, K_GERAL as K

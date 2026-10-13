@@ -834,7 +834,7 @@ describe('canaleta como a obra deixa: fundo furado onde sobe a barra, T de graut
     expect(m22.pecas.filter((p) => p.tipo === 'BARBACA').length).toBeGreaterThan(0);
     expect(m22.avisos.map((a) => a.codigo)).not.toContain('BARBACA_SEM_CELULA');
     // graute total: o tubo vai antes do graute, mas fora das células com barra (barrasEmPecaSolida pega o tubo × barra)
-    const total = gerarModelo(trocar(resultadoDoGabarito('aula122'), { Graute: 'Total' }), padroesDoModelo());
+    const total = gerarModelo(trocar(resultadoDoGabarito('aula122'), { Graute: 20, gr_tot: 'Sim' }), padroesDoModelo());
     expect(total.pecas.filter((p) => p.tipo === 'BARBACA').length).toBeGreaterThan(0);
     expect(barrasEmPecaSolida(total)).toEqual([]);
   });
@@ -950,6 +950,67 @@ describe('aulas (brief §8)', () => {
     expect(m.barras.filter((b) => b.papel === 'CF_ESTRIBO').length).toBe(3 * 13);
     expect(m.familia.provisoria).toBeUndefined();
     expect(m.avisos.map((a) => a.codigo)).not.toContain('ENCAIXE_PROVISORIO');
+  });
+});
+
+describe('grade do graute da parede (Jose, 13/10: graute a cada X)', () => {
+  // fração dos furos grauteados nos blocos da parede, fora das fiadas de canaleta — a m/X da conta (peso, f_furo)
+  const fracao = (m: Modelo) => {
+    let furos = 0;
+    let grauteados = 0;
+    for (const p of m.pecas) {
+      if (p.grupo !== 'muro' || (p.tipo !== 'BLOCO' && p.tipo !== 'MEIO_BLOCO')) continue;
+      furos += m.geometrias[p.geometria].perfil.furos?.length ?? 0;
+      grauteados += p.furosGrauteados?.length ?? 0;
+    }
+    return grauteados / furos;
+  };
+  const r = resultadoDoGabarito('aula122');
+  it('aula 12.2 (graute a cada 40, barras a 40): metade dos furos — a mesma fração da conta', () => {
+    expect(r.num('Graute')).toBe(40);
+    expect(fracao(gerarModelo(r, { L_total: 6 }))).toBeCloseTo(r.num('f_furo') ?? 0, 1);
+  });
+  it('a cada 80 com barras a 80: um quarto; a cada 20 (todos): tudo', () => {
+    const a80 = gerarModelo(trocar(r, { Graute: 80, s_adot: 80, gr_tot: 'Não' }), { L_total: 6 });
+    expect(fracao(a80)).toBeCloseTo(0.25, 1);
+    expect(barrasForaDoGraute(a80)).toEqual([]);
+    const todos = gerarModelo(trocar(r, { Graute: 20, gr_tot: 'Sim' }), { L_total: 6 });
+    expect(fracao(todos)).toBe(1);
+  });
+  it('graute a cada 40 com barras a 80: o furo do meio entre as barras também leva graute', () => {
+    const m = gerarModelo(trocar(r, { Graute: 40, s_adot: 80 }), { L_total: 6 });
+    expect(fracao(m)).toBeCloseTo(0.5, 1);
+    expect(barrasForaDoGraute(m)).toEqual([]);
+  });
+});
+
+describe('estribo do contraforte só quando a conta pede (Jose, 13/10; planilha 05 do Carini)', () => {
+  const estribos = (m: Modelo) => m.barras.filter((b) => b.papel === 'CF_ESTRIBO').length;
+  const contrafortes = cenariosDoGabarito().filter((c) => {
+    const r = resultadoDoGabarito(c);
+    return String(r.v('Tipo_muro') ?? '').startsWith('Contra');
+  });
+  it(`há cenários com contrafortes nos dois lados da regra (${contrafortes.length})`, () => {
+    const asw = contrafortes.map((c) => resultadoDoGabarito(c).num('Asw_c'));
+    expect(asw.some((a) => a === 0), 'algum dispensa').toBe(true);
+    expect(asw.some((a) => a !== null && a > 0), 'algum pede').toBe(true);
+  });
+  for (const c of contrafortes) {
+    it(c, () => {
+      const r = resultadoDoGabarito(c);
+      const m = gerarModelo(r, { L_total: 6 });
+      if (r.num('Asw_c') === 0) {
+        expect(estribos(m)).toBe(0);
+        expect(m.avisos.map((a) => a.codigo).filter((k) => k.includes('ESTRIBO'))).toEqual([]);
+      } else {
+        expect(estribos(m)).toBeGreaterThan(0);
+      }
+    }, 60_000);
+  }
+  it('a regra tem dente: o mesmo muro com Asw/s = 0 perde os estribos, e com Asw/s > 0 os ganha', () => {
+    const r = resultadoDoGabarito('aula123');
+    expect(estribos(gerarModelo(trocar(r, { Asw_c: 0 }), { L_total: 3 }))).toBe(0);
+    expect(estribos(gerarModelo(trocar(r, { Asw_c: 1 }), { L_total: 3 }))).toBe(3 * 13);
   });
 });
 

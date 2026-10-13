@@ -138,9 +138,10 @@ function travadoPeloComprimento(a: Alteracoes): boolean {
 
 /*
   A conta com as listas em dia. A lista dependente sai da própria conta (aba Referências), então a ordem é: conta →
-  confere as listas → valor fora vai para a opção mais próxima → conta de novo. Nenhuma lista dependente depende de
-  entrada que também está em lista dependente (dependem do bloco, do tipo de muro e da sapata — altura, cobrimento,
-  Ø da malha e gancho, para os Ø com espera), então uma volta resolve; o laço é só folga.
+  confere as listas → valor fora vai para a opção mais próxima → conta de novo. Desde 13/10 há UMA corrente: o
+  bloco decide a lista do graute a cada X (até 6t), e o graute decide a lista do espaçamento das barras (múltiplos
+  dele). Trocar o bloco de 19 para 14 com graute a 100 leva o graute a 80 na 1ª volta e as barras para a grade de 80
+  na 2ª. As outras listas dependem só do bloco, do tipo de muro e da sapata; o laço de voltas cobre a corrente.
   Devolve as alterações JÁ AJUSTADAS — são elas que vão para o estado, o arquivo e a conta.
 
   O comprimento do muro que vai para a conta (l do balanço travado) é o MODULAR, como todo valor que a modulação

@@ -134,7 +134,8 @@ export function modular(p: Parametros, avisos: Aviso[]): Modulo {
     s_vert = paraBaixo(p.s_vert, m, 's_adot', 'Barras verticais', 10, 'cm', 'ESPACAMENTO_BARRAS');
   } else {
     s_pv = paraBaixo(p.s_pv, m, 's_pv', 'Barras verticais do painel', 10, 'cm', 'ESPACAMENTO_PAINEL');
-    s_est = paraBaixo(p.s_est, H_FIADA, 's_est', 'Estribos do contraforte', 10, 'cm', 'ESPACAMENTO_ESTRIBO');
+    // sem estribo (dispensa pela conta) não há espaçamento a ajustar nem aviso a dar
+    if (p.estribos) s_est = paraBaixo(p.s_est, H_FIADA, 's_est', 'Estribos do contraforte', 10, 'cm', 'ESPACAMENTO_ESTRIBO');
 
     const min = minimosDaFamilia(nomeFam);
     // eixo a eixo = nó + k células; para cima, e só num vão que AMARRA com a receita da tabela (fiadas.ts prova).

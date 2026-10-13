@@ -32,7 +32,7 @@ cf_x = 'IF(LEFT(pos_cf,4)="Ente",a_ater-t_m/2-(tenr_adot-t_bloco)/200,a_ater+t_m
 VERT = [
     ('Muro (peso próprio)', '=peso_us*H_muro*Lm', '=a_ater'),
     ('Contraforte', '=IF(Tipo_muro="Contrafortes",gama_cf_us*eenr/100*(tenr_adot-t_bloco)/100*H_muro,0)', f'=IF(Tipo_muro="Contrafortes",{cf_x},a_ater)'),
-    ('Sapata + dente', '=gama_c*(B_sap*h_sap+b_den*h_den)*Lm', '=B_sap/2'),
+    ('Sapata', '=gama_c*B_sap*h_sap*Lm', '=B_sap/2'),
     ('Solo sobre o talão', '=gama_solo*H_solo*heel*Lm-IF(AND(Tipo_muro="Contrafortes",LEFT(pos_cf,4)="Ente"),gama_solo*eenr/100*MIN(heel,(tenr_adot-t_bloco)/100)*H_solo,0)', '=heel/2'),
     ('Sobrecarga sobre o talão', '=IF(q_est="Sim",q_sobre*heel*Lm,0)', '=heel/2'),
     ('Carga permanente no topo', '=P_topo*Lm', '=a_ater'),
@@ -40,6 +40,9 @@ VERT = [
     # Aterro sobre a ponta (Jose, 12/10): só com a garantia do solo da frente. Desconta o contraforte APARENTE, que fica
     # na ponta (espelho do enterrado no talão). Linha no FIM da tabela: as de cima mantêm o endereço que o app lê.
     ('Aterro sobre a ponta', '=IF(pass_on="Sim",gama_solo*h_fr*toe*Lm-IF(AND(Tipo_muro="Contrafortes",LEFT(pos_cf,4)<>"Ente"),gama_solo*eenr/100*MIN(toe,(tenr_adot-t_bloco)/100)*h_fr,0),0)', '=B_sap-toe/2'),
+    # O dente saiu da linha da sapata (13/10): ele tem posição própria (x_den, do centro, + para o pé), e o braço dele
+    # muda o momento. Linha no FIM, pela mesma razão do aterro.
+    ('Dente', '=gama_c*b_den*h_den*Lm', '=B_sap/2+x_den'),
 ]
 v0 = r
 for lab, fN_, fx in VERT:
@@ -56,18 +59,21 @@ for cc, nm_ in (('B', 'N_tot'), ('E', 'M_est'), ('G', 'M_vc')):
     Fd[f'{cc}{r}'] = f'=SUM({cc}{v0}:{cc}{v1})'; Fd[f'{cc}{r}'].font = fB; Fd[f'{cc}{r}'].fill = RES; Fd[f'{cc}{r}'].number_format = '0.000'; Fd[f'{cc}{r}'].border = BOX
     name(nm_, Fd, f'{cc}{r}')
 r += 1
-Fd.cell(row=r, column=1, value='Muro e contraforte na altura do muro; solo do talão e subpressão na altura de solo. Contraforte com γ grauteado e volume eenr × (tenr − t) × h muro. Solo do talão desconta o volume do contraforte enterrado; aterro sobre a ponta (só com a garantia do solo da frente) desconta o aparente. Subpressão uniforme (aproximação).').font = fS; r += 2
+Fd.cell(row=r, column=1, value='Muro e contraforte na altura do muro; solo do talão e subpressão na altura de solo. Contraforte com γ grauteado e volume eenr × (tenr − t) × h muro. Dente na posição dele (do centro da sapata). Solo do talão desconta o volume do contraforte enterrado; aterro sobre a ponta (só com a garantia do solo da frente) desconta o aparente. Subpressão uniforme (aproximação).').font = fS; r += 2
 section(Fd, r, '3. Empuxo até a base da sapata'); r += 1
 Lf('σh na base do muro', '=sh_base', 'kPa', '', 'res', '0.00')
 Lf('σh na base da sapata', '=sh_base+h_sap*(Ka_*(gama_solo-IF(AND(Agua="Sim",H_solo+h_sap>z_NA),gama_w,0))+IF(AND(Agua="Sim",H_solo+h_sap>z_NA),gama_w,0))', 'kPa', 'Continua o perfil por mais h da sapata.', 'res', '0.00', 'sh_b2')
 Lf('Hk — empuxo total no módulo', '=(Vk_+(sh_base+sh_b2)/2*h_sap)*Lm', 'kN', '', 'key', '0.00', 'H_k')
-Lf('M tombador em relação à base da sapata', '=(Mk_+Vk_*h_sap+h_sap^2*(2*sh_base+sh_b2)/6)*Lm', 'kN·m', 'Mk na base do muro + Vk·h sapata + fatia da sapata. (A aba do Gilberto soma Vk·h.)', 'key', '0.00', 'M_tb')
-Lf('Passivo na frente (Kp·γ·(h aterro + h + dente)²/2 ÷ 2,0)', '=IF(pass_on="Sim",Kp_*gama_solo*(h_fr+h_sap+h_den)^2/2/2*Lm,0)', 'kN', 'Solo da frente no nível do aterro sobre a ponta (0 = topo da sapata). Reduzido por 2,0 (NBR 6122 7.6.3).', 'res', '0.00', 'E_p')
+Lf('M de tombamento em relação à base da sapata', '=(Mk_+Vk_*h_sap+h_sap^2*(2*sh_base+sh_b2)/6)*Lm', 'kN·m', 'Mk na base do muro + Vk·h sapata + fatia da sapata. (A aba do Gilberto soma Vk·h.)', 'key', '0.00', 'M_tb')
+# Passivo (Jose, 13/10): com o solo da frente garantido, a face toda da frente (aterro + sapata + dente). Sem a garantia,
+# só o dente do centro para trás: o solo na frente dele está debaixo da sapata e não é escavado; vale a altura do dente
+# abaixo da base, sem o peso da sapata por cima (a favor). Dente para a ponta, sem garantia: nada.
+Lf('Passivo (frente garantida: Kp·γ·(h aterro + h + dente)²/2; senão dente do centro para trás: Kp·γ·h dente²/2) ÷ 2,0', '=IF(pass_on="Sim",Kp_*gama_solo*(h_fr+h_sap+h_den)^2/2/2*Lm,IF(AND(b_den>0,h_den>0,x_den<=0.0005),Kp_*gama_solo*h_den^2/2/2*Lm,0))', 'kN', 'Solo da frente no nível do aterro sobre a ponta (0 = topo da sapata). Reduzido por 2,0 (NBR 6122 7.6.3).', 'res', '0.00', 'E_p')
 r += 1
 section(Fd, r, '4. Tombamento'); r += 1
 Lf('M estabilizante em relação ao pé', '=M_est', 'kN·m', 'Σ N·(B − x). Passivo não entra (a favor da segurança).', 'res', '0.00')
-Lf('FS = M estabilizante / M tombador', '=IF(M_tb>0,M_est/M_tb,99)', '', 'Mínimo nas Entradas.', 'key', '0.00', 'FS_t')
-Lf('M no centro da sapata (+ = para o pé)', '=M_tb+M_vc', 'kN·m', 'Como a aba do Gilberto: M tombador + Σ N·(x − B/2).', 'res', '0.000', 'M_cen')
+Lf('FS = M estabilizante / M de tombamento', '=IF(M_tb>0,M_est/M_tb,99)', '', 'Mínimo nas Entradas.', 'key', '0.00', 'FS_t')
+Lf('M no centro da sapata (+ = para o pé)', '=M_tb+M_vc', 'kN·m', 'Como a aba do Gilberto: M de tombamento + Σ N·(x − B/2).', 'res', '0.000', 'M_cen')
 Lf('Excentricidade e = M/N', '=M_cen/N_tot', 'm', '+ = resultante para o pé; − = para o aterro.', 'key', '0.000', 'e_f')
 Lf('Limite do Gilberto: |e| ≤ B/4', '=B_sap/4', 'm', 'Na aba original só para o lado do pé; aqui nos dois lados.', 'res', '0.000', 'e_lim')
 r += 1
@@ -148,6 +154,7 @@ CHKF = [
     ('Cortante sem estribo (ponta e talão)', '=IF(MAX(Vsd_t,Vsd_h)<=VRd1_s,"OK ("&FIXED(MAX(Vsd_t,Vsd_h),1)&" ≤ "&FIXED(VRd1_s,1)&" kN/m)","NÃO OK — aumentar a altura")'),
     ('Torção: TSd ≤ TRd2', '=IF(T_sd=0,"— (sem contrafortes)",IF(T_sd<=TRd2_s,"OK ("&FIXED(T_sd,1)&" ≤ "&FIXED(TRd2_s,1)&" kN·m)","NÃO OK — aumentar a seção"))'),
     # no fim da lista: as linhas de cima têm endereço lido pelo app (espaçamento do estribo de torção)
+    ('Dente dentro da sapata', '=IF(OR(b_den<=0,h_den<=0),"— (sem dente)",IF(ABS(x_den)<=(B_sap-b_den)/2+0.0005,"OK","NÃO OK — o dente sai da sapata: |x| ≤ (B − b)/2"))'),
     ('Torção: espessura equivalente he', '=IF(T_sd=0,"— (sem contrafortes)",IF(he_s>=2*c_eixo_s,"OK (A/u ≥ 2·c1)",IF(he_s<=MIN(B_sap,h_sap)-2*c_eixo_s,"OK (A/u < 2·c1: Ae pelos eixos das barras de canto)","NÃO OK — A/u > bw − 2·c1: aumentar a altura da sapata")))'),
 ]
 # Nome nas linhas que o app lê (antes por endereço: B101, B102, B104, B105 — uma linha nova acima as mudava de lugar).
@@ -162,7 +169,7 @@ r += 1
 # memória das fatias desceu: o app a lê pelos nomes T_dM/H_dM/T_dV/H_dV, e o gabarito é refeito pelo golden.
 # A conta é a da lista dos Ø com espera (h_dobra, build_new.py): a lista só oferece o Ø que cabe, e estas linhas
 # mostram a conta de cada espera do muro escolhido. "—" quando a barra não existe nesse muro ou a espera é reta.
-section(Fd, r, '10. Esperas — dobra do pé na sapata'); r += 1
+section(Fd, r, '10. Esperas — dobra do pé na sapata e traspasse no graute'); r += 1
 _h = 'h_sap*100'
 ESP = [('Balanço: espera do Ø vertical', 'phi_v', 'hdob_v', 'Tipo_muro<>"Contrafortes"'),
        ('Contrafortes: espera do Ø vertical do painel', 'phi_pv', 'hdob_pv', 'Tipo_muro="Contrafortes"'),
@@ -184,6 +191,34 @@ Lf('Dobra da espera: 2c + malha + D + 2φ ≤ h da sapata',
    f'&IF({_hmax}<={_h}," ≤ "," > ")&FIXED({_h},1)&" cm"&IF({_hmax}<={_h},"",": baixar o Ø ou aumentar a altura da sapata"))',
    '', 'Os Ø com espera só aceitam valores cuja dobra cabe (lista na aba Referências, coluna AS).', 'key', None, 'dob_esp',
    'NBR 6118 Tab. 9.1 + dedução')
+# Traspasse espera × barra do muro (Jose, 13/10: "NBR 6118: 2,0 × ℓb no graute"). A emenda fica DENTRO do furo
+# grauteado, então a aderência é a do graute (fgk no lugar do fck, como a NBR 16868 manda seguir a 6118). α0t = 2,0
+# porque todas as esperas emendam na mesma seção (a base do muro: mais de 50% das barras, Tab. 9.4). Quem defasar as
+# emendas digita um traspasse menor no app (traspasse_dir). Antes o app usava o ℓb da ancoragem NA SAPATA (concreto,
+# com gancho: 21 cm no muro padrão) — comprimento de outra peça e de outro material, contra a segurança.
+# As,calc/As,ef de cada barra: o As do MOMENTO (não o mínimo), como o r_anc da ancoragem; construtiva não tem conta
+# (usa 1, a favor). No painel com barra nas duas faces, vale a face que pede mais.
+Lf('fbd no graute = 2,25·η2·η3·0,21·fgk^(2/3)/1,4', '=2.25*1*1*0.21*fgk_^(2/3)/1.4', 'MPa',
+   'η1 = 2,25 (CA-50 nervurada); η2 = 1,0 (barra vertical, boa aderência); η3 = 1,0 (φ < 32 mm). fgk no lugar do fck.',
+   'res', '0.000', 'fbd_gr', 'NBR 6118 9.3.2.1')
+Lf('ℓb reto no graute, em diâmetros = fyd/(4·fbd)', '=fyd_/(4*fbd_gr)', 'Ø', '', 'res', '0.0', 'lbphi_gr', 'NBR 6118 9.4.2.4')
+Lf('α0t (todas as emendas na mesma seção: a base)', 2, '', 'Mais de 50% das barras emendadas na mesma seção.', 'res', '0.0', 'a0t', 'NBR 6118 Tab. 9.4')
+Lf('Painel: As,calc/As,ef da barra vertical', '=IF(ISNUMBER(As_pvs),IFERROR(MIN(1,MAX(As_pvs,IF(ISNUMBER(As_pve),As_pve,0))/a_pv),1),1)', '',
+   'As do momento (sem o mínimo); com barra nas duas faces, a face que pede mais.', 'res', '0.000', 'r_pv')
+Lf('Contraforte: As,calc/As,ef da principal', '=IF(ISNUMBER(As_cfn),IFERROR(MIN(1,As_cfn/As_cfe),1),1)', '', 'As do momento (sem o mínimo).', 'res', '0.000', 'r_cf')
+TRP = [('Balanço: traspasse do Ø vertical', 'phi_v', 'r_anc', 'l0t_v', 'Tipo_muro<>"Contrafortes"'),
+       ('Contrafortes: traspasse do Ø vertical do painel', 'phi_pv', 'r_pv', 'l0t_pv', 'Tipo_muro="Contrafortes"'),
+       ('Contrafortes: traspasse do Ø principal do contraforte', 'phi_cf', 'r_cf', 'l0t_cf', 'Tipo_muro="Contrafortes"'),
+       ('Contrafortes: traspasse das construtivas', 'phi_cc', '1', 'l0t_cc', 'AND(Tipo_muro="Contrafortes",n_cc>0)')]
+for i, (lab, ph, rr, nm_, cnd) in enumerate(TRP):
+    _lb = f'lbphi_gr*{ph}/10'
+    Lf(f'{lab} = α0t·ℓb·As,calc/As,ef ≥ ℓ0t,mín', f'=IF({cnd},CEILING(MAX(a0t*{_lb}*{rr},0.3*a0t*{_lb},1.5*{ph},20),1),"—")', 'cm',
+       'ℓ0t,mín = máx(0,3·α0t·ℓb; 15φ; 20 cm). Acima do topo da sapata.' if i == 0 else '', 'key', '0', nm_, 'NBR 6118 9.5.2.2.1')
+# As emendas que não são de espera (barra horizontal da canaleta a cada 12 m, longitudinal da sapata) o app faz com o
+# mesmo α0t e o ℓb do material onde a emenda fica: graute (lbphi_gr) ou o concreto da sapata (lbphi_c, zona boa —
+# barra de baixo, em peça com h < 60 cm).
+Lf('ℓb reto no concreto da sapata, em diâmetros = fyd/(4·2,25·fctd)', '=fyd_/(4*2.25*fctd_s)', 'Ø',
+   'Emendas da armadura longitudinal da sapata (zona de boa aderência).', 'res', '0.0', 'lbphi_c', 'NBR 6118 9.4.2.4')
 r += 1
 # ---------- memória: fatias ----------
 section(Fd, r, 'Memória — pressão do solo integrada em 20 fatias por balanço (ponta e talão)', 8); r += 1

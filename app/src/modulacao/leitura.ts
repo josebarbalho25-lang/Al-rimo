@@ -43,6 +43,7 @@ export interface Parametros {
   // geometria
   t_bloco: number; L_bloco: number;
   grauteTotal: boolean;
+  s_graute: number;                    // mm — graute a cada X (grade dos furos grauteados da parede; 200 = todos)
   contrafortes: boolean;
   H_muro: number;                      // mm — altura do muro (entrada, lista de fiadas inteiras)
   H_solo: number;                      // mm — altura de solo contido (o aterro e a drenagem vão até aqui)
@@ -52,13 +53,18 @@ export interface Parametros {
   l_cf: number; tenr: number; eenr: number; enterrado: boolean; bal_cf: number;
   phi_cf: number; n_cf: number; c_cf: number | null; phi_cc: number; n_cc: number;
   phi_est: number; s_est: number | null; ramos_est: number;
+  estribos: boolean;                   // o contraforte leva estribo? (a conta pediu: Asw/s de cálculo > 0)
   phi_pv: number; s_pv: number | null; duasBarrasPv: boolean; c_pv: number;
   phi_ph: number; s_ph: number | null; phCentralizada: boolean;
   // fundação
-  B_sap: number; h_sap: number; a_ater: number; b_den: number; h_den: number; cob_sap: number;
+  B_sap: number; h_sap: number; a_ater: number; b_den: number; h_den: number; x_den: number; cob_sap: number;
   phi_sap: number; phi_sap2: number; phi_tor: number; s_ps: number | null; s_ss: number | null; s_tor: number | null;
   Mk_heel: number; T_sd: number; Asl_s: number;
   gancho: boolean;
+  // traspasse da conta (aba Fundação, seção 10): o de cada espera (mm) e, para as outras emendas, o α0t e o ℓb em
+  // diâmetros no graute e no concreto da sapata
+  l0t: { v: number | null; pv: number | null; cf: number | null; cc: number | null };
+  a0t: number | null; lbphi_gr: number | null; lbphi_c: number | null;
   // nomes modulares da planilha (quando ela publicar)
   pl: { m_mod: number | null; l_cf_adot: number | null; tenr_adot: number | null; H_muro_des: number | null; n_fiadas: number | null };
   // entradas do modelo
@@ -96,7 +102,9 @@ export function lerParametros(r: Resultado, extrasIn: Record<string, Valor>, avi
   const p: Parametros = {
     t_bloco: ou('t_bloco', 19),
     L_bloco: ou('L_bloco', 39),
-    grauteTotal: txt('Graute').trim().toLowerCase().startsWith('total'),
+    // graute a cada X cm (Jose, 13/10): 20 = todos os furos; a planilha publica o "Sim" em gr_tot
+    grauteTotal: txt('gr_tot').trim() === 'Sim' || (n('Graute') ?? 40) <= 20,
+    s_graute: (n('Graute') ?? 40) * 10,
     contrafortes: txt('Tipo_muro').trim().toLowerCase().startsWith('contra'),
     H_muro,
     H_solo: solo !== null && solo > 0 ? Math.min(solo * 1000, H_muro) : H_muro,
@@ -120,6 +128,10 @@ export function lerParametros(r: Resultado, extrasIn: Record<string, Valor>, avi
     phi_est: ou('phi_est', 6.3),
     s_est: cm(n('s_est')),
     ramos_est: Math.max(2, Math.round(n('ramos_est') ?? 2)),
+    // Estribo só quando a conta pede (Jose, 13/10; planilha 05 do Carini): Asw_c = 0 é "dispensa pela conta".
+    // Conta sem número ("—": a seção não resiste e o cortante nem chega a ser decidido) continua desenhando o
+    // estribo, como antes — sumir com ele ali esconderia a peça justo no muro que precisa de revisão.
+    estribos: n('Asw_c') !== 0,
     phi_pv: ou('phi_pv', 10),
     s_pv: cm(n('s_pv')),
     duasBarrasPv: txt('pos_pv').trim().startsWith('2'),
@@ -133,6 +145,8 @@ export function lerParametros(r: Resultado, extrasIn: Record<string, Valor>, avi
     a_ater: ou('a_ater', 0.95) * 1000,
     b_den: (n('b_den') ?? 0) * 1000,
     h_den: (n('h_den') ?? 0) * 1000,
+    // eixo do dente a partir do centro da sapata, + para o pé (Jose, 13/10)
+    x_den: (n('x_den') ?? 0) * 1000,
     cob_sap: ou('cob_sap', 4) * 10,
     phi_sap: ou('phi_sap', 10),
     phi_sap2: ou('phi_sap2', 6.3),
@@ -145,6 +159,10 @@ export function lerParametros(r: Resultado, extrasIn: Record<string, Valor>, avi
     T_sd: n('T_sd') ?? 0,
     Asl_s: n('Asl_s') ?? 0,
     gancho: txt('gancho_').trim().toLowerCase().startsWith('s'),
+    l0t: { v: cm(n('l0t_v')), pv: cm(n('l0t_pv')), cf: cm(n('l0t_cf')), cc: cm(n('l0t_cc')) },
+    a0t: n('a0t'),
+    lbphi_gr: n('lbphi_gr'),
+    lbphi_c: n('lbphi_c'),
 
     pl: {
       m_mod: cm(n('m_mod')),
