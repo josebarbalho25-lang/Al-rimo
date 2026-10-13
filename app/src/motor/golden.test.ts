@@ -98,6 +98,10 @@ describe('motor × Excel (gabarito)', () => {
       `calcular() + ${refs.length} células: mediana ${med.toFixed(2)} ms, ` +
         `mín ${tempos[0].toFixed(2)} ms, p95 ${tempos[95].toFixed(2)} ms`,
     );
-    expect(med).toBeLessThan(30);
+    // Limite POR CÉLULA: o que este teste vigia é o motor ficar lento, não a planilha crescer. Era 30 ms fixos com
+    // 1.569 células (≈ 19 µs por célula, medido com a bateria inteira rodando em paralelo, que deixa tudo 3 a 4 vezes
+    // mais lento que sozinho). A aba Sapata sobre molas (13/10) dobrou as células — com o limite fixo o teste passava
+    // a acusar o tamanho da planilha.
+    expect((med * 1000) / refs.length).toBeLessThan(19);
   });
 });

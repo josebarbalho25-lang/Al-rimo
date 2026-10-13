@@ -3,7 +3,8 @@
 
   Nome em inglês porque é assim que o .xlsx guarda (o Excel traduz só na tela: IF = SE, IFERROR = SEERRO,
   FIXED = DEF.NÚM.DEC, MATCH = CORRESP, SUMPRODUCT = SOMARPRODUTO, CEILING = TETO, ROUNDUP =
-  ARREDONDAR.PARA.CIMA, CHOOSE = ESCOLHER, VLOOKUP = PROCV, LEFT = ESQUERDA, MID = EXT.TEXTO, TEXT = TEXTO).
+  ARREDONDAR.PARA.CIMA, CHOOSE = ESCOLHER, VLOOKUP = PROCV, LEFT = ESQUERDA, MID = EXT.TEXTO, TEXT = TEXTO,
+  SIN = SEN, SINH = SENH; COS, COSH e TANH têm o mesmo nome).
 
   Os argumentos chegam sem avaliar: SE, SEERRO e ESCOLHER só calculam o ramo que vale — como o Excel, e é
   isso que impede um ramo não usado (com divisão por zero, por exemplo) de "contaminar" o resultado.
@@ -505,6 +506,14 @@ const TAN = porElemento(numerica((x) => (Math.abs(x) >= 134217728 ? ERRO.NUM : t
 // x·(π/180), nesta ordem: é o que o Excel faz (sondado, 410/410 no último bit); x·π/180 bate só 282/410.
 const RADIANS = porElemento(numerica((x) => mult80(x, Math.PI / 180)));
 const PI: FuncaoExcel = () => Math.PI;
+// COS, SIN, COSH, SINH, TANH: só a aba Sapata sobre molas (funções de Krylov da viga sobre base elástica e a torção
+// entre contrafortes). Math.* sem sonda de último bit (o TAN tem): os argumentos lá são pequenos (λ·x < 10) e o golden
+// mede a diferença. Limites do Excel: SEN/COS recusam |x| ≥ 2^27 como a TAN; COSH/SENH estouram perto de 710.
+const COS = porElemento(numerica((x) => (Math.abs(x) >= 134217728 ? ERRO.NUM : Math.cos(x))));
+const SIN = porElemento(numerica((x) => (Math.abs(x) >= 134217728 ? ERRO.NUM : Math.sin(x))));
+const COSH = porElemento(numerica((x) => (Number.isFinite(Math.cosh(x)) ? Math.cosh(x) : ERRO.NUM)));
+const SINH = porElemento(numerica((x) => (Number.isFinite(Math.sinh(x)) ? Math.sinh(x) : ERRO.NUM)));
+const TANH = porElemento(numerica((x) => Math.tanh(x)));
 
 /** INT olha o número com 15 dígitos: INT((0,7+0,1)*10) = 8 no Excel, embora o double seja 7,999999999999999. */
 const INT = porElemento(numerica((x) => Math.floor(r15(x)) || 0));
@@ -569,6 +578,11 @@ export const FUNCOES: Record<string, FuncaoExcel> = {
   ABS,
   SQRT,
   TAN,
+  COS,
+  SIN,
+  COSH,
+  SINH,
+  TANH,
   RADIANS,
   PI,
   INT,

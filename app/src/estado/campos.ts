@@ -592,6 +592,7 @@ export const VALOR_AUTO: Readonly<Record<string, string>> = {
   peso_par: 'peso_us',
   gama_cf: 'gama_cf_us',
   sig_adm_dir: 's_adm',
+  ks_dir: 'k_mola',
   s_pv_dir: 's_pv',
   s_ph_dir: 's_ph',
 };

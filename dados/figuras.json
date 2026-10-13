@@ -146,6 +146,7 @@
     "reb_fac": "reboco: entra no desenho do corte na padronização das figuras (proposta de 12/10)",
     "reb_esp": "reboco: entra no desenho do corte na padronização das figuras (proposta de 12/10)",
     "fyk_": "aço CA-50: não há o que desenhar",
+    "ks_dir": "coeficiente de mola do solo: a figura das molas sob a sapata ainda não existe (aba Sapata sobre molas, 13/10)",
     "gama_f": "coeficiente de norma: decisão do Jose pendente (sem botão, tabela de norma ou fora do app)",
     "gama_m": "coeficiente de norma: decisão do Jose pendente",
     "gama_s": "coeficiente de norma: decisão do Jose pendente"
