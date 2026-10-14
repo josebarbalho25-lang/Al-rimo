@@ -387,6 +387,21 @@ e dizer ao Jose o que mudou e por quê.
   fundacao.py num namespace só — linhas de 2000+ caracteres, leitura por endereço, colisão de nome). Um arquivo por
   aba, cada um com os nomes de que precisa. Prova: spec_planilha.json e golden idênticos antes/depois. SÓ DEPOIS da
   junção da sessão "sapata sobre molas" (branch sapata-molas), que mexe no gerador.
+- **FILA DO JOSE (14/10, tarde — só anotado; ele confere o IFC da canaleta antes):**
+  1. Tirar 100% das referências ao Gilberto e ao Carini (e às aulas dele: "Aula 12.2", "Aula 12.3", "Curso · planilha
+     06"…) do software e da planilha — produto comercial. A conta NÃO muda (a régua continua sendo a do curso); só sai
+     o nome. Cada citação precisa de substituta: a norma/livro de onde a regra vem (NBR 16868-1, NBR 6118, NBR 6122,
+     ABCP/Parsekian, Bastos…) ou "critério adotado" quando é convenção do curso (δadm 2h/250, K = 1,0, As,mín 0,15 %…).
+     Inclui rótulos, notas, aba Referências, memória (Ref 'Aula 12.x', 'Curso', 'Gilberto'), figuras, termo de uso.
+     Confirmar com ele na hora: "Gilberto Carini" no ditado = os dois (Eng. Gilberto da fundação e Prof. Carini).
+  2. Memória no tema CLARO com fundo BRANCO (hoje azul-claro). Todos os SVG padronizados: fundo preto no tema escuro e
+     as cores acompanhando o tema (figuras do acervo e desenhos gerados).
+  3. Inércia fissurada (estádio II) do ELS: a conta é longa e as figuras da direita colidem com a fórmula grande —
+     reduzir um pouco as figuras e TRAVAR a de cima na 1ª linha da seção e a de baixo na última linha.
+  (4. não ditado.)
+  6. ANTES do 5: drenagem no 3D — os BARBACÃS SUMIRAM (voltar); DRENO DE FUNDO; camada de areia e brita representadas
+     melhor no 3D.
+  5. Modo PRANCHA para impressão: PDF ou DXF.
 - **Anotado do Jose (12/10, noite — fazer depois, ele avisa quando):**
   1. Barra horizontal do painel (a da canaleta) no contraforte: hoje é traspasse + L; trocar por barra dobrada em U de
      um contraforte ao outro, vários U em sequência, cada barra engastada duas vezes ("é mais fácil dobrar a barra em U
