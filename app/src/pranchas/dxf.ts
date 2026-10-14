@@ -13,14 +13,26 @@
     · a tabela de padrões de hachura está embaralhada (o "EARTH" dela é o DOTS) e com nome errado (AR_CONC) → os
       padrões vêm de padroesDxf.ts (os do ezdxf, ISO);
     · a hachura sai com estilo "externo" fixo → aqui vai o estilo normal (par-ímpar), o que a primitiva pede;
-    · não há espessura de linha (grupo 370) → acrescentada em cada entidade;
-    · a imagem sai com pixel quadrado → o vetor V vem da altura real no papel.
+    · toda camada sai com espessura 0,00 mm → aqui sai a da tabela (camadasDxf.ts);
+    · a imagem sai com pixel quadrado → o vetor V vem da altura real no papel;
+    · o MTEXT não tem máscara de fundo → acrescentada no texto que pede (mascara).
   Os consertos que mexem no que a biblioteca grava passam por `corrigir` (um filtro nos pares código/valor de UMA
   entidade) — nada é remendado no texto final.
 
-  Versão: AC1018 (DXF 2004), codificação ANSI_1252, e o texto 100 % ASCII — caractere fora do ASCII sai como
-  \U+XXXX ("Ø" → \U+00D8), que é como o próprio AutoCAD grava DXF até 2004 e que todo CAD lê (o LibreCAD só decodifica
-  o \U+ em arquivo anterior ao 2007; num 2007 ele mostraria o código cru).
+  CAMADAS (camadasDxf.ts): tabela fixa, cor e espessura iguais em todo arquivo; a entidade vai "por camada", menos
+  onde a cor é informação (fundo sólido, face do 3D, bitola no 3D). Todo fundo sólido vai para <MATERIAL>-FUNDO
+  (e a face do 3D Cores para 3D-FACES): plotado em monocromático, o sólido colorido sai preto — o cadista congela
+  essas camadas e fica o traço. Branco de papel (e o quase-branco, ≥ 240 nos três canais) não vai: no papel ele não
+  se vê, e plotado em monocromático sairia preto.
+
+  O QUE SE LIMPA antes de gravar: traço repetido (o mesmo segmento, na mesma camada, desenhado duas vezes — as
+  faces vizinhas do 3D dividem a aresta, as cotas encadeadas dividem a marca) e texto vazio (a célula vazia do
+  resumo do aço) — o cadista não tem de catar entidade fantasma.
+
+  Versão: AC1018 (DXF 2004), codificação ANSI_1252 (o $DWGCODEPAGE): o que existe na página 1252 vai em byte
+  (ç ã é ó Ø ² · — × °: o português inteiro), e só o resto (φ ≥ −…) sai como \U+XXXX, como o próprio AutoCAD grava
+  até o 2004 e todo CAD lê. O texto é montado como string e vira bytes 1252 em `bytesDoDxf` — gravar a string
+  direto (em UTF-8) quebraria todo acento.
 
   Eixo Y: a primitiva vem com y para BAIXO (como o SVG, origem no canto superior esquerdo da folha); no DXF y sobe:
   y_dxf = altura − y. Ângulo de texto já vem anti-horário (cota vertical = 90): passa direto.
@@ -28,12 +40,13 @@
 
 import {
   Attdef, Attrib, BlockFlags, DxfRasterVariables, DxfWriter, HatchBoundaryPaths, HatchPattern, HatchPolylineBoundary,
-  Image, Insert, LWPolylineFlags, SeqEnd, Text, TextHorizontalAlignment, Units, aciHex, pattern, point2d, point3d,
-  vertex,
+  Image, Insert, LWPolylineFlags, MText, MTextAttachmentPoint, SeqEnd, Text, TextHorizontalAlignment, Units, aciHex,
+  pattern, point2d, point3d, vertex,
   type CommonEntityOptions, type DxfDictionary, type DxfImageDef, type Dxfier, type EntitiesManager, type HatchPredefinedPatterns,
   type vec3_t,
 } from '@tarikjabiri/dxf';
 import { HACHURA } from '@/desenhos/hachuras';
+import { camadaDeFundo, camadaDoCad } from './camadasDxf';
 import { PADRAO_DO_MATERIAL, linhasNaEscala, type PadraoNoDxf } from './padroesDxf';
 import type { AtributoDoBloco, PadraoHachura, Primitiva, Pt, Traco } from './tipos';
 import { dataUrlParaBytes, zipar } from './zip';
@@ -89,15 +102,21 @@ export interface CorDoCad {
   verdadeira?: number;   // 0xRRGGBB (grupo 420)
 }
 
+function rgb(cor: string | undefined): [number, number, number] | null {
+  const m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec((cor ?? '').trim());
+  if (!m) return null;
+  const h = m[1].length === 3 ? m[1].replace(/./g, (c) => c + c) : m[1];
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+
 /**
  * Cor da primitiva → índice do CAD (62) + cor verdadeira (420). Preto (ou quase) vira o 7 SEM cor verdadeira: preto
  * de verdade some no fundo preto do CAD (o TQS e muito AutoCAD trabalham assim); o 7 é branco na tela e preto no papel.
  */
 export function corDoCad(cor: string | undefined): CorDoCad {
-  const m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec((cor ?? '').trim());
-  if (!m) return { aci: 7 };
-  const h = m[1].length === 3 ? m[1].replace(/./g, (c) => c + c) : m[1];
-  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+  const c = rgb(cor);
+  if (!c) return { aci: 7 };
+  const [r, g, b] = c;
   if (Math.max(r, g, b) < 0x30) return { aci: 7 };
   let aci = 7, d = Infinity;
   for (const [i, pr, pg, pb] of PALETA) {
@@ -107,18 +126,61 @@ export function corDoCad(cor: string | undefined): CorDoCad {
   return { aci, verdadeira: (r << 16) | (g << 8) | b };
 }
 
-// ── texto e nomes em ASCII ──────────────────────────────────────────────────
+/**
+ * Branco de papel, ou quase (≥ 240 nos três canais: o #f6f6f6 da manta do Opaco, o #f7f7f7 do véu do terreno): no
+ * papel não se vê, e plotado em monocromático um sólido branco sai PRETO. Não vai para o DXF.
+ */
+export function quaseBranco(cor: string | undefined): boolean {
+  const c = rgb(cor);
+  return !!c && c.every((v) => v >= 0xf0);
+}
 
-/** Texto do desenho em ASCII: fora do ASCII vira \U+XXXX ("ção" → "\U+00E7\U+00E3o"). Quebra de linha vira espaço. */
-export function textoAscii(s: string): string {
+// ── texto em cp1252 e nomes em ASCII ────────────────────────────────────────
+
+/** Os caracteres que a página 1252 põe em 0x80–0x9F (no resto, de 0xA0 a 0xFF, o byte é o próprio código). */
+const CP1252_ALTO: Record<number, number> = {
+  0x20ac: 0x80, 0x201a: 0x82, 0x0192: 0x83, 0x201e: 0x84, 0x2026: 0x85, 0x2020: 0x86, 0x2021: 0x87, 0x02c6: 0x88,
+  0x2030: 0x89, 0x0160: 0x8a, 0x2039: 0x8b, 0x0152: 0x8c, 0x017d: 0x8e, 0x2018: 0x91, 0x2019: 0x92, 0x201c: 0x93,
+  0x201d: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97, 0x02dc: 0x98, 0x2122: 0x99, 0x0161: 0x9a, 0x203a: 0x9b,
+  0x0153: 0x9c, 0x017e: 0x9e, 0x0178: 0x9f,
+};
+
+/** O byte do caractere na página 1252, ou null se ela não o tem. */
+function byte1252(c: number): number | null {
+  if (c < 0x80 || (c >= 0xa0 && c <= 0xff)) return c;
+  return CP1252_ALTO[c] ?? null;
+}
+
+/**
+ * Texto do desenho para o DXF: o que a página 1252 tem fica como está (vira byte em `bytesDoDxf`); o resto vira
+ * \U+XXXX ("φ" → "\U+03C6"). Quebra de linha e controle viram espaço.
+ */
+export function textoDoCad(s: string): string {
   let out = '';
   for (const ch of s.replace(/[\r\n\t]+/g, ' ')) {
     const c = ch.codePointAt(0)!;
-    if (c >= 32 && c < 127) out += ch;
+    if (c < 32 || c === 127) out += ' ';
+    else if (byte1252(c) !== null) out += ch;
     else if (c <= 0xffff) out += '\\U+' + c.toString(16).toUpperCase().padStart(4, '0');
     else out += '?';   // fora do plano básico o \U+ do CAD não alcança (4 dígitos)
   }
   return out;
+}
+
+/** No MTEXT a barra invertida e as chaves são comando de formatação: o texto as escapa antes do \U+. */
+function textoDoMtext(s: string): string {
+  return textoDoCad(s.replace(/\\/g, '\\\\').replace(/[{}]/g, (c) => '\\' + c));
+}
+
+/** O DXF montado (string) → os bytes do arquivo, na página 1252 que o cabeçalho declara. */
+export function bytesDoDxf(dxf: string): Uint8Array {
+  const out = new Uint8Array(dxf.length);
+  let n = 0;
+  for (const ch of dxf) {
+    const b = byte1252(ch.codePointAt(0)!);
+    out[n++] = b ?? 0x3f;   // não acontece: textoDoCad já escapou o que a página não tem
+  }
+  return out.subarray(0, n);
 }
 
 /** Nome de tabela do CAD (camada, bloco, etiqueta): sem acento, maiúsculo, só letra, número, - e _. */
@@ -127,7 +189,7 @@ export function nomeDoCad(s: string): string {
   return n.replace(/^_+|_+$/g, '') || 'SEM_NOME';
 }
 
-/** Nome de arquivo em ASCII (o caminho da imagem vai dentro do DXF, que é ANSI). */
+/** Nome de arquivo em ASCII (o caminho da imagem vai dentro do DXF). */
 export function nomeDeArquivo(s: string): string {
   const n = s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9._-]+/g, '_');
   return n.replace(/^[_.]+|_+$/g, '') || 'arquivo';
@@ -158,6 +220,68 @@ export function pixelsDaImagem(b: Uint8Array): [number, number] | null {
   return null;
 }
 
+// ── limpeza: traço repetido e texto vazio ───────────────────────────────────
+
+/** A chave do estilo de um traço no DXF: camada, cor (só a que vai própria) e tracejado — a espessura é a da camada. */
+const estiloDoTraco = (e: Traco): string => `${nomeDoCad(e.camada)}|${e.corPropria ? e.cor.toLowerCase() : ''}|${e.tracejado?.join(',') ?? ''}`;
+
+/** Ponto arredondado a 0,1 µm de papel: o mesmo vértice calculado por dois caminhos dá a mesma chave. */
+const chaveDoPonto = ([x, y]: Pt): string => `${Math.round(x * 1e4)},${Math.round(y * 1e4)}`;
+
+/**
+ * Tira o repetido: a mesma linha (nos dois sentidos), a mesma polilinha (em qualquer vértice de partida e sentido,
+ * se fechada) ou a mesma hachura, com o mesmo estilo. Fica a ÚLTIMA cópia — a que estava por cima de tudo o que veio
+ * antes —, para nenhum preenchimento pintado entre as duas passar a cobri-la. A borda da hachura entra como
+ * polilinha logo depois dela (é o que o DXF grava), para valer a mesma regra contra o contorno desenhado à parte.
+ * Texto sem letra também sai. Dentro do bloco, a mesma limpeza.
+ */
+export function semRepetidas(prims: Primitiva[]): Primitiva[] {
+  const abertas = prims.flatMap((q): Primitiva[] =>
+    q.k === 'hachura' && q.borda
+      ? [{ ...q, borda: undefined }, ...q.aneis.map((pts): Primitiva => ({ k: 'polilinha', pts, fechada: true, e: q.borda! }))]
+      : [q],
+  );
+  const vistas = new Set<string>();
+  const out: Primitiva[] = [];
+  for (let i = abertas.length - 1; i >= 0; i--) {
+    const q = abertas[i];
+    let chave: string | null = null;
+    if (q.k === 'linha') {
+      const [a, b] = [chaveDoPonto(q.a), chaveDoPonto(q.b)];
+      chave = `L|${estiloDoTraco(q.e)}|${a < b ? a + ';' + b : b + ';' + a}`;
+    } else if (q.k === 'polilinha') {
+      chave = `P|${estiloDoTraco(q.e)}|${q.fechada ? 1 : 0}|${formaCanonica(q.pts.map(chaveDoPonto), q.fechada)}`;
+    } else if (q.k === 'hachura') {
+      const aneis = q.aneis.map((a) => formaCanonica(a.map(chaveDoPonto), true)).sort().join('/');
+      chave = `H|${nomeDoCad(q.camada)}|${q.padrao}|${q.fundo ?? ''}|${q.risco ?? ''}|${aneis}`;
+    } else if (q.k === 'texto') {
+      if (!q.t.trim()) continue;
+    } else if (q.k === 'bloco') {
+      out.push({ ...q, prims: semRepetidas(q.prims) });
+      continue;
+    }
+    if (chave !== null) {
+      if (vistas.has(chave)) continue;
+      vistas.add(chave);
+    }
+    out.push(q);
+  }
+  return out.reverse();
+}
+
+/** A sequência de vértices na forma que não depende de onde começa nem do sentido (a menor das leituras). */
+function formaCanonica(v: string[], fechada: boolean): string {
+  if (fechada && v.length > 1 && v[0] === v[v.length - 1]) v = v.slice(0, -1);
+  const leituras: string[][] = [v, [...v].reverse()];
+  if (fechada) {
+    for (const base of [v, [...v].reverse()]) {
+      const k = base.indexOf([...base].sort()[0]);
+      leituras.push([...base.slice(k), ...base.slice(0, k)]);
+    }
+  }
+  return leituras.map((l) => l.join(';')).sort()[0];
+}
+
 // ── consertos por entidade ──────────────────────────────────────────────────
 
 type Grupo = [number, number | string];
@@ -165,8 +289,8 @@ type Filtro = (codigo: number, valor: number | string) => Grupo[];
 
 /**
  * Passa cada par (código, valor) que a biblioteca grava para ESTA entidade pelo filtro — é por aqui que entram a
- * espessura de linha, o estilo par-ímpar da hachura e o que é de versão posterior à 2004. Vale só durante a gravação
- * da entidade; o gravador volta ao normal logo depois.
+ * espessura da camada, o estilo par-ímpar da hachura e o que é de versão posterior à 2004. Vale só durante a
+ * gravação da entidade; o gravador volta ao normal logo depois.
  */
 function corrigir<T extends { dxfy(dx: Dxfier): void }>(ent: T, filtro: Filtro): T {
   const original = ent.dxfy.bind(ent);
@@ -208,9 +332,6 @@ function reatoresAntesDoDono(): Filtro {
   };
 }
 
-/** Espessura de linha (370) logo depois da camada (8), no bloco comum de toda entidade. */
-const comEspessura = (lw: number): Filtro => (c, v) => (c === 8 ? [[8, v], [370, lw]] : [[c, v]]);
-
 /** Arredonda a coordenada (6 casas = milésimo de mícron no papel): sem "0,30000000000000004" nem notação 1e-7. */
 const r = (v: number): number => Math.round(v * 1e6) / 1e6 + 0;
 
@@ -218,15 +339,18 @@ const r = (v: number): number => Math.round(v * 1e6) / 1e6 + 0;
 
 class Gravador {
   private readonly w = new DxfWriter();   // primeiro de tudo: o construtor zera o contador de handles
-  private readonly H: number;
-  private readonly usoDeCor = new Map<string, Map<string, number>>();   // camada → cor → quantas entidades
+  /** Para onde vão as coordenadas: x − ox, oy − y. No espaço do desenho (0, altura da folha); dentro de um bloco, o
+   *  ponto base dele (a geometria do bloco é relativa ao ponto base). */
+  private ox = 0;
+  private oy: number;
+  private readonly camadasUsadas = new Set<string>();
   private readonly tiposDeLinha = new Map<string, string>();            // traço/espaço → nome do LTYPE
   private readonly blocos = new Set<string>();
   private readonly imagens = new Map<string, { dataUrl: string; def: DxfImageDef }>();
   private dicionarioDeImagens: DxfDictionary | null = null;
 
   constructor(private readonly folha: FolhaDxf) {
-    this.H = folha.altura;
+    this.oy = folha.altura;
   }
 
   gravar(): { dxf: string; imagens: ImagemDoDxf[] } {
@@ -253,7 +377,7 @@ class Gravador {
     ms.centerView = () => point3d(r(folha.largura / 2), r(folha.altura / 2), 0);
     ms.viewHeight = () => r(folha.altura * 1.05);
 
-    this.desenhar(folha.prims, ms);
+    this.desenhar(semRepetidas(folha.prims), ms);
     this.criarCamadas();
     this.declararClasses();
 
@@ -261,23 +385,34 @@ class Gravador {
     return { dxf: w.stringify() + '\n', imagens };
   }
 
-  // ── primitivas ──
+  // ── coordenadas ──
 
-  private P = ([x, y]: Pt): vec3_t => point3d(r(x), r(this.H - y), 0);
+  private X = (x: number): number => r(x - this.ox);
+  private Y = (y: number): number => r(this.oy - y);
+  private P = ([x, y]: Pt): vec3_t => point3d(this.X(x), this.Y(y), 0);
 
-  private opcoes(camada: string, cor: string | undefined, tracejado?: number[]): CommonEntityOptions {
-    const nome = nomeDoCad(camada);
+  // ── camada e cor ──
+
+  /** A camada no CAD, guardada para a tabela. */
+  private camada(nome: string): string {
+    const n = nomeDoCad(nome);
+    this.camadasUsadas.add(n);
+    return n;
+  }
+
+  /** Entidade "por camada": nem cor nem espessura própria (o CAD lê da camada). */
+  private porCamada(camada: string, tracejado?: number[]): CommonEntityOptions {
+    return { layerName: this.camada(camada), lineType: tracejado?.length ? this.tipoDeLinha(tracejado) : undefined };
+  }
+
+  /** Entidade com a cor verdadeira (a cor é informação) e o índice mais próximo para quem não lê o 420. */
+  private corVerdadeira(cor: string): Pick<CommonEntityOptions, 'colorNumber' | 'trueColor'> {
     const c = corDoCad(cor);
-    const chave = c.verdadeira === undefined ? 'preto' : `#${c.verdadeira.toString(16).padStart(6, '0')}`;
-    const uso = this.usoDeCor.get(nome) ?? new Map<string, number>();
-    uso.set(chave, (uso.get(chave) ?? 0) + 1);
-    this.usoDeCor.set(nome, uso);
-    return {
-      layerName: nome,
-      colorNumber: c.aci,
-      trueColor: c.verdadeira === undefined ? undefined : String(c.verdadeira),
-      lineType: tracejado?.length ? this.tipoDeLinha(tracejado) : undefined,
-    };
+    return { colorNumber: c.aci, trueColor: c.verdadeira === undefined ? undefined : String(c.verdadeira) };
+  }
+
+  private opcoesDoTraco(e: Traco): CommonEntityOptions {
+    return { ...this.porCamada(e.camada, e.tracejado), ...(e.corPropria ? this.corVerdadeira(e.cor) : {}) };
   }
 
   /** Um LTYPE por padrão traço/espaço (mm de papel). Lista ímpar repete, como no SVG (2 1 3 → 2 1 3 2 1 3). */
@@ -296,22 +431,27 @@ class Gravador {
     return nome;
   }
 
+  // ── primitivas ──
+
   private desenhar(prims: Primitiva[], alvo: EntitiesManager): void {
     for (const q of prims) {
       switch (q.k) {
         case 'linha':
-          corrigir(alvo.addLine(this.P(q.a), this.P(q.b), this.opcoesDoTraco(q.e)), comEspessura(espessuraDoCad(q.e.espessura)));
+          if (!quaseBranco(q.e.cor)) alvo.addLine(this.P(q.a), this.P(q.b), this.opcoesDoTraco(q.e));
           break;
         case 'polilinha':
           this.polilinha(alvo, q.pts, q.fechada, q.e);
           break;
         case 'circulo':
-          if (q.cheio) {
-            // disco cheio: HATCH sólido por baixo, contorno de dois arcos de 180° (bulge 1) — o círculo exato
+          if (q.cheio && !quaseBranco(q.cheio)) {
+            // disco cheio (a barra cortada): HATCH sólido de dois arcos de 180° (bulge 1) — o círculo exato. Não é
+            // fundo: é o desenho da barra, e fica na camada dela, na cor dela
             const [cx, cy] = q.c;
-            this.preencher(alvo, [[[cx + q.r, cy], [cx - q.r, cy]]], PADRAO_DO_MATERIAL.solido, q.cheio, q.e?.camada ?? '0', [1, 1]);
+            this.preencher(alvo, [[[cx + q.r, cy], [cx - q.r, cy]]], PADRAO_DO_MATERIAL.solido, this.porCamada(q.e?.camada ?? '0'), [1, 1]);
           }
-          if (q.e) corrigir(alvo.addCircle(this.P(q.c), r(q.r), this.opcoesDoTraco(q.e)), comEspessura(espessuraDoCad(q.e.espessura)));
+          // o contorno de espessura 0 é só o recado da camada (o ponto sem contorno, desenhos/prancha.ts): na
+          // espessura da camada ele engordaria o ponto
+          if (q.e && !quaseBranco(q.e.cor) && !(q.cheio && q.e.espessura === 0)) alvo.addCircle(this.P(q.c), r(q.r), this.opcoesDoTraco(q.e));
           break;
         case 'hachura':
           this.hachura(alvo, q);
@@ -323,38 +463,35 @@ class Gravador {
           this.imagem(alvo, q);
           break;
         case 'bloco':
-          this.bloco(alvo, q.nome, q.prims, q.atributos);
+          this.bloco(alvo, q);
           break;
       }
     }
   }
 
-  private opcoesDoTraco(e: Traco): CommonEntityOptions {
-    return this.opcoes(e.camada, e.cor, e.tracejado);
-  }
-
   private polilinha(alvo: EntitiesManager, pts: Pt[], fechada: boolean, e: Traco): void {
+    if (quaseBranco(e.cor)) return;
     const v = fechada ? semFechoRepetido(pts) : pts;
     if (v.length < 2) return;
-    const pl = alvo.addLWPolyline(v.map((p) => ({ point: point2d(r(p[0]), r(this.H - p[1])) })), {
+    alvo.addLWPolyline(v.map((p) => ({ point: point2d(this.X(p[0]), this.Y(p[1])) })), {
       ...this.opcoesDoTraco(e),
       flags: fechada ? LWPolylineFlags.Closed : LWPolylineFlags.None,
     });
-    corrigir(pl, comEspessura(espessuraDoCad(e.espessura)));
   }
 
   private hachura(alvo: EntitiesManager, q: Extract<Primitiva, { k: 'hachura' }>): void {
-    const padrao = PADRAO_DO_MATERIAL[q.padrao];
-    // O branco de papel (o fundo atrás do bloco cortado, que no SVG tapa o que está por baixo) não vai para o DXF:
-    // plotado em monocromático, sólido branco sai PRETO. No DXF ninguém fica por baixo dele (a terra do corte já
-    // contorna as peças), então não há o que tapar.
-    const papel = (c?: string) => !!c && /^#f{3}(f{3})?$/i.test(c.trim());
+    // O fundo sólido vai para a camada -FUNDO do material, na cor verdadeira (a cor do bloco é informação). O branco
+    // de papel não vai: no DXF ninguém fica por baixo dele (a terra do corte já contorna as peças), e plotado em
+    // monocromático ele sairia PRETO.
+    const fundo = (cor: string) => {
+      if (!quaseBranco(cor)) this.preencher(alvo, q.aneis, PADRAO_DO_MATERIAL.solido, { layerName: this.camada(camadaDeFundo(nomeDoCad(q.camada))), ...this.corVerdadeira(cor) });
+    };
     if (q.padrao === 'solido') {
-      if (!papel(q.fundo ?? q.risco)) this.preencher(alvo, q.aneis, padrao, q.fundo ?? q.risco ?? '#000000', q.camada);
+      fundo(q.fundo ?? q.risco ?? '#000000');
     } else {
-      // o fundo vem antes (por baixo), o padrão por cima na cor do risco: a terra é risco marrom sobre bege
-      if (q.fundo && !papel(q.fundo)) this.preencher(alvo, q.aneis, PADRAO_DO_MATERIAL.solido, q.fundo, q.camada);
-      this.preencher(alvo, q.aneis, padrao, q.risco ?? riscoPadrao(q.padrao), q.camada);
+      // o fundo vem antes (por baixo), o padrão por cima, na camada do material: a terra é risco sobre o bege
+      if (q.fundo) fundo(q.fundo);
+      if (!quaseBranco(q.risco ?? riscoPadrao(q.padrao))) this.preencher(alvo, q.aneis, PADRAO_DO_MATERIAL[q.padrao], this.porCamada(q.camada));
     }
     if (q.borda) for (const anel of q.aneis) this.polilinha(alvo, anel, true, q.borda);
   }
@@ -363,15 +500,15 @@ class Gravador {
    * Um HATCH não associativo com os anéis como caminhos de polilinha, estilo normal (par-ímpar): o furo do bloco
    * vazado fica vazio de verdade. `bulges` (opcional) = curvatura de cada vértice do 1º anel (o disco cheio).
    */
-  private preencher(alvo: EntitiesManager, aneis: Pt[][], padrao: PadraoNoDxf, cor: string, camada: string, bulges?: number[]): void {
+  private preencher(alvo: EntitiesManager, aneis: Pt[][], padrao: PadraoNoDxf, opcoes: CommonEntityOptions, bulges?: number[]): void {
     const caminhos = new HatchBoundaryPaths();
     for (const anel of aneis) {
       const v = bulges ? anel : semFechoRepetido(anel);
       if (v.length < (bulges ? 2 : 3)) continue;
-      caminhos.addPolylineBoundary(new HatchPolylineBoundary(v.map((p, i) => vertex(r(p[0]), r(this.H - p[1]), bulges?.[i]))));
+      caminhos.addPolylineBoundary(new HatchPolylineBoundary(v.map((p, i) => vertex(this.X(p[0]), this.Y(p[1]), bulges?.[i]))));
     }
     if (caminhos.length === 0) return;
-    const h = alvo.addHatch(caminhos, pattern({ name: padrao.nome as HatchPredefinedPatterns }), this.opcoes(camada, cor));
+    const h = alvo.addHatch(caminhos, pattern({ name: padrao.nome as HatchPredefinedPatterns }), opcoes);
     if (padrao.nome !== 'SOLID') {
       const nome = padrao.nome;
       // as linhas de definição saem de padroesDxf.ts (a tabela da biblioteca está trocada); 41 = a escala que o
@@ -387,9 +524,8 @@ class Gravador {
         hp.dxfy(dx);
       };
     }
-    const lw = espessuraDoCad(padrao.espessura);
     // 75 = estilo da hachura: 0 = normal (par-ímpar, a regra da primitiva); a biblioteca grava 1 ("só o externo")
-    corrigir(h, (c, v) => (c === 75 ? [[75, 0]] : comEspessura(lw)(c, v)));
+    corrigir(h, (c, v) => (c === 75 ? [[75, 0]] : [[c, v]]));
   }
 
   private alinhamento(ancora: 'start' | 'middle' | 'end', p: vec3_t): { horizontalAlignment?: TextHorizontalAlignment; secondAlignmentPoint?: vec3_t } {
@@ -399,14 +535,42 @@ class Gravador {
   }
 
   private texto(alvo: EntitiesManager, q: Extract<Primitiva, { k: 'texto' }>): void {
+    if (!q.t.trim()) return;   // texto vazio não vai (a célula vazia de uma tabela): no CAD é entidade fantasma
+    if (q.mascara) {
+      this.textoComMascara(alvo, q);
+      return;
+    }
     const p = this.P(q.p);
-    const t = new Text(p, r(q.altura * MAIUSCULA_DA_ARIAL), textoAscii(q.t), {
-      ...this.opcoes(q.camada, q.cor),
+    const t = new Text(p, r(q.altura * MAIUSCULA_DA_ARIAL), textoDoCad(q.t), {
+      ...this.porCamada(q.camada),
       ...this.alinhamento(q.ancora, p),
       rotation: q.angulo ? r(q.angulo) : undefined,
     });
     t.textStyle = q.negrito ? ESTILO_NEGRITO : ESTILO_DE_TEXTO;
     alvo.addEntity(t);
+  }
+
+  /**
+   * Texto em cima de hachura (o halo branco do SVG): MTEXT com máscara de fundo na cor do desenho (90 = 3: máscara
+   * ligada, cor do fundo da tela; plotado, a cor do papel) — tapa a hachura só atrás da letra, como o halo. O
+   * MTEXT não tem linha de base: o ponto vai no MEIO da altura da maiúscula (anexo "meio"), e o giro pelo vetor
+   * de direção (11/21/31), que não tem a dúvida de grau × radiano do grupo 50.
+   */
+  private textoComMascara(alvo: EntitiesManager, q: Extract<Primitiva, { k: 'texto' }>): void {
+    const h = q.altura * MAIUSCULA_DA_ARIAL;
+    const a = (q.angulo * Math.PI) / 180;
+    const [dx, dy] = [Math.cos(a), Math.sin(a)];   // direção do texto no DXF (y para cima)
+    // meio da maiúscula: sobe h/2 na perpendicular à direção (no papel y desce, por isso o sinal)
+    const p: Pt = [q.p[0] - (h / 2) * dy, q.p[1] - (h / 2) * dx];
+    const anexo = q.ancora === 'start' ? MTextAttachmentPoint.MiddleLeft : q.ancora === 'middle' ? MTextAttachmentPoint.MiddleCenter : MTextAttachmentPoint.MiddleRight;
+    const t = new MText(this.P(p), r(h), textoDoMtext(q.t), { ...this.porCamada(q.camada), attachmentPoint: anexo });
+    t.textStyle = q.negrito ? ESTILO_NEGRITO : ESTILO_DE_TEXTO;
+    corrigir(alvo.addEntity(t), (c, v) => {
+      if (c !== 7) return [[c, v]];
+      const giro: Grupo[] = q.angulo ? [[11, r(dx)], [21, r(dy)], [31, 0]] : [];
+      // 63 é obrigatório com a máscara (ignorado com a cor da tela); 45 = a folga em volta da letra (× altura)
+      return [[7, v], ...giro, [90, 3], [63, 0], [45, 1.2]];
+    });
   }
 
   /** IMAGE vinculada a imagens/<arquivo>, do tamanho do papel; o tamanho em pixels vem do próprio PNG/JPEG. */
@@ -449,7 +613,7 @@ class Gravador {
     const [wpx, hpx] = px;
     const img = new Image(
       { width: wpx, height: hpx, scale: r(q.largura), rotation: 0, insertionPoint: this.P([q.p[0], q.p[1] + q.altura]), imageDefHandle: def.handle },
-      this.opcoes(q.camada, undefined),
+      this.porCamada(q.camada),
     );
     // a biblioteca faz o pixel quadrado (V = U girado); aqui V sai da altura pedida no papel
     (img as unknown as { _vVector: () => vec3_t })._vVector = () => point3d(0, q.altura / hpx, 0);
@@ -462,34 +626,45 @@ class Gravador {
   }
 
   /**
-   * BLOCO (o carimbo): a geometria vai na definição, com o ponto base no 0,0 da folha, e cada atributo vira um ATTDEF;
-   * na folha entra um INSERT no 0,0, escala 1, com os ATTRIB preenchidos. Quem tem carimbo próprio troca o bloco
-   * inteiro de uma vez. Nome repetido usa a primeira definição (no CAD o nome É a definição).
+   * BLOCO (o carimbo): a geometria vai na definição RELATIVA ao ponto base — o canto inferior direito do carimbo —,
+   * e cada atributo vira um ATTDEF; na folha entra um INSERT nesse canto, escala 1, com os ATTRIB preenchidos. O
+   * carimbo do escritório, desenhado com o ponto base no canto (o costume), cai no mesmo lugar quando o cadista
+   * redefine o bloco. Nome repetido usa a primeira definição (no CAD o nome É a definição).
    */
-  private bloco(alvo: EntitiesManager, nomeOriginal: string, prims: Primitiva[], atributos: AtributoDoBloco[]): void {
-    const nome = nomeDoCad(nomeOriginal);
+  private bloco(alvo: EntitiesManager, q: Extract<Primitiva, { k: 'bloco' }>): void {
+    const nome = nomeDoCad(q.nome);
+    const [bx, by] = q.base ?? cantoInferiorDireito(q.prims, q.atributos);
+    const estiloDoAtributo = (a: AtributoDoBloco) => (a.negrito ? ESTILO_NEGRITO : ESTILO_DE_TEXTO);
     if (!this.blocos.has(nome)) {
       this.blocos.add(nome);
       const b = this.w.addBlock(nome);
-      b.flags = atributos.length ? BlockFlags.HasNonConstantAttribute : BlockFlags.None;
-      this.desenhar(prims, b);
-      for (const a of atributos) {
-        const p = this.P(a.p);
-        const tag = nomeDoCad(a.etiqueta);
-        const d = new Attdef(p, r(a.altura * MAIUSCULA_DA_ARIAL), tag, textoAscii(a.valor), { ...this.opcoes(a.camada, a.cor), ...this.alinhamento(a.ancora, p) });
-        d.textStyle = ESTILO_DE_TEXTO;
-        // 3 = a pergunta que o CAD faz ao inserir/editar (a biblioteca grava vazia); 280 é do DXF 2010
-        corrigir(b.addEntity(d), (c, v) => (c === 3 ? [[3, tag]] : c === 280 ? [] : [[c, v]]));
+      b.flags = q.atributos.length ? BlockFlags.HasNonConstantAttribute : BlockFlags.None;
+      const [ox, oy] = [this.ox, this.oy];
+      [this.ox, this.oy] = [bx, by];   // dentro do bloco, tudo relativo ao ponto base (y para cima)
+      try {
+        this.desenhar(q.prims, b);
+        for (const a of q.atributos) {
+          const p = this.P(a.p);
+          const tag = nomeDoCad(a.etiqueta);
+          const d = new Attdef(p, r(a.altura * MAIUSCULA_DA_ARIAL), tag, textoDoCad(a.valor), { ...this.porCamada(a.camada), ...this.alinhamento(a.ancora, p) });
+          d.textStyle = estiloDoAtributo(a);
+          // 3 = a pergunta que o CAD faz ao inserir/editar (a biblioteca grava vazia); 280 é do DXF 2010
+          corrigir(b.addEntity(d), (c, v) => (c === 3 ? [[3, tag]] : c === 280 ? [] : [[c, v]]));
+        }
+      } finally {
+        [this.ox, this.oy] = [ox, oy];
       }
     }
-    const camada = this.opcoes(nomeOriginal, undefined).layerName;
-    const ins = alvo.addEntity(new Insert(nome, point3d(0, 0, 0), { layerName: camada }));
-    if (!atributos.length) return;
+    // a camada do INSERT é a do conteúdo do bloco (a de um carimbo 200 × 60 é CARIMBO, não CARIMBO_200X60)
+    const camada = this.camada(q.atributos[0]?.camada ?? camadaDaPrimitiva(q.prims[0]) ?? q.nome);
+    const ins = alvo.addEntity(new Insert(nome, this.P([bx, by]), { layerName: camada }));
+    if (!q.atributos.length) return;
     ins.attributesFollowFlag = 1;
-    for (const a of atributos) {
+    for (const a of q.atributos) {
       const p = this.P(a.p);
-      const at = new Attrib(p, r(a.altura * MAIUSCULA_DA_ARIAL), nomeDoCad(a.etiqueta), textoAscii(a.valor), { ...this.opcoes(a.camada, a.cor), ...this.alinhamento(a.ancora, p) });
-      at.textStyle = ESTILO_DE_TEXTO;
+      // o valor vai inteiro (a folha só encolhe a letra para caber); o atributo vazio fica, para o cadista preencher
+      const at = new Attrib(p, r(a.altura * MAIUSCULA_DA_ARIAL), nomeDoCad(a.etiqueta), textoDoCad(a.valor), { ...this.porCamada(a.camada), ...this.alinhamento(a.ancora, p) });
+      at.textStyle = estiloDoAtributo(a);
       corrigir(alvo.addEntity(at), (c, v) => (c === 280 ? [] : [[c, v]]));
       at.ownerBlockRecord = ins.handle;   // o atributo pertence ao INSERT, não ao espaço do desenho
     }
@@ -500,14 +675,18 @@ class Gravador {
 
   // ── tabelas e classes ──
 
-  /** Uma camada por `camada` usada; a cor da camada é a mais frequente das entidades dela. */
+  /** Uma camada por nome usado, com a cor e a espessura da TABELA (camadasDxf.ts) — iguais em todo arquivo. */
   private criarCamadas(): void {
-    for (const [nome, uso] of this.usoDeCor) {
-      const [chave] = [...uso.entries()].sort((a, b) => b[1] - a[1])[0];
-      const c = corDoCad(chave === 'preto' ? undefined : chave);
-      const camada = this.w.addLayer(nome, c.aci, 'Continuous');
-      if (c.verdadeira !== undefined) camada.trueColor = c.verdadeira;
+    for (const nome of [...this.camadasUsadas].sort()) {
+      if (nome === '0') continue;
+      const c = camadaDoCad(nome);
+      const lw = espessuraDoCad(c.espessura);
+      // a biblioteca grava 370 = 0 (espessura 0,00 mm) em toda camada
+      corrigir(this.w.addLayer(nome, c.aci, 'Continuous'), (k, v) => (k === 370 ? [[370, lw]] : [[k, v]]));
     }
+    // a camada 0 fica com a espessura padrão do CAD (−3), não 0,00 mm
+    const zero = this.w.tables.layerTable.layer('0');
+    if (zero) corrigir(zero, (k, v) => (k === 370 ? [[370, -3]] : [[k, v]]));
   }
 
   /** CLASSES: a biblioteca grava a seção vazia; IMAGE e as peças dela são classes que o CAD precisa ver declaradas. */
@@ -550,6 +729,29 @@ function semFechoRepetido(pts: Pt[]): Pt[] {
   return pts;
 }
 
+/** Canto inferior direito (y para baixo: o maior x e o maior y) do que o bloco desenha — o ponto base padrão. */
+function cantoInferiorDireito(prims: Primitiva[], atributos: AtributoDoBloco[]): Pt {
+  let [x, y] = [-Infinity, -Infinity];
+  const ver = (p: Pt) => ([x, y] = [Math.max(x, p[0]), Math.max(y, p[1])]);
+  for (const q of prims) {
+    if (q.k === 'linha') [q.a, q.b].forEach(ver);
+    else if (q.k === 'polilinha') q.pts.forEach(ver);
+    else if (q.k === 'hachura') q.aneis.flat().forEach(ver);
+    else if (q.k === 'circulo') ver([q.c[0] + q.r, q.c[1] + q.r]);
+    else if (q.k === 'texto') ver(q.p);
+  }
+  atributos.forEach((a) => ver(a.p));
+  return Number.isFinite(x) ? [x, y] : [0, 0];
+}
+
+function camadaDaPrimitiva(q: Primitiva | undefined): string | undefined {
+  if (!q) return undefined;
+  if (q.k === 'linha' || q.k === 'polilinha') return q.e.camada;
+  if (q.k === 'circulo') return q.e?.camada;
+  if (q.k === 'bloco') return undefined;
+  return q.camada;
+}
+
 /** Risco de cada material quando a primitiva não diz: as cores do Revit do José (desenhos/hachuras.ts). */
 function riscoPadrao(p: PadraoHachura): string {
   switch (p) {
@@ -561,7 +763,7 @@ function riscoPadrao(p: PadraoHachura): string {
   }
 }
 
-/** Uma folha → o texto do DXF e as imagens que ele vincula (caminho relativo ao .dxf). */
+/** Uma folha → o texto do DXF e as imagens que ele vincula (caminho relativo ao .dxf). Para o arquivo: bytesDoDxf. */
 export function gerarDxf(folha: FolhaDxf): { dxf: string; imagens: ImagemDoDxf[] } {
   return new Gravador(folha).gravar();
 }
@@ -578,9 +780,9 @@ function renomearImagens(prims: Primitiva[], nomear: (arquivo: string, dataUrl: 
 }
 
 /**
- * O .zip que o app baixa: um .dxf por folha e a pasta imagens/ que eles vinculam. Entre as folhas, a mesma imagem
- * (mesmo conteúdo) vai uma vez só; nome igual com conteúdo diferente ganha sufixo — senão uma prancha abriria com a
- * foto da outra.
+ * O .zip que o app baixa: um .dxf por folha (em bytes da página 1252, a que o cabeçalho declara) e a pasta imagens/
+ * que eles vinculam. Entre as folhas, a mesma imagem (mesmo conteúdo) vai uma vez só; nome igual com conteúdo
+ * diferente ganha sufixo — senão uma prancha abriria com a foto da outra.
  */
 export function pacoteDxf(folhas: FolhaDxf[], data?: Date): Uint8Array {
   const nomePorConteudo = new Map<string, string>();
@@ -602,7 +804,8 @@ export function pacoteDxf(folhas: FolhaDxf[], data?: Date): Uint8Array {
     let nome = `${nomeDeArquivo(f.nome)}.dxf`;
     for (let n = 2; nomesDxf.has(nome.toLowerCase()); n++) nome = `${nomeDeArquivo(f.nome)}_${n}.dxf`;
     nomesDxf.add(nome.toLowerCase());
-    arquivos.push({ nome, dados: dxf });
+    // em bytes 1252: a string iria para o zip em UTF-8, e o "ç" viraria "Ã§" no CAD
+    arquivos.push({ nome, dados: bytesDoDxf(dxf) });
     for (const im of imagens) {
       if (!arquivos.some((a) => a.nome === im.arquivo)) arquivos.push({ nome: im.arquivo, dados: dataUrlParaBytes(im.dataUrl) });
     }

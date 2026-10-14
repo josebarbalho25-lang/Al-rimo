@@ -103,10 +103,9 @@ export const PADROES_ISO: Record<'EARTH' | 'AR-CONC' | 'AR-SAND' | 'GRAVEL' | 'A
 export interface PadraoNoDxf {
   /** Nome do padrão no CAD (o que o cadista vê no editor de hachura). */
   nome: keyof typeof PADROES_ISO | 'SOLID';
-  /** Escala do padrão no papel (1 = o acadiso.pat como vem). */
+  /** Escala do padrão no papel (1 = o acadiso.pat como vem). A espessura do risco é a da camada do material
+   *  (camadasDxf.ts): o cadista engrossa ou afina a hachura pela camada, como o resto do desenho. */
   escala: number;
-  /** Espessura do risco do padrão no papel, mm — a do traço que o app usa no ladrilho. */
-  espessura: number;
 }
 
 const mm = (px: number): number => px / PX_POR_MM;
@@ -131,13 +130,13 @@ const mm = (px: number): number => px / PX_POR_MM;
  *  · solido → SOLID.
  */
 export const PADRAO_DO_MATERIAL: Record<PadraoHachura, PadraoNoDxf> = {
-  terra: { nome: 'EARTH', escala: mm(48 * 0.4) / 6.35, espessura: mm(0.8) },
-  concreto: { nome: 'AR-CONC', escala: 0.065, espessura: mm(0.6) },
-  areia: { nome: 'AR-SAND', escala: 0.04, espessura: mm(0.6) },
-  brita: { nome: 'GRAVEL', escala: 0.15, espessura: mm(0.7) },
-  alvenaria: { nome: 'ANSI31', escala: mm(6) / 3.175, espessura: mm(0.9) },
-  graute: { nome: 'ANSI31', escala: mm(5) / 3.175, espessura: mm(1.6) },
-  solido: { nome: 'SOLID', escala: 1, espessura: 0 },
+  terra: { nome: 'EARTH', escala: mm(48 * 0.4) / 6.35 },
+  concreto: { nome: 'AR-CONC', escala: 0.065 },
+  areia: { nome: 'AR-SAND', escala: 0.04 },
+  brita: { nome: 'GRAVEL', escala: 0.15 },
+  alvenaria: { nome: 'ANSI31', escala: mm(6) / 3.175 },
+  graute: { nome: 'ANSI31', escala: mm(5) / 3.175 },
+  solido: { nome: 'SOLID', escala: 1 },
 };
 
 /**

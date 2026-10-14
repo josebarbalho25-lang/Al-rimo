@@ -7,7 +7,7 @@
   - o isométrico de sempre e o 3D na mesma direção dizendo coisas diferentes.
 */
 import { describe, expect, it } from 'vitest';
-import type { Modelo, Vec3 } from '@/modelo/tipos';
+import type { Geometria, Modelo, Peca, Vec3 } from '@/modelo/tipos';
 import { PX_POR_MM, type Camera3d, type Primitiva } from '@/pranchas/tipos';
 import { cortesPadrao, desenharIsometrico, desenharVista3d, vista3dParaPrancha } from '../index';
 import { baseDaCamera } from '../vista3d';
@@ -105,7 +105,8 @@ describe('o mesmo muro, mesma direção: 3D em vetor × isométrico', () => {
     const vis = ids(v3);
     expect(m.pecas.some((p) => p.tipo === 'AREIA' && vis.has(p.id))).toBe(true);
     const pr = desenharVista3d(m, camera(ISO), { S });
-    expect(pr.primitivas().some((q) => q.k === 'hachura' && q.camada === 'drenagem')).toBe(true);
+    // no DXF: as arestas da drenagem na camada dela (as faces vão todas para 3d-faces)
+    expect(pr.primitivas().some((q) => q.k === 'linha' && q.e.camada === 'drenagem')).toBe(true);
   });
 });
 
@@ -114,14 +115,10 @@ describe('o que estava na tela', () => {
     const pr = desenharVista3d(m, camera([0, -1, 0]), { S: 0.2 });
     const svg = pr.svg();
     for (const p of m.pecas.filter((q) => q.tipo === 'BLOCO' || q.tipo === 'MEIO_BLOCO')) expect(poligonos(svg, p.id).length, p.id).toBe(1);
-    for (const q of pr.primitivas()) {
-      if (q.k !== 'hachura' || q.camada !== 'alvenaria') continue;
-      for (const anel of q.aneis) {
-        const xs = new Set(anel.map((p) => Math.round(p[0] * 100)));
-        const ys = new Set(anel.map((p) => Math.round(p[1] * 100)));
-        expect([xs.size, ys.size]).toEqual([2, 2]);
-      }
-    }
+    // no DXF, de frente, toda aresta de bloco que se vê é deitada ou em pé
+    const arestas = pr.primitivas().filter((q): q is Extract<Primitiva, { k: 'linha' }> => q.k === 'linha' && q.e.camada === 'alvenaria');
+    expect(arestas.length).toBeGreaterThan(50);
+    for (const q of arestas) expect(Math.abs(q.a[0] - q.b[0]) < 1e-6 || Math.abs(q.a[1] - q.b[1]) < 1e-6).toBe(true);
   });
 
   it('ocultar terreno e drenagem no visor tira as peças do desenho', () => {
@@ -189,11 +186,26 @@ describe('o que estava na tela', () => {
 
   it('Opaco: massa branca, traço preto, sem a legenda das cores dos blocos', () => {
     const pr = desenharVista3d(m, camera(ISO, { estilo: 'opaco' }));
-    const alv = pr.primitivas().filter((q): q is Extract<Primitiva, { k: 'hachura' }> => q.k === 'hachura' && q.camada === 'alvenaria');
+    // no SVG: a massa branca com o traço preto
+    const svg = pr.svg();
+    expect(svg).toMatch(/<polygon [^>]*fill="#ffffff" stroke="#1a1a1a"/);
+    // no DXF: só as arestas que se veem, pretas; nenhuma face (o branco de papel não vai)
+    const ps = pr.primitivas();
+    expect(ps.some((q) => q.k === 'hachura')).toBe(false);
+    const alv = ps.filter((q): q is Extract<Primitiva, { k: 'linha' }> => q.k === 'linha' && q.e.camada === 'alvenaria');
     expect(alv.length).toBeGreaterThan(50);
-    for (const q of alv) expect(['#ffffff', '#dcdcdc']).toContain(q.fundo);
-    expect(alv.some((q) => q.borda?.cor === '#1a1a1a')).toBe(true);
-    expect(pr.primitivas().some((q) => q.k === 'texto' && q.t === 'Inteiro')).toBe(false);
+    expect(alv.every((q) => q.e.cor === '#1a1a1a')).toBe(true);
+    expect(ps.some((q) => q.k === 'texto' && q.t === 'Inteiro')).toBe(false);
+  });
+
+  it('Cores: no DXF as faces vão na ordem do pintor (camada 3d-faces) e as arestas todas por cima', () => {
+    const ps = desenharVista3d(m, camera(ISO)).primitivas();
+    const faces = ps.map((q, i) => (q.k === 'hachura' && q.camada === '3d-faces' ? i : -1)).filter((i) => i >= 0);
+    const arestas = ps.map((q, i) => (q.k === 'linha' ? i : -1)).filter((i) => i >= 0);
+    expect(faces.length).toBeGreaterThan(50);
+    expect(Math.max(...faces)).toBeLessThan(Math.min(...arestas));
+    // a face não leva contorno: a aresta é que diz o que se vê
+    expect(ps.some((q) => q.k === 'hachura' && q.camada === '3d-faces' && q.borda)).toBe(false);
   });
 
   it('peças partidas em caixas (canaleta em U, dreno em L) não mostram a divisa', () => {
@@ -276,4 +288,52 @@ describe('3D para a prancha', () => {
     const v = vista3dParaPrancha(vazio, camera(ISO, { corteX: 0, armadura: true }), 100, 'z');
     expect(JSON.stringify(v)).not.toMatch(/NaN|Infinity/);
   });
+});
+
+describe('DXF do 3D: só o que se vê', () => {
+  // duas caixas de 1 m: A atrás, B na frente (mais perto de quem olha), deslocada para cobrir só parte de A
+  const caixa: Geometria = { chave: 'caixa', eixo: 'Z', perfil: { contorno: [[0, 0], [1000, 0], [1000, 1000], [0, 1000]] }, extensao: 1000, volume_mm3: 1e9 };
+  const peca = (id: string, origem: Vec3): Peca => ({ id, tipo: 'SAPATA', grupo: 'fundacao', geometria: 'caixa', origem, giro: 0, trecho: 1 });
+  const duas: Modelo = { ...modeloDeExemplo({ tipo: 'balanco' }), geometrias: { caixa }, pecas: [peca('A', [0, 1500, 0]), peca('B', [500, 0, 400])], barras: [] };
+
+  type P2 = [number, number];
+  /** Ponto dentro do polígono e a mais de `folga` da borda (na borda, a aresta é de verdade; o SVG arredonda a 0,1 px). */
+  const dentro = (p: P2, q: P2[], folga = 0.1): boolean => {
+    let d = false;
+    for (let i = 0, j = q.length - 1; i < q.length; j = i++) {
+      if (q[i][1] > p[1] !== q[j][1] > p[1] && p[0] < ((q[j][0] - q[i][0]) * (p[1] - q[i][1])) / (q[j][1] - q[i][1]) + q[i][0]) d = !d;
+    }
+    if (!d) return false;
+    return q.every((a, i) => {
+      const b = q[(i + 1) % q.length];
+      const [ex, ey] = [b[0] - a[0], b[1] - a[1]];
+      const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * ex + (p[1] - a[1]) * ey) / (ex * ex + ey * ey)));
+      return Math.hypot(p[0] - a[0] - t * ex, p[1] - a[1] - t * ey) > folga;
+    });
+  };
+  const faces = (svg: string, id: string): P2[][] =>
+    poligonos(svg, id).map((f) => Array.from({ length: f.pts.length / 2 }, (_, k): P2 => [f.pts[2 * k], f.pts[2 * k + 1]]));
+  /** Os segmentos que passam POR DENTRO de alguma face de B (amostrados a cada décimo). */
+  const escondidos = (segs: [P2, P2][], fb: P2[][]) =>
+    segs.filter(([a, b]) => Array.from({ length: 9 }, (_, k) => (k + 1) / 10).some((t) => fb.some((f) => dentro([a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])], f))));
+
+  for (const estilo of ['opaco', 'cores'] as const) {
+    it(`${estilo}: nenhuma aresta de A atravessa B; o que de A fica à vista continua lá`, () => {
+      const pr = desenharVista3d(duas, camera(ISO, { estilo }), { S: 0.2 });
+      const svg = pr.svg();
+      const fa = faces(svg, 'A');
+      const fb = faces(svg, 'B');
+      expect([fa.length, fb.length]).toEqual([3, 3]);
+      // o caso tem dente: no rastro do pintor (o SVG), as arestas de A passam por dentro das faces de B
+      const deA = fa.flatMap((f) => f.map((p, k): [P2, P2] => [p, f[(k + 1) % f.length]]));
+      expect(escondidos(deA, fb).length).toBeGreaterThan(0);
+      // no DXF, nenhuma
+      const linhas = pr.primitivas().filter((q): q is Extract<Primitiva, { k: 'linha' }> => q.k === 'linha');
+      expect(escondidos(linhas.map((q) => [q.a, q.b]), fb)).toEqual([]);
+      // e A não sumiu: as arestas de A fora de B continuam (as 9 de B mais pedaços das de A)
+      expect(linhas.length).toBeGreaterThan(9);
+      const foraDeB = linhas.filter((q) => fa.some((f) => f.some((p) => Math.hypot(p[0] - q.a[0], p[1] - q.a[1]) < 0.1)));
+      expect(foraDeB.length).toBeGreaterThan(0);
+    });
+  }
 });

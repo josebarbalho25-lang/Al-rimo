@@ -248,11 +248,16 @@ function carimbar(p: Papel, folha: Folha, ctx: ContextoDaFolha, x: number, y: nu
       }
       // o atributo existe mesmo vazio (o campo fica no bloco para o cadista preencher)
       if (cheia) p.texto([xc, yv], q.valor, altura, { camada: 'carimbo', negrito: q.negrito }, false);
-      atributos.push({ etiqueta: q.etiqueta, valor: q.valor, p: [xc, yv], altura, ancora: 'start', cor: TINTA, camada: 'carimbo' });
+      atributos.push({ etiqueta: q.etiqueta, valor: q.valor, p: [xc, yv], altura, ancora: 'start', cor: TINTA, negrito: q.negrito, camada: 'carimbo' });
       if (cheia) xc += larguraDoTexto(q.valor, altura, q.negrito);
     });
   }
-  p.prims.push({ k: 'bloco', nome: 'CARIMBO', prims, atributos });
+  // ponto base no canto inferior direito (o do carimbo do escritório, que o cadista põe no lugar deste); carimbo de
+  // outro tamanho é outro bloco — com o mesmo nome, ao juntar folhas num arquivo o CAD fica com UMA definição de
+  // CARIMBO, e a folha do carimbo 200 × 60 sairia com o de 180 × 50
+  const padrao = Math.abs(w - CARIMBO_PADRAO.largura) < 0.01 && Math.abs(h - CARIMBO_PADRAO.altura) < 0.01;
+  const nome = padrao ? 'CARIMBO' : `CARIMBO_${n(w)}x${n(h)}`;
+  p.prims.push({ k: 'bloco', nome, prims, atributos, base: [x + w, y + h] });
   // a logomarca: fora do bloco (imagem dentro de bloco é o que mais quebra entre CADs)
   const logo = ctx.escritorio.logo;
   if (logo) {
@@ -365,7 +370,8 @@ export function comporFolha(folha: Folha, ctx: ContextoDaFolha): FolhaComposta {
 
   // o papel e a moldura
   p.svg.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="#ffffff"/>`);
-  p.rect(0, 0, W, H, p.traco('moldura', FINO, '#a6a6a6'));
+  // a borda do papel tem camada própria: no DXF a espessura é a da camada, e ela é fina e a moldura, grossa
+  p.rect(0, 0, W, H, p.traco('folha', FINO, '#a6a6a6'));
   p.rect(x0, y0, x1 - x0, y1 - y0, p.traco('moldura', GROSSO));
 
   // a legenda das cores vai no quadro lateral; com o quadro fechado (A3/A4 de partida) ou sem a legenda, volta
