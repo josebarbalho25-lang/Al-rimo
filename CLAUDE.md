@@ -414,6 +414,23 @@ e dizer ao Jose o que mudou e por quê.
   fundacao.py num namespace só — linhas de 2000+ caracteres, leitura por endereço, colisão de nome). Um arquivo por
   aba, cada um com os nomes de que precisa. Prova: spec_planilha.json e golden idênticos antes/depois. SÓ DEPOIS da
   junção da sessão "sapata sobre molas" (branch sapata-molas), que mexe no gerador.
+- **PENDÊNCIAS ANOTADAS (Jose, 14/10, noite: "deixa anotado, depois a gente vem corrigindo"):**
+  Modo prancha — decisões dele, em aberto:
+  1. Chamadas das barras nos desenhos (N1 – 15 Ø10 c/40 C=210) e a LISTA DE FERROS como item da folha (o tipo
+     `tabela` já existe no contrato `pranchas/tipos.ts`; hoje a prancha é de formas + resumo do aço e o armador não
+     executa só com ela). Também do revisor: no corte do contraforte, uma cota de traspasse por posição (hoje uma só,
+     a maior das esperas do corte — `desenhos/corteLateral.ts`).
+  2. Muro que NÃO PASSA: a prancha sai igual. Aviso "NÃO VERIFICADO" só na tela, ou bloquear PDF/DXF?
+  3. Resumo do aço: coluna "massa + 10%" (perda)?
+  4. Carimbo: número do desenho e desenhista/verificação (ISO 7200, base da NBR 16752)?
+  5. Letra das cotas: maiúscula hoje 1,8 mm (corpo 2,5; PX_POR_MM = 4,4 em `pranchas/tipos.ts`); NBR 8402 (de memória)
+     pede maiúscula ≥ 2,5 mm → subir ~40 % toda anotação? Ele compara com o TQS.
+  Outras, anotadas pelo Jose:
+  6. Entrada por figuras: PADRONIZAR as imagens com as dos memoriais (a figura da entrada e a da memória têm de ser
+     a mesma linguagem).
+  7. Vistas de elevação frontal e corte lateral: ele ainda tem ajustes a fazer (vai mandar).
+  Margens 20/10 mm e carimbo 180 mm da NBR 16752 vieram de apostila/ISO 7200: conferir no texto da norma (ele tem
+  acesso pelo CREA).
 - **FILA DO JOSE (14/10, tarde — só anotado; ele confere o IFC da canaleta antes):**
   1. FEITO 14/10 (texto visível da planilha, do app, da memória, das figuras e do termo; comentários de código
      ficam). Listas renomeadas: fpk_ref 'Líquida'/'Bruta'; AsMin_crit 'Viga (b·d)'/'Parede (b·t)' (fórmulas
