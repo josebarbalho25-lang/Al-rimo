@@ -27,6 +27,7 @@ tools/build_new.py      gerador (openpyxl). Abas: Entradas, Solo e Empuxo, Muro 
                         Painel não armado, ELS, Contrafortes, Fundação, Referências, Ilustrações
 tools/contrafortes.py   aba Contrafortes (aula 12.3) — executado dentro do build_new (mesmo namespace)
 tools/fundacao.py       aba Fundação (sapata corrida) — idem
+tools/sapata_molas.py   aba Sapata sobre molas (NBR 6118 22.6 e 19.5: rígida × flexível, molas, torção, punção) — idem
 tools/cenarios.py       VAL123 = contrafortes em concreto 14x39 com a geometria da aula 12.3 (regressão); aplicar()/ler()
                         por nome definido; OPCOES + sortear() = sorteio da varredura e do golden (só valores das listas)
 tools/gerar.py          gera planilha/ (só a base, aula 12.2)
@@ -274,6 +275,12 @@ e dizer ao Jose o que mudou e por quê.
 - As,mín do curso = 0,15%·b·d (b = bw no contraforte; b = faixa no painel). NBR = 0,10%·b·t (opção).
 - fsd = fyd (todo Ø).
 - As,máx = 8% do graute contando traspasse (2×).
+- **Traspasse espera × barra (Jose, 13/10: "NBR 6118: 2,0 × ℓb no graute"):** aba Fundação, seção 10. fbd no graute =
+  2,25·0,21·fgk^(2/3)/1,4 (η2 = η3 = 1); ℓb = φ/4·fyd/fbd (fgk 20 → 43,7φ); α0t = 2,0 (todas as esperas emendam na
+  base); ℓ0t = α0t·ℓb·As,nec/As,ef ≥ máx(0,3·α0t·ℓb; 15φ; 20 cm), uma linha por espera (l0t_v, l0t_pv, l0t_cf, l0t_cc;
+  construtiva sem relação de áreas). Muro padrão: 21 → 68 cm (antes era o ℓb da ancoragem NA SAPATA, concreto com
+  gancho). Emendas que não são espera (canaleta a cada 12 m, longitudinal da sapata): o app usa o mesmo α0t com o ℓb
+  do material (lbphi_gr / lbphi_c) e relação 1. O traspasse digitado no app manda (emendas defasadas).
 - Cisalhamento: fvk = 0,35 + 17,5ρ ≤ 0,7; Va = fvd·b·d; Vrd2 = Va + 0,4·b·d·√fpk/γm (MPa); Asw/s = (Vsd − Va)/(0,75·fywd·d);
   Asw,mín = ρ·b, ρ 0,07% (fgk 15) a 0,14% (fgk 40).
 - ELS: seção I (mesas = paredes do bloco), Branson, heq = (12·Ieq/b)^(1/3); δ∞ = δ0·(1 + Δξ), Δξ = 1; balanço 2L/250; placa menor vão/250.
@@ -350,20 +357,16 @@ e dizer ao Jose o que mudou e por quê.
   IFC/quantitativo com o muro real; Ag da conta pelo bloco desenhado (decidir).
   Relatórios dos agentes: `_trabalho/` (fora do git).
 
-- **ONDE PARAMOS (13/10, noite — Jose pausou; commit LOCAL na branch `desenho-peso`, nada no GitHub):**
-  Revisão "auto sempre a favor da segurança", Grupo 1 um por um. Item 1, TRASPASSE, decidido: "NBR 6118: 2,0 × ℓb
-  no graute" (muro padrão: 21 → 68 cm). EM ANDAMENTO: planilha feita (aba Fundação, seção 10: fbd_gr, lbphi_gr, a0t,
-  r_pv, r_cf, l0t_v/_pv/_cf/_cc, lbphi_c) e app ligado (`traspasse(ctx, φ, emenda)` em modulacao/armaduras.ts; esperas
-  pelas células; canaleta no graute e longitudinal da sapata no concreto, com As,calc/As,ef = 1); exportar_motor
-  rodado e tsc limpo. FALTA: golden + golden_alvos + testar + vitest (Excel estava com a outra sessão); memória
-  (passos do traspasse no card de ancoragem do balanço e no de esperas dos contrafortes; o traspasse_dir no app mostrar
-  o valor usado no lugar do "auto"; nota do campo em modelo/entradasDoModelo.ts ainda diz "ℓb adotado"). A perna em L
-  da barra da canaleta do contraforte ainda usa o ℓb da sapata (vai mudar com a barra em U, anotação 1 abaixo).
-  Depois: Grupo 1 itens 2–5 (σadm 20·N com teto, mínimo do estribo de torção, Kp/γ do dente pelo solo de apoio,
-  φ_base auto); Grupo 2 ("Novo" em branco + aula 12.2 como exemplo); Grupos 3/4 um por um com o Jose.
-  A cópia principal (porta 5180) tem, SEM commit, um subconjunto do que está nesta branch (Fig. 23, estribo, graute
-  em grade, peso, Figs. 25–27) — a junção no main fica para amanhã com o Jose, junto com a `sapata-molas` da outra
-  sessão. Os "* (1).json" soltos em dados/golden do main são cópias duplicadas: não entram.
+- **Revisão "o auto é sempre a favor da segurança" (Jose, 13/10)** — Grupo 1 um por um com ele: item 1 (traspasse)
+  FEITO 14/10 (ver Convenções). Faltam: σadm 20·N com teto (N < 5 exige digitar), mínimo do estribo de torção
+  (s_tor_f ignora A90_m), Kp/γ do dente pelo solo de apoio (φ_b), φ_base auto. Grupo 2: "Novo" com os dados do
+  projeto em branco + autos seguros, aula 12.2 como arquivo de exemplo. Grupos 3/4 um por um com ele (q_est, sg_on,
+  M2d, fpk líquida, Δξ, vão 2h, painel apoiado × negativo nos intermediários, água × drenagem, Trav_lat/αv, bw,
+  c_pv, AsMin, Ka_dir/d_dir…). A perna em L da barra da canaleta do contraforte ainda usa o ℓb da sapata (muda com a
+  barra em U, anotação 1 abaixo).
+- **Junção de 14/10:** desenho-peso (dente, desenhos da sapata, graute em grade, peso, traspasse) e sapata-molas (aba
+  Sapata sobre molas) juntas no main; o que estava solto no main foi para o stash "main sem commit antes da junção
+  14/10" (era subconjunto da desenho-peso, conferido linha a linha; pode ser descartado).
 - **Faxina decidida (13/10): dividir o gerador da planilha por aba** (hoje build_new.py + contrafortes.py +
   fundacao.py num namespace só — linhas de 2000+ caracteres, leitura por endereço, colisão de nome). Um arquivo por
   aba, cada um com os nomes de que precisa. Prova: spec_planilha.json e golden idênticos antes/depois. SÓ DEPOIS da
@@ -381,6 +384,6 @@ e dizer ao Jose o que mudou e por quê.
 - Confirmar os FS da NBR 11682 (tombamento 2,0, deslizamento 1,5 — "pelo que sei").
 - Fig. 24 (tombamento e deslizamento no traço do Bastos, Fig. 1.116) FEITA 10/10: planilha e app; abre em dphi, ades_b, pass_on, FS_tomb, FS_desl.
 - Fundação: o mínimo de estribo de torção com bw = B fica alto em sapata larga (avaliar); peso do contraforte grauteado é estimativa.
-- **Fundação rígida × flexível (Jose, 10/10, para o dia seguinte):** a conta ASSUME sapata rígida e não verifica. Pela NBR 6118 22.6.1 (h ≥ 2/3 do balanço) o exemplo (talão 0,855, h 0,30) é flexível. DECIDIDO (Jose, 10/10): na planilha, auditável, molas NAS DUAS DIREÇÕES (nossa carga é excêntrica e com momento grande, diferente do exemplo centrado do Bastos) — transversal: viga de comprimento B sobre Winkler com N e M na posição do muro (Hetényi viga finita OU ~20 molas com MATRIZ.MULT/MATRIZ.INVERSO — mostrar as duas e ele escolhe; o motor do app ainda NÃO tem MMULT/MINVERSE), comparada com a pressão linear de hoje, + classificação da 6118 22.6.1; longitudinal entre contrafortes por viga sobre base elástica em forma fechada (Hetényi, λ = (k·B/4EI)^¼; λL ≤ π/4 → rígida, vale o ±Md/2); punção junto ao contraforte pela 6118 19.5; k do solo sugerido por tabela, com aviso. A casca 2D do A-PORT (PC do Jose) só VALIDA alguns casos. Fonte: Bastos, Sapatas de Fundação (`_trabalho/fontes/`, notas em /mnt/project-files/al-rimo/bastos_sapata_flexivel.md).
+- **Sapata rígida × flexível — FEITO 13/10 (aba Sapata sobre molas, `tools/sapata_molas.py`):** a aba Fundação segue sendo a conta de projeto (pressão linear); a aba nova só VERIFICA, sem mudar número da Fundação. Classificação 22.6.1 (h ≥ 2/3 do maior balanço — muro fora do centro, dedução). Faixa de 1 m sobre molas: 13 nós (5 no talão, 2 no muro, 5 na ponta — com 23 nós e 5 passadas a aba tinha 5.500 células e o app ficava 5× mais lento; 13 nós ficam a < 1% da solução fechada), cargas = a tabela da Fundação espalhada pelo rótulo (dicionário LARG; rótulo novo sem largura = o build para), momentos Mk + Vk·h no eixo e o empuxo da altura da sapata na face aterrada; resolvida SEM matriz inversa (linha elástica nó a nó em 3 soluções + fim livre = sistema 2×2); 3 passadas partindo do contato do diagrama linear, soltando mola tracionada (passada sem mudança repete a anterior — o SE só calcula o ramo que vale); a faixa do contraforte faz 2 partindo do contato final da média e é "—" no balanço. Solução fechada (Krylov/Hetényi, base contínua) ao lado, só vale com a base toda apoiada. Conferido: molas = numpy com matriz de rigidez a 1e-14 m; fechada = numpy de 400 trechos a 1e-9 m; molas × fechada < 1%. O teste de velocidade do motor (golden.test.ts) virou limite POR CÉLULA (19 µs, o mesmo 30 ms/1.569 células de antes). Entre contrafortes: TORÇÃO sobre base elástica (não flexão: o momento do contraforte tem vetor ao longo do muro), kθ = k·B³/12, GJ com 15% (6118 14.6.7.2), β = √(kθ/GJ); a torção junto ao contraforte dá M/2 para QUALQUER rigidez (a seção 8 da Fundação está certa); o que muda é o pico por metro, fator (βL/2)/th(βL/2), que entra como ΔM numa 2ª faixa sobre molas. Envolvente linear × molas × fechada → MRd da armadura da Fundação e VRd1. Cortante a d da face pelas molas: Σ (R − P) × fração da influência do nó além da seção (colunas da seção 4; nó inteiro ou nada variava ~20% com a malha; assim bate com malha fina de 400 trechos a ~2%). Punção (19.5.2.2/19.5.2.3, 19.5.3.2) junto ao contraforte: pilar tenr × t com Md_cf; contorno a 2d interno, de borda (Wp1 deduzido por ∫|e|dℓ) ou cortado nos dois lados (vale a torção). Compressão diagonal no contorno C do muro (Bastos Ex. 6/7, + momento) e do contraforte. k: entrada nova `ks_dir` (opcional), sugestão 120·σadm (Bowles); tabela de consulta Bowles 9-1 + Terzaghi corrigido pela largura. k pequeno = sapata rígida = conta linear; k grande = molas; vale o pior. A fórmula de punção de sapata com 2d/a* do Bastos (1.21) NÃO está na NBR 6118:2023 (é do Eurocode) — não usada. Motor do app: COS, SIN, COSH, SINH, TANH. Falta: cards da memória no app para a aba nova.
 - Cisalhamento do painel não armado: hipótese Vsd = fd·l/2 nunca confirmada no vídeo.
 - Depois da planilha: app (3D, quantitativo, desenhos, memória auditável). Reaproveitar os SVG de `figs/`.

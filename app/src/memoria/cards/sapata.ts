@@ -102,7 +102,6 @@ export const SIMBOLOS_SAPATA: Readonly<Record<string, string>> = {
   'h_{dob,cc}': 'altura de sapata que a dobra da espera das construtivas pede',
   // ── traspasse espera × barra, no graute (aba Fundação, seção 10 — Jose, 13/10) ──
   'f_{bd}': 'resistência de aderência de cálculo da barra no graute',
-  'f_{yd}': 'resistência de cálculo ao escoamento do aço',
   '\\ell_{b,gr}/\\phi': 'comprimento de ancoragem reto no graute, em diâmetros',
   '\\ell_{b,c}/\\phi': 'comprimento de ancoragem reto no concreto da sapata, em diâmetros',
   '\\alpha_{0t}': 'coeficiente da proporção de barras emendadas na mesma seção',
@@ -565,7 +564,7 @@ export interface BarraEmendada {
 /** O ℓb no graute (fbd e ℓb/φ) e o α0t: os passos comuns a todas as esperas. */
 function passosDoLbNoGraute(m: Memoria): Passo[] {
   const fgk = m.g('fgk_', 'f_{gk}', 1, 'MPa');
-  const fyd = m.g('fyd_', 'f_{yd}', 1, 'MPa');
+  const fyd = m.g('fyd_', 'f_{sd}', 1, 'MPa');
   const fbd = m.g('fbd_gr', 'f_{bd}', 3, 'MPa');
   const out: Passo[] = [];
   if (temNumero(m, 'fbd_gr')) {
@@ -597,7 +596,7 @@ export function secaoDoTraspasse(m: Memoria, barras: BarraEmendada[], relacoes: 
   const emendas = barras.map((b) => passoDoTraspasse(m, b));
   const titulo = 'Traspasse espera × barra, no graute';
   if (!emendas.some(Boolean)) return secao(titulo, []);
-  const fyd = m.g('fyd_', 'f_{yd}', 1, 'MPa');
+  const fyd = m.g('fyd_', 'f_{sd}', 1, 'MPa');
   const fctd = m.g('fctd_s', 'f_{ctd}', 3, 'MPa');
   return secao(titulo, [
     ...passosDoLbNoGraute(m),

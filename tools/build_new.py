@@ -1,6 +1,7 @@
 """Gerador da planilha "Arrimo Alvenaria — base Carini" (aulas 12.1–12.3 do Prof. Carini + manual ABCP/NBR 16868-1).
 Uso: python tools/build_new.py saida.xlsx   (ver CLAUDE.md)
-Módulos executados no mesmo namespace: tools/contrafortes.py (aula 12.3) e tools/fundacao.py (sapata corrida).
+Módulos executados no mesmo namespace: tools/contrafortes.py (aula 12.3), tools/fundacao.py (sapata corrida) e
+tools/sapata_molas.py (sapata sobre molas, NBR 6118 22.6 e 19.5).
 """
 import sys
 from openpyxl import Workbook
@@ -350,6 +351,7 @@ dv_po = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validatio
 line(E, r, 'Aviso do passivo', '=IF(pass_on="Sim","Garantir que o solo da frente da sapata jamais seja escavado/removido (NBR 6122 7.6.3)","")', '', 'Aparece no app ao lado do campo e no memorial.', 'key', None, 'aviso_passivo'); r += 1
 line(E, r, 'SPT abaixo da sapata', 10, 'golpes', 'Só para a sugestão de σadm (2·SPT tf/m² = N/5 kgf/cm², regra da aba do Gilberto).', 'inp', '0', 'SPT_b'); r += 1
 line(E, r, 'σadm do solo — opcional', None, 'kPa', 'Em branco = 20·SPT kPa. Preferir valor de ensaio/projeto geotécnico.', 'inp', '0', 'sig_adm_dir'); r += 1
+line(E, r, 'Coeficiente de reação vertical do solo (k) — opcional', None, 'kN/m³', 'Em branco = sugestão da aba Sapata sobre molas (120·σadm). Preferir prova de carga em placa.', 'inp', '0', 'ks_dir'); r += 1
 line(E, r, 'FS mínimo ao tombamento', 2.0, '', 'Pelo que sei, NBR 11682 — conferir. Junto vale e ≤ B/4 (critério do Gilberto); fica o pior.', 'inp', '0.00', 'FS_tomb'); r += 1
 line(E, r, 'FS mínimo ao deslizamento', 1.5, '', 'Aba do Gilberto: resistências ÷ 1,5.', 'inp', '0.00', 'FS_desl'); r += 1
 line(E, r, 'Cobrimento da sapata', 4, 'cm', '', 'inp', '0.0', 'cob_sap'); r += 1
@@ -1022,6 +1024,7 @@ import os as _os_cf
 from openpyxl.utils import get_column_letter as _gl
 exec(open(_os_cf.path.join(_os_cf.path.dirname(_os_cf.path.abspath(__file__)), 'contrafortes.py'), encoding='utf8').read())
 exec(open(_os_cf.path.join(_os_cf.path.dirname(_os_cf.path.abspath(__file__)), 'fundacao.py'), encoding='utf8').read())
+exec(open(_os_cf.path.join(_os_cf.path.dirname(_os_cf.path.abspath(__file__)), 'sapata_molas.py'), encoding='utf8').read())
 
 # ---- Referências: duas alturas e argila (09/10) — abaixo das tabelas de Libânio (linha 150 é a nota delas) ----
 REF3 = [
@@ -1143,5 +1146,11 @@ for _nm in list(wb.defined_names.keys()):
     # R/C seguido de algarismo no INÍCIO já basta para o Excel recusar (c1_s, r2_a, c12abc — medido por COM em 08/10):
     # ele lê como pedaço de referência R1C1 e não abre o arquivo pela automação (na mão, "repara" apagando o nome).
     assert not _re.match(r'[RrCc]\d', _nm), f'nome inválido no Excel: {_nm}'
+# Nome definido no Excel não diferencia maiúscula: k_dir e K_dir são o MESMO nome (achado em 13/10, o k do solo
+# colidia com o K da flexão). O openpyxl grava os dois e o Excel fica com um só — a conta passa a ler o errado.
+_vistos = {}
+for _nm in wb.defined_names.keys():
+    assert _nm.lower() not in _vistos, f'nome repetido no Excel (maiúscula não conta): {_vistos[_nm.lower()]} e {_nm}'
+    _vistos[_nm.lower()] = _nm
 wb.save(OUT)
 print('saved', OUT, wb.sheetnames)
