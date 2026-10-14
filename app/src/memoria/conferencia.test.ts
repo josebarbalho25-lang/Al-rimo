@@ -202,8 +202,10 @@ describe('régua única entre cenários', () => {
     const r122 = resultadoDoGabarito('aula122');
     const falhas122 = verificacoesDe(cardsDaMemoria(r122)).filter((x) => !x.v.passa).map((x) => x.v.chave);
     // Desde 10/10 (Jose): passivo desligado por padrão (NBR 6122 7.6.3) → a sapata do exemplo não passa ao deslizamento.
-    expect(falhas122).toEqual(['balanco.flexao.As', 'fundacao.deslizamento']);
-    expect(vereditoDaMemoria(r122)).toEqual({ passa: false, falhas: 2 });
+    // Desde 14/10 (Jose): a 1ª conta da sapata é a NBR 6118 22.6.1 — a de 0,30 m do exemplo (B 1,40, t 19) é
+    // flexível, pede h ≥ (1,40 − 0,19)/3 = 0,40 ("a gente sobe 5 cm na altura").
+    expect(falhas122).toEqual(['balanco.flexao.As', 'fundacao.rigidez', 'fundacao.deslizamento']);
+    expect(vereditoDaMemoria(r122)).toEqual({ passa: false, falhas: 3 });
     expect(vereditoDaMemoria(resultadoDoGabarito('aula123'))).not.toBeNull();
     for (const c of CENARIOS) {
       const r = resultadoDoGabarito(c);

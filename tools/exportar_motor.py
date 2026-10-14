@@ -11,7 +11,7 @@ import openpyxl
 
 AQUI = os.path.dirname(os.path.abspath(__file__)); RAIZ = os.path.dirname(AQUI)
 OUT = os.path.join(RAIZ, 'app', 'src', 'motor', 'planilha.gerada.json')
-GERADOR = ['build_new.py', 'contrafortes.py', 'fundacao.py', 'sapata_molas.py']
+GERADOR = ['build_new.py', 'contrafortes.py', 'fundacao.py']
 
 tmp = tempfile.mkdtemp(prefix='exp_')
 arq = os.path.join(tmp, 'base.xlsx')

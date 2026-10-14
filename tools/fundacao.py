@@ -12,7 +12,12 @@ def Lf(label, f, unit='', note='', kind='res', fmt=None, nm=None, src=None):
     line(Fd, r, label, f, unit, note, kind, fmt, nm, src); r += 1
 
 Lf('Tipo de muro', '=IF(Tipo_muro="Contrafortes","Contrafortes — módulo entre contrafortes","Balanço — faixa de 1 m")', '', '', 'key')
-r += 1
+# A PRIMEIRA CONTA da sapata (Jose, 14/10): rígida ou flexível. Toda a aba supõe sapata RÍGIDA (pressão linear,
+# tombamento, deslizamento, fatias); flexível não é calculada aqui — acusa NÃO OK e manda reavaliar (Jose: "a planilha
+# não vai fazer sapata flexível, vai verificar"; elementos finitos ficam para o software). A conta está nas
+# Verificações (h_rig, chk_rig); esta linha repete o veredito no topo. Ocupa a linha que era em branco.
+Lf('Sapata rígida: h ≥ (B − t)/3 (NBR 6118 22.6.1) — a primeira conta', '=chk_rig', '',
+   'Sapata corrida: a = B, ap = espessura do muro (Bastos, Sapatas de Fundação, 1.7).', 'key', None, 'cls_fund', 'NBR 6118 22.6.1')
 section(Fd, r, '1. Geometria'); r += 1
 # Módulo e contraforte pelos valores ADOTADOS (na grade do bloco, Entradas): a sapata carrega o muro que a
 # memória calcula e o 3D desenha.
@@ -131,6 +136,24 @@ Lf('ρ1 = As/(b·d) ≤ 2%', '=MIN(0.02,As_ps/(100*d_s))', '', '', 'res', '0.000
 Lf('VRd1 = 0,25·fctd·k·(1,2 + 40ρ1)·b·d', '=0.25*fctd_s*1000*k_s*(1.2+40*rho_s)*d_s/100', 'kN/m', 'NBR 6118 19.4.1 (laje sem estribo).', 'key', '0.00', 'VRd1_s')
 Lf('VSd ponta (a d da face)', '=1.4*MAX(0,SUM(T_dV))', 'kN/m', '', 'res', '0.00', 'Vsd_t')
 Lf('VSd talão (a d da face)', '=1.4*MAX(0,SUM(H_dV))', 'kN/m', '', 'res', '0.00', 'Vsd_h')
+# Biela comprimida no contorno C (Jose, 14/10). "O fenômeno da punção não ocorre nas sapatas corridas rígidas, porém,
+# conforme a NBR 6118 (19.5.3.1), a tensão de compressão na diagonal comprimida deve ser verificada na superfície
+# crítica C" (Bastos, Sapatas de Fundação, 1.7.1). Vinda da aba Sapata sobre molas (13/10), que saiu. Faixa de 1 m do
+# muro como pilar C1 = t × C2 = 100 cm com o momento da base (K = 0,45, C1/C2 < 0,5): DEDUÇÃO; o contorno conta só as
+# duas faces compridas (u0 = 2·100 cm) — o muro continua dos dois lados, as pontas da faixa não são borda (a favor).
+_iv = {lab: v0 + j for j, (lab, _, _) in enumerate(VERT)}   # linha de cada parcela na tabela de cargas
+def _ktab(rz): return f'IF({rz}<=0.5,0.45,IF({rz}<=1,0.45+({rz}-0.5)*0.3,IF({rz}<=2,0.6+({rz}-1)*0.1,IF({rz}<=3,0.7+({rz}-2)*0.1,0.8))))'
+Lf('τRd2 = 0,27·αv·fcd (αv = 1 − fck/250)', '=0.27*(1-fck_s/250)*fcd_s', 'MPa', 'Compressão diagonal no contorno C.', 'res', '0.000', 'tauRd2_s', 'NBR 6118 19.5.3.1')
+Lf('Muro: FSd = 1,4·(peso do muro + carga no topo)/L', f"=1.4*(B{_iv['Muro (peso próprio)']}+B{_iv['Carga permanente no topo']})/Lm", 'kN/m', 'Sem descontar a reação do solo (a favor), como Bastos, Ex. 6.', 'res', '0.00', 'Fw_s')
+Lf('Muro: MSd = 1,4·Mk na base do muro', '=1.4*Mk_', 'kN·m/m', '', 'res', '0.00', 'Mw_s')
+Lf('Muro: τSd = FSd/(u0·d) + K·MSd/(Wp0·d); u0 = 200 cm, Wp0 = t²/2 + 100·t, K = 0,45', '=(Fw_s/(200*d_s)+0.45*Mw_s*100/((t_bloco^2/2+100*t_bloco)*d_s))*10', 'MPa',
+   'Faixa de 1 m como pilar t × 100 cm (dedução).', 'key', '0.000', 'tw_s', 'NBR 6118 19.5.2.2 e 19.5.3.1')
+Lf('Contraforte: K da Tabela 19.2 por C1/C2 = tenr/t (interpolado)', '=IF(Tipo_muro="Contrafortes",' + _ktab('tenr_adot/t_bloco') + ',0)', '', 'Interpolar a tabela é dedução.', 'res', '0.000', 'K_cc', 'NBR 6118 Tab. 19.2')
+Lf('Contraforte: FSd = 1,4·peso do contraforte', f"=IF(Tipo_muro=\"Contrafortes\",1.4*B{_iv['Contraforte']},0)", 'kN', 'Sem descontar a reação do solo dentro do contorno (a favor).', 'res', '0.00', 'Fc_s')
+Lf('Contraforte: MSd = Md do contraforte', '=IF(Tipo_muro="Contrafortes",Md_cf,0)', 'kN·m', 'Aba Contrafortes.', 'res', '0.00', 'Mc_s')
+Lf('Contraforte: τSd = FSd/(u0·d) + K·MSd/(Wp0·d); u0 = 2(C1 + C2), Wp0 = C1²/2 + C1·C2',
+   '=IF(Tipo_muro="Contrafortes",(Fc_s/(2*(tenr_adot+t_bloco)*d_s)+K_cc*Mc_s*100/((tenr_adot^2/2+tenr_adot*t_bloco)*d_s))*10,0)', 'MPa',
+   'Pilar C1 = comprimento do contraforte (direção do momento) × C2 = t.', 'key', '0.000', 'tc_s', 'NBR 6118 19.5.3.1')
 r += 1
 section(Fd, r, '8. Torção longitudinal (só com contrafortes — modelo simplificado)'); r += 1
 Lf('Modelo', '="Sapata rígida: o Md do contraforte chega concentrado e o solo reage uniforme no módulo → torção de ±Md/2 junto a cada contraforte (dedução nossa, limite superior: Md do contraforte com 100% da área)."', '', '', 'txt')
@@ -154,7 +177,9 @@ Lf('Mínimo de estribo: ρsw = 0,2·fctm/fywk (bw = 2·he)', '=IF(T_sd>0,0.2*0.3
 Lf('Ø do estribo de torção: espaçamento', '=IF(T_sd>0,MIN(20,ROUNDDOWN(PI()*phi_tor^2/400/MAX(A90_s,A90_m,0.0001)*100,0)),"—")', 'cm', 'Pelo maior entre o cálculo e o mínimo; até 20 cm.', 'res', '0', 's_tor_f')
 r += 1
 section(Fd, r, '9. Verificações'); r += 1
+Lf('h mínimo para sapata rígida = (B − t)/3', '=(B_sap-t_bloco/100)/3', 'm', 'NBR 6118 22.6.1: h ≥ (a − ap)/3; sapata corrida: a = B, ap = t (Bastos, 1.7).', 'res', '0.000', 'h_rig', 'NBR 6118 22.6.1')
 CHKF = [
+    ('Sapata rígida: h ≥ (B − t)/3', '=IF(h_sap>=h_rig-0.0005,"OK — rígida (h = "&FIXED(h_sap,2)&" ≥ "&FIXED(h_rig,2)&" m)","NÃO OK — sapata flexível (h = "&FIXED(h_sap,2)&" < "&FIXED(h_rig,2)&" m): reavaliar as condições de contorno (altura, largura, posição do muro)")'),
     ('Muro apoiado na sapata', '=IF(AND(a_ater>=t_m/2-0.001,a_ater<=B_sap-t_m/2+0.001),"OK","NÃO OK — o muro sai da sapata: distância da borda aterrada ao eixo deve ficar entre t/2 e B − t/2")'),
     ('Contraforte apoiado na sapata', '=cf_cabe'),
     ('Tombamento: FS ≥ mínimo', '=IF(FS_t>=FS_tomb,"OK (FS = "&FIXED(FS_t,2)&")","NÃO OK (FS = "&FIXED(FS_t,2)&" < "&FIXED(FS_tomb,1)&")")'),
@@ -170,11 +195,15 @@ CHKF = [
     ('Torção: TSd ≤ TRd2', '=IF(T_sd=0,"— (sem contrafortes)",IF(T_sd<=TRd2_s,"OK ("&FIXED(T_sd,1)&" ≤ "&FIXED(TRd2_s,1)&" kN·m)","NÃO OK — aumentar a seção"))'),
     # no fim da lista: as linhas de cima têm endereço lido pelo app (espaçamento do estribo de torção)
     ('Dente dentro da sapata', '=IF(OR(b_den<=0,h_den<=0),"— (sem dente)",IF(ABS(x_den)<=(B_sap-b_den)/2+0.0005,"OK","NÃO OK — o dente sai da sapata: |x| ≤ (B − b)/2"))'),
+    ('Compressão diagonal na face do muro', '=IF(tw_s<=tauRd2_s,"OK ("&FIXED(tw_s,3)&" ≤ "&FIXED(tauRd2_s,3)&" MPa)","NÃO OK ("&FIXED(tw_s,3)&" > "&FIXED(tauRd2_s,3)&" MPa) — aumentar a altura")'),
+    ('Compressão diagonal junto ao contraforte', '=IF(Tipo_muro<>"Contrafortes","— (muro em balanço)",IF(tc_s<=tauRd2_s,"OK ("&FIXED(tc_s,3)&" ≤ "&FIXED(tauRd2_s,3)&" MPa)","NÃO OK ("&FIXED(tc_s,3)&" > "&FIXED(tauRd2_s,3)&" MPa) — aumentar a altura"))'),
     ('Torção: espessura equivalente he', '=IF(T_sd=0,"— (sem contrafortes)",IF(he_s>=2*c_eixo_s,"OK (A/u ≥ 2·c1)",IF(he_s<=MIN(B_sap,h_sap)-2*c_eixo_s,"OK (A/u < 2·c1: Ae pelos eixos das barras de canto)","NÃO OK — A/u > bw − 2·c1: aumentar a altura da sapata")))'),
 ]
 # Nome nas linhas que o app lê (antes por endereço: B101, B102, B104, B105 — uma linha nova acima as mudava de lugar).
 NOME_CHK = {'Tombamento: FS ≥ mínimo': 'chk_fs_t', 'Tombamento: |e| ≤ B/4 (Gilberto)': 'chk_e_t',
-            'Deslizamento: FS ≥ mínimo': 'chk_fs_d', 'Tensão: σ máx ≤ σadm': 'chk_sig'}
+            'Deslizamento: FS ≥ mínimo': 'chk_fs_d', 'Tensão: σ máx ≤ σadm': 'chk_sig',
+            'Sapata rígida: h ≥ (B − t)/3': 'chk_rig', 'Compressão diagonal na face do muro': 'chk_bw',
+            'Compressão diagonal junto ao contraforte': 'chk_bc'}
 for lab, f in CHKF:
     Lf(lab, f, '', '', 'key', None, NOME_CHK.get(lab))
 r += 1

@@ -43,6 +43,8 @@ const DOIS = cte(2, 0);
 const NBR_PASSIVO: Ref = { fonte: 'NBR 6122', item: '7.6.3' };
 
 export const SIMBOLOS_ESTABILIDADE: Readonly<Record<string, string>> = {
+  // ── rígida ou flexível (NBR 6118 22.6.1) ──
+  'h_{r\\acute{\\imath}g}': 'altura mínima para a sapata ser rígida, (B − t)/3',
   // ── geometria (B, h_s, a, b_t, b_p: SIMBOLOS_SAPATA) ──
   'b_{den}': 'largura média do dente',
   'h_{den}': 'altura do dente',
@@ -550,4 +552,34 @@ function cardTensoes(r: Resultado): Card {
 }
 
 /** Estabilidade da sapata corrida (os dois tipos de muro): cargas, tombamento, deslizamento e tensões no solo. */
-export const autorEstabilidade: AutorDeCards = (r) => [cardCargas(r), cardTombamento(r), cardDeslizamento(r), cardTensoes(r)];
+// ───────────────────────────── 0 · rígida ou flexível ─────────────────────────────
+
+/*
+  A PRIMEIRA CONTA da sapata (Jose, 14/10: "antes de calcular a sapata essa vai ser a primeira conta"). NBR 6118
+  22.6.1, h ≥ (a − ap)/3; na sapata corrida a = B e ap = espessura do muro (Bastos, Sapatas de Fundação, 1.7). Toda a
+  conta seguinte supõe sapata rígida (pressão linear): flexível não é calculada — reprova e manda reavaliar as
+  condições de contorno (Jose: "a planilha não vai fazer sapata flexível, vai verificar").
+*/
+function cardRigidez(r: Resultado): Card {
+  const m = memoriaDe(r);
+  const f = folhas(m);
+  const temConta = temNumero(m, 'h_rig');
+  const hRig = m.g('h_rig', 'h_{r\\acute{\\imath}g}', 3, 'm');
+  const sec = secao('Sapata corrida: a = B e ap = t', [
+    temConta && m.passo('h_rig', 'h_{r\\acute{\\imath}g}', div(sub(f.B, f.t), cte(3, 0)), { casas: 3, unidade: 'm' }),
+    temConta && m.passo('h_sap', 'h_s', null, {
+      casas: 2, unidade: 'm', origem: 'entrada',
+      verif: { chave: 'fundacao.rigidez', rotulo: 'Sapata rígida: h ≥ (B − t)/3', limite: hRig, relacao: '>=', celula: 'chk_rig' },
+    }),
+  ], { fonte: 'NBR 6118', item: '22.6.1' });
+  return {
+    id: 'fundacao.rigidez',
+    titulo: 'Fundação · sapata rígida',
+    ref: { fonte: 'NBR 6118', item: '22.6.1' },
+    avisos: [],
+    secoes: sec.passos.length ? [sec] : [],
+    aplicavel: temConta,
+  };
+}
+
+export const autorEstabilidade: AutorDeCards = (r) => [cardRigidez(r), cardCargas(r), cardTombamento(r), cardDeslizamento(r), cardTensoes(r)];

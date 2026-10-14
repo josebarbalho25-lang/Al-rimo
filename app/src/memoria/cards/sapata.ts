@@ -100,6 +100,14 @@ export const SIMBOLOS_SAPATA: Readonly<Record<string, string>> = {
   'h_{dob,v}': 'altura de sapata que a dobra da espera do painel pede',
   'h_{dob,cf}': 'altura de sapata que a dobra da espera do contraforte pede',
   'h_{dob,cc}': 'altura de sapata que a dobra da espera das construtivas pede',
+  // ── biela comprimida no contorno C (sapata rígida não pune — Bastos 1.7.1; NBR 6118 19.5.3.1) ──
+  '\\tau_{Rd2}': 'tensão resistente da diagonal comprimida no contorno C',
+  'F_{Sd,m}': 'força vertical de cálculo do muro na faixa de 1 m',
+  'M_{Sd,m}': 'momento de cálculo na base do muro, por metro',
+  '\\tau_{Sd,m}': 'tensão na diagonal comprimida na face do muro',
+  'K_{19}': 'coeficiente da Tabela 19.2 da NBR 6118 (momento no contorno)',
+  'F_{Sd,cf}': 'força vertical de cálculo do contraforte',
+  '\\tau_{Sd,cf}': 'tensão na diagonal comprimida junto ao contraforte',
   // ── traspasse espera × barra, no graute (aba Fundação, seção 10 — Jose, 13/10) ──
   'f_{bd}': 'resistência de aderência de cálculo da barra no graute',
   '\\ell_{b,gr}/\\phi': 'comprimento de ancoragem reto no graute, em diâmetros',
@@ -439,6 +447,68 @@ function cardCortante(r: Parameters<AutorDeCards>[0]): Card {
   };
 }
 
+// ───────────────────────────── biela comprimida no contorno C ─────────────────────────────
+
+/*
+  Sapata rígida não pune, mas a diagonal comprimida no contorno C (face do muro; junto ao contraforte) se verifica:
+  "O fenômeno da punção não ocorre nas sapatas corridas rígidas, porém, conforme a NBR 6118 (19.5.3.1), a tensão de
+  compressão na diagonal comprimida deve ser verificada na superfície crítica C" (Bastos, Sapatas de Fundação, 1.7.1).
+  Muro: faixa de 1 m como pilar t × 100 cm, com o momento da base (K = 0,45) e u0 só com as duas faces compridas
+  (o muro continua dos dois lados) — DEDUÇÃO. Contraforte: pilar tenr × t com o Md do contraforte, K da Tab. 19.2.
+  A carga desce sem descontar a reação do solo dentro do contorno (a favor, como o Ex. 6 do Bastos).
+*/
+function cardBiela(r: Parameters<AutorDeCards>[0]): Card {
+  const m = memoriaDe(r);
+  const f = folhas(m);
+  const contrafortes = m.texto('Tipo_muro') === 'Contrafortes';
+  const tRd2 = m.g('tauRd2_s', '\\tau_{Rd2}', 3, 'MPa');
+  const Fw = m.g('Fw_s', 'F_{Sd,m}', 2, 'kN/m');
+  const Mw = m.g('Mw_s', 'M_{Sd,m}', 2, 'kN·m/m');
+  const tCm = m.ent('t_bloco', 't', { casas: 0, unidade: 'cm' });
+  const L = m.g('Lm', 'L_{mod}', 2, 'm');
+  const nMuro = nome(celulaDoRotulo('Muro (peso próprio)'), 'N_{muro}', 3, 'kN');
+  const nTopo = nome(celulaDoRotulo('Carga permanente no topo'), 'N_{topo}', 3, 'kN');
+  const resistencia = secao('Resistência da diagonal comprimida', [
+    temNumero(m, 'tauRd2_s') && m.passo('tauRd2_s', '\\tau_{Rd2}', mul(cte(0.27, 2), par(sub(cte(1, 0), div(f.fck, cte(250, 0)))), f.fcd), { casas: 3, unidade: 'MPa', ref: NBR('19.5.3.1') }),
+  ], NBR('19.5.3.1'));
+  // u0 = 200 cm (as duas faces compridas da faixa); Wp0 = t²/2 + 100·t; K = 0,45 (C1/C2 = t/100 < 0,5)
+  const u0 = cte(200, 0);
+  const wp0 = soma(div(pot(tCm, 2), cte(2, 0)), mul(cte(100, 0), tCm));
+  const muro = secao('Face do muro (faixa de 1 m)', [
+    temNumero(m, 'Fw_s') && m.passo('Fw_s', 'F_{Sd,m}', div(mul(cte(1.4, 1), par(soma(nMuro, nTopo))), L), { casas: 2, unidade: 'kN/m' }),
+    temNumero(m, 'Mw_s') && m.passo('Mw_s', 'M_{Sd,m}', mul(cte(1.4, 1), m.g('Mk_', 'M_k', 2, 'kN·m/m')), { casas: 2, unidade: 'kN·m/m' }),
+    temNumero(m, 'tw_s') && m.passo('tw_s', '\\tau_{Sd,m}',
+      mul(par(soma(div(Fw, mul(u0, f.d)), div(mul(cte(0.45, 2), Mw, cte(100, 0)), mul(wp0, f.d)))), cte(10, 0)), {
+        casas: 3, unidade: 'MPa', ref: NBR('19.5.2.2'),
+        verif: { chave: 'sapata.biela.muro', rotulo: 'Diagonal comprimida na face do muro', limite: tRd2, relacao: '<=', celula: 'chk_bw' },
+      }),
+  ], DEDUCAO);
+  const secoes = [resistencia, muro];
+  if (contrafortes) {
+    const tenr = m.g('tenr_adot', 't_{enr}', 1, 'cm');
+    const Fc = m.g('Fc_s', 'F_{Sd,cf}', 2, 'kN');
+    const K = m.g('K_cc', 'K_{19}', 3);
+    secoes.push(secao('Junto ao contraforte (pilar tenr × t)', [
+      temNumero(m, 'K_cc') && m.passo('K_cc', 'K_{19}', null, { casas: 3, origem: 'tabela', ref: NBR('Tab. 19.2') }),
+      temNumero(m, 'Fc_s') && m.passo('Fc_s', 'F_{Sd,cf}', mul(cte(1.4, 1), nome(celulaDoRotulo('Contraforte'), 'N_{cf}', 3, 'kN')), { casas: 2, unidade: 'kN' }),
+      temNumero(m, 'tc_s') && m.passo('tc_s', '\\tau_{Sd,cf}',
+        mul(par(soma(div(Fc, mul(cte(2, 0), par(soma(tenr, tCm)), f.d)),
+          div(mul(K, f.MdCf, cte(100, 0)), mul(par(soma(div(pot(tenr, 2), cte(2, 0)), mul(tenr, tCm))), f.d)))), cte(10, 0)), {
+          casas: 3, unidade: 'MPa', ref: NBR('19.5.3.1'),
+          verif: { chave: 'sapata.biela.contraforte', rotulo: 'Diagonal comprimida junto ao contraforte', limite: tRd2, relacao: '<=', celula: 'chk_bc' },
+        }),
+    ], DEDUCAO));
+  }
+  return {
+    id: 'sapata.biela',
+    titulo: 'Sapata · diagonal comprimida no contorno C',
+    ref: NBR('19.5.3.1'),
+    secoes: secoes.filter((s) => s.passos.length > 0),
+    avisos: [],
+    aplicavel: temNumero(m, 'tw_s'),
+  };
+}
+
 // ───────────────────────────── torção ─────────────────────────────
 
 function cardTorcao(r: Parameters<AutorDeCards>[0]): Card {
@@ -661,6 +731,7 @@ export const autorSapata: AutorDeCards = (r) => [
   cardFlexao(r, TALAO),
   cardArmadura(r),
   cardCortante(r),
+  cardBiela(r),
   cardTorcao(r),
   cardEsperas(r),
 ];

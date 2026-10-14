@@ -126,7 +126,6 @@ export const ROTULO_CURTO: Record<string, string> = {
   h_fr: 'Aterro sobre a ponta',
   SPT_b: 'SPT da base',
   sig_adm_dir: 'σadm',
-  ks_dir: 'k do solo',
   FS_tomb: 'FS tombamento',
   FS_desl: 'FS deslizamento',
   cob_sap: 'Cobrimento',
