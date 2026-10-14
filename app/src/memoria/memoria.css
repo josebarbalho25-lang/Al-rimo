@@ -6,12 +6,13 @@
 /* linha longa que quebra: sem esta folga a fração de uma linha encosta na de baixo (medido na bancada) */
 .mem-linha .katex .base { margin: 0.2em 0; }
 
+/* Fundo = a superfície do tema (Jose, 14/10: branco no claro, e não o azulado do fundo geral do app). */
 .mem-tela {
   display: grid;
   grid-template-columns: 230px minmax(0, 1fr);
   height: 100%;
   min-height: 0;
-  background: var(--bg, #ffffff);
+  background: var(--surface, #ffffff);
 }
 .mem-indice {
   border-right: 1px solid var(--line, #d9dee4);

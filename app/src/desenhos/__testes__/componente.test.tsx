@@ -19,10 +19,13 @@ describe('Desenhos (componente)', () => {
     expect(html).toContain('data-camada="alvenaria"');
   });
 
-  it('tema escuro: a folha dos desenhos não inverte (as cores do Jose são código de obra)', () => {
-    // sem esta regra a folha herda o invert + hue-rotate das figuras: canaleta oliva, meio bloco azul-claro
+  it('tema escuro: a folha dos desenhos não inverte (as cores do Jose são código de obra); papel e tinta trocam', () => {
+    // sem o filter: none a folha herda o invert + hue-rotate das figuras: canaleta oliva, meio bloco azul-claro
     const css = readFileSync(new URL('../../estilo/componentes.css', import.meta.url), 'utf8');
-    expect(css).toMatch(/body\[data-theme='dark'\] \.prancheta\.prancheta-cores \{\s*filter: none;\s*\}/);
+    expect(css).toMatch(/body\[data-theme='dark'\] \.prancheta\.prancheta-cores \{\s*filter: none;/);
+    // 14/10 (Jose: fundo preto no escuro): o papel branco e a tinta da prancha trocam por regra, pelo valor do COR
+    expect(css).toContain("body[data-theme='dark'] .prancheta-cores svg [fill='#ffffff']");
+    expect(css).toContain("body[data-theme='dark'] .prancheta-cores svg [stroke='#262626']");
   });
 
   it('no palco (vista fixa): sem abas internas, com os controles daquela prancha', () => {

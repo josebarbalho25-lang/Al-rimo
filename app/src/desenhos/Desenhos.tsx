@@ -14,7 +14,9 @@
   Seleção: cada traço leva o id da peça ou da barra do Modelo (data-id) — o mesmo id do 3D. Clique sem arrastar
   escolhe; a peça escolhida (no 3D ou aqui) acende em azul.
 
-  TEMA ESCURO: esta folha é papel branco nos dois temas (`.prancheta.prancheta-cores`, estilo/componentes.css).
+  TEMA ESCURO (14/10, Jose: todo SVG com fundo escuro no escuro): a folha NÃO passa pelo filtro de inversão; o papel e
+  a tinta trocam por regra de CSS pelo valor que a prancha escreve (`.prancheta-cores`, estilo/componentes.css), e as
+  cores das peças ficam as do Revit. Antes de 14/10 era papel branco nos dois temas (`.prancheta.prancheta-cores`).
   As outras pranchetas do app (figuras) invertem no escuro por filtro — invert + hue-rotate, receita do Pró-Viga —,
   mas aqui as peças vão pintadas com as cores do Jose no Revit (desenhos/cores.ts), que são código de obra: o
   filtro levava o amarelo da canaleta a verde-oliva escuro e o azul do meio bloco a azul-claro, e a legenda

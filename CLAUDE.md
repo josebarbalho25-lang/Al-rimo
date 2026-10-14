@@ -398,7 +398,10 @@ e dizer ao Jose o que mudou e por quê.
      ABCP/Parsekian, Bastos…) ou "critério adotado" quando é convenção do curso (δadm 2h/250, K = 1,0, As,mín 0,15 %…).
      Inclui rótulos, notas, aba Referências, memória (Ref 'Aula 12.x', 'Curso', 'Gilberto'), figuras, termo de uso.
      Confirmar com ele na hora: "Gilberto Carini" no ditado = os dois (Eng. Gilberto da fundação e Prof. Carini).
-  2. Memória no tema CLARO com fundo BRANCO (hoje azul-claro). Todos os SVG padronizados: fundo preto no tema escuro e
+  2. FEITO 14/10 — memória com fundo = superfície do tema (branco no claro); desenhos da memória e figuras do acervo
+     na `.prancheta` (no escuro, invert + hue-rotate, a receita do Pró-Viga); desenhos 2D no escuro trocam só papel e
+     tinta por CSS (as cores do Revit ficam). 3. FEITO 14/10 — coluna da direita com desenho + figura empilhados:
+     85%/80%, desenho no alto e figura no pé (CardMemoria.tsx, ENCOLHE_*). Era: Memória no tema CLARO com fundo BRANCO (hoje azul-claro). Todos os SVG padronizados: fundo preto no tema escuro e
      as cores acompanhando o tema (figuras do acervo e desenhos gerados).
   3. Inércia fissurada (estádio II) do ELS: a conta é longa e as figuras da direita colidem com a fórmula grande —
      reduzir um pouco as figuras e TRAVAR a de cima na 1ª linha da seção e a de baixo na última linha.

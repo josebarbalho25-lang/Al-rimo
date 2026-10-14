@@ -35,6 +35,13 @@ const FIG_MIN = 240;        // px: a figura do acervo nunca fica mais baixa que 
 const FIG_EMBAIXO = 360;    // px: altura da figura quando a direita quebra para baixo da conta (tela estreita)
 const LEGENDA = 20;         // px: a linha "Fig. n — título" em cima do desenho (16 de linha + 4 de folga)
 const ENTRE = 16;           // px: entre dois desenhos da direita
+/**
+ * Coluna da direita com desenho gerado E figura do acervo empilhados (o ELS: a seção e a Fig. 10): os dois um pouco
+ * menores, o desenho preso no alto (1ª linha da seção) e a figura no pé (última linha), e o meio livre — ali passa a
+ * conta longa (x_II, I_II), que é mais larga que a coluna da conta (Jose, 14/10: "não colidir com a fórmula grande").
+ */
+const ENCOLHE_DESENHO = 0.85;
+const ENCOLHE_FIGURA = 0.8;
 
 /**
   A figura do card: o resolvedor dado (o app, a bancada) ou o acervo das entradas. O recorte vem sempre do acervo:
@@ -247,10 +254,12 @@ function ColunaDaDireita({ desenhos, fig, geo, alturaDaConta }: {
   alturaDaConta: number | null;
 }) {
   const { R } = useRegua();
+  const empilhados = desenhos.length > 0 && !!fig;
+  const largMax = (d: Desenho) => (d.largura ?? 660) * (empilhados ? ENCOLHE_DESENHO : 1);
   // a altura que os desenhos gerados tomam (na largura da coluna, até a largura deles): a figura fica com o resto
   const tomada = desenhos.reduce((soma, d) => {
     const [w, h] = caixaDoSvg(d.svg);
-    const larg = Math.min(geo?.lado ?? Infinity, d.largura ?? 660);
+    const larg = Math.min(geo?.lado ?? Infinity, largMax(d));
     return soma + LEGENDA + (larg * h) / w + ENTRE;
   }, 0);
   let larguraDaFigura: number | null = null;
@@ -259,24 +268,40 @@ function ColunaDaDireita({ desenhos, fig, geo, alturaDaConta }: {
     const [, , w, h] = fig.recorte ?? [0, 0, 1000, 640];
     razao = w / h;
     if (geo) {
-      const altura = geo.embaixo ? FIG_EMBAIXO : Math.max(FIG_MIN, (alturaDaConta ?? 0) - tomada - LEGENDA);
+      const vao = Math.max(FIG_MIN, (alturaDaConta ?? 0) - tomada - LEGENDA);
+      const altura = geo.embaixo ? FIG_EMBAIXO : empilhados ? Math.max(FIG_MIN, vao * ENCOLHE_FIGURA) : vao;
       larguraDaFigura = Math.min(geo.lado, altura * razao);
     }
   }
   return (
-    <div className="mem-lado" style={{ flex: '1 1 340px', minWidth: 0, alignSelf: 'stretch' }}>
+    <div
+      className="mem-lado"
+      style={{
+        flex: '1 1 340px',
+        minWidth: 0,
+        alignSelf: 'stretch',
+        // empilhados: o desenho no alto e a figura no pé da coluna (a altura da conta), o meio livre
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: empilhados && !geo?.embaixo ? 'space-between' : 'flex-start',
+      }}
+    >
       <div>
         {desenhos.map((d, i) => (
-          <figure key={i} className="mem-desenho" style={{ margin: `0 auto ${ENTRE}px`, maxWidth: d.largura ?? 660 }}>
+          <figure key={i} className="mem-desenho" style={{ margin: `0 auto ${ENTRE}px`, maxWidth: largMax(d) }}>
             <figcaption style={{ fontSize: R.nota, lineHeight: '16px', color: R.apagado, marginBottom: 4 }}>{d.titulo}</figcaption>
+            {/* .prancheta: papel claro que inverte no tema escuro (fundo escuro, cor no mesmo matiz) — todo SVG igual */}
             <div
               role="img"
               aria-label={d.titulo}
-              style={{ background: 'var(--papel, #ffffff)', borderRadius: 4, lineHeight: 0 }}
+              className="prancheta"
+              style={{ borderRadius: 4, lineHeight: 0 }}
               dangerouslySetInnerHTML={{ __html: d.svg }}
             />
           </figure>
         ))}
+      </div>
+      <div>
         {fig && (
           // antes de medir: a largura da coluna; medido: o maior desenho que cabe no vão
           <figure className="mem-fig" style={{ margin: '0 auto', width: larguraDaFigura ?? '100%', maxWidth: '100%' }}>
@@ -288,13 +313,13 @@ function ColunaDaDireita({ desenhos, fig, geo, alturaDaConta }: {
             <img
               src={urlRecortada(fig)}
               alt={fig.titulo}
+              // papel claro que inverte no tema escuro, como as outras figuras do app (Jose, 14/10: todo SVG igual)
+              className="prancheta"
               style={{
                 display: 'block',
                 width: '100%',
                 height: 'auto',
                 aspectRatio: `${razao}`,
-                // o desenho é de papel (fundo claro, traço escuro): no tema escuro ele fica numa folha, não some
-                background: 'var(--papel, #ffffff)',
                 borderRadius: 4,
               }}
             />
@@ -320,11 +345,12 @@ function FiguraGerada({ desenho, entreContas }: { desenho: Desenho; entreContas:
       }}
     >
       <figcaption style={{ fontSize: R.nota, color: R.apagado, marginBottom: papel ? '2pt' : 4 }}>{desenho.titulo}</figcaption>
+      {/* na tela, a prancheta (inverte no escuro); no papel, nunca — a impressão sai na página branca */}
       <div
         role="img"
         aria-label={desenho.titulo}
+        className={papel ? undefined : 'prancheta'}
         style={{
-          background: papel ? undefined : 'var(--papel, #ffffff)',
           borderRadius: papel ? undefined : 4,
           lineHeight: 0,
         }}

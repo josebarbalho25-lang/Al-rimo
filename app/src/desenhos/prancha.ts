@@ -7,7 +7,8 @@
   largura estimada dos textos). Assim nenhuma cota ou rótulo fica cortado na borda, qualquer que seja o tamanho
   do muro, sem ninguém ter de calcular margem à mão em cada vista. O teste confere isso de fora.
 
-  Fundo sempre claro, papel branco também no tema escuro: as peças vão pintadas com as cores do Jose (cores.ts) e
+  Fundo claro no SVG autorado (exportar, imprimir); na tela do tema escuro o papel e a tinta trocam por CSS
+  (componentes.css, .prancheta-cores — 14/10). Antes, papel branco também no tema escuro: as peças vão pintadas com as cores do Jose (cores.ts) e
   a folha dos desenhos não passa pelo filtro de inversão das outras pranchetas (Desenhos.tsx explica).
 */
 import { esc, n } from './formato';

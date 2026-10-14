@@ -767,7 +767,21 @@ body[data-theme='dark'] .prancheta {
    canaleta por verde-oliva e o azul do meio bloco por azul-claro. */
 body[data-theme='dark'] .prancheta.prancheta-cores {
   filter: none;
+  background: #1f1f1f;
 }
+/* Desenhos 2D no escuro (Jose, 14/10: "todo SVG com fundo preto no escuro e as cores acompanhando"): sem filtro —
+   ele mentia na cor do bloco (código de obra) —, troca-se só o PAPEL e a TINTA, pelo valor que a prancha escreve
+   (desenhos/prancha.ts, COR): o branco do papel, do furo e do halo vira o fundo escuro; a linha, a cota e a nota
+   ficam claras. O preenchimento das peças (as cores do Revit) não é tocado. Exportar (SVG/PNG) sai do SVG autorado,
+   branco em qualquer tema. */
+body[data-theme='dark'] .prancheta-cores svg [fill='#ffffff'] { fill: #1f1f1f; }
+body[data-theme='dark'] .prancheta-cores svg [stroke='#ffffff'] { stroke: #1f1f1f; }
+body[data-theme='dark'] .prancheta-cores svg [fill='#262626'] { fill: #e6e6e6; }
+body[data-theme='dark'] .prancheta-cores svg [stroke='#262626'] { stroke: #e6e6e6; }
+body[data-theme='dark'] .prancheta-cores svg [fill='#404040'] { fill: #c8c8c8; }
+body[data-theme='dark'] .prancheta-cores svg [stroke='#404040'] { stroke: #c8c8c8; }
+body[data-theme='dark'] .prancheta-cores svg [fill='#595959'] { fill: #b4b4b4; }
+body[data-theme='dark'] .prancheta-cores svg [stroke='#595959'] { stroke: #b4b4b4; }
 
 /* A folha de uma vista 2D no palco: o desenho centrado, com margem. */
 .folha {
