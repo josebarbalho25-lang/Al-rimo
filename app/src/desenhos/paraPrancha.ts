@@ -12,11 +12,12 @@
   que muda é o muro.
 */
 import type { Modelo } from '@/modelo/tipos';
-import { escalaDaVista, type PedidoDeVista, type VistaParaPrancha } from '@/pranchas/tipos';
+import { PX_POR_MM, escalaDaVista, type Camera3d, type PedidoDeVista, type VistaParaPrancha } from '@/pranchas/tipos';
 import { desenharVistaFrontal } from './vistaFrontal';
 import { desenharCorteLateral } from './corteLateral';
 import { desenharPlanta } from './planta';
 import { desenharIsometrico } from './isometrico';
+import { desenharVista3d, larguraProjetada } from './vista3d';
 import type { OpcoesDaVista, Prancha } from './prancha';
 
 /**
@@ -42,6 +43,23 @@ export function vistaParaPrancha(m: Modelo, pedido: PedidoDeVista, escala: numbe
       pr = desenharIsometrico(m, { ...o, vista: pedido.vista, corteX: pedido.corteX ?? null });
       break;
   }
+  return entregar(pr);
+}
+
+/**
+ * O 3D do visor em VETOR (estilos Cores e Opaco; o Realista vai como foto): o que estava na tela — a mesma direção
+ * de olhar, o corte, o que estava oculto, a Armadura — com o desenho (tudo o que estava aceso, o véu do terreno
+ * junto) ocupando `larguraMm` de papel; a legenda vem embaixo, dentro da caixa. A câmera do visor é ortográfica:
+ * dá para pedir escala de verdade depois (desenharVista3d aceita S direto, como as outras vistas).
+ */
+export function vista3dParaPrancha(m: Modelo, camera: Camera3d, larguraMm: number, prefixo: string): VistaParaPrancha {
+  const w = larguraProjetada(m, camera);
+  // muro sem largura (vazio, ou visto de quina exata): fica em 1:50, para a folha não receber escala infinita
+  const S = w > 1e-6 ? (larguraMm * PX_POR_MM) / w : escalaDaVista(50);
+  return entregar(desenharVista3d(m, camera, { S, semTitulo: true, prefixo }));
+}
+
+function entregar(pr: Prancha): VistaParaPrancha {
   const { viewBox, defs, corpo } = pr.partes(0);
   return { corpo, defs, caixa: viewBox, primitivas: pr.primitivas() };
 }

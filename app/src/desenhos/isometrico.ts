@@ -144,7 +144,8 @@ export function ordemDePintura(sol: Solido[], v: Vec3, proj: (p: Vec3) => Pt): S
   return out;
 }
 
-function corBase(s: Solido): string {
+/** A cor da peça antes da luz (a vista 3D em vetor, vista3d.ts, pinta o estilo Cores com esta mesma). */
+export function corBase(s: Solido): string {
   const tinta = tintaDaPeca(s);
   if (tinta) return tinta.cor;
   if (ESPECIAL.has(s.peca.tipo)) return COR.especialFundo;
@@ -153,7 +154,7 @@ function corBase(s: Solido): string {
   return COR.blocoFundo;
 }
 
-function sombrear(hex: string, f: number): string {
+export function sombrear(hex: string, f: number): string {
   const c = [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16));
   return '#' + c.map((v) => Math.max(0, Math.min(255, Math.round(v * f))).toString(16).padStart(2, '0')).join('');
 }

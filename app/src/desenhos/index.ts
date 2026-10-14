@@ -7,4 +7,5 @@ export { corteLateral, desenharCorteLateral, cortesPadrao, barrasNoCorte, type C
 export { planta, desenharPlanta } from './planta';
 export { isometrico, desenharIsometrico, type OpcoesIso, type VistaIso } from './isometrico';
 export { Prancha, COR, type OpcoesDaVista } from './prancha';
-export { vistaParaPrancha } from './paraPrancha';
+export { vistaParaPrancha, vista3dParaPrancha } from './paraPrancha';
+export { desenharVista3d, baseDaCamera, larguraProjetada, type OpcoesVista3d } from './vista3d';
