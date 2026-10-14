@@ -16,7 +16,7 @@ import {
   ALVENARIA, barraNoPlanoX, contrafortesDoModelo, cruzamentos, faixa, projecao, projetarPontos, secao,
   solidosDoModelo, type Regiao, type Solido,
 } from './geometria';
-import { COR, Prancha, escalaPara, type Estilo, type Pt } from './prancha';
+import { COR, Prancha, escalaPara, type Estilo, type OpcoesDaVista, type Pt } from './prancha';
 
 export interface CortePadrao {
   rotulo: string;
@@ -103,23 +103,26 @@ function trechoNoPlano(eixo: Barra['eixo'], x0: number): Barra['eixo'] {
   return melhor;
 }
 
+/** Estilo da peça cortada, com a camada do DXF (a peça sabe o que é; a cor sozinha não diria — o barbacã e o
+ *  tubo do dreno são brancos como o fundo do bloco). */
 export function estiloDaSecao(s: Solido, pr: Prancha): Estilo | null {
   const tp = s.peca.tipo;
-  if (ALVENARIA.has(tp)) return { fill: pr.padrao('alv'), stroke: COR.bloco, sw: 0.9 };
-  if (tp === 'GRAUTE_FURO' || tp === 'GRAUTE_CANALETA') return { fill: COR.grauteFundo, stroke: COR.graute, sw: 0.6 };
-  if (tp === 'SAPATA') return { fill: pr.padrao('conc'), stroke: COR.linha, sw: 1.6 };
-  if (tp === 'DRENO') return { fill: pr.padrao('brita'), stroke: COR.brita, sw: 0.8 };
-  if (tp === 'AREIA') return { fill: pr.padrao('areia'), stroke: COR.areia, sw: 0.6 };
-  if (tp === 'MANTA') return { fill: COR.manta, stroke: COR.manta, sw: 0.6 };
-  if (tp === 'BARBACA' || tp === 'TUBO_DRENO') return { fill: '#ffffff', stroke: COR.linha, sw: 0.8 };
+  if (ALVENARIA.has(tp)) return { fill: pr.padrao('alv'), stroke: COR.bloco, sw: 0.9, camada: 'alvenaria' };
+  if (tp === 'GRAUTE_FURO' || tp === 'GRAUTE_CANALETA') return { fill: COR.grauteFundo, stroke: COR.graute, sw: 0.6, camada: 'graute' };
+  if (tp === 'SAPATA') return { fill: pr.padrao('conc'), stroke: COR.linha, sw: 1.6, camada: 'concreto' };
+  if (tp === 'DRENO') return { fill: pr.padrao('brita'), stroke: COR.brita, sw: 0.8, camada: 'drenagem' };
+  if (tp === 'AREIA') return { fill: pr.padrao('areia'), stroke: COR.areia, sw: 0.6, camada: 'drenagem' };
+  if (tp === 'MANTA') return { fill: COR.manta, stroke: COR.manta, sw: 0.6, camada: 'drenagem' };
+  if (tp === 'BARBACA' || tp === 'TUBO_DRENO') return { fill: '#ffffff', stroke: COR.linha, sw: 0.8, camada: 'drenagem' };
   return null;
 }
 
 /** Ordem de pintura na seção: o que é fundo primeiro, o que enche furo depois. */
 const ORDEM: Partial<Record<Solido['peca']['tipo'], number>> = { SAPATA: 0, DRENO: 1, AREIA: 1, MANTA: 2, GRAUTE_FURO: 4, GRAUTE_CANALETA: 4, BARBACA: 5, TUBO_DRENO: 5 };
 
-export function desenharCorteLateral(m: Modelo, xCorte?: number): Prancha {
-  const pr = new Prancha('des');
+/** `o`: escala fixa, sem título e prefixo dos ids — o pedido do modo prancha (paraPrancha.ts). */
+export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVista = {}): Prancha {
+  const pr = new Prancha(o.prefixo ?? 'des');
   const todos = solidosDoModelo(m);
   const sol = todos.filter((s) => s.peca.grupo !== 'terreno');
   // o solo da frente sobe sobre a ponta quando há aterro (h_fr): a altura sai do terreno do modelo
@@ -138,7 +141,8 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number): Prancha {
   // 530 (era 760): com 760 a cota saía com ~11 px na tela cheia (1920×1080, painel aberto) e a nota com ~10 —
   // o Jose achou a letra pequena (09/10). Com o desenho menor na folha, o enquadrar amplia mais e TODA a anotação
   // cresce junto (~1,3×): cota ~15 px, a mesma altura do rótulo do painel. Os limites acompanham na mesma razão.
-  const S = escalaPara(Math.max(yLonge - yPerto, H_muro - zFundo), 530, 0.056, 0.42);
+  // Na prancha a escala vem pedida (1:25, 1:50…).
+  const S = o.S ?? escalaPara(Math.max(yLonge - yPerto, H_muro - zFundo), 530, 0.056, 0.42);
   const U = (y: number) => -y * S;
   const V = (z: number) => -z * S;
   const tela = (p: Vec2): Pt => [U(p[0]), V(p[1])];
@@ -160,7 +164,7 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number): Prancha {
     const alem = cfs.filter((c) => c.x > x0).sort((a, b) => a.x - b.x)[0];
     if (alem) {
       pr.rect(U(alem.min[1]), V(alem.max[2]), (alem.min[1] - alem.max[1]) * S, (alem.max[2] - Math.max(alem.min[2], 0)) * S,
-        { stroke: COR.linha, sw: 0.9, dash: '6,3' });
+        { stroke: COR.linha, sw: 0.9, dash: '6,3', camada: 'alvenaria' });
     }
   }
 
@@ -177,7 +181,7 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number): Prancha {
       // fundo branco na caixa da peça: furo sem graute é vazio, não é solo (a haste enterrada está no aterro)
       const ps = r.flatMap((q) => q.contorno);
       const ys = ps.map((p) => p[0]), zs = ps.map((p) => p[1]);
-      pr.rect(U(Math.min(...ys)), V(Math.max(...zs)), (Math.min(...ys) - Math.max(...ys)) * S, (Math.max(...zs) - Math.min(...zs)) * S, { fill: '#ffffff', stroke: 'none' });
+      pr.rect(U(Math.min(...ys)), V(Math.max(...zs)), (Math.min(...ys) - Math.max(...ys)) * S, (Math.max(...zs) - Math.min(...zs)) * S, { fill: '#ffffff', stroke: 'none', camada: 'alvenaria' });
     }
     for (const q of r) pr.caminho(aneis(q), { ...e, id: s.peca.id });
   }
@@ -185,7 +189,7 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number): Prancha {
   // corte do contraforte o tubo não existe — fica fora do contraforte — e confundiria com furo da haste)
   if (!cfCortado && !cortados.some((q) => q.s.peca.tipo === 'BARBACA')) {
     const bb = sol.filter((s) => s.peca.tipo === 'BARBACA').sort((a, b) => Math.abs(a.min[0] - x0) - Math.abs(b.min[0] - x0))[0];
-    if (bb) pr.caminho(aneis(projecao(bb, 'X')), { stroke: COR.linha, sw: 0.8, dash: '4,2', id: bb.peca.id });
+    if (bb) pr.caminho(aneis(projecao(bb, 'X')), { stroke: COR.linha, sw: 0.8, dash: '4,2', id: bb.peca.id, camada: 'drenagem' });
   }
   pr.fechar();
 
@@ -265,15 +269,18 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number): Prancha {
     }
     pr.cotaH(U(y0), U(y1), linha, `B = ${cm(y1 - y0)}`, { de: [V(zPe), V(zPe)] });
     // distância da borda aterrada ao eixo do muro (a_ater)
-    pr.linha(U(t / 2), V(H_muro) + 6, U(t / 2), linha + 30, { stroke: COR.cota, sw: 0.6, dash: '14,3,2,3' });
+    pr.linha(U(t / 2), V(H_muro) + 6, U(t / 2), linha + 30, { stroke: COR.cota, sw: 0.6, dash: '14,3,2,3', camada: 'eixos' });
     pr.cotaH(U(t / 2), U(y1), linha + 24, cm(y1 - t / 2), { de: [linha + 24, V(zPe)] });
   }
   pr.fechar();
 
   // ── título ─────────────────────────────────────────────────────────────────────────────────────────────────────
+  // na prancha o título é dela (embaixo do desenho, com a escala); o PROVISÓRIO fica, é aviso e não título
   const yTit = topo - (cfCortado ? 100 : 76);
-  pr.texto(U(yLonge), yTit, `Corte em x = ${metros(x0)} m${cfCortado ? ` · C${cfCortado.numero}` : ''}`, { tam: 15, ancora: 'start', negrito: true });
-  pr.texto(U(yLonge), yTit + 16, 'cotas em cm', { tam: 10, ancora: 'start', cor: COR.nota });
+  if (!o.semTitulo) {
+    pr.texto(U(yLonge), yTit, `Corte em x = ${metros(x0)} m${cfCortado ? ` · C${cfCortado.numero}` : ''}`, { tam: 15, ancora: 'start', negrito: true });
+    pr.texto(U(yLonge), yTit + 16, 'cotas em cm', { tam: 10, ancora: 'start', cor: COR.nota });
+  }
   if (m.familia.provisoria && cfs.length) pr.texto(U(yLonge), yTit - 20, 'PROVISÓRIO', { tam: 13, ancora: 'start', negrito: true, cor: COR.especial });
   return pr;
 }

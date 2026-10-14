@@ -55,9 +55,9 @@ export function tintaDaPeca(s: Solido): Tinta | null {
   return { chave: classe ?? 'especial', nome: classe ? NOME[classe] : 'Peça especial', cor: COR.especialFundo };
 }
 
-/** Estilo de preenchimento da peça pintada (vista frontal e planta). */
+/** Estilo de preenchimento da peça pintada (vista frontal e planta). Camada do DXF: alvenaria. */
 export function estiloPintado(t: Tinta): Estilo {
-  return { fill: t.cor, stroke: TRACO_DA_PECA, sw: 0.7 };
+  return { fill: t.cor, stroke: TRACO_DA_PECA, sw: 0.7, camada: 'alvenaria' };
 }
 
 /** As tintas presentes num conjunto de peças, uma vez cada, na ordem da legenda. */
@@ -81,6 +81,8 @@ export function itensDasTintas(tintas: Tinta[]): [string, Amostra][] {
 /**
  * Legenda em linha: amostra + rótulo. Quebra a linha quando passaria de `largura` (px de prancha, a partir de x):
  * muro curto com sete itens não pode alargar a prancha só por causa da legenda — o enquadrar encolheria o muro.
+ * No DXF tudo dela vai na camada 'legenda': a amostra do bloco não é alvenaria, e quem apaga a camada do aço
+ * para ler a paginação não quer a legenda furada.
  */
 export function desenharLegenda(pr: Prancha, x: number, y: number, itens: [string, Amostra][], largura = Infinity): void {
   const TAM = 11;
@@ -92,15 +94,15 @@ export function desenharLegenda(pr: Prancha, x: number, y: number, itens: [strin
       cy += 18;
     }
     if (e === 'barra' || e === 'espera') {
-      pr.linha(cx, cy - 4, cx + 18, cy - 4, { stroke: COR.aco, sw: 2, dash: e === 'espera' ? '5,3' : undefined });
+      pr.linha(cx, cy - 4, cx + 18, cy - 4, { stroke: COR.aco, sw: 2, dash: e === 'espera' ? '5,3' : undefined, camada: 'legenda' });
     } else if (e === 'graute') {
       // a hachura do graute por cima do cinza do inteiro: é assim que ela aparece na vista
-      pr.rect(cx, cy - 9, 18, 10, { fill: CORES_DO_JOSE.inteiro ?? COR.blocoFundo, stroke: TRACO_DA_PECA, sw: 0.7 });
-      pr.rect(cx, cy - 9, 18, 10, { fill: pr.padrao('graute'), stroke: 'none' });
+      pr.rect(cx, cy - 9, 18, 10, { fill: CORES_DO_JOSE.inteiro ?? COR.blocoFundo, stroke: TRACO_DA_PECA, sw: 0.7, camada: 'legenda' });
+      pr.rect(cx, cy - 9, 18, 10, { fill: pr.padrao('graute'), stroke: 'none', camada: 'legenda' });
     } else {
-      pr.rect(cx, cy - 9, 18, 10, e);
+      pr.rect(cx, cy - 9, 18, 10, { ...e, camada: 'legenda' });
     }
-    pr.texto(cx + 23, cy, rot, { tam: TAM, ancora: 'start' });
+    pr.texto(cx + 23, cy, rot, { tam: TAM, ancora: 'start', camada: 'legenda' });
     cx += w + 18;
   }
 }

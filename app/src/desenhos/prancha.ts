@@ -10,7 +10,31 @@
   Fundo claro no SVG autorado (exportar, imprimir); na tela do tema escuro o papel e a tinta trocam por CSS
   (componentes.css, .prancheta-cores — 14/10). Antes, papel branco também no tema escuro: as peças vão pintadas com as cores do Jose (cores.ts) e
   a folha dos desenhos não passa pelo filtro de inversão das outras pranchetas (Desenhos.tsx explica).
+
+  PRIMITIVAS (modo prancha, 14/10): cada traço que vai para o SVG é anotado também como Primitiva (pranchas/tipos.ts),
+  em px de desenho, para o gravador de DXF. O SVG é para olho (padrão de hachura, halo, marcador); o DXF precisa
+  saber o que cada traço É — e quem sabe é quem desenha, aqui, na hora. Ler o SVG depois seria adivinhar. O SVG
+  não muda nada com isso (o teste confere byte a byte nas provas).
+
+  A CAMADA do DXF sai, nesta ordem, do primeiro que responder:
+    1. `camada` dita no estilo — quem desenha sabe (estiloDaSecao, estiloPintado, eixos, legenda, barbacã, peças
+       do isométrico, cotas);
+    2. o padrão de preenchimento: solo → terreno · conc → concreto · alv → alvenaria · brita e areia → drenagem ·
+       graute → graute;
+    3. a cor da tinta (preenchimento, depois contorno): aço → aco · terra → terreno · graute → graute;
+    4. o grupo aberto por abrir('data-camada="…"'): sapata → concreto · alvenaria e contraforte → alvenaria ·
+       graute → graute · barras → aco · cotas → cotas · terreno → terreno (os grupos misturados — secao, pecas,
+       corte — não dizem nada: lá cada peça já disse a sua no passo 1);
+    5. 'geral'.
+  Texto vai em 'textos', menos o rótulo de cota ('cotas', dito pela própria cota) e o da legenda ('legenda').
+  Camadas que saem: alvenaria, graute, concreto, aco, terreno, drenagem, cotas, eixos (eixo de contraforte e
+  junta de controle), textos, legenda, geral.
+
+  O que fica FORA das primitivas, de propósito: o halo branco do texto e o filete branco sob a barra (`soTela`) —
+  são truques de tela para ler por cima da hachura; plotados em monocromático, o branco vira preto grosso. A
+  opacidade também não passa (o DXF não tem; hoje nenhum desenho usa).
 */
+import type { PadraoHachura, Primitiva, Traco } from '@/pranchas/tipos';
 import { esc, n } from './formato';
 import { HACHURA, hachurasDeMaterial } from './hachuras';
 
@@ -60,6 +84,11 @@ export interface Estilo {
   opacidade?: number;
   id?: string;          // vira data-id: liga o traço à peça do modelo (seleção, teste)
   extra?: string;
+  /** Camada do DXF, quando o grupo e o material não bastam para dizer o que o traço é (não vai para o SVG). */
+  camada?: string;
+  /** Só para a tela (o filete branco sob a barra): fica fora das primitivas — plotado em monocromático, o branco
+   *  vira um traço preto grosso por baixo da barra. */
+  soTela?: boolean;
 }
 
 export interface OpcoesTexto {
@@ -69,9 +98,69 @@ export interface OpcoesTexto {
   negrito?: boolean;
   vertical?: boolean;   // girado −90° (lê de baixo para cima), como cota vertical
   halo?: boolean;       // contorno branco por baixo: texto legível em cima de hachura
+  camada?: string;      // camada do DXF (padrão 'textos')
+}
+
+/**
+ * O que a prancha (modo prancha, pranchas/) pede a cada vista: a escala fixa, sem o título interno e com o prefixo
+ * dos ids. Ausente, a vista se ajeita para a tela como sempre.
+ */
+export interface OpcoesDaVista {
+  /** px de desenho por mm do muro (escalaDaVista(25) para 1:25). Ausente = a que cabe na tela (escalaPara). */
+  S?: number;
+  /** Tira o título interno ("Corte em x = …", "Planta — 1ª fiada", "cotas em cm"): a prancha põe o dela embaixo. */
+  semTitulo?: boolean;
+  /** Prefixo dos ids dos padrões e marcadores: a folha tem várias vistas num SVG só, os ids não podem colidir. */
+  prefixo?: string;
 }
 
 export type Pt = [number, number];
+
+type NomeDoPadrao = 'solo' | 'conc' | 'alv' | 'brita' | 'areia' | 'graute';
+
+/**
+ * Padrão de preenchimento do SVG → hachura do DXF: o padrão do CAD, o fundo e o risco (as mesmas cores do
+ * ladrilho do SVG) e a camada do material. O graute visto não tem fundo — a cor do bloco aparece entre os riscos.
+ */
+const HACHURA_DO_PADRAO: Record<NomeDoPadrao, { padrao: PadraoHachura; fundo?: string; risco: string; camada: string }> = {
+  solo: { padrao: 'terra', fundo: HACHURA.terraFundo, risco: HACHURA.terra, camada: 'terreno' },
+  conc: { padrao: 'concreto', fundo: HACHURA.concretoFundo, risco: HACHURA.concreto, camada: 'concreto' },
+  alv: { padrao: 'alvenaria', fundo: COR.blocoFundo, risco: COR.bloco, camada: 'alvenaria' },
+  brita: { padrao: 'brita', fundo: HACHURA.britaFundo, risco: HACHURA.brita, camada: 'drenagem' },
+  areia: { padrao: 'areia', fundo: HACHURA.areiaFundo, risco: HACHURA.areia, camada: 'drenagem' },
+  graute: { padrao: 'graute', risco: COR.grauteFundo, camada: 'graute' },
+};
+
+/** Tintas que, sozinhas, já dizem o material (passo 3 do cabeçalho). As outras cores repetem entre materiais. */
+const CAMADA_DA_COR: Record<string, string> = {
+  [COR.aco]: 'aco',
+  [COR.solo]: 'terreno',
+  [COR.graute]: 'graute',
+  [COR.grauteFundo]: 'graute',
+};
+
+/** Grupo do SVG (data-camada) → camada do DXF (passo 4 do cabeçalho). */
+const CAMADA_DO_GRUPO: Record<string, string> = {
+  sapata: 'concreto',
+  alvenaria: 'alvenaria',
+  contraforte: 'alvenaria',
+  graute: 'graute',
+  barras: 'aco',
+  cotas: 'cotas',
+  terreno: 'terreno',
+};
+
+/**
+ * A marca oblíqua da cota: um risco de (2,8) a (8,2) numa caixa 10 × 10 com a referência no centro, desenhado a
+ * 8 px. Os números moram aqui uma vez só: o <marker> do SVG e os dois riscos do DXF saem da mesma conta.
+ */
+const MARCA = { caixa: 10, ref: 5, lado: 8, de: [2, 8] as Pt, ate: [8, 2] as Pt, sw: 1.5 };
+
+function tracejado(dash: string | undefined): number[] | undefined {
+  if (!dash) return undefined;
+  const v = dash.split(/[\s,]+/).map(Number).filter((x) => Number.isFinite(x));
+  return v.length ? v : undefined;
+}
 
 export class Prancha {
   private corpo: string[] = [];
@@ -79,12 +168,86 @@ export class Prancha {
   private y0 = Infinity;
   private x1 = -Infinity;
   private y1 = -Infinity;
+  private prims: Primitiva[] = [];
+  /** Pilha dos grupos abertos (data-camada de cada um; quem abre sem camada herda a de fora). */
+  private grupos: string[] = [];
 
   constructor(readonly prefixo = 'des') {}
 
   /** Referência a um padrão de preenchimento desta prancha. */
-  padrao(nome: 'solo' | 'conc' | 'alv' | 'brita' | 'areia' | 'graute'): string {
+  padrao(nome: NomeDoPadrao): string {
     return `url(#${this.prefixo}-${nome})`;
+  }
+
+  /** Os traços já desenhados, estruturados para o DXF (px de desenho, y para baixo). */
+  primitivas(): Primitiva[] {
+    return [...this.prims];
+  }
+
+  /** O padrão do SVG por trás de um `fill="url(#…)"` desta prancha (null para cor chapada ou 'none'). */
+  private padraoDoFill(fill: string | undefined): (typeof HACHURA_DO_PADRAO)[NomeDoPadrao] | null {
+    const m = fill?.match(/^url\(#(.+)\)$/);
+    if (!m || !m[1].startsWith(`${this.prefixo}-`)) return null;
+    return HACHURA_DO_PADRAO[m[1].slice(this.prefixo.length + 1) as NomeDoPadrao] ?? null;
+  }
+
+  /** A camada do DXF de um traço (ordem no cabeçalho). */
+  private camadaDe(e: Estilo, fill: string, stroke: string): string {
+    if (e.camada) return e.camada;
+    const p = this.padraoDoFill(fill);
+    if (p) return p.camada;
+    const porCor = CAMADA_DA_COR[fill] ?? CAMADA_DA_COR[stroke];
+    if (porCor) return porCor;
+    const grupo = this.grupos[this.grupos.length - 1];
+    return (grupo && CAMADA_DO_GRUPO[grupo]) || 'geral';
+  }
+
+  private traco(stroke: string, e: Estilo, camada: string): Traco {
+    const t: Traco = { camada, cor: stroke, espessura: e.sw ?? 1 };
+    const d = tracejado(e.dash);
+    if (d) t.tracejado = d;
+    return t;
+  }
+
+  /**
+   * Área (retângulo, polígono, caminho com furos): hachura com o contorno junto (`borda`); sem preenchimento, só o
+   * contorno, cada anel uma polilinha fechada. Mesmos padrões de fill/stroke do atributos().
+   */
+  private anotarArea(aneis: Pt[][], e: Estilo, fillPadrao = 'none', strokePadrao: string = COR.linha): void {
+    if (e.soTela) return;
+    const fill = e.fill ?? fillPadrao;
+    const stroke = e.stroke ?? strokePadrao;
+    const camada = this.camadaDe(e, fill, stroke);
+    const borda = stroke !== 'none' ? this.traco(stroke, e, camada) : undefined;
+    const fechados = aneis.filter((a) => a.length >= 3).map((a) => a.map(([x, y]): Pt => [x, y]));
+    if (fill !== 'none' && fechados.length) {
+      const p = this.padraoDoFill(fill);
+      const h: Extract<Primitiva, { k: 'hachura' }> = p
+        ? { k: 'hachura', aneis: fechados, padrao: p.padrao, risco: p.risco, camada }
+        : { k: 'hachura', aneis: fechados, padrao: 'solido', fundo: fill, camada };
+      if (p?.fundo) h.fundo = p.fundo;
+      if (borda) h.borda = borda;
+      this.prims.push(h);
+      return;
+    }
+    if (!borda) return;
+    for (const a of aneis) if (a.length >= 2) this.prims.push({ k: 'polilinha', pts: a.map(([x, y]): Pt => [x, y]), fechada: true, e: borda });
+  }
+
+  /** Linha de cota com as duas marcas oblíquas como riscos de verdade (o DXF não tem <marker>). */
+  private anotarLinhaDeCota(xa: number, ya: number, xb: number, yb: number): void {
+    const e: Traco = { camada: 'cotas', cor: COR.cota, espessura: 0.9 };
+    this.prims.push({ k: 'linha', a: [xa, ya], b: [xb, yb], e });
+    // orient="auto": o eixo x da marca acompanha a linha, de A para B, nas duas pontas
+    const L = Math.hypot(xb - xa, yb - ya);
+    const [dx, dy] = L > 0 ? [(xb - xa) / L, (yb - ya) / L] : [1, 0];
+    const k = MARCA.lado / MARCA.caixa;
+    const gira = ([u, v]: Pt): Pt => [((u - MARCA.ref) * dx - (v - MARCA.ref) * dy) * k, ((u - MARCA.ref) * dy + (v - MARCA.ref) * dx) * k];
+    const [p, q] = [gira(MARCA.de), gira(MARCA.ate)];
+    const marca: Traco = { camada: 'cotas', cor: COR.cota, espessura: MARCA.sw * k };
+    for (const [x, y] of [[xa, ya], [xb, yb]] as Pt[]) {
+      this.prims.push({ k: 'linha', a: [x + p[0], y + p[1]], b: [x + q[0], y + q[1]], e: marca });
+    }
   }
 
   private estender(xa: number, ya: number, xb: number, yb: number): void {
@@ -113,11 +276,16 @@ export class Prancha {
     if (!(ww > 0 && hh > 0)) return;
     this.corpo.push(`<rect x="${n(xa)}" y="${n(ya)}" width="${n(ww)}" height="${n(hh)}" ${this.atributos(e)}/>`);
     this.estender(xa, ya, xa + ww, ya + hh);
+    this.anotarArea([[[xa, ya], [xa + ww, ya], [xa + ww, ya + hh], [xa, ya + hh]]], e);
   }
 
   linha(xa: number, ya: number, xb: number, yb: number, e: Estilo = {}): void {
     this.corpo.push(`<line x1="${n(xa)}" y1="${n(ya)}" x2="${n(xb)}" y2="${n(yb)}" ${this.atributos(e)}/>`);
     this.estender(xa, ya, xb, yb);
+    const stroke = e.stroke ?? COR.linha;
+    if (!e.soTela && stroke !== 'none') {
+      this.prims.push({ k: 'linha', a: [xa, ya], b: [xb, yb], e: this.traco(stroke, e, this.camadaDe(e, e.fill ?? 'none', stroke)) });
+    }
   }
 
   poligono(pts: Pt[], e: Estilo = {}): void {
@@ -125,13 +293,22 @@ export class Prancha {
     const p = pts.map(([x, y]) => `${n(x)},${n(y)}`).join(' ');
     this.corpo.push(`<polygon points="${p}" ${this.atributos(e)}/>`);
     for (const [x, y] of pts) this.estender(x, y, x, y);
+    this.anotarArea([pts], e);
   }
 
+  /** Polilinha aberta (o preenchimento, se alguém passar, não vai para o DXF: nenhum desenho usa). */
   polilinha(pts: Pt[], e: Estilo = {}): void {
     if (pts.length < 2) return;
     const p = pts.map(([x, y]) => `${n(x)},${n(y)}`).join(' ');
     this.corpo.push(`<polyline points="${p}" ${this.atributos(e)} stroke-linejoin="round" stroke-linecap="round"/>`);
     for (const [x, y] of pts) this.estender(x, y, x, y);
+    const stroke = e.stroke ?? COR.linha;
+    if (e.soTela || stroke === 'none') return;
+    // estribo fechado vem com o 1º ponto repetido no fim: no DXF vira polilinha fechada de verdade
+    const [a, z] = [pts[0], pts[pts.length - 1]];
+    const fechada = pts.length >= 4 && Math.abs(a[0] - z[0]) < 1e-9 && Math.abs(a[1] - z[1]) < 1e-9;
+    const q = (fechada ? pts.slice(0, -1) : pts).map(([x, y]): Pt => [x, y]);
+    this.prims.push({ k: 'polilinha', pts: q, fechada, e: this.traco(stroke, e, this.camadaDe(e, e.fill ?? 'none', stroke)) });
   }
 
   /** Contorno com furos num caminho só (regra par-ímpar): o furo do bloco fica vazado de verdade. */
@@ -143,11 +320,25 @@ export class Prancha {
     if (!d) return;
     this.corpo.push(`<path d="${d}" fill-rule="evenodd" ${this.atributos(e)}/>`);
     for (const a of aneis) for (const [x, y] of a) this.estender(x, y, x, y);
+    this.anotarArea(aneis.filter((a) => a.length >= 3), e);
   }
 
   circulo(cx: number, cy: number, r: number, e: Estilo = {}): void {
     this.corpo.push(`<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}" ${this.atributos(e, COR.aco, 'none')}/>`);
     this.estender(cx - r, cy - r, cx + r, cy + r);
+    if (e.soTela) return;
+    const fill = e.fill ?? COR.aco;
+    const stroke = e.stroke ?? 'none';
+    const camada = this.camadaDe(e, fill, stroke);
+    // o ponto da barra cortada é cheio e sem contorno; o contrato só guarda a camada no traço, então ele leva um
+    // contorno da própria cor, espessura 0 — some no desenho e diz ao DXF que o ponto é aço
+    const cheio = fill.startsWith('#') ? fill : undefined;
+    const contorno = stroke !== 'none' ? this.traco(stroke, e, camada) : cheio ? { camada, cor: cheio, espessura: 0 } : null;
+    // círculo sem traço e sem tinta não tem o que levar para o DXF
+    if (!contorno) return;
+    const c: Extract<Primitiva, { k: 'circulo' }> = { k: 'circulo', c: [cx, cy], r, e: contorno };
+    if (cheio) c.cheio = cheio;
+    this.prims.push(c);
   }
 
   /**
@@ -175,6 +366,14 @@ export class Prancha {
     const a0 = anc === 'start' ? 0 : anc === 'middle' ? -w / 2 : -w;
     if (!o.vertical) this.estender(x + a0, y - 0.85 * tam, x + a0 + w, y + 0.25 * tam);
     else this.estender(x - 0.85 * tam, y - a0 - w, x + 0.25 * tam, y - a0);
+    // o y do texto já é a linha de base, que é o ponto de inserção do DXF; o giro de −90° do SVG (y para baixo)
+    // é o de +90° anti-horário do CAD (y para cima): a cota vertical lê de baixo para cima nos dois
+    if (!t) return;
+    const p: Extract<Primitiva, { k: 'texto' }> = {
+      k: 'texto', p: [x, y], t, altura: tam, ancora: anc, angulo: o.vertical ? 90 : 0, cor, camada: o.camada ?? 'textos',
+    };
+    if (o.negrito) p.negrito = true;
+    this.prims.push(p);
   }
 
   /**
@@ -190,7 +389,7 @@ export class Prancha {
     if (de) {
       for (const [x, y0] of [[x1, de[0]], [x2, de[1]]] as Pt[]) {
         const s = y > y0 ? 1 : -1;
-        if (Math.abs(y - y0) > 3) this.linha(x, y0 + s * 2, x, y + s * 4, { stroke: COR.cota, sw: 0.6 });
+        if (Math.abs(y - y0) > 3) this.linha(x, y0 + s * 2, x, y + s * 4, { stroke: COR.cota, sw: 0.6, camada: 'cotas' });
       }
     }
     this.corpo.push(
@@ -198,6 +397,7 @@ export class Prancha {
         ` marker-start="url(#${this.prefixo}-tick)" marker-end="url(#${this.prefixo}-tick)"/>`,
     );
     this.estender(x1 - 4, y - 4, x2 + 4, y + 4);
+    this.anotarLinhaDeCota(x1, y, x2, y);
     return [x1, x2];
   }
 
@@ -225,7 +425,7 @@ export class Prancha {
       while (ocupados.some(([a, b, nv]) => nv === nivel && x0 < b + 3 && x0 + w > a - 3)) nivel++;
       ocupados.push([x0, x0 + w, nivel]);
       // halo branco: o rótulo fica legível quando um eixo ou uma chamada passa por baixo dele
-      this.texto(x0, y - 4 - nivel * (tam + 2), s.rotulo, { tam, cor: COR.cota, ancora: 'start', halo: true });
+      this.texto(x0, y - 4 - nivel * (tam + 2), s.rotulo, { tam, cor: COR.cota, ancora: 'start', halo: true, camada: 'cotas' });
     });
   }
 
@@ -237,7 +437,7 @@ export class Prancha {
     if (o.de) {
       for (const [y, x0] of [[y1, o.de[0]], [y2, o.de[1]]] as Pt[]) {
         const s = x > x0 ? 1 : -1;
-        this.linha(x0 + s * 2, y, x + s * 4, y, { stroke: COR.cota, sw: 0.6 });
+        this.linha(x0 + s * 2, y, x + s * 4, y, { stroke: COR.cota, sw: 0.6, camada: 'cotas' });
       }
     }
     this.corpo.push(
@@ -245,26 +445,32 @@ export class Prancha {
         ` marker-start="url(#${this.prefixo}-tick)" marker-end="url(#${this.prefixo}-tick)"/>`,
     );
     this.estender(x - 4, y1 - 4, x + 4, y2 + 4);
+    this.anotarLinhaDeCota(x, y1, x, y2);
     const w = Prancha.largura(rotulo, tam);
     const xt = lado < 0 ? x - 4 : x + 4 + 0.85 * tam;
-    if (w + 6 <= y2 - y1) this.texto(xt, (y1 + y2) / 2, rotulo, { tam, cor: COR.cota, vertical: true, halo: true });
-    else this.texto(xt, y1 - 5, rotulo, { tam, cor: COR.cota, vertical: true, ancora: 'start', halo: true });
+    if (w + 6 <= y2 - y1) this.texto(xt, (y1 + y2) / 2, rotulo, { tam, cor: COR.cota, vertical: true, halo: true, camada: 'cotas' });
+    else this.texto(xt, y1 - 5, rotulo, { tam, cor: COR.cota, vertical: true, ancora: 'start', halo: true, camada: 'cotas' });
   }
 
   /** Grupo com atributos (ex.: data-camada) — para o componente e o teste acharem uma camada inteira. */
   abrir(atributos: string): void {
     this.corpo.push(`<g ${atributos}>`);
+    // o grupo sem data-camada herda a do grupo de fora: a pilha anda junto com o <g>, o fechar() tira um de cada
+    const c = atributos.match(/data-camada="([^"]*)"/)?.[1] ?? this.grupos[this.grupos.length - 1] ?? '';
+    this.grupos.push(c);
   }
 
   fechar(): void {
     this.corpo.push('</g>');
+    this.grupos.pop();
   }
 
   private defs(): string {
     const p = this.prefixo;
+    const M = MARCA;
     return (
-      `<marker id="${p}-tick" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto">` +
-      `<path d="M2,8 L8,2" stroke="${COR.cota}" stroke-width="1.5"/></marker>` +
+      `<marker id="${p}-tick" viewBox="0 0 ${M.caixa} ${M.caixa}" refX="${M.ref}" refY="${M.ref}" markerWidth="${M.lado}" markerHeight="${M.lado}" markerUnits="userSpaceOnUse" orient="auto">` +
+      `<path d="M${M.de[0]},${M.de[1]} L${M.ate[0]},${M.ate[1]}" stroke="${COR.cota}" stroke-width="${M.sw}"/></marker>` +
       // terra, concreto, areia e brita: as hachuras do Revit do Jose (hachuras.ts)
       hachurasDeMaterial(p) +
       `<pattern id="${p}-alv" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">` +

@@ -6,4 +6,5 @@ export { vistaFrontal, desenharVistaFrontal } from './vistaFrontal';
 export { corteLateral, desenharCorteLateral, cortesPadrao, barrasNoCorte, type CortePadrao } from './corteLateral';
 export { planta, desenharPlanta } from './planta';
 export { isometrico, desenharIsometrico, type OpcoesIso, type VistaIso } from './isometrico';
-export { Prancha, COR } from './prancha';
+export { Prancha, COR, type OpcoesDaVista } from './prancha';
+export { vistaParaPrancha } from './paraPrancha';

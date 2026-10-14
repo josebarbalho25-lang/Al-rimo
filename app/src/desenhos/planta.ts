@@ -17,10 +17,11 @@ import { ALVENARIA, contrafortesDoModelo, cruzamentos, secao, solidosDoModelo, t
 import { estiloDaSecao } from './corteLateral';
 import { desenharLegenda, estiloPintado, itensDasTintas, tintaDaPeca, tintasPresentes } from './cores';
 import { cadeia } from './vistaFrontal';
-import { COR, Prancha, escalaPara, type Pt } from './prancha';
+import { COR, Prancha, escalaPara, type OpcoesDaVista, type Pt } from './prancha';
 
-export function desenharPlanta(m: Modelo, fiada = 0): Prancha {
-  const pr = new Prancha('des');
+/** `fiada` conta de 0 (0 = 1ª fiada). `o`: escala fixa, sem título e prefixo dos ids — o pedido do modo prancha. */
+export function desenharPlanta(m: Modelo, fiada = 0, o: OpcoesDaVista = {}): Prancha {
+  const pr = new Prancha(o.prefixo ?? 'des');
   const sol = solidosDoModelo(m).filter((s) => s.peca.grupo !== 'terreno');
   const t = m.familia.t;
   const { trechos, sapata, L_real, n_fiadas } = m.dims;
@@ -32,7 +33,7 @@ export function desenharPlanta(m: Modelo, fiada = 0): Prancha {
   const cfs = contrafortesDoModelo(m, sol);
   const yMin = Math.min(sapata.y0, 0, ...cfs.map((c) => c.min[1]));
   const yMax = Math.max(sapata.y1, t, ...cfs.map((c) => c.max[1]));
-  const S = escalaPara(Math.max(xFim - xIni, 2.2 * (yMax - yMin)), 1000, 0.05, 0.5);
+  const S = o.S ?? escalaPara(Math.max(xFim - xIni, 2.2 * (yMax - yMin)), 1000, 0.05, 0.5);
   const X = (x: number) => x * S;
   const Y = (y: number) => -y * S;
   const tela = (p: Vec2): Pt => [X(p[0]), Y(p[1])];
@@ -89,12 +90,12 @@ export function desenharPlanta(m: Modelo, fiada = 0): Prancha {
   const yBase = Y(yMin);
   pr.abrir('data-camada="cotas"');
   for (const c of cfs) {
-    pr.linha(X(c.x), yBase + 10, X(c.x), yTopo - 34, { stroke: COR.cota, sw: 0.6, dash: '14,3,2,3' });
+    pr.linha(X(c.x), yBase + 10, X(c.x), yTopo - 34, { stroke: COR.cota, sw: 0.6, dash: '14,3,2,3', camada: 'eixos' });
     pr.texto(X(c.x), yTopo - 38, `C${c.numero}`, { tam: 11, cor: COR.cota, negrito: true });
   }
   for (let k = 0; k + 1 < trechos.length; k++) {
     const xj = (trechos[k].x1 + trechos[k + 1].x0) / 2;
-    pr.linha(X(xj), Y(-60), X(xj), Y(t + 60), { stroke: COR.linha, sw: 1.8 });
+    pr.linha(X(xj), Y(-60), X(xj), Y(t + 60), { stroke: COR.linha, sw: 1.8, camada: 'eixos' });
     pr.texto(X(xj), yBase + 22, 'JC', { tam: 11, negrito: true });
   }
   // eixo a eixo dos contrafortes, por cima (lado do solo)
@@ -121,10 +122,13 @@ export function desenharPlanta(m: Modelo, fiada = 0): Prancha {
   }
   pr.fechar();
 
+  // na prancha o título é dela (embaixo do desenho, com a escala); o PROVISÓRIO fica, é aviso e não título
   const yTit = yTopo - (cfs.length ? 66 : 30);
-  pr.texto(X(xIni), yTit, `Planta — ${f + 1}ª fiada`, { tam: 15, ancora: 'start', negrito: true });
-  pr.texto(X(xIni), yTit + 16, 'cotas em cm', { tam: 10, ancora: 'start', cor: COR.nota });
-  if (m.familia.provisoria && cfs.length) pr.texto(X(xIni) + 190, yTit, 'PROVISÓRIO', { tam: 13, ancora: 'start', negrito: true, cor: COR.especial });
+  if (!o.semTitulo) {
+    pr.texto(X(xIni), yTit, `Planta — ${f + 1}ª fiada`, { tam: 15, ancora: 'start', negrito: true });
+    pr.texto(X(xIni), yTit + 16, 'cotas em cm', { tam: 10, ancora: 'start', cor: COR.nota });
+  }
+  if (m.familia.provisoria && cfs.length) pr.texto(X(xIni) + (o.semTitulo ? 0 : 190), yTit, 'PROVISÓRIO', { tam: 13, ancora: 'start', negrito: true, cor: COR.especial });
   // legenda só com os tipos que aparecem NESTA fiada (a 1ª não tem canaleta; a do topo é só canaleta)
   desenharLegenda(pr, X(xIni), linhaLegenda, itensDasTintas(tintasPresentes(cortados.map((q) => q.s))), Math.max(320, X(xFim) - X(xIni)));
   return pr;
