@@ -51,6 +51,9 @@ export interface OpcoesDoPalco {
   fundo?: boolean;
   /** Texturas do Realista (ver `pelesProprias`); sem ela, as do visor. */
   peles?: FonteDasPeles;
+  /** Foto para a PRANCHA: fundo transparente em qualquer tema e estilo — a folha é papel branco, e o fundo escuro
+   *  do tema (ou o degradê do Cores) saía como um retângulo escuro no meio da prancha. */
+  papel?: boolean;
 }
 
 export interface PalcoDaFoto {
@@ -91,7 +94,7 @@ export function montarPalcoDaFoto(modelo: Modelo, c: Camera3d, larguraPx: number
   scene.add(cena.grupo);
   const luzes = montarLuzes(estilo, total, o.maxTextura);
   scene.add(luzes.grupo);
-  const fundo = o.fundo === false ? null : pintarFundo(palcoDoTema(o.paleta, estilo), estilo === 'opaco');
+  const fundo = o.fundo === false || o.papel ? null : pintarFundo(palcoDoTema(o.paleta, estilo), estilo === 'opaco');
   scene.background = fundo;
 
   return {
@@ -131,14 +134,14 @@ let fila: Promise<unknown> = Promise.resolve();
  * a altura visível do muro é a guardada (a mesma foto em qualquer tamanho). Se
  * o tamanho passar do que a placa aguenta, sai menor, na mesma proporção.
  */
-export async function refazerFoto(modelo: Modelo, camera: Camera3d, larguraPx: number, alturaPx: number): Promise<string> {
-  const vez = fila.then(() => fotografarFora(modelo, camera, larguraPx, alturaPx));
+export async function refazerFoto(modelo: Modelo, camera: Camera3d, larguraPx: number, alturaPx: number, opcoes: { papel?: boolean } = {}): Promise<string> {
+  const vez = fila.then(() => fotografarFora(modelo, camera, larguraPx, alturaPx, opcoes.papel === true));
   // A fila anda mesmo quando uma foto falha (a falha vai para quem pediu aquela foto).
   fila = vez.catch(() => undefined);
   return vez;
 }
 
-async function fotografarFora(modelo: Modelo, camera: Camera3d, larguraPx: number, alturaPx: number): Promise<string> {
+async function fotografarFora(modelo: Modelo, camera: Camera3d, larguraPx: number, alturaPx: number, papel: boolean): Promise<string> {
   if (!(larguraPx >= 1 && alturaPx >= 1 && Number.isFinite(larguraPx * alturaPx))) throw new Error(`foto refeita: tamanho inválido (${larguraPx} × ${alturaPx})`);
   const tela = document.createElement('canvas');
   // As mesmas escolhas do Canvas do visor (o r3f liga antisserrilhado, alfa e a placa rápida; o visor liga o corte
@@ -158,7 +161,9 @@ async function fotografarFora(modelo: Modelo, camera: Camera3d, larguraPx: numbe
     const [w, h] = tamanhoQueCabe(larguraPx, alturaPx, lado);
     gl.setPixelRatio(1);
     gl.setSize(w, h, false);
-    palco = montarPalcoDaFoto(modelo, camera, w, h, { paleta: lerPaleta(), maxTextura: gl.capabilities.maxTextureSize, peles: peles.fonte });
+    palco = montarPalcoDaFoto(modelo, camera, w, h, { paleta: lerPaleta(), maxTextura: gl.capabilities.maxTextureSize, peles: peles.fonte, papel });
+    // sem fundo, o renderizador com alfa limpa transparente: no papel, o muro fica sobre a folha branca
+    if (papel) gl.setClearColor(0x000000, 0);
     gl.toneMapping = palco.exposicao;
     gl.toneMappingExposure = 1;
     // Compila os sombreadores sem travar a tela (o Realista tem vários): a prancha refaz as fotos enquanto o

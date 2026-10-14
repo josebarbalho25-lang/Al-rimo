@@ -15,6 +15,7 @@ import { Visor3D } from '@/visor/Visor3D';
 import { Desenhos } from '@/desenhos/Desenhos';
 import { Quantitativo } from '@/quantitativo/Quantitativo';
 import { TelaDasPranchas } from '@/pranchas/TelaDasPranchas';
+import { ligarEnvioParaPrancha } from '@/pranchas/receber';
 import type { Resultado } from '@/motor/tipos';
 
 // A memória pede a figura do card por número ('Fig. 11'); o acervo é o mesmo do botão das entradas.
@@ -28,6 +29,8 @@ function MemoriaDoProjeto({ resultado }: { resultado: Resultado }) {
 }
 
 export function ligarAsFrentes(): void {
+  // o "Enviar para a prancha" do 3D e das vistas cai na folha ativa, com a aba Pranchas aberta ou não
+  ligarEnvioParaPrancha();
   useApp.getState().ligar({
     gerador: gerarModelo,
     exportarIfc,

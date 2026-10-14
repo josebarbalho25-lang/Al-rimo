@@ -17,13 +17,15 @@ import type { Modelo } from '@/modelo/tipos';
 import type { Resultado } from '@/motor/tipos';
 import { useApp } from '@/estado/store';
 import { comporFolha, type ContextoDaFolha, type FolhaComposta } from './folha';
-import { CARIMBO_MIN, ESCALAS, ORDEM_DOS_FORMATOS, quadroLateralPadrao, quadroUtil, rotuloDaEscala, tamanhoDaFolha } from './formatos';
-import { novaFolha, novoId } from './padrao';
+import { CARIMBO_MIN, ESCALAS, ORDEM_DOS_FORMATOS, quadroLateralPadrao, rotuloDaEscala, tamanhoDaFolha } from './formatos';
+import { novaFolha } from './padrao';
+import { itemDaVista, naFolha, noItem, NOMES_DO_CONTEUDO, porNaFolha } from './acoes';
+import { usePranchasUi } from './ui';
 import { legendaDasCores, notasAutomaticas, quadroDeAco } from './quadro';
 import { criarDesenhista } from './desenhista';
 import { logoEmPng, useEscritorio } from './escritorio';
 import { imprimirPranchas } from './pdf';
-import type { ConteudoDoItem, DadosDaObra, Folha, Formato, ItemDaFolha, Orientacao, PranchasDoProjeto } from './tipos';
+import type { ConteudoDoItem, DadosDaObra, Folha, Formato, ItemDaFolha, Orientacao } from './tipos';
 
 type Selecao = { tipo: 'item'; id: string } | { tipo: 'carimbo' } | { tipo: 'quadro' } | null;
 
@@ -35,16 +37,6 @@ type Arrasto =
   | { tipo: 'quadro'; px: number; py: number; w0: number; h0: number; dw: number; dh: number };
 
 const AZUL = '#0080ff';
-
-const NOMES_DO_CONTEUDO: Record<string, string> = {
-  frontal: 'Vista frontal',
-  corte: 'Corte',
-  planta: 'Planta',
-  iso: 'Isométrico',
-  '3d': '3D',
-  detalhe: 'Detalhe',
-  tabela: 'Tabela',
-};
 
 const s = {
   raiz: { position: 'absolute', inset: 0, display: 'flex', minHeight: 0 } as CSSProperties,
@@ -70,9 +62,6 @@ const s = {
   mesa: { flex: 1, minHeight: 0, overflow: 'auto', background: '#8f949a', padding: 24 } as CSSProperties,
   botao: { flex: 'none', padding: '0 10px' } as CSSProperties,
 };
-
-/** Escala de partida de cada vista: o corte é a peça que se cota miúdo. */
-const ESCALA_INICIAL: Record<string, number> = { frontal: 50, corte: 25, planta: 50, iso: 50 };
 
 function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
   return (
@@ -105,28 +94,13 @@ function Numero({ valor, aoMudar, min = 0 }: { valor: number; aoMudar: (v: numbe
   );
 }
 
-/** Mexe numa folha pelo id, sem tocar nas outras. */
-function naFolha(p: PranchasDoProjeto, id: string, f: (x: Folha) => Folha): PranchasDoProjeto {
-  return { ...p, folhas: p.folhas.map((x) => (x.id === id ? f(x) : x)) };
-}
-
-function noItem(p: PranchasDoProjeto, folha: string, item: string, f: (x: ItemDaFolha) => ItemDaFolha): PranchasDoProjeto {
-  return naFolha(p, folha, (x) => ({ ...x, itens: x.itens.map((i) => (i.id === item ? f(i) : i)) }));
-}
-
-/** Lugar livre de partida para um desenho novo: em cascata a partir do canto superior esquerdo do quadro útil. */
-function lugarNovo(folha: Folha): [number, number] {
-  const [x0, y0] = quadroUtil(folha.formato, folha.orientacao);
-  const k = folha.itens.length;
-  return [x0 + 15 + 20 * (k % 6), y0 + 15 + 20 * (k % 6)];
-}
-
 export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; resultado: Resultado | null }) {
   const pranchas = useApp((st) => st.pranchas);
   const mudar = useApp((st) => st.mudarPranchas);
   const escritorio = useEscritorio((st) => st.dados);
   const mudarEscritorio = useEscritorio((st) => st.mudar);
-  const [ativa, setAtiva] = useState<string | null>(null);
+  const ativa = usePranchasUi((st) => st.ativa);
+  const setAtiva = usePranchasUi((st) => st.definirAtiva);
   const [sel, setSel] = useState<Selecao>(null);
   const [zoom, setZoom] = useState(1);
   const [arrasto, setArrasto] = useState<Arrasto | null>(null);
@@ -146,7 +120,10 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
     return () => ro.disconnect();
   }, []);
 
-  const desenhista = useMemo(() => criarDesenhista(modelo), [modelo]);
+  // a foto do 3D chega depois: quando chega, `versao` sobe e a folha se recompõe
+  const [versao, setVersao] = useState(0);
+  const desenhista = useMemo(() => criarDesenhista(modelo, () => setVersao((v) => v + 1)), [modelo]);
+  useEffect(() => () => desenhista.descartar(), [desenhista]);
   const base = useMemo(
     () => ({
       escritorio,
@@ -158,7 +135,9 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
   );
   const contexto = useCallback(
     (n: number, total: number, obra: DadosDaObra): ContextoDaFolha => ({ ...base, numero: n, total, obra, desenhar: desenhista.desenhar }),
-    [base, desenhista],
+    // `versao` entra para a folha se recompor quando a foto do 3D chega
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [base, desenhista, versao],
   );
   const composta: FolhaComposta | null = useMemo(
     () => (folha ? comporFolha(folha, contexto(numero, pranchas.folhas.length, pranchas.obra)) : null),
@@ -181,19 +160,11 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
     setSel(null);
   };
   const adicionarVista = (tipo: 'frontal' | 'corte' | 'planta' | 'iso') => {
-    let alvo = folha;
-    if (!alvo) {
-      alvo = novaFolha('');
-      const nova = alvo;
-      mudar((p) => ({ ...p, folhas: [...p.folhas, nova] }));
-      setAtiva(nova.id);
-    }
-    const [x, y] = lugarNovo(alvo);
-    const conteudo: ConteudoDoItem = tipo === 'planta' ? { tipo, fiada: 0 } : tipo === 'iso' ? { tipo, vista: 'frente-direita', corteX: null } : { tipo };
-    const item: ItemDaFolha = { id: novoId('i'), conteudo, escala: ESCALA_INICIAL[tipo], x, y, titulo: NOMES_DO_CONTEUDO[tipo] };
-    const idFolha = alvo.id;
-    mudar((p) => naFolha(p, idFolha, (f) => ({ ...f, itens: [...f.itens, item] })));
-    setSel({ tipo: 'item', id: item.id });
+    const pedido = tipo === 'planta' ? { tipo, fiada: 0 } : tipo === 'iso' ? { tipo, vista: 'frente-direita' as const, corteX: null } : { tipo };
+    const r = porNaFolha(pranchas, folha?.id ?? null, (f) => itemDaVista(f, pedido));
+    mudar(() => r.pranchas);
+    setAtiva(r.folha);
+    setSel({ tipo: 'item', id: r.item.id });
   };
   const excluirItem = useCallback(
     (id: string) => {
