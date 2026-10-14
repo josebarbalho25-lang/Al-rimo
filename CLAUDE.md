@@ -270,8 +270,7 @@ e dizer ao Jose o que mudou e por quê.
   três argilas de Joppert Jr. (2007, conferido em 3 reproduções; original não visto), su = 10·NSPT (Teixeira & Godoy
   1996, não drenada), γ de Godoy. Sugestões `cons_arg`, `c_arg`, `phi_arg`, `su_arg`; a calculadora da Fig. 22
   (`app/src/figuras/calculadoraDoSolo.ts`) lê esses nomes e Ka_/Kp_ pelo motor — não tem conta própria.
-  **Aguardando o Jose:** resumo da aula do Gilberto sobre deslizamento ("coeficiente de
-  atrito") e a POSIÇÃO DO DENTE (não é sempre centralizado: distância à borda aterrada → tombamento e deslizamento);
+  Deslizamento e posição do dente: FEITOS em 13/10 (ver "Dente com posição e passivo"). **Aguardando o Jose:** o
   "nó de cachorro" da armadura que entra na sapata (ele modela no Revit).
 - **Respostas do Jose (09/10, fim do dia):** limites 3,0/4,0 valem para a altura do MURO; **bitola da espera em LISTA
   dependente da altura da sapata** (só as que a dobra cabe: pino 5φ até Ø16, 8φ a partir de Ø20 — NBR 6118 Tab. 9.1;
@@ -399,8 +398,7 @@ e dizer ao Jose o que mudou e por quê.
   no encontro das canaletas, graute da haste contínuo nas juntas, aviso BARBACA_SEM_CELULA; validador do IFC com
   --furos/--barras (tem dente). Graute total sobe ~4–5%. Para o Jose: barbacã em muro todo em canaleta — furar a
   canaleta?; IFC: cada canaleta furada diferente vira um tipo com o mesmo nome — abrir no Revit para conferir.
-  Faltam: dreno de fundo; deslizamento e posição do dente
-  (aguardando resumo da aula do Gilberto); nó de cachorro (Revit dele); detalhes na prancha final; T de graute no 3D
+  Faltam (dreno de fundo e dente já feitos): nó de cachorro (Revit dele); detalhes na prancha final; T de graute no 3D
   (parede quebrada da canaleta); "→ 5,99" aparece mesmo com comprimento modular (comparar com o modular?); revisores de
   IFC/quantitativo com o muro real; Ag da conta pelo bloco desenhado (decidir).
   Relatórios dos agentes: `_trabalho/` (fora do git).
@@ -465,9 +463,10 @@ e dizer ao Jose o que mudou e por quê.
   3. Inércia fissurada (estádio II) do ELS: a conta é longa e as figuras da direita colidem com a fórmula grande —
      reduzir um pouco as figuras e TRAVAR a de cima na 1ª linha da seção e a de baixo na última linha.
   (4. não ditado.)
-  6. ANTES do 5: drenagem no 3D — os BARBACÃS SUMIRAM (voltar); DRENO DE FUNDO; camada de areia e brita representadas
-     melhor no 3D.
-  5. Modo PRANCHA para impressão: PDF ou DXF.
+  6. FEITO 14/10 — drenagem no 3D (barbacãs de volta, dreno de fundo, areia e brita).
+  5. FEITO 14/10 — modo prancha (PDF e DXF).
+  Do item 3 há um começo de 12/10 na branch `formula-els-painel` (B e C da LN em linha própria no gerador,
+  `tools/contrafortes.py`); nunca entrou no main.
 - **Anotado do Jose (12/10, noite — fazer depois, ele avisa quando):**
   1. Barra horizontal do painel (a da canaleta) no contraforte: hoje é traspasse + L; trocar por barra dobrada em U de
      um contraforte ao outro, vários U em sequência, cada barra engastada duas vezes ("é mais fácil dobrar a barra em U
