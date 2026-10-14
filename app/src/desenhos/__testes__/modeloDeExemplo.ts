@@ -24,6 +24,9 @@ export interface OpcoesExemplo {
   aparente?: boolean;
   juntaNaCelula?: number;    // balanço: célula onde começa o 2º trecho (junta de controle)
   dreno?: boolean;
+  /** Espessura da areia de filtro sobre o dreno (mm, do lado do aterro); 0 = sem (o padrão: os testes antigos não
+   *  têm areia). A modulação põe a areia junto; aqui ela só existe para o corte ter as quatro hachuras. */
+  areia?: number;
   barbaca?: boolean;
   terreno?: boolean;
   B?: number; h_sap?: number; a_ater?: number; b_den?: number; h_den?: number;   // mm
@@ -286,6 +289,12 @@ export function modeloDeExemplo(o: OpcoesExemplo = {}): Modelo {
       const chave = `dreno ${x1 - x0}`;
       g[chave] ??= geometria(chave, 'X', ret(0, 0, ed, hd), x1 - x0);
       pecas.push({ id: `DRN.v${j + 1}`, tipo: 'DRENO', grupo: 'drenagem', geometria: chave, origem: [x0, t, 0], giro: 0, trecho: 1 });
+      const a = o.areia ?? 0;
+      if (a > 0) {
+        const ca = `areia ${a} ${x1 - x0}`;
+        g[ca] ??= geometria(ca, 'X', ret(0, 0, a, hd), x1 - x0);
+        pecas.push({ id: `ARE.v${j + 1}`, tipo: 'AREIA', grupo: 'drenagem', geometria: ca, origem: [x0, t + ed, 0], giro: 0, trecho: 1 });
+      }
     });
   }
   if (o.barbaca ?? true) {

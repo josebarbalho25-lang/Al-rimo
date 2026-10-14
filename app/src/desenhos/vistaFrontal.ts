@@ -18,7 +18,7 @@ import {
   ALVENARIA, contrafortesDoModelo, projecao, projetarPontos, solidosDoModelo, type Regiao, type Solido,
 } from './geometria';
 import { desenharLegenda, estiloPintado, itensDasTintas, tintaDaPeca, tintasPresentes, type Amostra } from './cores';
-import { COR, Prancha, escalaPara, type Estilo, type Pt } from './prancha';
+import { COR, Prancha, escalaPara, type Estilo, type OpcoesDaVista, type Pt } from './prancha';
 
 /** Corridas de intervalos iguais viram uma cota só: "12×40" em vez de doze "40" espremidos. */
 export function cadeia(pontos: number[]): { a: number; b: number; rotulo: string }[] {
@@ -39,13 +39,14 @@ export function cadeia(pontos: number[]): { a: number; b: number; rotulo: string
 /** A peça de alvenaria na elevação: a cor do tipo de bloco (a amarração do contraforte se lê pelo 34 e pelo 54). */
 export function estiloDaAlvenaria(s: Solido): Estilo {
   const t = tintaDaPeca(s);
-  return t ? estiloPintado(t) : { fill: COR.blocoFundo, stroke: COR.linha, sw: 0.7 };
+  return t ? estiloPintado(t) : { fill: COR.blocoFundo, stroke: COR.linha, sw: 0.7, camada: 'alvenaria' };
 }
 
 const PAPEIS_VISTOS = new Set<Barra['papel']>(['VERT_MURO', 'ESPERA', 'HORIZ', 'CF_PRINCIPAL', 'CF_CONSTRUTIVA']);
 
-export function desenharVistaFrontal(m: Modelo): Prancha {
-  const pr = new Prancha('des');
+/** `o`: escala fixa, sem título e prefixo dos ids — o pedido do modo prancha (paraPrancha.ts). */
+export function desenharVistaFrontal(m: Modelo, o: OpcoesDaVista = {}): Prancha {
+  const pr = new Prancha(o.prefixo ?? 'des');
   const sol = solidosDoModelo(m).filter((s) => s.peca.grupo !== 'terreno');
   const t = m.familia.t;
   const { H_muro, H_solo, n_fiadas, trechos, sapata, L_real } = m.dims;
@@ -54,7 +55,8 @@ export function desenharVistaFrontal(m: Modelo): Prancha {
   // 900 (era 1000): a cota saía com ~13,7 px na tela cheia (1920×1080, painel aberto); com o desenho 10% menor
   // na folha, o enquadrar amplia mais e toda a anotação cresce junto — cota ~15 px, como o rótulo do painel e a
   // cota da planta. Os limites acompanham na mesma razão.
-  const S = escalaPara(Math.max(xFim - xIni, 1.6 * (H_muro - sapata.z0)), 900, 0.045, 0.45);
+  // Na prancha a escala vem pedida (1:25, 1:50…) e o desenho fica do tamanho que ela der.
+  const S = o.S ?? escalaPara(Math.max(xFim - xIni, 1.6 * (H_muro - sapata.z0)), 900, 0.045, 0.45);
   const X = (x: number) => x * S;
   const Y = (z: number) => -z * S;
   const aneis = (r: Regiao): Pt[][] => [r.contorno, ...r.furos].map((a) => a.map(([x, z]): Pt => [X(x), Y(z)]));
@@ -101,7 +103,7 @@ export function desenharVistaFrontal(m: Modelo): Prancha {
 
   // barbacãs: o tubo atravessa o muro, de frente é um círculo
   for (const s of sol.filter((q) => q.peca.tipo === 'BARBACA')) {
-    pr.caminho(aneis(projecao(s, 'Y')), { fill: '#ffffff', stroke: COR.linha, sw: 0.8, id: s.peca.id });
+    pr.caminho(aneis(projecao(s, 'Y')), { fill: '#ffffff', stroke: COR.linha, sw: 0.8, id: s.peca.id, camada: 'drenagem' });
   }
 
   // ── armaduras ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -114,7 +116,7 @@ export function desenharVistaFrontal(m: Modelo): Prancha {
     const pts = projetarPontos(b.eixo, 'Y').map(([x, z]): Pt => [X(x), Y(z)]);
     const sw = Math.max(0.9, b.diametro * S);
     const dash = b.papel === 'ESPERA' ? '5,3' : undefined;
-    pr.polilinha(pts, { stroke: '#ffffff', sw: sw + 1.2, dash, extra: 'pointer-events="none"' });
+    pr.polilinha(pts, { stroke: '#ffffff', sw: sw + 1.2, dash, extra: 'pointer-events="none"', soTela: true });
     pr.polilinha(pts, { stroke: COR.aco, sw, dash, id: b.id });
   }
   pr.fechar();
@@ -125,12 +127,12 @@ export function desenharVistaFrontal(m: Modelo): Prancha {
   const linhaBarras = topo - 22;
   const linhaCf = temBarras ? topo - 50 : topo - 22;
   for (const c of cfs) {
-    pr.linha(X(c.x), Y(sapata.z0) + 8, X(c.x), linhaCf - 22, { stroke: COR.cota, sw: 0.6, dash: '14,3,2,3' });
+    pr.linha(X(c.x), Y(sapata.z0) + 8, X(c.x), linhaCf - 22, { stroke: COR.cota, sw: 0.6, dash: '14,3,2,3', camada: 'eixos' });
     pr.texto(X(c.x), linhaCf - 26, `C${c.numero}`, { tam: 11, cor: COR.cota, negrito: true });
   }
   for (let k = 0; k + 1 < trechos.length; k++) {
     const xj = (trechos[k].x1 + trechos[k + 1].x0) / 2;
-    pr.linha(X(xj), Y(sapata.z0) + 8, X(xj), topo - 8, { stroke: COR.linha, sw: 1.8 });
+    pr.linha(X(xj), Y(sapata.z0) + 8, X(xj), topo - 8, { stroke: COR.linha, sw: 1.8, camada: 'eixos' });
     pr.texto(X(xj), Y(sapata.z0) + 22, 'JC', { tam: 11, negrito: true });
   }
 
@@ -175,11 +177,14 @@ export function desenharVistaFrontal(m: Modelo): Prancha {
   pr.fechar();
 
   // ── título e legenda ──────────────────────────────────────────────────────────────────────────────────────────
+  // na prancha o título é dela (embaixo do desenho, com a escala); o PROVISÓRIO fica, é aviso e não título
   const yTit = cfs.length ? linhaCf - 66 : temBarras ? linhaBarras - 44 : topo - 34;
-  pr.texto(X(xIni), yTit, 'Vista frontal', { tam: 15, ancora: 'start', negrito: true });
-  pr.texto(X(xIni), yTit + 16, 'cotas em cm', { tam: 10, ancora: 'start', cor: COR.nota });
+  if (!o.semTitulo) {
+    pr.texto(X(xIni), yTit, 'Vista frontal', { tam: 15, ancora: 'start', negrito: true });
+    pr.texto(X(xIni), yTit + 16, 'cotas em cm', { tam: 10, ancora: 'start', cor: COR.nota });
+  }
   if (m.familia.provisoria && cfs.length) {
-    pr.texto(X(xIni) + 150, yTit, 'PROVISÓRIO', { tam: 13, ancora: 'start', negrito: true, cor: COR.especial });
+    pr.texto(X(xIni) + (o.semTitulo ? 0 : 150), yTit, 'PROVISÓRIO', { tam: 13, ancora: 'start', negrito: true, cor: COR.especial });
   }
   // legenda: só o que está desenhado (o tipo de bloco que não entrou no muro não aparece)
   const itens: [string, Amostra][] = itensDasTintas(tintasPresentes([...noPlano, ...naFrente]));

@@ -23,16 +23,24 @@ import {
 } from './geometria';
 import { barrasNoCorte, estiloDaSecao } from './corteLateral';
 import { desenharLegenda, itensDasTintas, tintaDaPeca, tintasPresentes } from './cores';
-import { COR, Prancha, type Pt } from './prancha';
+import { COR, Prancha, type OpcoesDaVista, type Pt } from './prancha';
 
 export type VistaIso = 'frente-direita' | 'frente-esquerda' | 'fundo-direita' | 'fundo-esquerda';
 
-export interface OpcoesIso {
+/** As opções da prancha (S, semTitulo, prefixo) vêm junto: com S dado, a `largura` não manda. */
+export interface OpcoesIso extends OpcoesDaVista {
   vista?: VistaIso;
   /** Corta o muro no plano X = corteX e tira a parte que fica do lado de quem olha. null/undefined = sem corte. */
   corteX?: number | null;
   /** Largura alvo do desenho, px. */
   largura?: number;
+}
+
+/** Camada do DXF da peça do isométrico: a cor sombreada da face não diz o material, a peça diz. */
+function camadaDaPeca(s: Solido): string {
+  if (s.peca.tipo === 'SAPATA') return 'concreto';
+  if (s.peca.tipo === 'DRENO') return 'drenagem';
+  return 'alvenaria';
 }
 
 const TIPOS_ISO = new Set<Solido['peca']['tipo']>([...ALVENARIA, 'SAPATA', 'DRENO']);
@@ -136,7 +144,8 @@ export function ordemDePintura(sol: Solido[], v: Vec3, proj: (p: Vec3) => Pt): S
   return out;
 }
 
-function corBase(s: Solido): string {
+/** A cor da peça antes da luz (a vista 3D em vetor, vista3d.ts, pinta o estilo Cores com esta mesma). */
+export function corBase(s: Solido): string {
   const tinta = tintaDaPeca(s);
   if (tinta) return tinta.cor;
   if (ESPECIAL.has(s.peca.tipo)) return COR.especialFundo;
@@ -145,7 +154,7 @@ function corBase(s: Solido): string {
   return COR.blocoFundo;
 }
 
-function sombrear(hex: string, f: number): string {
+export function sombrear(hex: string, f: number): string {
   const c = [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16));
   return '#' + c.map((v) => Math.max(0, Math.min(255, Math.round(v * f))).toString(16).padStart(2, '0')).join('');
 }
@@ -161,7 +170,7 @@ export function pecasDoIsometrico(todos: Solido[], corte: number | null, manterM
 }
 
 export function desenharIsometrico(m: Modelo, o: OpcoesIso = {}): Prancha {
-  const pr = new Prancha('des');
+  const pr = new Prancha(o.prefixo ?? 'des');
   const vista = o.vista ?? 'frente-direita';
   const { v, dir, cima, luz } = camera(vista);
   const { ax } = sentido(vista);
@@ -178,7 +187,9 @@ export function desenharIsometrico(m: Modelo, o: OpcoesIso = {}): Prancha {
     u0 = Math.min(u0, a); u1 = Math.max(u1, a); w0 = Math.min(w0, b); w1 = Math.max(w1, b);
   }
   const ext = Math.max(u1 - u0, (w1 - w0) * 1.3, 1);
-  const S = Math.min(0.6, Math.max(0.04, (o.largura ?? 1000) / ext));
+  // na prancha a escala vem pedida: a isometria não encurta as medidas ao longo dos eixos (fator 0,816 sobre o
+  // verdadeiro, como toda isometria ortográfica), então "1:50" aqui é a escala da projeção, não a do muro medido
+  const S = o.S ?? Math.min(0.6, Math.max(0.04, (o.largura ?? 1000) / ext));
   const P = (p: Vec3): Pt => {
     const [a, b] = P0(p);
     return [a * S, b * S];
@@ -201,6 +212,7 @@ export function desenharIsometrico(m: Modelo, o: OpcoesIso = {}): Prancha {
     const alv = ALVENARIA.has(s.peca.tipo);
     // traço escuro também no bloco: o cinza do inteiro (#787878) engoliria o #5f5f5f de antes
     const traco = alv ? '#2e2e2e' : '#404040';
+    const camada = camadaDaPeca(s);
     const faces = facesDoSolido(s)
       .filter((f) => escalar(f.normal, v) > 1e-6)
       .map((f) => ({ f, prof: escalar(f.pts.reduce((a, p) => [a[0] + p[0], a[1] + p[1], a[2] + p[2]] as Vec3, [0, 0, 0] as Vec3), v) / f.pts.length }))
@@ -210,25 +222,25 @@ export function desenharIsometrico(m: Modelo, o: OpcoesIso = {}): Prancha {
       const fator = alv ? Math.min(1, 0.8 + 0.25 * luzDaFace) : 0.6 + 0.4 * luzDaFace;
       const cor = sombrear(base, fator);
       if (!s.costuras) {
-        pr.poligono(f.pts.map(P), { fill: cor, stroke: traco, sw: alv ? 0.4 : 0.6, id: s.peca.id });
+        pr.poligono(f.pts.map(P), { fill: cor, stroke: traco, sw: alv ? 0.4 : 0.6, id: s.peca.id, camada });
       } else {
         // fatia: a costura não pode aparecer. A face no plano do corte é interna (a fatia de cima senta nela) e
         // não é pintada — o tom mais claro dela vazaria pela fresta; nas outras, o contorno na cor da face cobre
         // a fresta do antisserrilhado, e só as arestas da peça original levam traço
         if (f.pts.every((p, k) => ehCostura(s, p, f.pts[(k + 1) % f.pts.length]))) continue;
-        pr.poligono(f.pts.map(P), { fill: cor, stroke: cor, sw: 0.6, id: s.peca.id });
+        pr.poligono(f.pts.map(P), { fill: cor, stroke: cor, sw: 0.6, id: s.peca.id, camada });
         f.pts.forEach((p, k) => {
           const q = f.pts[(k + 1) % f.pts.length];
           if (ehCostura(s, p, q)) return;
           const [a, b] = [P(p), P(q)];
-          pr.linha(a[0], a[1], b[0], b[1], { stroke: traco, sw: 0.6 });
+          pr.linha(a[0], a[1], b[0], b[1], { stroke: traco, sw: 0.6, camada });
         });
       }
       // furo visto na tampa: azul de graute se a peça diz que o furo é grauteado; escuro se é vazio
       if (f.tampa && f.furos.length) {
         const gr = new Set(s.peca.furosGrauteados ?? []);
         f.furos.forEach((furo, k) => {
-          pr.poligono(furo.map(P), { fill: gr.has(k) ? sombrear(COR.grauteFundo, fator) : COR.furoEscuro, stroke: traco, sw: 0.3 });
+          pr.poligono(furo.map(P), { fill: gr.has(k) ? sombrear(COR.grauteFundo, fator) : COR.furoEscuro, stroke: traco, sw: 0.3, camada: gr.has(k) ? 'graute' : camada });
         });
       }
     }
@@ -239,12 +251,12 @@ export function desenharIsometrico(m: Modelo, o: OpcoesIso = {}): Prancha {
         if (xb - xa < 1 || g.min[2] < s.min[2] - 1 || g.max[2] > s.max[2] + 1 || g.min[1] < s.min[1] - 1 || g.max[1] > s.max[1] + 1) continue;
         const z = g.max[2];
         const quad: Vec3[] = [[xa, g.min[1], z], [xb, g.min[1], z], [xb, g.max[1], z], [xa, g.max[1], z]];
-        pr.poligono(quad.map(P), { fill: sombrear(COR.grauteFundo, 0.6 + 0.4 * luz[2]), stroke: COR.graute, sw: 0.3 });
+        pr.poligono(quad.map(P), { fill: sombrear(COR.grauteFundo, 0.6 + 0.4 * luz[2]), stroke: COR.graute, sw: 0.3, camada: 'graute' });
         // na ponta da corrida (ponta do trecho ou corte) o graute aparece de topo, enchendo o U da canaleta
         const xf = ax > 0 ? s.max[0] : s.min[0];
         if (Math.abs((ax > 0 ? xb : xa) - xf) < 1) {
           const tampa: Vec3[] = [[xf, g.min[1], g.min[2]], [xf, g.max[1], g.min[2]], [xf, g.max[1], z], [xf, g.min[1], z]];
-          pr.poligono(tampa.map(P), { fill: sombrear(COR.grauteFundo, 0.6 + 0.4 * Math.abs(luz[0])), stroke: COR.graute, sw: 0.3 });
+          pr.poligono(tampa.map(P), { fill: sombrear(COR.grauteFundo, 0.6 + 0.4 * Math.abs(luz[0])), stroke: COR.graute, sw: 0.3, camada: 'graute' });
         }
       }
     }
@@ -253,7 +265,7 @@ export function desenharIsometrico(m: Modelo, o: OpcoesIso = {}): Prancha {
     for (const b of tubos.get(s) ?? []) {
       const yFace = v[1] < 0 ? b.min[1] : b.max[1];
       const boca = [b.base, b.topo].reduce((m, l) => (Math.abs(l[0][1] - yFace) < Math.abs(m[0][1] - yFace) ? l : m));
-      pr.poligono(boca.map(P), { fill: COR.furoEscuro, stroke: traco, sw: 0.4, id: b.peca.id });
+      pr.poligono(boca.map(P), { fill: COR.furoEscuro, stroke: traco, sw: 0.4, id: b.peca.id, camada: 'drenagem' });
     }
   }
   pr.fechar();
@@ -283,10 +295,12 @@ export function desenharIsometrico(m: Modelo, o: OpcoesIso = {}): Prancha {
   // título acima e legenda abaixo de tudo o que foi desenhado
   const { viewBox } = pr.partes(0);
   desenharLegenda(pr, viewBox[0], viewBox[1] + viewBox[3] + 28, itensDasTintas(tintasPresentes(pecas)), Math.max(320, viewBox[2]));
+  // na prancha o título é dela (embaixo do desenho); o PROVISÓRIO fica, é aviso e não título
   const titulo = corte !== null ? `Isométrico — corte em x = ${metros(corte)} m` : 'Isométrico';
-  pr.texto(viewBox[0], viewBox[1] - 14, titulo, { tam: 15, ancora: 'start', negrito: true });
+  if (!o.semTitulo) pr.texto(viewBox[0], viewBox[1] - 14, titulo, { tam: 15, ancora: 'start', negrito: true });
   if (m.familia.provisoria && m.dims.contrafortes.length) {
-    pr.texto(viewBox[0] + Prancha.largura(titulo, 15, true) + 16, viewBox[1] - 14, 'PROVISÓRIO', { tam: 13, ancora: 'start', negrito: true, cor: COR.especial });
+    const x = viewBox[0] + (o.semTitulo ? 0 : Prancha.largura(titulo, 15, true) + 16);
+    pr.texto(x, viewBox[1] - 14, 'PROVISÓRIO', { tam: 13, ancora: 'start', negrito: true, cor: COR.especial });
   }
   return pr;
 }
