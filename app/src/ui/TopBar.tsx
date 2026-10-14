@@ -27,6 +27,7 @@ import { useApp } from '@/estado/store';
 import { definirPreferencia, NOME_DO_TEMA, proximoTema, usePreferencias } from '@/estilo/preferenciasDaInterface';
 import { Configuracoes } from './Configuracoes';
 import { JanelaDoTermo } from './TermoDeUso';
+import { MarcaAlrimo } from './Marca';
 import {
   IconeAbrir,
   IconeEngrenagem,
@@ -56,6 +57,10 @@ export function TopBar() {
 
   return (
     <header className="topbar">
+      {/* a marca no canto, como o Pró-Viga no alto do trilho */}
+      <div className="marca" title="Al-rimo">
+        <MarcaAlrimo cantos={14} traco={5} />
+      </div>
       <div className="titulo">
         <h1 title={arquivo ?? undefined}>
           {titulo}

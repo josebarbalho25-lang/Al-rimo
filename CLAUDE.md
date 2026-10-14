@@ -178,6 +178,22 @@ e dizer ao Jose o que mudou e por quê.
   Desenhos gerados (faixa da flexão, forças, seções) vão para a direita do grupo deles quando a coluna tem ≥ 600 px;
   senão largura cheia antes do grupo. Forças da flexão: depois da verificação da parede. Papel e Word não mudaram.
 
+- **Logomarca (Jose, 14/10):** na linha da do Pró-Viga atual (quadrado #0D1B4B, traço branco de ponta redonda,
+  Fibonacci; a do arco + perfil I é ANTIGA): muro com o dente abaixo da base, base e o empuxo em 3 traços crescendo
+  (folga 10 do muro). Um desenho só: `app/src/ui/Marca.tsx` (TRACOS_DA_MARCA); `app/public/marca/` (alrimo.svg,
+  icone.svg) repete e o `marca.test.ts` confere. Na aba do navegador e no canto da barra de cima.
+- **Modo prancha (Jose, 14/10, aprovado o plano):** aba Pranchas com folhas A0–A4 (deitada/em pé), "Enviar para a
+  prancha" no 3D e nas vistas, escalas 1:10/20/25/50/75/100 e sem escala, desenho VIVO (o 3D refeito do mesmo ponto
+  de vista), carimbo pela NBR 16752 (canto inferior direito; margens/campos a conferir na norma — o Jose tem acesso
+  pelo CREA) com logo e redimensionável, dados do escritório guardados no app e os da obra no .alrimo, quadro lateral
+  regulável preenchido sozinho (notas da conta, legenda, quadro de aço) e editável. Saída PDF (vetor) e DXF (só
+  GERAR, com biblioteca pronta; mm de papel "como plotado"; hachuras EARTH/AR-CONC/AR-SAND/GRAVEL; carimbo como bloco
+  com atributos; .zip). 3D: Realista vai como IMAGEM; Cores e Opaco saem em VETOR (pintor do isométrico com a câmera
+  livre do visor). Contrato: `app/src/pranchas/tipos.ts`.
+- **Depois das pranchas: empacotar e vender** seguindo o Pró-Viga (`proviga-3d-limpo`: Electron, tela de ativação,
+  `licenca.js`, contrato no instalador, gerar-icone a partir do SVG). GitHub: o Jose disse para deixar o push para
+  depois (14/10; só esta máquina).
+
 ## App (começou em 08/10/2026) — `app/` (Vite + React + TS + three, como o A-PORT)
 
 - **A conta do app É a planilha.** `tools/exportar_motor.py` exporta as fórmulas para `app/src/motor/planilha.gerada.json`;
