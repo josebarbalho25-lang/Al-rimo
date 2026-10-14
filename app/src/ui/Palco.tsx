@@ -19,6 +19,7 @@ import {
   IconeIsometrico,
   IconeMemoria,
   IconePlantaDoMuro,
+  IconePranchas,
   IconeQuantitativo,
 } from './icones';
 import type { IdAba } from '@/estado/ligacoes';
@@ -32,6 +33,7 @@ const ICONE: Record<IdAba, Icone> = {
   iso: IconeIsometrico,
   memoria: IconeMemoria,
   quantitativo: IconeQuantitativo,
+  pranchas: IconePranchas,
 };
 
 export function AbasDoPalco() {

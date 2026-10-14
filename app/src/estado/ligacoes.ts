@@ -42,7 +42,7 @@ export type ExportadorIfc = (
 export type ImpressoraDaMemoria = (r: Resultado, info: { projeto: string }) => void | Promise<void>;
 
 /** As abas do palco, na ordem da barra. */
-export type IdAba = '3d' | 'frontal' | 'corte' | 'planta' | 'iso' | 'memoria' | 'quantitativo';
+export type IdAba = '3d' | 'frontal' | 'corte' | 'planta' | 'iso' | 'memoria' | 'quantitativo' | 'pranchas';
 
 /** O que a aba recebe para desenhar. */
 export interface ContextoDaAba {

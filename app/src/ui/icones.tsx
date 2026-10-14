@@ -205,6 +205,14 @@ export const IconeMemoria = (p: PropsDoIcone) => (
   </Svg>
 );
 
+/** Pranchas: a folha deitada com o carimbo no canto inferior direito. */
+export const IconePranchas = (p: PropsDoIcone) => (
+  <Svg {...p}>
+    <path d="M2.5 5.5h19v13h-19z" />
+    <path d="M14 14.5h7.5M14 14.5v4" />
+  </Svg>
+);
+
 /** Quantitativo: a tabela com a grade. */
 export const IconeQuantitativo = (p: PropsDoIcone) => (
   <Svg {...p}>

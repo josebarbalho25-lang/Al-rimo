@@ -31,6 +31,8 @@ import type { AvisoDaPlanilha } from './avisosDaPlanilha';
 import { CHAVES, ehObjeto, guardarNaAba, lembrarDaAba } from './lembrete';
 import { SEM_LIGACOES, type IdAba, type Ligacoes, type Veredito } from './ligacoes';
 import { desserializarProjeto, projetoExemplo, recadoDeAbertura, serializarProjeto, type Projeto } from './projeto';
+import { SEM_PRANCHAS } from '@/pranchas/padrao';
+import type { PranchasDoProjeto } from '@/pranchas/tipos';
 import { dadosFaltando } from './novo';
 import { padroesDe, recalcular } from './recalculo';
 import { RECADO_RUIM, ruim } from './recadoRuim';
@@ -57,6 +59,7 @@ export const ABAS: ReadonlyArray<{ id: IdAba; nome: string }> = [
   { id: 'iso', nome: 'Isométrico' },
   { id: 'memoria', nome: 'Memória' },
   { id: 'quantitativo', nome: 'Quantitativo' },
+  { id: 'pranchas', nome: 'Pranchas' },
 ];
 const ehAba = (x: unknown): x is IdAba => ABAS.some((a) => a.id === x);
 
@@ -72,6 +75,8 @@ export interface EstadoDoApp {
 
   alteracoes: Alteracoes;
   extras: Record<string, Valor>;
+  /** As folhas montadas e os dados da obra (vão no arquivo; o escritório não — ele é do app). */
+  pranchas: PranchasDoProjeto;
 
   resultado: Resultado | null;
   erroConta: string | null;
@@ -115,6 +120,8 @@ export interface EstadoDoApp {
    */
   marcarSalvo: (arquivo: string, titulo: string, gravado: Projeto) => void;
   selecionar: (id: string | null) => void;
+  /** Toda mudança nas pranchas passa aqui: marca o muro como alterado, como uma entrada. */
+  mudarPranchas: (f: (p: PranchasDoProjeto) => PranchasDoProjeto) => void;
   escolherAba: (aba: IdAba) => void;
   /** Recado da barra de estado; vive alguns segundos. Prefixe com RECADO_RUIM a má notícia. */
   dizer: (recado: string | null, ms?: number) => void;
@@ -297,6 +304,7 @@ export const useApp = create<EstadoDoApp>()((set, get) => ({
   arquivo: inicio.arquivo,
   sujo: inicio.sujo || inicioMudou,
   extras: inicio.p.extras,
+  pranchas: inicio.p.pranchas ?? SEM_PRANCHAS,
   ...contaInicial,
   contaDoArquivo: inicio.contaDoArquivo,
   carregamento: 0,
@@ -332,6 +340,7 @@ export const useApp = create<EstadoDoApp>()((set, get) => ({
       arquivo,
       sujo: (opc?.sujo ?? false) || mudouNaLista,
       extras: p.extras,
+      pranchas: p.pranchas ?? SEM_PRANCHAS,
       contaDoArquivo: opc?.contaDoArquivo ?? null,
       carregamento: s.carregamento + 1,
       selecionado: null,
@@ -341,12 +350,17 @@ export const useApp = create<EstadoDoApp>()((set, get) => ({
 
   marcarSalvo(arquivo, titulo, gravado) {
     const s = get();
-    const igual = s.alteracoes === gravado.alteracoes && s.extras === gravado.extras;
+    const igual = s.alteracoes === gravado.alteracoes && s.extras === gravado.extras && (gravado.pranchas === undefined || s.pranchas === gravado.pranchas);
     set({ arquivo, titulo, sujo: !igual, contaDoArquivo: null });
   },
 
   selecionar(id) {
     set({ selecionado: id });
+  },
+
+  mudarPranchas(f) {
+    const pranchas = f(get().pranchas);
+    if (pranchas !== get().pranchas) set({ pranchas, sujo: true });
   },
 
   escolherAba(aba) {
@@ -378,8 +392,10 @@ export function leitorDoEstado(s: Pick<EstadoDoApp, 'alteracoes' | 'extras'>): L
 }
 
 /** O projeto como vai para o arquivo. */
-export function projetoAtual(s: Pick<EstadoDoApp, 'idDoProjeto' | 'titulo' | 'alteracoes' | 'extras'>): Projeto {
-  return { id: s.idDoProjeto, titulo: s.titulo, alteracoes: s.alteracoes, extras: s.extras };
+export function projetoAtual(s: Pick<EstadoDoApp, 'idDoProjeto' | 'titulo' | 'alteracoes' | 'extras'> & Partial<Pick<EstadoDoApp, 'pranchas'>>): Projeto {
+  const p: Projeto = { id: s.idDoProjeto, titulo: s.titulo, alteracoes: s.alteracoes, extras: s.extras };
+  if (s.pranchas) p.pranchas = s.pranchas;
+  return p;
 }
 
 /** O navegador guardou o último estado desta aba? (Se não, o F5 perde o que não foi salvo.) */
@@ -419,6 +435,7 @@ export function lembrarUltimoProjeto(): () => void {
       s.idDoProjeto === a.idDoProjeto &&
       s.alteracoes === a.alteracoes &&
       s.extras === a.extras &&
+      s.pranchas === a.pranchas &&
       s.titulo === a.titulo &&
       s.arquivo === a.arquivo &&
       s.sujo === a.sujo &&
