@@ -146,6 +146,10 @@
     "dreno_on": { "figura": "fig17", "campo": "dreno_on" },
     "dreno_esp": { "figura": "fig17", "campo": "dreno_esp" },
     "dreno_folga": { "figura": "fig17", "campo": "dreno_folga" },
+    "drenof_on": { "figura": "fig17", "campo": "drenof_on" },
+    "drenof_phi": { "figura": "fig17", "campo": "drenof_phi" },
+    "drenof_env": { "figura": "fig17", "campo": "drenof_env" },
+    "areia_esp": { "figura": "fig17", "campo": "areia_esp" },
     "imper_on": { "figura": "fig17", "campo": "imper_on" }
   },
   "sem_figura": {

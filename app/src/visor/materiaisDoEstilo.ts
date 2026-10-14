@@ -30,7 +30,7 @@ import type { Acabamento } from './lotes';
   vê nada disso; mas o CORTE abre os sólidos e mostra o miolo, e aí as duas faces brigavam pixel a pixel
   (listras de "chuva" no graute, vistas na bancada com o muro da aula 12.3). Com a ordem fixada:
     · graute à frente do bloco — o corte de um furo cheio lê como graute, não como furo vazio;
-    · brita à frente da manta — o corte do dreno lê como brita;
+    · brita e areia à frente da manta — o corte do dreno lê como brita e areia;
     · bloco e sapata recuados 1 — o traço (que não recua) desenha por cima sem piscar (lição do A-PORT:
       o recuo é no sólido, nunca na linha);
     · terreno o mais recuado — é só referência, nunca tinge a sapata em que encosta;
@@ -40,6 +40,7 @@ export const RECUO: Record<Acabamento, number> = {
   tubo: -2,
   graute: 0,
   brita: 0,
+  areia: 0,
   alvenaria: 1,
   concreto: 1,
   manta: 1,
@@ -52,6 +53,7 @@ const PELE: Partial<Record<Acabamento, Pele>> = {
   graute: 'concreto',
   concreto: 'concreto',
   brita: 'solo',
+  areia: 'solo',
   terreno: 'solo',
 };
 
@@ -70,6 +72,7 @@ const RUGOSIDADE: Record<Acabamento, number> = {
   graute: 0.9,
   concreto: 0.85,
   brita: 0.9,
+  areia: 0.95,
   manta: 0.75,
   tubo: 0.45,
   terreno: 1,

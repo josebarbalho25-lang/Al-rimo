@@ -101,7 +101,8 @@ export const ABAS: readonly Aba[] = [
   {
     id: 'drenagem', titulo: 'Drenagem', grupos: [
       { titulo: 'Barbacãs', campos: ['barbaca_on', 'barbaca_phi', 'barbaca_s'] },
-      { titulo: 'Dreno', campos: ['dreno_on', 'dreno_esp', 'dreno_folga'] },
+      { titulo: 'Dreno', campos: ['dreno_on', 'dreno_esp', 'dreno_folga', 'areia_esp'] },
+      { titulo: 'Dreno de fundo', campos: ['drenof_on', 'drenof_phi', 'drenof_env'] },
       { titulo: 'Impermeabilização', campos: ['imper_on'] },
     ],
   },

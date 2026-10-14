@@ -109,17 +109,21 @@ export function estiloDaSecao(s: Solido, pr: Prancha): Estilo | null {
   if (tp === 'GRAUTE_FURO' || tp === 'GRAUTE_CANALETA') return { fill: COR.grauteFundo, stroke: COR.graute, sw: 0.6 };
   if (tp === 'SAPATA') return { fill: pr.padrao('conc'), stroke: COR.linha, sw: 1.6 };
   if (tp === 'DRENO') return { fill: pr.padrao('brita'), stroke: COR.brita, sw: 0.8 };
+  if (tp === 'AREIA') return { fill: pr.padrao('areia'), stroke: COR.areia, sw: 0.6 };
   if (tp === 'MANTA') return { fill: COR.manta, stroke: COR.manta, sw: 0.6 };
-  if (tp === 'BARBACA') return { fill: '#ffffff', stroke: COR.linha, sw: 0.8 };
+  if (tp === 'BARBACA' || tp === 'TUBO_DRENO') return { fill: '#ffffff', stroke: COR.linha, sw: 0.8 };
   return null;
 }
 
 /** Ordem de pintura na seção: o que é fundo primeiro, o que enche furo depois. */
-const ORDEM: Partial<Record<Solido['peca']['tipo'], number>> = { SAPATA: 0, DRENO: 1, MANTA: 2, GRAUTE_FURO: 4, GRAUTE_CANALETA: 4, BARBACA: 5 };
+const ORDEM: Partial<Record<Solido['peca']['tipo'], number>> = { SAPATA: 0, DRENO: 1, AREIA: 1, MANTA: 2, GRAUTE_FURO: 4, GRAUTE_CANALETA: 4, BARBACA: 5, TUBO_DRENO: 5 };
 
 export function desenharCorteLateral(m: Modelo, xCorte?: number): Prancha {
   const pr = new Prancha('des');
-  const sol = solidosDoModelo(m).filter((s) => s.peca.grupo !== 'terreno');
+  const todos = solidosDoModelo(m);
+  const sol = todos.filter((s) => s.peca.grupo !== 'terreno');
+  // o solo da frente sobe sobre a ponta quando há aterro (h_fr): a altura sai do terreno do modelo
+  const zFrente = Math.max(0, ...todos.filter((s) => s.peca.tipo === 'SOLO_FRENTE').map((s) => s.max[2]));
   const t = m.familia.t;
   const { H_muro, H_solo, sapata } = m.dims;
   const x0 = xCorte ?? cortesPadrao(m)[0]?.x ?? m.dims.L_real / 2;
@@ -143,10 +147,10 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number): Prancha {
   // ── terreno ────────────────────────────────────────────────────────────────────────────────────────────────────
   pr.abrir('data-camada="terreno"');
   pr.poligono(
-    [[yPerto, zFundo], [yLonge, zFundo], [yLonge, H_solo], [t, H_solo], [t, 0], [yPerto, 0]].map((p) => tela(p as Vec2)),
+    [[yPerto, zFundo], [yLonge, zFundo], [yLonge, H_solo], [t, H_solo], [t, 0], [0, 0], [0, zFrente], [yPerto, zFrente]].map((p) => tela(p as Vec2)),
     { fill: pr.padrao('solo'), stroke: 'none' },
   );
-  pr.linha(U(yPerto), V(0), U(Math.min(0, yMin)), V(0), { stroke: COR.solo, sw: 1.8 });
+  pr.linha(U(yPerto), V(zFrente), U(zFrente > 0 ? 0 : Math.min(0, yMin)), V(zFrente), { stroke: COR.solo, sw: 1.8 });
   pr.linha(U(t), V(H_solo), U(yLonge), V(H_solo), { stroke: COR.solo, sw: 1.8 });
   pr.texto(U(yLonge) + 8, V(H_solo) + 16, 'aterro', { tam: 11, ancora: 'start', cor: COR.solo, negrito: true, halo: true });
   pr.fechar();

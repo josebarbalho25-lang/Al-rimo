@@ -74,14 +74,14 @@ export function exportarIfc(modelo: Modelo, info: InfoIfc): string {
 
 // ── classificação das peças ───────────────────────────────────────────────────────────────────────────────────────
 type Classe = 'PARTE' | 'SAPATA' | 'DRENO' | 'MANTA' | 'BARBACA';
-type Mat = 'bloco' | 'graute' | 'concreto' | 'brita' | 'manta' | 'pvc';
+type Mat = 'bloco' | 'graute' | 'concreto' | 'brita' | 'areia' | 'manta' | 'pvc';
 
 const CLASSE: Record<TipoPeca, Classe | null> = {
   BLOCO: 'PARTE', MEIO_BLOCO: 'PARTE', BLOCO_JUNCAO: 'PARTE', BLOCO_CORTADO: 'PARTE',
   CANALETA: 'PARTE', MEIA_CANALETA: 'PARTE', CANALETA_CORTADA: 'PARTE',
   GRAUTE_FURO: 'PARTE', GRAUTE_CANALETA: 'PARTE',
   SAPATA: 'SAPATA',
-  DRENO: 'DRENO', MANTA: 'MANTA', BARBACA: 'BARBACA',
+  DRENO: 'DRENO', AREIA: 'DRENO', MANTA: 'MANTA', BARBACA: 'BARBACA', TUBO_DRENO: 'BARBACA',
   ATERRO: null, SOLO_FRENTE: null,
 };
 
@@ -89,14 +89,15 @@ const ROTULO: Record<TipoPeca, string> = {
   BLOCO: 'Bloco', MEIO_BLOCO: 'Meio bloco', BLOCO_JUNCAO: 'Bloco de amarração', BLOCO_CORTADO: 'Bloco cortado',
   CANALETA: 'Canaleta', MEIA_CANALETA: 'Meia canaleta', CANALETA_CORTADA: 'Canaleta cortada',
   GRAUTE_FURO: 'Graute do furo', GRAUTE_CANALETA: 'Graute da canaleta',
-  SAPATA: 'Sapata corrida', DRENO: 'Dreno (brita)', MANTA: 'Manta geotêxtil', BARBACA: 'Barbacã',
+  SAPATA: 'Sapata corrida', DRENO: 'Dreno (brita)', AREIA: 'Filtro de areia', MANTA: 'Manta geotêxtil', BARBACA: 'Barbacã',
+  TUBO_DRENO: 'Dreno de fundo (tubo perfurado)',
   ATERRO: 'Aterro', SOLO_FRENTE: 'Solo',
 };
 
 const materialDe = (t: TipoPeca): Mat =>
   t === 'GRAUTE_FURO' || t === 'GRAUTE_CANALETA' ? 'graute'
     : t === 'SAPATA' ? 'concreto'
-      : t === 'DRENO' ? 'brita' : t === 'MANTA' ? 'manta' : t === 'BARBACA' ? 'pvc' : 'bloco';
+      : t === 'DRENO' ? 'brita' : t === 'AREIA' ? 'areia' : t === 'MANTA' ? 'manta' : t === 'BARBACA' || t === 'TUBO_DRENO' ? 'pvc' : 'bloco';
 
 // IfcReinforcingBarTypeEnum (IFC4). Estribo e torção fechada = SHEAR; o resto trabalha como armadura principal.
 const TIPO_BARRA: Record<PapelBarra, string> = {
@@ -106,7 +107,7 @@ const TIPO_BARRA: Record<PapelBarra, string> = {
 
 const COR: Record<Mat | 'aco', [number, number, number]> = {
   bloco: [0.72, 0.72, 0.7], graute: [0.55, 0.62, 0.75], concreto: [0.8, 0.8, 0.8], aco: [0.7, 0.25, 0.2],
-  brita: [0.6, 0.55, 0.45], manta: [0.3, 0.3, 0.35], pvc: [0.9, 0.9, 0.9],
+  brita: [0.6, 0.55, 0.45], areia: [0.93, 0.89, 0.62], manta: [0.3, 0.3, 0.35], pvc: [0.9, 0.9, 0.9],
 };
 
 // ── leitura tolerante do Resultado: Psets são enfeite, nome que falta não pode derrubar a exportação ───────────────
@@ -230,6 +231,7 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
     concreto: [fck !== null ? `Concreto C${fck}` : 'Concreto', 'concrete'],
     aco: [nomeAco, 'steel'],
     brita: ['Brita', 'stone'],
+    areia: ['Areia', 'sand'],
     manta: ['Manta geotêxtil', 'plastic'],
     pvc: ['Tubo de PVC', 'plastic'],
   };

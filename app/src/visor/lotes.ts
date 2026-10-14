@@ -29,7 +29,7 @@ export const CATEGORIAS: readonly { id: Categoria; rotulo: string }[] = [
 ];
 
 /** O material de cada tipo de peça — decide a cor e se o Raio-X o deixa translúcido. */
-export type Acabamento = 'alvenaria' | 'graute' | 'concreto' | 'brita' | 'manta' | 'tubo' | 'terreno';
+export type Acabamento = 'alvenaria' | 'graute' | 'concreto' | 'brita' | 'areia' | 'manta' | 'tubo' | 'terreno';
 
 const ACABAMENTO: Record<TipoPeca, Acabamento> = {
   BLOCO: 'alvenaria',
@@ -43,8 +43,10 @@ const ACABAMENTO: Record<TipoPeca, Acabamento> = {
   GRAUTE_CANALETA: 'graute',
   SAPATA: 'concreto',
   DRENO: 'brita',
+  AREIA: 'areia',
   MANTA: 'manta',
   BARBACA: 'tubo',
+  TUBO_DRENO: 'tubo',
   ATERRO: 'terreno',
   SOLO_FRENTE: 'terreno',
 };

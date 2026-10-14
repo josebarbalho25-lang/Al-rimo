@@ -1,6 +1,6 @@
 /*
   PRANCHA — o "papel" onde cada desenho é traçado, no estilo das figuras do projeto (figs/figlib.py): mesmas
-  cores, mesma fonte, cota com marca oblíqua, solo hachurado a 45°, concreto pontilhado. O desenho do app
+  cores, mesma fonte, cota com marca oblíqua; terra, concreto, areia e brita com as hachuras do Revit do Jose (14/10). O desenho do app
   conversa com as figuras de referência que o Jose já validou — mesmo vocabulário visual.
 
   Por que a prancha mede tudo o que desenha: o viewBox sai da caixa de TUDO o que foi traçado (inclusive a
@@ -12,6 +12,7 @@
   a folha dos desenhos não passa pelo filtro de inversão das outras pranchetas (Desenhos.tsx explica).
 */
 import { esc, n } from './formato';
+import { HACHURA, hachurasDeMaterial } from './hachuras';
 
 /** Cores das figuras (figlib.C) + as que os desenhos de obra pedem a mais (peça especial, brita). */
 export const COR = {
@@ -22,14 +23,16 @@ export const COR = {
   graute: '#2e75b6',
   grauteFundo: '#bdd7ee',
   aco: '#c00000',
-  solo: '#8d6e3f',
-  soloFundo: '#e8d8b9',
+  solo: HACHURA.terra,          // a terra do Revit do Jose (14/10; antes #8d6e3f sobre #e8d8b9)
+  soloFundo: HACHURA.terraFundo,
   nota: '#595959',
-  concreto: '#ececec',
+  concreto: HACHURA.concretoFundo,
   especial: '#b07d2b',
   especialFundo: '#f3e3c3',
-  brita: '#8a8270',
-  britaFundo: '#e6e1d6',
+  brita: HACHURA.brita,
+  britaFundo: HACHURA.britaFundo,
+  areia: HACHURA.areia,
+  areiaFundo: HACHURA.areiaFundo,
   manta: '#5b7f3a',
   furo: '#ffffff',
   furoEscuro: '#6e6e6e',
@@ -80,7 +83,7 @@ export class Prancha {
   constructor(readonly prefixo = 'des') {}
 
   /** Referência a um padrão de preenchimento desta prancha. */
-  padrao(nome: 'solo' | 'conc' | 'alv' | 'brita' | 'graute'): string {
+  padrao(nome: 'solo' | 'conc' | 'alv' | 'brita' | 'areia' | 'graute'): string {
     return `url(#${this.prefixo}-${nome})`;
   }
 
@@ -262,15 +265,10 @@ export class Prancha {
     return (
       `<marker id="${p}-tick" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto">` +
       `<path d="M2,8 L8,2" stroke="${COR.cota}" stroke-width="1.5"/></marker>` +
-      `<pattern id="${p}-solo" patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">` +
-      `<rect width="10" height="10" fill="${COR.soloFundo}"/><line x1="0" y1="0" x2="0" y2="10" stroke="${COR.solo}" stroke-width="1" opacity="0.45"/></pattern>` +
-      `<pattern id="${p}-conc" patternUnits="userSpaceOnUse" width="14" height="14"><rect width="14" height="14" fill="${COR.concreto}"/>` +
-      `<circle cx="3" cy="4" r="1" fill="#9a9a9a"/><circle cx="10" cy="9" r="0.8" fill="#9a9a9a"/><circle cx="6" cy="12" r="0.6" fill="#9a9a9a"/></pattern>` +
+      // terra, concreto, areia e brita: as hachuras do Revit do Jose (hachuras.ts)
+      hachurasDeMaterial(p) +
       `<pattern id="${p}-alv" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">` +
       `<rect width="6" height="6" fill="${COR.blocoFundo}"/><line x1="0" y1="0" x2="0" y2="6" stroke="${COR.bloco}" stroke-width="0.9"/></pattern>` +
-      `<pattern id="${p}-brita" patternUnits="userSpaceOnUse" width="12" height="12"><rect width="12" height="12" fill="${COR.britaFundo}"/>` +
-      `<circle cx="3" cy="3" r="2" fill="none" stroke="${COR.brita}" stroke-width="0.8"/><circle cx="9" cy="8" r="2.4" fill="none" stroke="${COR.brita}" stroke-width="0.8"/>` +
-      `<circle cx="4" cy="10" r="1.2" fill="none" stroke="${COR.brita}" stroke-width="0.7"/></pattern>` +
       // graute visto atrás da face do bloco (vista frontal): só riscos, SEM fundo — a cor do tipo de bloco (o código
       // de cor da obra) continua aparecendo entre eles. Um tom chapado por cima, como antes, tingia o cinza do
       // inteiro de azul e ele passava por meio bloco

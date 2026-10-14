@@ -46,6 +46,7 @@ export interface PaletaVisor {
   aco: string;
   concreto: string;
   brita: string;
+  areia: string;
   manta: string;
   tubo: string;
   solo: string;
@@ -85,6 +86,7 @@ export function lerPaleta(): PaletaVisor {
     aco: themeColor('--peca-aco-barra', '#c00000'),
     concreto: themeColor('--peca-sapata', '#a9a69e'),
     brita: themeColor('--peca-brita', '#9a948a'),
+    areia: themeColor('--peca-areia', '#ffffb7'),
     manta: themeColor('--peca-manta', '#e9e6dc'),
     tubo: themeColor('--peca-tubo', '#f0f0f0'),
     solo: themeColor('--peca-solo', '#8d6e3f'),

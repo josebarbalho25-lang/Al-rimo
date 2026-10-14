@@ -28,7 +28,8 @@ const VARIACOES: Record<string, Valor>[] = [
   { L_total: 20, junta_cada: 6 },
   { L_total: 6, cinta_topo: 'Não' },
   { L_total: 6, barbaca_on: 'Não', dreno_on: 'Não' },
-  { L_total: 20, junta_cada: 6, cinta_topo: 'Não', barbaca_on: 'Não', dreno_on: 'Não' },
+  { L_total: 20, junta_cada: 6, cinta_topo: 'Não', barbaca_on: 'Não', dreno_on: 'Não', drenof_on: 'Não' },
+  { L_total: 6, areia_esp: 0, drenof_env: 0.5 },
   { L_total: 12, junta_cada: 2.5, traspasse_dir: 60, phi_cinta: 16 },
 ];
 
@@ -373,8 +374,28 @@ function conferirTudo(m: Modelo, r: Resultado, nome: string): void {
   const hsPl = r.num('H_solo');
   if (hsPl !== null && hsPl > 0 && hsPl * 1000 <= m.dims.H_muro) expect(m.dims.H_solo).toBe(Math.round(hsPl * 1000));
   for (const a of m.pecas.filter((p) => p.tipo === 'ATERRO')) expect(caixa(m, a).max[2]).toBeCloseTo(m.dims.H_solo, 6);
-  // drenagem desligada não desenha peça
-  if (String(m.extras?.dreno_on).startsWith('N')) expect(m.pecas.some((p) => p.tipo === 'DRENO' || p.tipo === 'MANTA')).toBe(false);
+  // drenagem desligada não desenha peça; só o dreno de fundo ligado: a brita fica na envoltória do tubo
+  const DRENAGEM = new Set<TipoPeca>(['DRENO', 'AREIA', 'MANTA', 'TUBO_DRENO']);
+  const desligado = (nome: string): boolean => String(m.extras?.[nome] ?? 'Sim').startsWith('N');
+  if (desligado('dreno_on') && desligado('drenof_on')) expect(m.pecas.some((p) => DRENAGEM.has(p.tipo))).toBe(false);
+  if (desligado('dreno_on') && !desligado('drenof_on')) {
+    for (const d of m.pecas.filter((p) => p.tipo === 'DRENO')) expect(caixa(m, d).max[2]).toBeLessThanOrEqual(300 + 1e-6);
+  }
+  if (desligado('drenof_on')) expect(m.pecas.some((p) => p.tipo === 'TUBO_DRENO')).toBe(false);
+  if (Number(m.extras?.areia_esp) === 0) expect(m.pecas.some((p) => p.tipo === 'AREIA')).toBe(false);
+  // o pacote do dreno nunca passa do topo do solo, e o tubo fica dentro da brita
+  for (const d of m.pecas.filter((p) => DRENAGEM.has(p.tipo))) expect(caixa(m, d).max[2]).toBeLessThanOrEqual(m.dims.H_solo + 1e-6);
+  for (const tb of m.pecas.filter((p) => p.tipo === 'TUBO_DRENO')) {
+    const c = caixa(m, tb);
+    const br = m.pecas.filter((p) => p.tipo === 'DRENO' && p.trecho === tb.trecho).map((p) => caixa(m, p));
+    expect(br.some((b) => c.min[0] >= b.min[0] - 1e-6 && c.max[0] <= b.max[0] + 1e-6 && c.min[1] > b.min[1] && c.max[1] < b.max[1] && c.min[2] > b.min[2])).toBe(true);
+  }
+  // o barbacã sai 5 cm da face e fica todo acima do solo da frente
+  for (const b of m.pecas.filter((p) => p.tipo === 'BARBACA')) {
+    const c = caixa(m, b);
+    expect(c.min[1]).toBeCloseTo(-50, 6);
+    expect(c.min[2]).toBeGreaterThanOrEqual(r.num('h_fr') !== null ? (r.num('h_fr') as number) * 1000 - 1e-6 : 0);
+  }
   if (String(m.extras?.barbaca_on).startsWith('N')) expect(m.pecas.some((p) => p.tipo === 'BARBACA')).toBe(false);
 }
 
@@ -651,7 +672,7 @@ function indice(m: Modelo, tipos: ReadonlySet<TipoPeca>): (P: Vec3) => Solido[] 
 
 /** Peças sólidas onde barra não entra: a alvenaria e a drenagem. A sapata é concreto armado (a armadura dela e o pé
  *  da espera moram nela) e o terreno é só para ver. */
-const SEM_BARRA = new Set<TipoPeca>([...ALVENARIA, 'DRENO', 'MANTA', 'BARBACA']);
+const SEM_BARRA = new Set<TipoPeca>([...ALVENARIA, 'DRENO', 'AREIA', 'MANTA', 'BARBACA', 'TUBO_DRENO']);
 
 /**
  * Nenhuma barra atravessa peça sólida que não seja graute. Amostra a cada 5 mm no eixo de cada barra: o ponto do eixo
@@ -824,6 +845,49 @@ describe('canaleta como a obra deixa: fundo furado onde sobe a barra, T de graut
         }
       }
     }
+  });
+
+  it('dreno (Jose, 14/10): brita em degrau com o tubo no meio da envoltória, areia e manta por fora, barbacã 5 cm para fora e acima do solo da frente', () => {
+    const r = resultadoDoGabarito('aula122');
+    const m = gerarModelo(r, { ...padroesDoModelo(), L_total: 3 });
+    const so = (tp: TipoPeca) => m.pecas.filter((p) => p.tipo === tp);
+    const t = m.familia.t;
+    const [brita] = so('DRENO');
+    const g = m.geometrias[brita.geometria];
+    // degrau: envoltória 300 × 300 no pé e a camada de 200 subindo; o furo do tubo Ø100 no centro da envoltória
+    expect(g.perfil.contorno.map(([u, v]) => [Math.round(u), Math.round(v)])).toEqual([[0, 0], [300, 0], [300, 300], [200, 300], [200, m.dims.H_solo - 300 - 102], [0, m.dims.H_solo - 300 - 102]]);
+    expect(g.perfil.furos).toHaveLength(1);
+    const [tubo] = so('TUBO_DRENO');
+    expect(caixa(m, tubo).min[1]).toBeCloseTo(t + 100, 6);
+    expect(caixa(m, tubo).min[2]).toBeCloseTo(100, 6);
+    // areia de 10 cm e manta por fora: o topo do pacote fica a dreno_folga do topo do solo
+    expect(Math.max(...so('MANTA').map((p) => caixa(m, p).max[2]))).toBeCloseTo(m.dims.H_solo - 300, 6);
+    expect(Math.max(...so('AREIA').map((p) => caixa(m, p).max[1]))).toBeCloseTo(t + 400, 6);
+    // o aterro não invade o pacote: começa na manta
+    const at = so('ATERRO').map((p) => caixa(m, p));
+    expect(at.every((c) => c.min[1] <= t + 402 + 1e-6)).toBe(true);
+    // barbacã: 1ª fiada, 5 cm para fora da face e 5 cm para dentro da brita
+    for (const b of so('BARBACA')) {
+      expect(caixa(m, b).min[1]).toBeCloseTo(-50, 6);
+      expect(caixa(m, b).max[1]).toBeCloseTo(t + 50, 6);
+      expect(b.fiada).toBe(0);
+    }
+    // aterro sobre a ponta de 50 cm: a 1ª fiada com o tubo todo acima dele é a 3 (610 + 95 − 25 ≥ 500), mas ela é
+    // canaleta nesta aula (h_pan 0,80): o barbacã sobe para a 4
+    const m2 = gerarModelo(trocar(r, { h_fr: 0.5 }), { ...padroesDoModelo(), L_total: 3 });
+    const bbs = m2.pecas.filter((p) => p.tipo === 'BARBACA');
+    expect(bbs.length).toBeGreaterThan(0);
+    for (const b of bbs) {
+      expect(b.fiada).toBe(4);
+      expect(caixa(m2, b).min[2]).toBeGreaterThanOrEqual(500);
+    }
+    expect(m2.avisos.map((a) => a.codigo)).not.toContain('BARBACA_SEM_CELULA');
+    // e o solo da frente sobe sobre a ponta até a face do muro
+    expect(Math.max(...m2.pecas.filter((p) => p.tipo === 'SOLO_FRENTE').map((p) => caixa(m2, p).max[2]))).toBeCloseTo(500, 6);
+    // dreno de fundo desligado: a brita volta a ser a camada reta, sem tubo
+    const m3 = gerarModelo(r, { ...padroesDoModelo(), L_total: 3, drenof_on: 'Não' });
+    expect(m3.pecas.some((p) => p.tipo === 'TUBO_DRENO')).toBe(false);
+    expect(m3.geometrias[m3.pecas.find((p) => p.tipo === 'DRENO')!.geometria].perfil.contorno).toHaveLength(4);
   });
 
   it('barbacã: muro todo em canaleta avisa em vez de sumir; nunca numa célula com barra', () => {

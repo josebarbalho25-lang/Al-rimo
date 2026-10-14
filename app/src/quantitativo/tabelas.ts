@@ -132,6 +132,8 @@ export function tabelasDoQuantitativo(q: Quantitativo): Tabela[] {
     dren.push(['Tubo dos barbacãs', num(d.tubo, 2), 'm']);
   }
   if (d.brita > 0) dren.push(['Brita do dreno', num(d.brita, 3), 'm³']);
+  if (d.areia > 0) dren.push(['Areia do filtro', num(d.areia, 3), 'm³']);
+  if (d.tuboFundo > 0) dren.push(['Tubo perfurado do dreno de fundo', num(d.tuboFundo, 2), 'm']);
   if (d.manta > 0) dren.push(['Manta geotêxtil', num(d.manta, 2), 'm²']);
   if (d.impermeabilizacao !== null) dren.push(['Impermeabilização do tardoz', num(d.impermeabilizacao, 2), 'm²']);
   if (dren.length) t.push({ id: 'drenagem', titulo: 'Drenagem', cabecalho: ['Item', 'Quantidade', 'Unidade'], linhas: dren });

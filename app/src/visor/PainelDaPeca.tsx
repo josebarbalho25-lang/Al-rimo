@@ -21,8 +21,10 @@ export const NOME_DO_TIPO: Record<TipoPeca, string> = {
   GRAUTE_CANALETA: 'Graute da canaleta',
   SAPATA: 'Sapata',
   DRENO: 'Dreno (brita)',
+  AREIA: 'Filtro de areia',
   MANTA: 'Manta',
   BARBACA: 'Barbacã',
+  TUBO_DRENO: 'Dreno de fundo',
   ATERRO: 'Aterro',
   SOLO_FRENTE: 'Solo da frente',
 };

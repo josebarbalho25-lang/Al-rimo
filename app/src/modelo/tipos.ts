@@ -95,7 +95,7 @@ export type TipoPeca =
   | 'CANALETA' | 'MEIA_CANALETA' | 'CANALETA_CORTADA'
   | 'GRAUTE_FURO' | 'GRAUTE_CANALETA'
   | 'SAPATA'
-  | 'DRENO' | 'MANTA' | 'BARBACA'
+  | 'DRENO' | 'AREIA' | 'MANTA' | 'BARBACA' | 'TUBO_DRENO'   // brita, filtro de areia, manta, barbacã, dreno de fundo
   | 'ATERRO' | 'SOLO_FRENTE';   // terreno: só para ver (transparente); fora do IFC e do quantitativo
 
 export type GrupoPeca = 'muro' | 'contraforte' | 'fundacao' | 'drenagem' | 'terreno';

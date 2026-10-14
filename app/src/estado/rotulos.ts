@@ -150,8 +150,12 @@ export const ROTULO_CURTO: Record<string, string> = {
   barbaca_phi: 'Ø do barbacã',
   barbaca_s: 'Espaçamento',
   dreno_on: 'Dreno no tardoz',
-  dreno_esp: 'Espessura do dreno',
+  dreno_esp: 'Espessura da brita',
   dreno_folga: 'Abaixo do topo',
+  drenof_on: 'Dreno de fundo',
+  drenof_phi: 'Ø do tubo',
+  drenof_env: 'Brita em volta',
+  areia_esp: 'Areia (filtro)',
   imper_on: 'Impermeabilização',
 };
 

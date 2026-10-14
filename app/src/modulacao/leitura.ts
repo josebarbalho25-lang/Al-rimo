@@ -71,6 +71,8 @@ export interface Parametros {
   L_total: number; junta_cada: number; cinta: boolean; phi_cinta: number; traspasse: number | null;
   barbaca: boolean; barbaca_phi: number; barbaca_s: number;
   dreno: boolean; dreno_esp: number; dreno_folga: number;
+  drenof: boolean; drenof_phi: number; drenof_env: number; areia_esp: number;
+  h_fr: number;                        // mm — aterro sobre a ponta (solo da frente acima do topo da sapata)
   extras: Record<string, Valor>;
 }
 
@@ -183,6 +185,13 @@ export function lerParametros(r: Resultado, extrasIn: Record<string, Valor>, avi
     dreno: sim('dreno_on'),
     dreno_esp: xn('dreno_esp', 0.2) * 1000,
     dreno_folga: xn('dreno_folga', 0.3) * 1000,
+    drenof: sim('drenof_on'),
+    drenof_phi: xn('drenof_phi', 100),
+    drenof_env: xn('drenof_env', 0.3) * 1000,
+    areia_esp: Math.max(0, xn('areia_esp', 0.1)) * 1000,
+    // O solo da frente está lá com ou sem a garantia da conta (pass_on só decide se ele CONTA): o barbacã sai
+    // acima dele e o 3D o desenha sempre.
+    h_fr: Math.max(0, n('h_fr') ?? 0) * 1000,
     extras,
   };
 

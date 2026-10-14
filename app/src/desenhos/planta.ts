@@ -131,7 +131,7 @@ export function desenharPlanta(m: Modelo, fiada = 0): Prancha {
 }
 
 function ordem(tp: string): number {
-  if (tp === 'DRENO' || tp === 'MANTA') return 0;
+  if (tp === 'DRENO' || tp === 'AREIA' || tp === 'MANTA') return 0;
   if (ALVENARIA.has(tp as never)) return 1;
   if (tp === 'GRAUTE_FURO' || tp === 'GRAUTE_CANALETA') return 2;
   return 3;

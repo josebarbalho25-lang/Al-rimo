@@ -50,6 +50,8 @@ export interface Quantitativo {
     barbacas: number;         // un
     tubo: number;             // m
     brita: number;            // m³
+    areia: number;            // m³
+    tuboFundo: number;        // m — tubo perfurado do dreno de fundo
     manta: number;            // m²
     impermeabilizacao: number | null;   // m²; null = desligada nas entradas
   };
@@ -286,6 +288,8 @@ export function quantificar(m: Modelo): Quantitativo {
       barbacas: barbacas.length,
       tubo: barbacas.reduce((s, { g }) => s + g.extensao, 0) / 1000,
       brita: somaVolumes(pecasDoTipo(m, 'DRENO')) / MM3,
+      areia: somaVolumes(pecasDoTipo(m, 'AREIA')) / MM3,
+      tuboFundo: pecasDoTipo(m, 'TUBO_DRENO').reduce((s, { g }) => s + g.extensao, 0) / 1000,
       manta: pecasDoTipo(m, 'MANTA').reduce((s, { g }) => s + areaDaFolha(g), 0) / MM2,
       impermeabilizacao: imperLigada ? areaDoTardoz(m) / MM2 : null,
     },

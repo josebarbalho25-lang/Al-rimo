@@ -253,9 +253,18 @@ e dizer ao Jose o que mudou e por quê.
   Pontos para o Jose: cor da espera (Fig. 9 × Fig. 18 invertidas — seguiu a 9); impermeabilização até a altura de
   solo (quantitativo) × topo do muro (Fig. 17); barra vertical subindo até 3 cm do topo atravessa o fundo da canaleta
   da cinta (furar o fundo? o detalhe não mostra); junta: o app interrompe toda a barra da cinta (ABCP fala em "parte").
-- **A FAZER (Jose, 09/10): DRENO DE FUNDO** além dos barbacãs — tubo correndo na longitudinal, no pé do tardoz, envolto
-  por bidim (geotêxtil), areia e brita. Entra no 3D, no corte, no quantitativo (m de tubo, m² de bidim, m³ de areia e
-  brita), no IFC e nas entradas de Drenagem (Ø do tubo, dimensões do envelope). Fácil; ficou para depois.
+- **Drenagem no 3D (Jose, 14/10, FEITO):** brita em degrau = camada do tardoz (`dreno_esp`, agora espessura SÓ da
+  brita) ∪ envoltória quadrada do dreno de fundo (`drenof_env` 0,30) com o tubo perfurado (`drenof_phi` Ø100) no meio;
+  AREIA de filtro entre a brita e o solo (`areia_esp` 0,10; 0 = sem); manta por fora; `dreno_folga` vai do topo do
+  solo ao topo do pacote. Barbacã sai 5 cm da face e entra 5 cm no dreno, na 1ª fiada com o tubo todo acima do solo
+  da frente (`h_fr`, desenhado sempre, com ou sem `pass_on`); fiada em canaleta → sobe para a de cima. Peças novas
+  AREIA e TUBO_DRENO (3D, IFC, quantitativo, corte). Com contraforte enterrado o tubo para em cada contraforte
+  (perguntar ao Jose se atravessa). Código: `modulacao/entorno.ts` (pacoteDoDreno, bordaDoPacote).
+- **Hachuras do Revit do Jose (14/10):** terra = trançado EARTH do AutoCAD (casa 48 px, #a67857 sobre #dbc9bb),
+  concreto (#5d5d5d sobre #d4d4d4), areia (#5d5d5d sobre #ffffb7), brita = pedras de quina viva (opção A, #4a4a4a sobre
+  #c3bfb5); concreto/areia/brita no dobro da amostra (proporção do Revit dele). Um gerador só por lado:
+  `app/src/desenhos/hachuras.ts` (desenhos do app) e `figs/app/hachuras.py` (figuras), mesma semente. Calibração de
+  tamanho em andamento: `_trabalho/calibrar_hachuras.html`.
 - **Armadura no 3D e canaleta no IFC (Jose, 14/10):** o Raio-X virou o botão **Armadura** — as peças não mudam e as
   barras saem por cima de tudo (apaga a profundidade antes delas, como o "visualizar desobstruído" do Revit), com luz,
   na cor da bitola dele (Revit, Casa F., vista "Iso Escada": Ø5 #00ffff, 6,3 #00ff00, 8 #ff8000, 10 #ff0000, 12,5

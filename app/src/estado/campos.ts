@@ -156,7 +156,7 @@ const POSITIVO = new Set([
   'n_cf_dir', 'K_cf', 'ramos_est', 's_est', 'K_pv', 'K_ph', 'bwv_dir', 'bwh_els',
   'B_sap', 'h_sap', 'gama_f', 'gama_m', 'gama_s',
   // modelo (dedução)
-  'L_total', 'barbaca_phi', 'barbaca_s', 'dreno_esp', 'traspasse_dir',
+  'L_total', 'barbaca_phi', 'barbaca_s', 'dreno_esp', 'drenof_phi', 'drenof_env', 'traspasse_dir',
 ]);
 
 /** Contagem de barras e de ramos: 2,5 barras não existe. */
@@ -588,6 +588,9 @@ const ATIVA_SE: Record<string, (ler: LerValor, conta?: LerConta) => boolean> = {
   barbaca_s: (l) => l('barbaca_on') === 'Sim',
   dreno_esp: (l) => l('dreno_on') === 'Sim',
   dreno_folga: (l) => l('dreno_on') === 'Sim',
+  drenof_phi: (l) => l('drenof_on') === 'Sim',
+  drenof_env: (l) => l('drenof_on') === 'Sim',
+  areia_esp: (l) => l('dreno_on') === 'Sim' || l('drenof_on') === 'Sim',
   // estribo do contraforte só quando a conta pede (Jose, 13/10; planilha 05 do Carini): com Asw/s de cálculo = 0 a
   // planilha zera Asw,ef e o nº de estribos e o muro sai sem estribo — Ø, ramos e s não mexem em nada. É a única
   // regra que lê a CONTA e não uma entrada; sem conta (ou com "—") o campo fica aceso, como antes.

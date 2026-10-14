@@ -97,6 +97,7 @@ const REALISTA: Record<Acabamento, string> = {
   graute: '#85827b',
   concreto: '#8e8b84',
   brita: '#8d8981',
+  areia: '#c9b98a',
   manta: '#d6d1c4',
   tubo: '#e6e6e1',
   terreno: '#7a5d3c',
@@ -115,6 +116,7 @@ const OPACO: Record<Acabamento, string> = {
   graute: '#dcdcdc',
   concreto: '#ffffff',
   brita: '#ececec',
+  areia: '#f4f4f4',
   manta: '#f6f6f6',
   tubo: '#ffffff',
   terreno: '#bdbdbd',
@@ -135,6 +137,8 @@ export function corDaPeca(estilo: EstiloVisual, p: PaletaVisor, a: Acabamento, c
       return p.concreto;
     case 'brita':
       return p.brita;
+    case 'areia':
+      return p.areia;
     case 'manta':
       return p.manta;
     case 'tubo':

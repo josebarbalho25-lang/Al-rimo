@@ -23,9 +23,15 @@ export const ENTRADAS_DO_MODELO: EntradaMeta[] = [
 
   { nome: 'barbaca_on', rotulo: 'Barbacãs', padrao: 'Sim', unidade: '', nota: '', figura: 'Fig. 17', opcoes: ['Sim', 'Não'], formato: 'General', secao: DRENAGEM, ref: 'modelo!barbaca_on' },
   { nome: 'barbaca_phi', rotulo: 'Ø do barbacã', padrao: 50, unidade: 'mm', nota: '', figura: 'Fig. 17', opcoes: null, formato: '0', secao: DRENAGEM, ref: 'modelo!barbaca_phi' },
-  { nome: 'barbaca_s', rotulo: 'Espaçamento dos barbacãs', padrao: 1.5, unidade: 'm', nota: 'Na 1ª fiada, em célula sem graute.', figura: 'Fig. 17', opcoes: null, formato: '0.00', secao: DRENAGEM, ref: 'modelo!barbaca_s' },
-  { nome: 'dreno_on', rotulo: 'Dreno no tardoz (brita + manta)', padrao: 'Sim', unidade: '', nota: '', figura: 'Fig. 17', opcoes: ['Sim', 'Não'], formato: 'General', secao: DRENAGEM, ref: 'modelo!dreno_on' },
-  { nome: 'dreno_esp', rotulo: 'Espessura do dreno', padrao: 0.2, unidade: 'm', nota: '', figura: 'Fig. 17', opcoes: null, formato: '0.00', secao: DRENAGEM, ref: 'modelo!dreno_esp' },
+  { nome: 'barbaca_s', rotulo: 'Espaçamento dos barbacãs', padrao: 1.5, unidade: 'm', nota: 'Na 1ª fiada acima do solo da frente, em célula sem graute.', figura: 'Fig. 17', opcoes: null, formato: '0.00', secao: DRENAGEM, ref: 'modelo!barbaca_s' },
+  { nome: 'dreno_on', rotulo: 'Dreno no tardoz (brita)', padrao: 'Sim', unidade: '', nota: '', figura: 'Fig. 17', opcoes: ['Sim', 'Não'], formato: 'General', secao: DRENAGEM, ref: 'modelo!dreno_on' },
+  { nome: 'dreno_esp', rotulo: 'Espessura da brita no tardoz', padrao: 0.2, unidade: 'm', nota: '', figura: 'Fig. 17', opcoes: null, formato: '0.00', secao: DRENAGEM, ref: 'modelo!dreno_esp' },
   { nome: 'dreno_folga', rotulo: 'Dreno termina abaixo do topo do solo', padrao: 0.3, unidade: 'm', nota: '', figura: 'Fig. 17', opcoes: null, formato: '0.00', secao: DRENAGEM, ref: 'modelo!dreno_folga' },
+  // Jose, 14/10: dreno de fundo (tubo perfurado Ø100 numa envoltória de brita 30 × 30 cm no pé do tardoz) e areia
+  // como filtro entre a brita e o solo; a manta fica por fora da areia
+  { nome: 'drenof_on', rotulo: 'Dreno de fundo (tubo perfurado)', padrao: 'Sim', unidade: '', nota: '', figura: 'Fig. 17', opcoes: ['Sim', 'Não'], formato: 'General', secao: DRENAGEM, ref: 'modelo!drenof_on' },
+  { nome: 'drenof_phi', rotulo: 'Ø do tubo do dreno de fundo', padrao: 100, unidade: 'mm', nota: '', figura: 'Fig. 17', opcoes: null, formato: '0', secao: DRENAGEM, ref: 'modelo!drenof_phi' },
+  { nome: 'drenof_env', rotulo: 'Brita em volta do tubo (lado)', padrao: 0.3, unidade: 'm', nota: '', figura: 'Fig. 17', opcoes: null, formato: '0.00', secao: DRENAGEM, ref: 'modelo!drenof_env' },
+  { nome: 'areia_esp', rotulo: 'Areia entre a brita e o solo', padrao: 0.1, unidade: 'm', nota: '0 = sem areia.', figura: 'Fig. 17', opcoes: null, formato: '0.00', secao: DRENAGEM, ref: 'modelo!areia_esp' },
   { nome: 'imper_on', rotulo: 'Impermeabilização do tardoz', padrao: 'Sim', unidade: '', nota: 'Só no quantitativo (área).', figura: 'Fig. 17', opcoes: ['Sim', 'Não'], formato: 'General', secao: DRENAGEM, ref: 'modelo!imper_on' },
 ];

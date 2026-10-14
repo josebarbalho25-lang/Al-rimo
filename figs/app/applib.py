@@ -22,12 +22,14 @@ import math
 import re
 from contextlib import contextmanager
 
+from hachuras import HACHURA, hachuras
+
 C = dict(line='#262626', dim='#404040', block='#7f7f7f', blockfill='#d9d9d9', grout='#2e75b6', groutfill='#bdd7ee',
-         steel='#c00000', soil='#8d6e3f', soilfill='#e8d8b9', water='#2e75b6', load='#c55a11', hollow='#ffffff',
+         steel='#c00000', soil=HACHURA['terra'], soilfill=HACHURA['terraFundo'], water='#2e75b6', load='#c55a11', hollow='#ffffff',
          note='#595959', empuxo='#f8cbad', empuxo2='#fbe5d6', mesa='#f4b183', mesa_txt='#843c0c',
          passivo='#548235', passivo_fill='#e2efda', passivo_txt='#385723', sub='#fff2cc', sub_line='#bf9000',
          sub_txt='#7f6000', ok='#2e7d32', ok_fill='#eaf5ea', erro='#c00000', erro_fill='#fdecea',
-         cinza='#a6a6a6', cinza2='#bfbfbf', claro='#f2f2f2', concreto='#ececec', pressao='#ddebf7', barra2='#ff6f6f',
+         cinza='#a6a6a6', cinza2='#bfbfbf', claro='#f2f2f2', concreto=HACHURA['concretoFundo'], pressao='#ddebf7', barra2='#ff6f6f',
          reboco='#e9e1d1')   # argamassa do reboco (13/10): bege-claro, nem bloco nem graute
 FONT = "font-family:Arial,'DejaVu Sans',sans-serif"
 
@@ -94,9 +96,8 @@ class Fig:
             f'<marker id="{p}-arrA" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="{C["water"]}"/></marker>',
             f'<marker id="{p}-arrP" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="{C["passivo"]}"/></marker>',
             f'<marker id="{p}-tick" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M2,8 L8,2" stroke="{C["dim"]}" stroke-width="1.5"/></marker>',
-            f'<pattern id="{p}-soilh" patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)"><rect width="12" height="12" fill="{C["soilfill"]}"/><line x1="0" y1="0" x2="0" y2="12" stroke="{C["soil"]}" stroke-width="1" opacity="0.45"/></pattern>',
-            f'<pattern id="{p}-conc" patternUnits="userSpaceOnUse" width="14" height="14"><rect width="14" height="14" fill="{C["concreto"]}"/><circle cx="3" cy="4" r="1" fill="#9a9a9a"/><circle cx="10" cy="9" r="0.8" fill="#9a9a9a"/><circle cx="6" cy="12" r="0.6" fill="#9a9a9a"/></pattern>',
-            f'<pattern id="{p}-brita" patternUnits="userSpaceOnUse" width="16" height="16"><rect width="16" height="16" fill="{C["claro"]}"/><circle cx="4" cy="4" r="3" fill="none" stroke="{C["cinza"]}" stroke-width="1"/><circle cx="12" cy="11" r="3.4" fill="none" stroke="{C["cinza"]}" stroke-width="1"/><circle cx="3" cy="13" r="1.8" fill="none" stroke="{C["cinza"]}" stroke-width="1"/></pattern>',
+            # terra, concreto, areia e brita: as hachuras do Revit do Jose (14/10), as mesmas do desenho do app
+            *hachuras(p),
         ]
 
     # ---- referências com prefixo -------------------------------------------------------------------
@@ -109,6 +110,8 @@ class Fig:
     def CONC(s): return s.u('conc')
     @property
     def BRITA(s): return s.u('brita')
+    @property
+    def AREIA(s): return s.u('areia')
 
     # ---- caixa acumulada -----------------------------------------------------------------------------
     def _bb(s, x0, y0, x1, y1):
@@ -308,7 +311,8 @@ class Fig:
 
     def legenda(s, x, y, itens):
         """Legenda embaixo, à esquerda, numa linha: itens = [(tipo, rótulo)], tipo em 'aco', 'aco2', 'graute',
-        'bloco', 'solo', 'concreto', 'apoio', 'engaste', 'livre', 'naoarmado', 'fissura', 'junta', 'reboco'."""
+        'bloco', 'solo', 'concreto', 'brita', 'areia', 'apoio', 'engaste', 'livre', 'naoarmado', 'fissura', 'junta',
+        'reboco'."""
         cx = x
         for tipo, rot in itens:
             yy = y - 6
@@ -322,6 +326,10 @@ class Fig:
                 s.rect(cx, yy - 7, 26, 14, fill=s.SOLO, stroke='none')
             elif tipo == 'concreto':
                 s.rect(cx, yy - 7, 26, 14, fill=s.CONC, stroke=C['line'], sw=1)
+            elif tipo == 'brita':
+                s.rect(cx, yy - 7, 26, 14, fill=s.BRITA, stroke=C['dim'], sw=0.8)
+            elif tipo == 'areia':
+                s.rect(cx, yy - 7, 26, 14, fill=s.AREIA, stroke=C['dim'], sw=0.8)
             elif tipo == 'naoarmado':
                 s.rect(cx, yy - 7, 26, 14, fill=C['sub'], stroke=C['sub_line'], sw=1)
             elif tipo == 'apoio':
