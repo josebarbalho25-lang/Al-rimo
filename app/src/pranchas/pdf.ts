@@ -20,7 +20,9 @@ export function cssDaImpressao(folhas: readonly Pick<FolhaComposta, 'largura' | 
   return `
 .${CLASSE} { position: absolute; left: -40000px; top: 0; }
 @media print {
-  html, body { height: auto !important; overflow: visible !important; background: #fff !important; color-scheme: light !important; }
+  /* margem zerada aqui mesmo: sem ela a margem do body empurra a folha (que tem o tamanho exato da página e corta o
+     que sobra) e o PDF sai em branco — no app o base.css zera, mas o printToPDF do programa instalado pode não ter */
+  html, body { margin: 0 !important; padding: 0 !important; height: auto !important; overflow: visible !important; background: #fff !important; color-scheme: light !important; }
   body > *:not(.${CLASSE}) { display: none !important; }
   .${CLASSE} { position: static !important; left: auto !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .${CLASSE} .folha { overflow: hidden; break-after: page; }
