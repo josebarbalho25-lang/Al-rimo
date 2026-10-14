@@ -21,7 +21,7 @@ import { COR, Prancha, escalaPara, type OpcoesDaVista, type Pt } from './prancha
 
 /** `fiada` conta de 0 (0 = 1ª fiada). `o`: escala fixa, sem título e prefixo dos ids — o pedido do modo prancha. */
 export function desenharPlanta(m: Modelo, fiada = 0, o: OpcoesDaVista = {}): Prancha {
-  const pr = new Prancha(o.prefixo ?? 'des');
+  const pr = new Prancha(o.prefixo ?? 'des', o.hachuraVetorial);
   const sol = solidosDoModelo(m).filter((s) => s.peca.grupo !== 'terreno');
   const t = m.familia.t;
   const { trechos, sapata, L_real, n_fiadas } = m.dims;

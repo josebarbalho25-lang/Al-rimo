@@ -46,7 +46,7 @@ const PAPEIS_VISTOS = new Set<Barra['papel']>(['VERT_MURO', 'ESPERA', 'HORIZ', '
 
 /** `o`: escala fixa, sem título e prefixo dos ids — o pedido do modo prancha (paraPrancha.ts). */
 export function desenharVistaFrontal(m: Modelo, o: OpcoesDaVista = {}): Prancha {
-  const pr = new Prancha(o.prefixo ?? 'des');
+  const pr = new Prancha(o.prefixo ?? 'des', o.hachuraVetorial);
   const sol = solidosDoModelo(m).filter((s) => s.peca.grupo !== 'terreno');
   const t = m.familia.t;
   const { H_muro, H_solo, n_fiadas, trechos, sapata, L_real } = m.dims;

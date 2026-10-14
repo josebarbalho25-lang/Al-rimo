@@ -122,7 +122,7 @@ const ORDEM: Partial<Record<Solido['peca']['tipo'], number>> = { SAPATA: 0, DREN
 
 /** `o`: escala fixa, sem título e prefixo dos ids — o pedido do modo prancha (paraPrancha.ts). */
 export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVista = {}): Prancha {
-  const pr = new Prancha(o.prefixo ?? 'des');
+  const pr = new Prancha(o.prefixo ?? 'des', o.hachuraVetorial);
   const todos = solidosDoModelo(m);
   const sol = todos.filter((s) => s.peca.grupo !== 'terreno');
   // o solo da frente sobe sobre a ponta quando há aterro (h_fr): a altura sai do terreno do modelo

@@ -33,10 +33,25 @@
   O que fica FORA das primitivas, de propósito: o halo branco do texto e o filete branco sob a barra (`soTela`) —
   são truques de tela para ler por cima da hachura; plotados em monocromático, o branco vira preto grosso. A
   opacidade também não passa (o DXF não tem; hoje nenhum desenho usa).
+
+  HACHURA EM VETOR (o SVG que vai para o PDF, `hachuraVetorial`): o Chrome — e o printToPDF do Electron, mesmo
+  motor — imprime todo <pattern> como IMAGEM, numa resolução que ele escolhe (~37 dpi numa A1: 473 imagens, 51 MB
+  em 3 folhas, a terra pixelada e desbotada no zoom). Linha e texto saem em vetor; só o padrão não. Então, no SVG de
+  saída, área hachurada não usa <pattern>: vira
+    1. o fundo do ladrilho como cor chapada da própria área;
+    2. os riscos do ladrilho repetidos com <use> de um <symbol> (um por material, nos defs), recortados pela área
+       (<clipPath> com o mesmo contorno, par-ímpar — o furo continua furo). O <symbol> recorta cada cópia no
+       quadrado do ladrilho, como o <pattern> recorta: o risco que o ladrilho corta na borda sai cortado igual;
+    3. o contorno por cima, como o traço sobre o padrão.
+  Os ladrilhos ficam na mesma grade do <pattern> (origem em 0,0 do desenho; o giro de 45° do riscado da alvenaria e
+  do graute também): tela e papel mostram o mesmo desenho, risco por risco. Os dois riscados de linha (alvenaria,
+  graute) não precisam de ladrilho: a coluna de ladrilhos empilhados É um risco comprido, e sai assim, um traço por
+  coluna. A tela não muda (sem a opção, o SVG é o de antes byte a byte) e as primitivas também não (o DXF tem as
+  hachuras dele).
 */
 import type { PadraoHachura, Primitiva, Traco } from '@/pranchas/tipos';
 import { esc, n } from './formato';
-import { HACHURA, hachurasDeMaterial } from './hachuras';
+import { HACHURA, hachurasDeMaterial, ladrilhoDeMaterial, type MaterialComLadrilho } from './hachuras';
 
 /** Cores das figuras (figlib.C) + as que os desenhos de obra pedem a mais (peça especial, brita). */
 export const COR = {
@@ -114,6 +129,8 @@ export interface OpcoesDaVista {
   prefixo?: string;
   /** Tira da legenda as cores dos blocos: na prancha elas estão no quadro lateral, uma vez para a folha toda. */
   semLegendaDeCores?: boolean;
+  /** Hachura em traço de verdade, sem <pattern> (o SVG do PDF; ver "HACHURA EM VETOR" no cabeçalho). */
+  hachuraVetorial?: boolean;
 }
 
 export type Pt = [number, number];
@@ -132,6 +149,32 @@ const HACHURA_DO_PADRAO: Record<NomeDoPadrao, { padrao: PadraoHachura; fundo?: s
   areia: { padrao: 'areia', fundo: HACHURA.areiaFundo, risco: HACHURA.areia, camada: 'drenagem' },
   graute: { padrao: 'graute', risco: COR.grauteFundo, camada: 'graute' },
 };
+
+/**
+ * Os riscados de linha só: um risco vertical em x = 0 de cada ladrilho `passo` × `passo`, a grade girada de `giro`
+ * graus. Daqui saem o <pattern> da tela e o traço do PDF — o mesmo desenho nos dois.
+ */
+const RISCADO: Record<'alv' | 'graute', { passo: number; giro: number; fundo?: string; risco: string; sw: number }> = {
+  alv: { passo: 6, giro: 45, fundo: COR.blocoFundo, risco: COR.bloco, sw: 0.9 },
+  // graute visto atrás da face do bloco (vista frontal): só riscos, SEM fundo — a cor do tipo de bloco (o código
+  // de cor da obra) continua aparecendo entre eles. Um tom chapado por cima, como antes, tingia o cinza do
+  // inteiro de azul e ele passava por meio bloco
+  graute: { passo: 5, giro: 45, risco: COR.grauteFundo, sw: 1.6 },
+};
+
+function padraoRiscado(id: string, r: (typeof RISCADO)['alv']): string {
+  const fundo = r.fundo ? `<rect width="${r.passo}" height="${r.passo}" fill="${r.fundo}"/>` : '';
+  return (
+    `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${r.passo}" height="${r.passo}" patternTransform="rotate(${r.giro})">` +
+    `${fundo}<line x1="0" y1="0" x2="0" y2="${r.passo}" stroke="${r.risco}" stroke-width="${r.sw}"/></pattern>`
+  );
+}
+
+/** Número das posições da hachura em vetor: três casas (a grade não pode andar o 0,1 px do `n` a cada ladrilho). */
+function n3(v: number): string {
+  const r = Math.round(v * 1000) / 1000;
+  return Object.is(r, -0) ? '0' : String(r);
+}
 
 /** Tintas que, sozinhas, já dizem o material (passo 3 do cabeçalho). As outras cores repetem entre materiais. */
 const CAMADA_DA_COR: Record<string, string> = {
@@ -173,8 +216,12 @@ export class Prancha {
   private prims: Primitiva[] = [];
   /** Pilha dos grupos abertos (data-camada de cada um; quem abre sem camada herda a de fora). */
   private grupos: string[] = [];
+  /** Hachura em vetor: os recortes (<clipPath>) de cada área e os ladrilhos que alguma área usou. */
+  private recortes: string[] = [];
+  private ladrilhosUsados = new Set<MaterialComLadrilho>();
 
-  constructor(readonly prefixo = 'des') {}
+  /** `hachuraVetorial`: o SVG do PDF, sem <pattern> (cabeçalho, "HACHURA EM VETOR"). */
+  constructor(readonly prefixo = 'des', readonly hachuraVetorial = false) {}
 
   /** Referência a um padrão de preenchimento desta prancha. */
   padrao(nome: NomeDoPadrao): string {
@@ -186,11 +233,93 @@ export class Prancha {
     return [...this.prims];
   }
 
-  /** O padrão do SVG por trás de um `fill="url(#…)"` desta prancha (null para cor chapada ou 'none'). */
-  private padraoDoFill(fill: string | undefined): (typeof HACHURA_DO_PADRAO)[NomeDoPadrao] | null {
+  /** O nome do padrão por trás de um `fill="url(#…)"` desta prancha (null para cor chapada ou 'none'). */
+  private nomeDoPadrao(fill: string | undefined): NomeDoPadrao | null {
     const m = fill?.match(/^url\(#(.+)\)$/);
     if (!m || !m[1].startsWith(`${this.prefixo}-`)) return null;
-    return HACHURA_DO_PADRAO[m[1].slice(this.prefixo.length + 1) as NomeDoPadrao] ?? null;
+    const nome = m[1].slice(this.prefixo.length + 1);
+    return nome in HACHURA_DO_PADRAO ? (nome as NomeDoPadrao) : null;
+  }
+
+  /** O padrão do SVG por trás de um `fill="url(#…)"` desta prancha (null para cor chapada ou 'none'). */
+  private padraoDoFill(fill: string | undefined): (typeof HACHURA_DO_PADRAO)[NomeDoPadrao] | null {
+    const nome = this.nomeDoPadrao(fill);
+    return nome ? HACHURA_DO_PADRAO[nome] : null;
+  }
+
+  /**
+   * A área hachurada em vetor (cabeçalho, "HACHURA EM VETOR"): fundo chapado, riscos recortados pela área, contorno
+   * por cima. Volta false quando a área vai como sempre (tela, ou preenchimento que não é padrão).
+   */
+  private areaEmVetor(aneis: Pt[][], e: Estilo): boolean {
+    if (!this.hachuraVetorial) return false;
+    const nome = this.nomeDoPadrao(e.fill);
+    const fechados = aneis.filter((a) => a.length >= 3);
+    if (!nome || !fechados.length) return false;
+    const d = fechados.map((a) => 'M' + a.map(([x, y]) => `${n(x)},${n(y)}`).join('L') + 'Z').join('');
+    let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const a of fechados) {
+      for (const [x, y] of a) {
+        [x0, y0, x1, y1] = [Math.min(x0, x), Math.min(y0, y), Math.max(x1, x), Math.max(y1, y)];
+      }
+    }
+    if (![x0, y0, x1, y1].every(Number.isFinite)) return false;
+    const id = `${this.prefixo}-rec${this.recortes.length}`;
+    // um <path> só dentro do <clipPath>: assim o Chrome recorta pelo caminho (vetor no PDF); com mais de um filho ele
+    // passa a recortar por máscara, e máscara o PDF guarda como imagem — o defeito de volta por outra porta
+    this.recortes.push(`<clipPath id="${id}"><path d="${d}" clip-rule="evenodd"/></clipPath>`);
+
+    let fundo: string | undefined;
+    let riscos = '';
+    if (nome === 'alv' || nome === 'graute') {
+      const r = RISCADO[nome];
+      fundo = r.fundo;
+      riscos = this.riscadoEmVetor(r, x0, y0, x1, y1);
+    } else {
+      const l = ladrilhoDeMaterial(nome);
+      fundo = l.fundo;
+      this.ladrilhosUsados.add(nome);
+      // as casas da grade do <pattern> (origem 0,0) que a caixa da área toca; o recorte tira o que sobra
+      const L = l.lado;
+      for (let i = Math.floor(x0 / L); i * L < x1; i++) {
+        for (let j = Math.floor(y0 / L); j * L < y1; j++) {
+          riscos += `<use href="#${this.prefixo}-lad-${nome}" x="${n3(i * L)}" y="${n3(j * L)}" width="${n3(L)}" height="${n3(L)}"/>`;
+        }
+      }
+    }
+
+    const g: string[] = [];
+    if (e.id) g.push(`data-id="${esc(e.id)}"`);
+    if (e.opacidade !== undefined) g.push(`opacity="${Math.min(1, Math.max(0, e.opacidade)).toFixed(2)}"`);
+    if (e.extra) g.push(e.extra);
+    let s = `<g${g.length ? ' ' + g.join(' ') : ''}>`;
+    if (fundo) s += `<path d="${d}" fill-rule="evenodd" fill="${fundo}" stroke="none"/>`;
+    s += `<g clip-path="url(#${id})">${riscos}</g>`;
+    if ((e.stroke ?? COR.linha) !== 'none') {
+      s += `<path d="${d}" fill-rule="evenodd" ${this.atributos({ ...e, fill: 'none', id: undefined, opacidade: undefined, extra: undefined })}/>`;
+    }
+    this.corpo.push(s + '</g>');
+    return true;
+  }
+
+  /**
+   * O riscado (alvenaria, graute) em vetor: um traço por coluna da grade girada, cobrindo a caixa da área. No
+   * <pattern> o risco em x = 0 é cortado pela borda do próprio ladrilho — só a metade de dentro aparece, de 0 a
+   * sw/2 —, então o traço do PDF sai com sw/2 de largura, centrado em sw/4: a mesma faixa pintada da tela.
+   */
+  private riscadoEmVetor(r: (typeof RISCADO)['alv'], x0: number, y0: number, x1: number, y1: number): string {
+    const a = (r.giro * Math.PI) / 180;
+    const [c, s] = [Math.cos(a), Math.sin(a)];
+    // a caixa da área levada para o sistema da grade (o inverso do rotate do patternTransform)
+    let [u0, v0, u1, v1] = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const [x, y] of [[x0, y0], [x1, y0], [x1, y1], [x0, y1]] as Pt[]) {
+      const [u, v] = [x * c + y * s, -x * s + y * c];
+      [u0, v0, u1, v1] = [Math.min(u0, u), Math.min(v0, v), Math.max(u1, u), Math.max(v1, v)];
+    }
+    let d = '';
+    for (let i = Math.floor(u0 / r.passo); i * r.passo < u1; i++) d += `M${n3(i * r.passo + r.sw / 4)},${n3(v0)}V${n3(v1)}`;
+    if (!d) return '';
+    return `<path d="${d}" transform="rotate(${r.giro})" fill="none" stroke="${r.risco}" stroke-width="${n3(r.sw / 2)}"/>`;
   }
 
   /** A camada do DXF de um traço (ordem no cabeçalho). */
@@ -261,7 +390,11 @@ export class Prancha {
   }
 
   private atributos(e: Estilo, fillPadrao = 'none', strokePadrao: string = COR.linha): string {
-    const a = [`fill="${e.fill ?? fillPadrao}"`];
+    let fill = e.fill ?? fillPadrao;
+    // no SVG do PDF não há <pattern> para apontar: o que sobrar com padrão (área sem anel fechado, linha com fill)
+    // não tem miolo para pintar, e o url(#…) órfão não pode ir para o papel
+    if (this.hachuraVetorial && this.nomeDoPadrao(fill)) fill = 'none';
+    const a = [`fill="${fill}"`];
     const st = e.stroke ?? strokePadrao;
     a.push(`stroke="${st}"`);
     if (st !== 'none') a.push(`stroke-width="${n(e.sw ?? 1)}"`);
@@ -276,9 +409,10 @@ export class Prancha {
     const xa = Math.min(x, x + w), ya = Math.min(y, y + h);
     const ww = Math.abs(w), hh = Math.abs(h);
     if (!(ww > 0 && hh > 0)) return;
-    this.corpo.push(`<rect x="${n(xa)}" y="${n(ya)}" width="${n(ww)}" height="${n(hh)}" ${this.atributos(e)}/>`);
+    const aneis: Pt[][] = [[[xa, ya], [xa + ww, ya], [xa + ww, ya + hh], [xa, ya + hh]]];
+    if (!this.areaEmVetor(aneis, e)) this.corpo.push(`<rect x="${n(xa)}" y="${n(ya)}" width="${n(ww)}" height="${n(hh)}" ${this.atributos(e)}/>`);
     this.estender(xa, ya, xa + ww, ya + hh);
-    this.anotarArea([[[xa, ya], [xa + ww, ya], [xa + ww, ya + hh], [xa, ya + hh]]], e);
+    this.anotarArea(aneis, e);
   }
 
   linha(xa: number, ya: number, xb: number, yb: number, e: Estilo = {}): void {
@@ -292,8 +426,10 @@ export class Prancha {
 
   poligono(pts: Pt[], e: Estilo = {}): void {
     if (pts.length < 2) return;
-    const p = pts.map(([x, y]) => `${n(x)},${n(y)}`).join(' ');
-    this.corpo.push(`<polygon points="${p}" ${this.atributos(e)}/>`);
+    if (!this.areaEmVetor([pts], e)) {
+      const p = pts.map(([x, y]) => `${n(x)},${n(y)}`).join(' ');
+      this.corpo.push(`<polygon points="${p}" ${this.atributos(e)}/>`);
+    }
     for (const [x, y] of pts) this.estender(x, y, x, y);
     this.anotarArea([pts], e);
   }
@@ -320,7 +456,7 @@ export class Prancha {
       .map((a) => 'M' + a.map(([x, y]) => `${n(x)},${n(y)}`).join('L') + 'Z')
       .join('');
     if (!d) return;
-    this.corpo.push(`<path d="${d}" fill-rule="evenodd" ${this.atributos(e)}/>`);
+    if (!this.areaEmVetor(aneis, e)) this.corpo.push(`<path d="${d}" fill-rule="evenodd" ${this.atributos(e)}/>`);
     for (const a of aneis) for (const [x, y] of a) this.estender(x, y, x, y);
     this.anotarArea(aneis.filter((a) => a.length >= 3), e);
   }
@@ -470,19 +606,19 @@ export class Prancha {
   private defs(): string {
     const p = this.prefixo;
     const M = MARCA;
-    return (
+    const marca =
       `<marker id="${p}-tick" viewBox="0 0 ${M.caixa} ${M.caixa}" refX="${M.ref}" refY="${M.ref}" markerWidth="${M.lado}" markerHeight="${M.lado}" markerUnits="userSpaceOnUse" orient="auto">` +
-      `<path d="M${M.de[0]},${M.de[1]} L${M.ate[0]},${M.ate[1]}" stroke="${COR.cota}" stroke-width="${M.sw}"/></marker>` +
-      // terra, concreto, areia e brita: as hachuras do Revit do Jose (hachuras.ts)
-      hachurasDeMaterial(p) +
-      `<pattern id="${p}-alv" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">` +
-      `<rect width="6" height="6" fill="${COR.blocoFundo}"/><line x1="0" y1="0" x2="0" y2="6" stroke="${COR.bloco}" stroke-width="0.9"/></pattern>` +
-      // graute visto atrás da face do bloco (vista frontal): só riscos, SEM fundo — a cor do tipo de bloco (o código
-      // de cor da obra) continua aparecendo entre eles. Um tom chapado por cima, como antes, tingia o cinza do
-      // inteiro de azul e ele passava por meio bloco
-      `<pattern id="${p}-graute" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)">` +
-      `<line x1="0" y1="0" x2="0" y2="5" stroke="${COR.grauteFundo}" stroke-width="1.6"/></pattern>`
-    );
+      `<path d="M${M.de[0]},${M.de[1]} L${M.ate[0]},${M.ate[1]}" stroke="${COR.cota}" stroke-width="${M.sw}"/></marker>`;
+    if (this.hachuraVetorial) {
+      // só os ladrilhos que alguma área usou; overflow hidden: cada cópia recortada no quadrado dela, como no <pattern>
+      const ladrilhos = [...this.ladrilhosUsados].map((k) => {
+        const l = ladrilhoDeMaterial(k);
+        return `<symbol id="${p}-lad-${k}" viewBox="0 0 ${n3(l.lado)} ${n3(l.lado)}" overflow="hidden">${l.miolo}</symbol>`;
+      });
+      return marca + ladrilhos.join('') + this.recortes.join('');
+    }
+    // terra, concreto, areia e brita: as hachuras do Revit do Jose (hachuras.ts); alvenaria e graute: RISCADO
+    return marca + hachurasDeMaterial(p) + padraoRiscado(`${p}-alv`, RISCADO.alv) + padraoRiscado(`${p}-graute`, RISCADO.graute);
   }
 
   /** Pedaços do desenho para quem quer controlar o viewBox (zoom/arrasto do componente). */

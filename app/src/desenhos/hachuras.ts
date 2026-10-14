@@ -7,6 +7,11 @@
   Os pontos "aleatórios" saem de um sorteio com semente fixa: o mesmo desenho a cada vez (teste e exportação
   estáveis). Cada pedra perto da borda do ladrilho é desenhada também do outro lado, para o ladrilho emendar sem
   costura.
+
+  O ladrilho é DADO (lado, fundo, miolo), não o <pattern> pronto: a tela usa o <pattern>; o PDF não pode (o Chrome
+  imprime padrão de SVG como imagem de ~37 dpi — a terra saía pixelada e desbotada, 51 MB em 3 folhas) e repete o
+  mesmo miolo em vetor, ladrilho a ladrilho (prancha.ts, "HACHURA EM VETOR"). Um miolo só para os dois: o papel não
+  tem como sair com outra hachura que a da tela.
 */
 
 export const HACHURA = {
@@ -42,8 +47,23 @@ function risco(E: number, x: number, y: number, ang: number, l: number, cor: str
   return `<line x1="${f1(x)}" y1="${f1(y)}" x2="${f1(x + l * Math.cos(ang))}" y2="${f1(y + l * Math.sin(ang))}" stroke="${cor}" stroke-width="0.6"/>`;
 }
 
-function ladrilho(id: string, lado: number, fundo: string, miolo: string): string {
-  return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${lado}" height="${lado}"><rect width="${lado}" height="${lado}" fill="${fundo}"/>${miolo}</pattern>`;
+/** Um ladrilho: quadrado de `lado` px (origem em 0,0), a cor de `fundo` e os riscos/pedras por cima (`miolo`). */
+export interface Ladrilho {
+  lado: number;
+  fundo: string;
+  miolo: string;
+}
+
+/** Os quatro materiais com ladrilho próprio, pelo nome do padrão na prancha (`des-solo`, `des-conc`...). */
+export type MaterialComLadrilho = 'solo' | 'conc' | 'areia' | 'brita';
+
+function ladrilho(lado: number, fundo: string, miolo: string): Ladrilho {
+  return { lado, fundo, miolo };
+}
+
+/** O <pattern> da tela: o ladrilho repetido a partir de 0,0 do desenho, com o fundo em cada casa. */
+function padrao(id: string, l: Ladrilho): string {
+  return `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${l.lado}" height="${l.lado}"><rect width="${l.lado}" height="${l.lado}" fill="${l.fundo}"/>${l.miolo}</pattern>`;
 }
 
 /**
@@ -53,7 +73,7 @@ function ladrilho(id: string, lado: number, fundo: string, miolo: string): strin
  * entrelaçado (Jose, 14/10: "os traçados meio que se entrelaçam, isso que eu gosto dela"; os quadrados soltos da
  * 1ª tentativa não davam).
  */
-function terra(id: string): string {
+function terra(): Ladrilho {
   const c = ESCALA.terra;
   const T = 2 * c;
   const seg: [number, number, number, number][] = [];
@@ -74,18 +94,18 @@ function terra(id: string): string {
       }
     }
   }
-  return ladrilho(id, T, HACHURA.terraFundo, s);
+  return ladrilho(T, HACHURA.terraFundo, s);
 }
 
-function areia(id: string): string {
+function areia(): Ladrilho {
   const r = sorteio(11);
   let s = '';
   const E = ESCALA.areia;
   for (let i = 0; i < 70; i++) s += risco(E, r() * 60, r() * 60, r() * 6.28, 0.6 + r() * 0.9, HACHURA.areia);
-  return ladrilho(id, 60 * E, HACHURA.areiaFundo, s);
+  return ladrilho(60 * E, HACHURA.areiaFundo, s);
 }
 
-function concreto(id: string): string {
+function concreto(): Ladrilho {
   const r = sorteio(23);
   const E = ESCALA.concreto;
   let s = '';
@@ -95,11 +115,11 @@ function concreto(id: string): string {
     s += `<polygon points="${p.join(' ')}" fill="none" stroke="${HACHURA.concreto}" stroke-width="0.6"/>`;
   }
   for (let i = 0; i < 45; i++) s += risco(E, r() * 80, r() * 80, r() * 6.28, 0.5 + r() * 1.2, HACHURA.concreto);
-  return ladrilho(id, 80 * E, HACHURA.concretoFundo, s);
+  return ladrilho(80 * E, HACHURA.concretoFundo, s);
 }
 
 /** Brita: pedras de 5 a 7 lados, de quina viva, uma por casa de uma grade 8 × 8 com o centro sacudido. */
-function brita(id: string): string {
+function brita(): Ladrilho {
   const r = sorteio(7);
   const T = 72, n = 8, passo = T / n, E = ESCALA.brita;
   let s = '';
@@ -123,16 +143,24 @@ function brita(id: string): string {
       }
     }
   }
-  return ladrilho(id, T * E, HACHURA.britaFundo, s);
+  return ladrilho(T * E, HACHURA.britaFundo, s);
+}
+
+let ladrilhos: Record<MaterialComLadrilho, Ladrilho> | null = null;
+
+/** O ladrilho de cada material (sorteado uma vez: a semente é fixa, o resultado também). */
+export function ladrilhoDeMaterial(nome: MaterialComLadrilho): Ladrilho {
+  ladrilhos ??= { solo: terra(), conc: concreto(), areia: areia(), brita: brita() };
+  return ladrilhos[nome];
 }
 
 const cache = new Map<string, string>();
 
-/** Os quatro ladrilhos, com o prefixo da prancha (`des-solo`, `des-conc`, `des-areia`, `des-brita`). */
+/** Os quatro <pattern> da tela, com o prefixo da prancha (`des-solo`, `des-conc`, `des-areia`, `des-brita`). */
 export function hachurasDeMaterial(prefixo: string): string {
   let s = cache.get(prefixo);
   if (!s) {
-    s = terra(`${prefixo}-solo`) + concreto(`${prefixo}-conc`) + areia(`${prefixo}-areia`) + brita(`${prefixo}-brita`);
+    s = (['solo', 'conc', 'areia', 'brita'] as const).map((k) => padrao(`${prefixo}-${k}`, ladrilhoDeMaterial(k))).join('');
     cache.set(prefixo, s);
   }
   return s;

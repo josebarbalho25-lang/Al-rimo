@@ -402,7 +402,7 @@ function camadaDaPeca(tp: Solido['peca']['tipo']): string {
 }
 
 export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {}): Prancha {
-  const pr = new Prancha(o.prefixo ?? 'des');
+  const pr = new Prancha(o.prefixo ?? 'des', o.hachuraVetorial);
   const c = montarCena(m, cam);
   const { v, dir, cima, luz } = c.base;
   const opaco = c.estilo === 'opaco';

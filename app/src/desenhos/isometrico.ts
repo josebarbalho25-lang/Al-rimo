@@ -170,7 +170,7 @@ export function pecasDoIsometrico(todos: Solido[], corte: number | null, manterM
 }
 
 export function desenharIsometrico(m: Modelo, o: OpcoesIso = {}): Prancha {
-  const pr = new Prancha(o.prefixo ?? 'des');
+  const pr = new Prancha(o.prefixo ?? 'des', o.hachuraVetorial);
   const vista = o.vista ?? 'frente-direita';
   const { v, dir, cima, luz } = camera(vista);
   const { ax } = sentido(vista);

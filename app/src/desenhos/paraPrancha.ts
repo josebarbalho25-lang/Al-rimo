@@ -5,7 +5,9 @@
   padrão da primeira).
 
   Volta o SVG (corpo + defs) para o PDF e as PRIMITIVAS — o mesmo traço, estruturado — para o DXF. As duas saídas
-  vêm da mesma passada do desenho: não há como o DXF mostrar uma coisa e o PDF outra.
+  vêm da mesma passada do desenho: não há como o DXF mostrar uma coisa e o PDF outra. Com `hachuraVetorial` (o
+  arquivo), a hachura do SVG sai em traço, sem <pattern> (prancha.ts, "HACHURA EM VETOR"); a tela segue com o
+  padrão, e as primitivas são as mesmas nos dois casos.
 
   A anotação não acompanha a escala: cota, texto, marca e espessura de traço têm tamanho fixo em px, e a folha
   converte px em mm de papel com PX_POR_MM. Em 1:25 ou 1:50 a cota sai com a mesma altura no papel (2,5 mm); o
@@ -29,7 +31,8 @@ import type { OpcoesDaVista, Prancha } from './prancha';
 export function vistaParaPrancha(m: Modelo, pedido: PedidoDeVista, escala: number, prefixo: string, opcoes: { legendaDeCores?: boolean; hachuraVetorial?: boolean } = {}): VistaParaPrancha {
   // a legenda das cores dos blocos vai uma vez só, no quadro lateral da folha — a não ser que a folha peça (quadro
   // fechado)
-  const o: OpcoesDaVista = { S: escalaDaVista(escala), semTitulo: true, prefixo, semLegendaDeCores: !opcoes.legendaDeCores };
+  // `hachuraVetorial`: a folha pede quando compõe para o arquivo — o <pattern> o Chrome imprime como imagem
+  const o: OpcoesDaVista = { S: escalaDaVista(escala), semTitulo: true, prefixo, semLegendaDeCores: !opcoes.legendaDeCores, hachuraVetorial: opcoes.hachuraVetorial };
   let pr: Prancha;
   switch (pedido.tipo) {
     case 'frontal':
@@ -58,7 +61,7 @@ export function vista3dParaPrancha(m: Modelo, camera: Camera3d, larguraMm: numbe
   const w = larguraProjetada(m, camera);
   // muro sem largura (vazio, ou visto de quina exata): fica em 1:50, para a folha não receber escala infinita
   const S = w > 1e-6 ? (larguraMm * PX_POR_MM) / w : escalaDaVista(50);
-  return entregar(desenharVista3d(m, camera, { S, semTitulo: true, prefixo, semLegendaDeCores: !opcoes.legendaDeCores }));
+  return entregar(desenharVista3d(m, camera, { S, semTitulo: true, prefixo, semLegendaDeCores: !opcoes.legendaDeCores, hachuraVetorial: opcoes.hachuraVetorial }));
 }
 
 function entregar(pr: Prancha): VistaParaPrancha {
