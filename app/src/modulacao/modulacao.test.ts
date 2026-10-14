@@ -890,6 +890,31 @@ describe('canaleta como a obra deixa: fundo furado onde sobe a barra, T de graut
     expect(m3.geometrias[m3.pecas.find((p) => p.tipo === 'DRENO')!.geometria].perfil.contorno).toHaveLength(4);
   });
 
+  it('contraforte enterrado: cada vão com o seu dreno e pelo menos um barbacã (Jose, 14/10: não fura o contraforte)', () => {
+    for (const c of cenariosDoGabarito()) {
+      const r = resultadoDoGabarito(c);
+      const m = gerarModelo(r, { ...padroesDoModelo(), L_total: 12 });
+      const t = m.familia.t;
+      const enterrado = m.pecas.some((p) => p.grupo === 'contraforte' && caixa(m, p).max[1] > t + 0.5);
+      if (!enterrado || m.avisos.some((a) => a.codigo === 'BARBACA_SEM_CELULA')) continue;
+      const drenos = m.pecas.filter((p) => p.tipo === 'DRENO').map((p) => caixa(m, p));
+      const bbs = m.pecas.filter((p) => p.tipo === 'BARBACA').map((p) => caixa(m, p));
+      expect(drenos.length, c).toBeGreaterThan(1);
+      for (const d of drenos) {
+        expect(bbs.some((b) => b.min[0] >= d.min[0] - 1e-6 && b.max[0] <= d.max[0] + 1e-6), `${c}: vão ${d.min[0]}–${d.max[0]} sem barbacã`).toBe(true);
+      }
+      // nenhum pedaço do dreno (brita, areia, manta, tubo) entra no contraforte
+      const cfs = m.pecas.filter((p) => p.grupo === 'contraforte').map((p) => caixa(m, p));
+      for (const p of m.pecas.filter((q) => ['DRENO', 'AREIA', 'MANTA', 'TUBO_DRENO'].includes(q.tipo))) {
+        const k = caixa(m, p);
+        for (const f of cfs) {
+          const cruza = k.min[0] < f.max[0] - 0.5 && k.max[0] > f.min[0] + 0.5 && k.min[1] < f.max[1] - 0.5 && k.max[1] > f.min[1] + 0.5 && k.min[2] < f.max[2] - 0.5 && k.max[2] > f.min[2] + 0.5;
+          expect(cruza, `${c}: ${p.id} dentro do contraforte`).toBe(false);
+        }
+      }
+    }
+  }, 120_000);
+
   it('barbacã: muro todo em canaleta avisa em vez de sumir; nunca numa célula com barra', () => {
     const m23 = gerarModelo(resultadoDoGabarito('sorteio23'), padroesDoModelo());
     expect(m23.pecas.filter((p) => p.tipo === 'BARBACA')).toEqual([]);

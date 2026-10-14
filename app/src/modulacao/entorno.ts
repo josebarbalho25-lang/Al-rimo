@@ -213,29 +213,42 @@ export function drenagem(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidades): v
     let { cand } = primeira;
     while (!cand.length && fiada + 1 < mod.n_fiadas && zDaFiada(fiada + 1) + d / 2 <= p.H_solo) cand = celulas(++fiada).cand;
     const zc = zDaFiada(fiada);
-    const Lt = tr.x1 - tr.x0;
-    const n = Math.max(1, Math.round(Lt / p.barbaca_s));
     const conta = ctx.barbacas ?? (ctx.barbacas = { pedidos: 0, desenhados: 0, emCanaleta: false });
-    conta.pedidos += n;
     if (primeira.emCanaleta) conta.emCanaleta = true;
+    // Com contraforte enterrado o dreno é um por vão e o contraforte não é furado (Jose, 14/10: "cada contraforte com
+    // seu dreno, vamos furar eles não"): cada vão precisa da sua saída, então os barbacãs se distribuem VÃO A VÃO, no
+    // mínimo um em cada. Sem isso, vão de 1,35 com barbacã a cada 1,50 deixava vão com o dreno sem saída.
+    const faixas: [number, number][] = [];
+    if (p.contrafortes && p.enterrado && tr.nos.length > 1) {
+      for (let v = 0; v + 1 < tr.nos.length; v++) faixas.push([tr.nos[v].xe - JUNTA, tr.nos[v + 1].xs]);
+    } else {
+      faixas.push([tr.x0, tr.x1]);
+    }
     const usados = new Set<number>();
     const Lb = t + 2 * SALIENCIA_BARBACA;
     const geo = geoPrismaReto(ctx, `barbacã Ø${fmt(d)} L${fmt(Lb)}`, 'X', circulo(d), Lb, `tubo Ø${fmt(d)} mm`);
-    for (let j = 0; j < n; j++) {
-      const alvo = tr.x0 + ((j + 0.5) * Lt) / n;
-      let melhor = -1;
-      cand.forEach((x, k) => {
-        if (usados.has(k)) return;
-        if (melhor < 0 || Math.abs(x - alvo) < Math.abs(cand[melhor] - alvo) - 1e-9) melhor = k;
-      });
-      if (melhor < 0) break;
-      usados.add(melhor);
-      conta.desenhados++;
-      const x = cand[melhor];
-      ctx.pecas.push({
-        id: `${T}.BBC.${pad(j + 1, 2)}`, tipo: 'BARBACA', grupo: 'drenagem', geometria: geo,
-        origem: [arred(x - d / 2), -SALIENCIA_BARBACA, arred(zc - d / 2)], giro: 90, trecho: tr.indice, fiada,
-      });
+    let j = 0;
+    for (const [xa, xb] of faixas) {
+      const Lf = xb - xa;
+      if (Lf <= 0) continue;
+      const n = Math.max(1, Math.round(Lf / p.barbaca_s));
+      conta.pedidos += n;
+      for (let i = 0; i < n; i++) {
+        const alvo = xa + ((i + 0.5) * Lf) / n;
+        let melhor = -1;
+        cand.forEach((x, k) => {
+          if (usados.has(k) || x < xa || x > xb) return;
+          if (melhor < 0 || Math.abs(x - alvo) < Math.abs(cand[melhor] - alvo) - 1e-9) melhor = k;
+        });
+        if (melhor < 0) break;
+        usados.add(melhor);
+        conta.desenhados++;
+        const x = cand[melhor];
+        ctx.pecas.push({
+          id: `${T}.BBC.${pad(++j, 2)}`, tipo: 'BARBACA', grupo: 'drenagem', geometria: geo,
+          origem: [arred(x - d / 2), -SALIENCIA_BARBACA, arred(zc - d / 2)], giro: 90, trecho: tr.indice, fiada,
+        });
+      }
     }
   }
 }

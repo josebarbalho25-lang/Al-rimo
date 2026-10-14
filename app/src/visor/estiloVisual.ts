@@ -115,10 +115,14 @@ const OPACO: Record<Acabamento, string> = {
   alvenaria: '#ffffff',
   graute: '#dcdcdc',
   concreto: '#ffffff',
-  brita: '#ececec',
-  areia: '#f4f4f4',
+  // brita e areia em dois cinzas (Jose, 14/10: "areia e brita temos de representar melhor no 3D"): quase brancos,
+  // as duas camadas do dreno sumiam no papel; a brita mais escura, a areia entre ela e o solo
+  brita: '#c4c4c4',
+  areia: '#e4e4e4',
   manta: '#f6f6f6',
-  tubo: '#ffffff',
+  // o tubo (barbacã, dreno de fundo) em cinza médio: branco sobre o bloco branco, o barbacã sumia (Jose, 14/10: "os
+  // barbacãs não estão aparecendo no 3D") — a ponta do tubo lê como furo na face, como na prancha
+  tubo: '#8c8c8c',
   terreno: '#bdbdbd',
 };
 const ACO_OPACO = '#4a4a4a';

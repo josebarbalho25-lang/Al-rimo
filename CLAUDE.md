@@ -258,8 +258,10 @@ e dizer ao Jose o que mudou e por quê.
   AREIA de filtro entre a brita e o solo (`areia_esp` 0,10; 0 = sem); manta por fora; `dreno_folga` vai do topo do
   solo ao topo do pacote. Barbacã sai 5 cm da face e entra 5 cm no dreno, na 1ª fiada com o tubo todo acima do solo
   da frente (`h_fr`, desenhado sempre, com ou sem `pass_on`); fiada em canaleta → sobe para a de cima. Peças novas
-  AREIA e TUBO_DRENO (3D, IFC, quantitativo, corte). Com contraforte enterrado o tubo para em cada contraforte
-  (perguntar ao Jose se atravessa). Código: `modulacao/entorno.ts` (pacoteDoDreno, bordaDoPacote).
+  AREIA e TUBO_DRENO (3D, IFC, quantitativo, corte). Contraforte enterrado: CADA VÃO COM O SEU DRENO, contraforte
+  NÃO é furado (Jose, 14/10) — por isso os barbacãs se distribuem vão a vão, no mínimo um por vão (a saída do dreno
+  daquele vão). Opaco: tubo cinza #8c8c8c (branco sumia no bloco branco), brita #c4c4c4, areia #e4e4e4. Código:
+  `modulacao/entorno.ts` (pacoteDoDreno, bordaDoPacote).
 - **Hachuras do Revit do Jose (14/10):** terra = trançado EARTH do AutoCAD (casa 48 px, #a67857 sobre #dbc9bb),
   concreto (#5d5d5d sobre #d4d4d4), areia (#5d5d5d sobre #ffffb7), brita = pedras de quina viva (opção A, #4a4a4a sobre
   #c3bfb5). Tamanhos CALIBRADOS por ele na régua (`_trabalho/calibrar_hachuras.html`): terra ×0,40, concreto ×0,85,
