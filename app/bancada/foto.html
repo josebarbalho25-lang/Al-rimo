@@ -1,0 +1,20 @@
+<!doctype html>
+<!--
+  Bancada da foto refeita do 3D (prancha viva) — só desenvolvimento: `npm run dev` e abrir /bancada/foto.html.
+  ?tema=paper (ou modern) troca o tema; o padrão é o escuro do app. O código mora em src/visor/BancadaDaFoto.tsx
+  (conferido pelo tsc). O build do app não leva esta página.
+-->
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Al-rimo — bancada da foto refeita</title>
+  </head>
+  <body data-theme="dark" data-density="cozy">
+    <script>
+      document.body.dataset.theme = new URLSearchParams(location.search).get('tema') || 'dark';
+    </script>
+    <div id="raiz"></div>
+    <script type="module" src="/src/visor/BancadaDaFoto.tsx"></script>
+  </body>
+</html>

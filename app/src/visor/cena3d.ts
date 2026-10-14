@@ -38,7 +38,7 @@ import * as THREE from 'three';
 import type { Barra, ClassePeca, Modelo, Peca, Vec3 } from '@/modelo/tipos';
 import { barraDoTriangulo, montarBarras, type LoteDeBarras } from './barras3d';
 import { corDaPeca, corDoAco, ESTILO_PADRAO, opacidadeDoTerreno, tracoDoEstilo, type EstiloVisual } from './estiloVisual';
-import { materialDoAcabamento, materialDoAco } from './materiaisDoEstilo';
+import { materialDoAcabamento, materialDoAco, texturaDaPele, type FonteDasPeles } from './materiaisDoEstilo';
 import { caixaDaPeca, caixaLocal, MM, arestasDaGeometria, moldeDaGeometria, type Caixa } from './perfil3d';
 import { emMetro, montarLotes, unirCaixas, visivel, type Acabamento, type Categoria, type Lote } from './lotes';
 import type { PaletaVisor } from './tema3d';
@@ -139,7 +139,14 @@ function tracoInstanciado(arestas: THREE.BufferAttribute, malha: THREE.Instanced
   return traco;
 }
 
-export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInicial: EstiloVisual = ESTILO_PADRAO): Cena3D {
+/** O que só a foto refeita muda na montagem (o visor usa o padrão). */
+export interface OpcoesDaCena {
+  /** De onde vêm as texturas do Realista (ver `pelesProprias` em materiaisDoEstilo.ts). */
+  peles?: FonteDasPeles;
+}
+
+export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInicial: EstiloVisual = ESTILO_PADRAO, opcoes: OpcoesDaCena = {}): Cena3D {
+  const peles = opcoes.peles ?? texturaDaPele;
   const grupo = new THREE.Group();
   grupo.name = 'muro';
   const { lotes: brutos, semGeometria } = montarLotes(modelo);
@@ -176,7 +183,7 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
     if (!doEstilo) materiais.set(e, (doEstilo = new Map()));
     let m = doEstilo.get(a);
     if (!m) {
-      doEstilo.set(a, (m = materialDoAcabamento(e, a)));
+      doEstilo.set(a, (m = materialDoAcabamento(e, a, peles)));
       m.clippingPlanes = planos.length ? [...planos] : null;
       ajustarTransparencia(m, a, e);
     }

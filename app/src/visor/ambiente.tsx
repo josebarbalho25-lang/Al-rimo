@@ -11,7 +11,8 @@
 //  ⚠️ LUZ RECALIBRADA, não copiada. O visor roda SEM exposição (`flat` no
 //  Canvas): o aço tem de sair na cor do estilo e o bloco na cor do Revit, e a
 //  curva ACES que o r3f liga sozinha desbota e puxa o tom. Sem ela, com a luz
-//  nas unidades do three (a face recebe luz/π), os números abaixo dão, na cor
+//  nas unidades do three (a face recebe luz/π), os números (em `palco3d.ts`,
+//  que monta a luz para a tela e para a foto refeita da prancha) dão, na cor
 //  do material: topo 1,00 · frente 0,86 · direita 0,76 · esquerda e fundo
 //  0,74 · base 0,62 — três tons distintos na isométrica, que é o que separa as
 //  faces de um muro de cor só. (DEDUÇÃO minha; conferir o tom com ele na tela.)
@@ -27,51 +28,15 @@ import * as THREE from 'three';
 import type { Vec3 } from '@/modelo/tipos';
 import { ANOTACAO } from './captura';
 import type { EstiloVisual } from './estiloVisual';
+import { exposicaoDoEstilo, montarLuzes, pintarFundo } from './palco3d';
 import type { Caixa } from './perfil3d';
-import { DIRECAO_DO_SOL, enquadrarSombra } from './sombraDoSol';
 import type { PaletaVisor } from './tema3d';
 
-function pintarFundo(p: PaletaVisor, liso: boolean): THREE.CanvasTexture {
-  const S = 512;
-  const cv = document.createElement('canvas');
-  cv.width = S;
-  cv.height = S;
-  const g = cv.getContext('2d')!;
-  if (liso) {
-    // Papel: nem degradê nem mancha — a imagem vai para a prancha e o recorte dela tem de ser limpo.
-    g.fillStyle = p.fundo;
-    g.fillRect(0, 0, S, S);
-    const t = new THREE.CanvasTexture(cv);
-    t.colorSpace = THREE.SRGBColorSpace;
-    return t;
-  }
-  const lin = g.createLinearGradient(0, 0, 0, S);
-  lin.addColorStop(0, p.fundo);
-  lin.addColorStop(0.45, p.superficie);
-  lin.addColorStop(1, p.fundo);
-  g.fillStyle = lin;
-  g.fillRect(0, 0, S, S);
-  const mancha = (cx: number, cy: number, r: number, cor: string, alpha: number) => {
-    const rg = g.createRadialGradient(cx, cy, 0, cx, cy, r);
-    rg.addColorStop(0, cor);
-    rg.addColorStop(1, 'transparent');
-    g.globalAlpha = alpha;
-    g.fillStyle = rg;
-    g.fillRect(0, 0, S, S);
-    g.globalAlpha = 1;
-  };
-  mancha(S * 0.22, S * 0.24, S * 0.62, p.enfase, 0.05);
-  mancha(S * 0.82, S * 0.78, S * 0.58, p.tinta, 0.04);
-  const vg = g.createRadialGradient(S / 2, S / 2, S * 0.3, S / 2, S / 2, S * 0.78);
-  vg.addColorStop(0, 'transparent');
-  vg.addColorStop(1, p.escuro ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.08)');
-  g.fillStyle = vg;
-  g.fillRect(0, 0, S, S);
-  const t = new THREE.CanvasTexture(cv);
-  t.minFilter = THREE.LinearFilter;
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
-}
+/*
+  O fundo, a luz e a exposição são MONTADOS em `palco3d.ts` (a foto refeita da prancha monta o mesmo palco fora
+  da tela, pela mesma função). Aqui fica só o que é da tela: pendurar no palco do r3f, pedir quadro e redesenhar a
+  sombra na hora certa.
+*/
 
 export function Fundo({ paleta, liso = false }: { paleta: PaletaVisor; liso?: boolean }) {
   const cena = useThree((s) => s.scene);
@@ -88,115 +53,66 @@ export function Fundo({ paleta, liso = false }: { paleta: PaletaVisor; liso?: bo
   return null;
 }
 
-/** Direções DE ONDE vem a luz (a luz direcional mira a origem). */
-const SOL = DIRECAO_DO_SOL;
-const CONTRA: Vec3 = [-0.6, 0.6, 0.53];
-const PREENCHE: Vec3 = [-0.45, -0.75, 0.3];
-
-/** A luz chapada do Cores (e do Opaco, que nem a lê: a massa dele não recebe luz). */
-function LuzesChapadas() {
-  return (
-    <>
-      <ambientLight intensity={1.95} />
-      <directionalLight position={[SOL[0] * 50, SOL[1] * 50, SOL[2] * 50]} intensity={1.25} />
-      <directionalLight position={[CONTRA[0] * 50, CONTRA[1] * 50, CONTRA[2] * 50]} intensity={0.6} />
-    </>
-  );
-}
-
 /*
-  O REALISTA: céu em hemisfério (claro de cima, terra de baixo), sol quente com
-  sombra, contraluz frio e um preenchimento fraco do lado da sombra — as quatro
-  do A-PORT (`LuzesDoPalco.tsx`, o protótipo do Jose), com Z para cima.
+  A luz de cada estilo (ver o cabeçalho). Cores e Opaco dividem a mesma luz chapada: trocar um pelo outro não
+  remonta luz nenhuma.
 
-  ⚠️ A SOMBRA NÃO SE REFAZ A CADA QUADRO. O sol é preso ao mundo, não à câmera:
-  girar e dar zoom não mudam sombra nenhuma. Ela é desenhada uma vez e só se
-  refaz quando o muro muda de verdade (modelo, ocultar, Raio-X, corte — quem
-  avisa é o Visor3D, pela `versao`). Girar o muro de 7.000 blocos no Realista
-  custa o mesmo que sem sombra.
+  ⚠️ A SOMBRA DO REALISTA NÃO SE REFAZ A CADA QUADRO. O sol é preso ao mundo, não à câmera: girar e dar zoom não
+  mudam sombra nenhuma. Ela é desenhada uma vez e só se refaz quando o muro muda de verdade (modelo, ocultar,
+  Armadura, corte — quem avisa é o Visor3D, pela `versao`). Girar o muro de 7.000 blocos no Realista custa o mesmo
+  que sem sombra.
 */
-function LuzesRealistas({ caixa, versao }: { caixa: Caixa; versao: object }) {
+export function Luzes({ estilo, caixa, versao }: { estilo: EstiloVisual; caixa: Caixa; versao: object }) {
   const gl = useThree((s) => s.gl);
   const invalidate = useThree((s) => s.invalidate);
-  const sol = useRef<THREE.DirectionalLight>(null);
-  const alvo = useMemo(() => new THREE.Object3D(), []);
-  const enq = useMemo(() => enquadrarSombra(caixa, SOL, gl.capabilities.maxTextureSize), [caixa, gl]);
+  const realista = estilo === 'realista';
+  const luzes = useMemo(() => montarLuzes(realista ? 'realista' : 'cores', caixa, gl.capabilities.maxTextureSize), [realista, caixa, gl]);
+  useEffect(() => () => luzes.dispose(), [luzes]);
 
+  // A exposição do Realista entra e sai com ele.
   useLayoutEffect(() => {
-    const l = sol.current;
-    if (!l) return;
-    l.target = alvo;
-    const c = l.shadow.camera;
-    c.up.set(...enq.vertical);
-    c.left = enq.esquerda;
-    c.right = enq.direita;
-    c.bottom = enq.baixo;
-    c.top = enq.cima;
-    c.near = enq.perto;
-    c.far = enq.longe;
-    c.updateProjectionMatrix();
-    // Mapa de outro tamanho: o three cria o mapa uma vez só — o velho tem de sair para nascer o novo.
-    if (l.shadow.mapSize.x !== enq.mapa[0] || l.shadow.mapSize.y !== enq.mapa[1]) {
-      l.shadow.mapSize.set(enq.mapa[0], enq.mapa[1]);
-      l.shadow.map?.dispose();
-      l.shadow.map = null;
-    }
-  }, [enq, alvo]);
+    gl.toneMapping = exposicaoDoEstilo(estilo);
+    gl.toneMappingExposure = 1;
+    invalidate();
+  }, [gl, estilo, invalidate]);
 
+  // Sombra nova (luz nova, ao entrar no Realista ou com o muro novo) ou o que está aceso mudou: desenha a sombra uma vez.
   useLayoutEffect(() => {
+    if (!luzes.sol) return;
     gl.shadowMap.autoUpdate = false;
     gl.shadowMap.needsUpdate = true;
     invalidate();
-  }, [gl, enq, versao, invalidate]);
-  // Ao sair do Realista e voltar, a sombra tem de ser desenhada de novo.
-  useEffect(
-    () => () => {
-      gl.shadowMap.needsUpdate = true;
-    },
-    [gl],
-  );
+  }, [gl, luzes, versao, invalidate]);
 
-  const [cx, cy, cz] = enq.alvo;
-  const r = Math.max(5, (enq.longe - enq.perto) / 2);
-  return (
-    <>
-      <hemisphereLight args={[0xc4d4e6, 0x4a3d30, 1.15]} position={[0, 0, 1]} />
-      <primitive object={alvo} position={enq.alvo} />
-      <directionalLight
-        ref={sol}
-        position={enq.posicao}
-        color={0xfff4e6}
-        intensity={2.7}
-        castShadow
-        shadow-bias={-0.0003}
-        shadow-normalBias={0.012}
-      />
-      <directionalLight color={0xcfd8ff} intensity={0.9} position={[cx + CONTRA[0] * r, cy + CONTRA[1] * r, cz + CONTRA[2] * r]} />
-      <directionalLight color={0xe8e4dc} intensity={0.55} position={[cx + PREENCHE[0] * r, cy + PREENCHE[1] * r, cz + PREENCHE[2] * r]} />
-    </>
-  );
-}
+  /*
+    ⚠️ O QUADRO DEPOIS DA SOMBRA PERDIA A COR NOVA (achado na bancada da foto refeita, 14/10: Realista → Opaco saía
+    com os blocos no cinza do Realista, e ficava assim até o próximo giro). O three conta o quadro ANTES de desenhar
+    a sombra: as peças que fazem sombra ficam marcadas como "já atualizadas" com o número do quadro SEGUINTE, e
+    nele a cor nova da instância (estilo, seleção, Armadura) não sobe para a placa de vídeo. Pular um número depois
+    do quadro que desenhou a sombra desfaz o encontro (o número só serve para "atualizar uma vez por quadro").
+  */
+  const palco = useThree((s) => s.scene);
+  useEffect(() => {
+    if (!luzes.sol) return;
+    let comSombra = false;
+    const antes = palco.onBeforeRender;
+    const depois = palco.onAfterRender;
+    palco.onBeforeRender = function (...a: Parameters<THREE.Object3D['onBeforeRender']>) {
+      comSombra = gl.shadowMap.enabled && (gl.shadowMap.autoUpdate || gl.shadowMap.needsUpdate);
+      antes.apply(this, a);
+    };
+    palco.onAfterRender = function (...a: Parameters<THREE.Object3D['onAfterRender']>) {
+      if (comSombra) a[0].info.render.frame++;
+      comSombra = false;
+      depois.apply(this, a);
+    };
+    return () => {
+      palco.onBeforeRender = antes;
+      palco.onAfterRender = depois;
+    };
+  }, [gl, luzes, palco]);
 
-/** A exposição do Realista entra e sai com ele (ver o cabeçalho). */
-function Exposicao({ realista }: { realista: boolean }) {
-  const gl = useThree((s) => s.gl);
-  const invalidate = useThree((s) => s.invalidate);
-  useLayoutEffect(() => {
-    gl.toneMapping = realista ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
-    gl.toneMappingExposure = 1;
-    invalidate();
-  }, [gl, realista, invalidate]);
-  return null;
-}
-
-/** A luz de cada estilo. `caixa` e `versao` só servem à sombra do Realista. */
-export function Luzes({ estilo, caixa, versao }: { estilo: EstiloVisual; caixa: Caixa; versao: object }) {
-  return (
-    <>
-      <Exposicao realista={estilo === 'realista'} />
-      {estilo === 'realista' ? <LuzesRealistas caixa={caixa} versao={versao} /> : <LuzesChapadas />}
-    </>
-  );
+  return <primitive object={luzes.grupo} />;
 }
 
 /** Altura da letra do eixo, em pixels de tela. */

@@ -3,7 +3,9 @@
 // ---------------------------------------------------------------------------
 //  Molde: a barra da vista do A-PORT (`ui/BarraDaVista.tsx`, canto de baixo
 //  do palco). Vistas · Enquadrar · Mostrar/ocultar · Armadura · Corte ·
-//  Estilo (Cores, Realista, Opaco) · Foto.
+//  Estilo (Cores, Realista, Opaco) · Foto · Enviar para a prancha.
+//  O Enviar mora ao lado da Foto porque é a mesma foto, com outro destino: a
+//  prancha (que a refaz do mesmo ponto de vista quando o muro muda).
 //  Mostrar/ocultar abre uma lista de GRUPOS com o nome de cada um (rótulo +
 //  controle): sete ícones inventados para Graute, Drenagem, Terreno... seriam
 //  sete adivinhações.
@@ -26,6 +28,7 @@ import {
   IconeIso,
   IconeLateral,
   IconeArmadura,
+  IconePrancha,
   IconeTopo,
 } from './icones';
 import { CATEGORIAS, type Categoria } from './lotes';
@@ -58,6 +61,7 @@ export interface PropsDaBarra {
   corte: boolean;
   aoCorte: () => void;
   aoFoto: () => void;
+  aoEnviarParaPrancha: () => void;
   estilo: EstiloVisual;
   aoEstilo: (e: EstiloVisual) => void;
   /** O controle do corte (campo + régua), que aparece ao lado quando o corte está ligado. */
@@ -133,6 +137,9 @@ export function BarraDoVisor(p: PropsDaBarra) {
       <Fio />
       <Botao titulo="Foto (PNG)" acao="foto" aoClicar={p.aoFoto}>
         <IconeFoto />
+      </Botao>
+      <Botao titulo="Enviar para a prancha" acao="prancha" aoClicar={p.aoEnviarParaPrancha}>
+        <IconePrancha />
       </Botao>
     </div>
   );

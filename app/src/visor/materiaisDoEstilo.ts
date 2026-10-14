@@ -85,17 +85,19 @@ const RUGOSIDADE: Record<Acabamento, number> = {
  */
 const VARIACAO_DO_TOM: Partial<Record<Acabamento, number>> = { alvenaria: 0.1, graute: 0.04 };
 
-const texturas = new Map<Pele, THREE.DataTexture>();
+/** Lado da textura da pele, em pontos. */
+const LADO_DA_PELE = 512;
 
-/**
- * A textura de uma pele, gerada na PRIMEIRA vez que o Realista é escolhido e
- * guardada pela sessão: mil blocos leem o mesmo mapa. (512² leva ~0,1 s.)
- */
-export function texturaDaPele(pele: Pele): THREE.DataTexture {
-  let t = texturas.get(pele);
-  if (t) return t;
-  const S = 512;
-  t = new THREE.DataTexture(bytesDaPele(campoDaPele(pele, S)), S, S, THREE.RGBAFormat);
+/** Os bytes de cada pele: a parte cara (512² leva ~0,1 s), feita uma vez por sessão e repartida por toda textura. */
+const bytes = new Map<Pele, Uint8Array>();
+const bytesDe = (pele: Pele): Uint8Array => {
+  let b = bytes.get(pele);
+  if (!b) bytes.set(pele, (b = bytesDaPele(campoDaPele(pele, LADO_DA_PELE))));
+  return b;
+};
+
+function novaTextura(pele: Pele): THREE.DataTexture {
+  const t = new THREE.DataTexture(bytesDe(pele), LADO_DA_PELE, LADO_DA_PELE, THREE.RGBAFormat);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   // Mipmap: de longe a pele vira a média (o tom do material), não chiado que pisca ao girar.
   t.generateMipmaps = true;
@@ -105,8 +107,46 @@ export function texturaDaPele(pele: Pele): THREE.DataTexture {
   // É um modulador, não uma cor: lido cru (sem conversão de sRGB).
   t.colorSpace = THREE.NoColorSpace;
   t.needsUpdate = true;
-  texturas.set(pele, t);
   return t;
+}
+
+/** De onde o material do Realista tira a textura de cada pele. */
+export type FonteDasPeles = (pele: Pele) => THREE.Texture;
+
+const texturas = new Map<Pele, THREE.DataTexture>();
+
+/**
+ * A textura de uma pele, gerada na PRIMEIRA vez que o Realista é escolhido e
+ * guardada pela sessão: mil blocos leem o mesmo mapa. É a fonte do visor.
+ */
+export function texturaDaPele(pele: Pele): THREE.DataTexture {
+  let t = texturas.get(pele);
+  if (!t) texturas.set(pele, (t = novaTextura(pele)));
+  return t;
+}
+
+/*
+  ⚠️ A FOTO REFEITA (fotoRefeita.ts) NÃO PODE USAR AS TEXTURAS DO VISOR. Cada renderizador do three que usa uma
+  textura pendura nela um ouvinte de descarte, e só o tira quando a TEXTURA é descartada — descartar o
+  renderizador não tira. A textura do visor vive a sessão inteira: cada foto refeita deixaria pendurado nela o
+  renderizador morto (com tudo o que ele segura), e a prancha viva refaz a foto a cada conta. Por isso a foto
+  ganha texturas próprias, feitas dos MESMOS bytes (o que custa é gerar os bytes, não a textura), e as descarta
+  no fim.
+*/
+/** Texturas de pele só de quem pede (a foto refeita), com o descarte junto. */
+export function pelesProprias(): { fonte: FonteDasPeles; dispose(): void } {
+  const minhas = new Map<Pele, THREE.DataTexture>();
+  return {
+    fonte: (pele) => {
+      let t = minhas.get(pele);
+      if (!t) minhas.set(pele, (t = novaTextura(pele)));
+      return t;
+    },
+    dispose: () => {
+      for (const t of minhas.values()) t.dispose();
+      minhas.clear();
+    },
+  };
 }
 
 const VERTICE_PREFIXO = /* glsl */ `
@@ -169,7 +209,7 @@ const FRAGMENTO_RUGOSIDADE = /* glsl */ `
 float roughnessFactor = clamp(roughness * (1.2 - 0.4 * pele), 0.0, 1.0);
 `;
 
-function materialRealista(a: Acabamento): THREE.MeshStandardMaterial {
+function materialRealista(a: Acabamento, peles: FonteDasPeles): THREE.MeshStandardMaterial {
   const m = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     roughness: RUGOSIDADE[a],
@@ -184,7 +224,7 @@ function materialRealista(a: Acabamento): THREE.MeshStandardMaterial {
   const pele = PELE[a];
   if (!pele) return m;
   const uniformes = {
-    mapaDaPele: { value: texturaDaPele(pele) },
+    mapaDaPele: { value: peles(pele) },
     metrosPorLadrilho: { value: LADRILHO_M[pele] },
     contrasteDaPele: { value: CONTRASTE[pele] },
     variacaoDoTom: { value: VARIACAO_DO_TOM[a] ?? 0 },
@@ -202,9 +242,13 @@ function materialRealista(a: Acabamento): THREE.MeshStandardMaterial {
   return m;
 }
 
-/** O material de um acabamento num estilo. Branco: a cor vem da instância. */
-export function materialDoAcabamento(estilo: EstiloVisual, a: Acabamento): THREE.MeshLambertMaterial | THREE.MeshBasicMaterial | THREE.MeshStandardMaterial {
-  if (estilo === 'realista') return materialRealista(a);
+/** O material de um acabamento num estilo. Branco: a cor vem da instância. `peles`: só a foto refeita troca. */
+export function materialDoAcabamento(
+  estilo: EstiloVisual,
+  a: Acabamento,
+  peles: FonteDasPeles = texturaDaPele,
+): THREE.MeshLambertMaterial | THREE.MeshBasicMaterial | THREE.MeshStandardMaterial {
+  if (estilo === 'realista') return materialRealista(a, peles);
   const base = {
     color: 0xffffff,
     // Dupla face: com o corte, o miolo do bloco aberto aparece em vez de sumir.
