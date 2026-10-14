@@ -369,7 +369,8 @@ e dizer ao Jose o que mudou e por quê.
   (1,40 − 0,19)/3); botão do livro na barra de cima; é também a 1ª abertura do app. Grupos 3/4: q_est (Sim) e sg_on
   (Sim) são decisões dele — não reabrir sem fonte (memória feedback_nao_reabrir_sem_fonte). PAINEL APOIADO nos
   contrafortes (Jose, 14/10): fica o Carini — "a gente sabe que vai ter um mínimo negativo ali, mas concreto plastifica";
-  medido: apoio engastado ≤ vão apoiado em 2 de 3 casos, +6% no painel 4,0 × 2,6; não reabrir. Falta água × drenagem, e os do curso (M2d, fpk líquida, Δξ, vão 2h, AsMin) seguem a régua. A perna em L da barra da canaleta do contraforte ainda usa o ℓb da sapata (muda com a
+  medido: apoio engastado ≤ vão apoiado em 2 de 3 casos, +6% no painel 4,0 × 2,6; não reabrir. ÁGUA × DRENAGEM
+  (Jose, 14/10): ficam independentes, sem aviso — o projetista cuida. Revisão FECHADA; e os do curso (M2d, fpk líquida, Δξ, vão 2h, AsMin) seguem a régua. A perna em L da barra da canaleta do contraforte ainda usa o ℓb da sapata (muda com a
   barra em U, anotação 1 abaixo).
 - **Junção de 14/10:** desenho-peso (dente, desenhos da sapata, graute em grade, peso, traspasse) e sapata-molas (aba
   Sapata sobre molas) juntas no main; o que estava solto no main foi para o stash "main sem commit antes da junção
