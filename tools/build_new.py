@@ -350,7 +350,7 @@ line(E, r, 'Solo da frente: há garantia de que jamais será escavado/removido?'
 dv_po = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validation(dv_po); dv_po.add(f'B{r-1}')
 line(E, r, 'Aviso do passivo', '=IF(pass_on="Sim","Garantir que o solo da frente da sapata jamais seja escavado/removido (NBR 6122 7.6.3)","")', '', 'Aparece no app ao lado do campo e no memorial.', 'key', None, 'aviso_passivo'); r += 1
 line(E, r, 'SPT abaixo da sapata', 10, 'golpes', 'Só para a sugestão de σadm (2·SPT tf/m² = N/5 kgf/cm², regra da aba do Gilberto).', 'inp', '0', 'SPT_b'); r += 1
-line(E, r, 'σadm do solo — opcional', None, 'kPa', 'Em branco = 20·SPT kPa. Preferir valor de ensaio/projeto geotécnico.', 'inp', '0', 'sig_adm_dir'); r += 1
+line(E, r, 'σadm do solo — opcional', None, 'kPa', 'Em branco = 20·mín(SPT; 20) kPa (regra do Gilberto, vale de 5 a 20 golpes); com SPT < 5, digitar. Preferir valor de ensaio/projeto geotécnico.', 'inp', '0', 'sig_adm_dir'); r += 1
 line(E, r, 'Coeficiente de reação vertical do solo (k) — opcional', None, 'kN/m³', 'Em branco = sugestão da aba Sapata sobre molas (120·σadm). Preferir prova de carga em placa.', 'inp', '0', 'ks_dir'); r += 1
 line(E, r, 'FS mínimo ao tombamento', 2.0, '', 'Pelo que sei, NBR 11682 — conferir. Junto vale e ≤ B/4 (critério do Gilberto); fica o pior.', 'inp', '0.00', 'FS_tomb'); r += 1
 line(E, r, 'FS mínimo ao deslizamento', 1.5, '', 'Aba do Gilberto: resistências ÷ 1,5.', 'inp', '0.00', 'FS_desl'); r += 1

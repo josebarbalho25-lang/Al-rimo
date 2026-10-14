@@ -501,23 +501,28 @@ function cardTensoes(r: Resultado): Card {
   const sMed = m.g('s_med', '\\sigma_{m\\acute{e}d}', 1, 'kPa');
   const Bc = m.g('c_len', 'B_c', 3, 'm');
 
+  // σadm sem número: SPT < 5 e nada digitado — a regra não vale em solo mole (planilha: "—", e a tensão reprova)
+  const temAdm = temNumero(m, 's_adm');
   const admissivel = secao('Tensão admissível', [
-    sigAdmDigitado
-      ? m.passo('s_adm', '\\sigma_{adm}', null, { casas: 0, unidade: 'kPa', origem: 'entrada' })
-      // regra prática da aba do Gilberto: 2·SPT tf/m² = 20·SPT kPa, sem teto
-      : m.passo('s_adm', '\\sigma_{adm}', mul(cte(20, 0), m.ent('SPT_b', 'N_{SPT}')), { casas: 0, unidade: 'kPa', ref: GILBERTO }),
+    !temAdm ? null
+      : sigAdmDigitado
+        ? m.passo('s_adm', '\\sigma_{adm}', null, { casas: 0, unidade: 'kPa', origem: 'entrada' })
+        // regra prática da aba do Gilberto, 2·SPT tf/m² = 20·SPT kPa, só dentro da faixa: SPT acima de 20 conta 20
+        // (Jose, 14/10) — IF(SPT_b>=5; 20·MIN(SPT_b;20); "—")
+        : m.passo('s_adm', '\\sigma_{adm}', mul(cte(20, 0), min(m.ent('SPT_b', 'N_{SPT}'), cte(20, 0))), { casas: 0, unidade: 'kPa', ref: GILBERTO }),
   ]);
 
-  const secoes = [admissivel];
+  const secoes = admissivel.passos.length ? [admissivel] : [];
   const avisos: string[] = [];
+  if (!temAdm) avisos.push('SPT < 5: digitar o σadm (ensaio)');
   const e = m.num('e_f');
   const B = m.num('B_sap') ?? 0;
   if (e !== null && temNumero(m, 's_med') && temNumero(m, 's_hi')) {
     const trapezio = Math.abs(e) <= B / 6;                 // IF(ABS(e_f) <= B_sap/6; trapézio; triângulo)
     if (Math.abs(e) >= B / 2) avisos.push('Resultante fora da base');
-    const verifSigma: PedidoDeVerificacao = {
+    const verifSigma: PedidoDeVerificacao | undefined = temAdm ? {
       chave: 'fundacao.tensao', rotulo: 'σmáx ≤ σadm', limite: sAdm, relacao: '<=', celula: 'chk_sig',
-    };
+    } : undefined;
     const seisEB = div(mul(cte(6, 0), abs(f.e)), f.B);
     const diagrama = secao(trapezio ? 'Diagrama trapezoidal (|e| ≤ B/6)' : 'Diagrama triangular (|e| > B/6)', [
       m.passo('s_med', '\\sigma_{m\\acute{e}d}', div(f.N, mul(f.B, f.L)), { casas: 1, unidade: 'kPa' }),

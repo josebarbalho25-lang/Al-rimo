@@ -176,6 +176,12 @@ ALVOS_SOLO = {
 }
 ALVOS.update(ALVOS_SOLO)
 
+# σadm automático fora da faixa da regra 20·SPT (Jose, 14/10): o sorteio só tira SPT 5 e 20
+ALVOS.update({
+    'alvo_sadm_spt_mole': {'SPT_b': 3, 'sig_adm_dir': None},     # sem automático: a tensão reprova pedindo o σadm
+    'alvo_sadm_spt_teto': {'SPT_b': 30, 'sig_adm_dir': None},    # conta 20 golpes: 400 kPa, não 600
+})
+
 
 # Cenários de ENTRADA EM BRANCO. O app deixa o usuário apagar qualquer campo numérico (o motor grava null, como o
 # Excel grava célula vazia), e a sonda do Excel mostrou que o vazio não se comporta igual em toda função: o

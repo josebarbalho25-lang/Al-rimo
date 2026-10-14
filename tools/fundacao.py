@@ -92,12 +92,16 @@ Lf('σ máx', '=IF(ABS(e_f)<=B_sap/6,s_med*(1+6*ABS(e_f)/B_sap),2*N_tot/(c_len*L
 Lf('σ mín', '=IF(ABS(e_f)<=B_sap/6,s_med*(1-6*ABS(e_f)/B_sap),0)', 'kPa', '', 'res', '0.0', 's_lo')
 Lf('Lado da σ máx', '=IF(e_f>=0,"pé (borda externa)","talão (borda aterrada)")', '', '', 'res')
 # Duas regras práticas pelo SPT da base, cada uma com a faixa de N em que vale (Jose, 10/10: calculadora embaixo da
-# Fig. 15). Só sugestão: o σadm usado continua sendo o digitado ou 20·SPT.
+# Fig. 15). Só sugestão: o σadm usado é o digitado ou o automático abaixo.
 Lf('Sugestão: 20·SPT (N/50 MPa)', '=20*SPT_b', 'kPa', 'Regra prática da aba do Gilberto (Cintra, Aoki e Albiero). Vale para 5 ≤ N ≤ 20.', 'sug', '0', 'sadm_20N', 'Cintra, Aoki e Albiero (2011)')
 Lf('20·SPT: faixa de validade', '=IF(AND(SPT_b>=5,SPT_b<=20),"Dentro (5 ≤ N ≤ 20)","Fora (vale para 5 ≤ N ≤ 20)")', '', '', 'res', None, 'sadm_20N_fx')
 Lf('Sugestão: Mello 100·(√SPT − 1)', '=100*(SQRT(SPT_b)-1)', 'kPa', 'Mello (1975). Vale para 4 ≤ N ≤ 16.', 'sug', '0', 'sadm_mel', 'Mello (1975), em Cintra, Aoki e Albiero (2011)')
 Lf('Mello: faixa de validade', '=IF(AND(SPT_b>=4,SPT_b<=16),"Dentro (4 ≤ N ≤ 16)","Fora (vale para 4 ≤ N ≤ 16)")', '', '', 'res', None, 'sadm_mel_fx')
-Lf('σadm usado', '=IF(ISNUMBER(sig_adm_dir),sig_adm_dir,20*SPT_b)', 'kPa', '', 'res', '0', 's_adm')
+# Automático = 20·SPT DENTRO da faixa da regra (Jose, 14/10: "o auto tem de ser sempre a favor da segurança"):
+# acima de 20 golpes conta 20 (teto 400 kPa: a regra não garante mais que isso); abaixo de 5 não há automático —
+# solo mole pede ensaio, e a verificação da tensão reprova até o σadm ser digitado. O digitado manda sempre.
+Lf('σadm usado', '=IF(ISNUMBER(sig_adm_dir),sig_adm_dir,IF(SPT_b>=5,20*MIN(SPT_b,20),"—"))', 'kPa',
+   'Em branco: 20·mín(SPT; 20). Com SPT < 5 a regra não vale: digitar o σadm.', 'res', '0', 's_adm')
 r += 1
 section(Fd, r, '7. Flexão e cortante transversais (por metro, NBR 6118)'); r += 1
 Lf('fck', '=VALUE(MID(fck_fund,2,2))', 'MPa', 'Concreto da fundação (Entradas).', 'res', '0', 'fck_s')
@@ -148,7 +152,8 @@ CHKF = [
     ('Tombamento: |e| ≤ B/4 (Gilberto)', '=IF(ABS(e_f)<=B_sap/4,"OK (e = "&FIXED(e_f*100,1)&" cm)","NÃO OK (e = "&FIXED(e_f*100,1)&" cm > "&FIXED(B_sap*25,1)&")")'),
     ('Tombamento: resultado (vale o pior)', '=IF(AND(FS_t>=FS_tomb,ABS(e_f)<=B_sap/4),"OK","NÃO OK")'),
     ('Deslizamento: FS ≥ mínimo', '=IF(FS_d>=FS_desl,"OK (FS = "&FIXED(FS_d,2)&")","NÃO OK (FS = "&FIXED(FS_d,2)&" < "&FIXED(FS_desl,1)&") — aumentar B, dente ou peso")'),
-    ('Tensão: σ máx ≤ σadm', '=IF(s_hi<=s_adm,"OK ("&FIXED(s_hi,0)&" ≤ "&FIXED(s_adm,0)&" kPa)","NÃO OK ("&FIXED(s_hi,0)&" > "&FIXED(s_adm,0)&" kPa)")'),
+    # σadm em texto (SPT < 5 sem valor digitado): número ≤ texto daria VERDADEIRO no Excel — por isso o ÉNÚM antes
+    ('Tensão: σ máx ≤ σadm', '=IF(ISNUMBER(s_adm),IF(s_hi<=s_adm,"OK ("&FIXED(s_hi,0)&" ≤ "&FIXED(s_adm,0)&" kPa)","NÃO OK ("&FIXED(s_hi,0)&" > "&FIXED(s_adm,0)&" kPa)"),"NÃO OK — SPT < 5: digitar o σadm (ensaio)")'),
     ('Tensão: sapata toda comprimida (|e| ≤ B/6)', '=IF(ABS(e_f)<=B_sap/6,"Sim","Não — parte descola (informativo)")'),
     ('Flexão da sapata', '=IF(AND(ISNUMBER(x_ts),ISNUMBER(x_hs)),"OK — Ø"&IF(phi_sap=INT(phi_sap),FIXED(phi_sap,0),FIXED(phi_sap,1))&" c/"&FIXED(s_ps,0)&" ("&FIXED(As_ps,2)&" cm²/m)","NÃO OK — aumentar a altura")'),
     ('Cortante sem estribo (ponta e talão)', '=IF(MAX(Vsd_t,Vsd_h)<=VRd1_s,"OK ("&FIXED(MAX(Vsd_t,Vsd_h),1)&" ≤ "&FIXED(VRd1_s,1)&" kN/m)","NÃO OK — aumentar a altura")'),
