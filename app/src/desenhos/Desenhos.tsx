@@ -35,6 +35,8 @@ import { cortesPadrao, desenharCorteLateral } from './corteLateral';
 import { desenharPlanta } from './planta';
 import { desenharIsometrico, type VistaIso } from './isometrico';
 import type { Prancha } from './prancha';
+import { enviarParaPrancha } from '@/pranchas/envio';
+import type { PedidoDeVista } from '@/pranchas/tipos';
 
 export type AbaDesenho = 'frontal' | 'corte' | 'planta' | 'iso';
 type Caixa = [number, number, number, number];
@@ -135,6 +137,14 @@ export function Desenhos({ modelo, vista, selecionado = null, onSelecionar }: Pr
   const xC = limitar(xCorte ?? cortes[0]?.x ?? L / 2);
   const xI = limitar(xIso ?? cortes[0]?.x ?? L / 2);
   const fiadaOk = Math.max(0, Math.min(modelo.dims.n_fiadas - 1, fiada));
+  const enviar = () => {
+    const pedido: PedidoDeVista =
+      aba === 'corte' ? { tipo: 'corte', x: xC }
+        : aba === 'planta' ? { tipo: 'planta', fiada: fiadaOk }
+          : aba === 'iso' ? { tipo: 'iso', vista: vistaIso, corteX: isoCortado ? xI : null }
+            : { tipo: 'frontal' };
+    enviarParaPrancha({ tipo: 'vista', pedido });
+  };
 
   const prancha: Prancha = useMemo(() => {
     switch (aba) {
@@ -292,6 +302,9 @@ export function Desenhos({ modelo, vista, selecionado = null, onSelecionar }: Pr
           <button type="button" style={s.botao} onClick={enquadrar}>Enquadrar</button>
           <button type="button" style={s.botao} onClick={baixarSvg}>SVG</button>
           <button type="button" style={s.botao} onClick={baixarPng}>PNG</button>
+          {/* a vista como está na tela (o corte nesta posição, esta fiada, este lado do isométrico) vai para a folha
+              ativa da aba Pranchas, na escala de partida dela */}
+          <button type="button" style={s.botao} onClick={enviar} title="Enviar para a prancha">Prancha</button>
         </div>
       </div>
 
