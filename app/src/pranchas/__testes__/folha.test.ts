@@ -54,8 +54,10 @@ describe('folha composta', () => {
     expect(v.FOLHA).toBe('01/02');
     expect(v.ESCALA).toBe('1:25');
     expect(v.CONTEUDO).toBe('Formas: vista e corte');
-    expect(v.OBRA).toBe('Muro da divisa — Rua A, 10 — Fulano');
-    expect(v.RESPONSAVEL).toContain('CREA MG-1');
+    // cada dado num atributo próprio, inteiro (o cadista mapeia campo a campo ao trocar o carimbo)
+    expect([v.OBRA, v.ENDERECO, v.PROPRIETARIO]).toEqual(['Muro da divisa', 'Rua A, 10', 'Fulano']);
+    expect([v.RESPONSAVEL, v.CREA, v.ART]).toEqual(['Eng. Fulano', 'CREA MG-1', 'ART 123']);
+    expect([v.DATA, v.REVISAO]).toEqual(['14/10/2026', 'R00']);
   });
 
   it('desenho em 1:25: 440 px de desenho viram 100 mm de papel, e o título sai embaixo com a escala', () => {
@@ -76,6 +78,15 @@ describe('folha composta', () => {
     f.itens.push({ id: 'b', conteudo: { tipo: 'frontal' }, escala: 50, x: 300, y: 30, titulo: 'Vista' });
     const v = Object.fromEntries(blocos(comporFolha(f, ctx()).primitivas)[0].atributos.map((a) => [a.etiqueta, a.valor]));
     expect(v.ESCALA).toBe('Indicadas');
+  });
+
+  it('desenho por cima do carimbo ou fora da moldura: a folha marca para a tela avisar', () => {
+    const f = novaFolha('');
+    f.itens.push({ id: 'ok', conteudo: { tipo: 'corte' }, escala: 25, x: 40, y: 30, titulo: 'A' });
+    f.itens.push({ id: 'carimbo', conteudo: { tipo: 'corte' }, escala: 25, x: 700, y: 520, titulo: 'B' });
+    f.itens.push({ id: 'fora', conteudo: { tipo: 'corte' }, escala: 25, x: 10, y: 30, titulo: 'C' });
+    const c = comporFolha(f, ctx());
+    expect(Object.fromEntries(c.itens.map((i) => [i.id, i.invade]))).toEqual({ ok: false, carimbo: true, fora: true });
   });
 
   it('item sem desenho ainda (foto do 3D a caminho): marca o lugar na tela e não vai para o arquivo', () => {

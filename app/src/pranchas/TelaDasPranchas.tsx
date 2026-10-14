@@ -591,7 +591,8 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
                       <rect
                         x={x + dx} y={y + dy} width={ww} height={hh}
                         fill="transparent"
-                        stroke={ligado || a ? AZUL : 'transparent'}
+                        // vermelho: passa da moldura ou cai sobre o carimbo / o quadro lateral
+                        stroke={ligado || a ? AZUL : it.invade ? '#e0685a' : 'transparent'}
                         strokeWidth={0.6}
                         style={{ cursor: 'move' }}
                         onPointerDown={(e) => {

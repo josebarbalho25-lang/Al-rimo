@@ -13,6 +13,8 @@ import { esc } from '@/desenhos/formato';
 import { CARIMBO_PADRAO, LETRA, quadroUtil, rotuloDaEscala, tamanhoDaFolha } from './formatos';
 import { PX_POR_MM, transformarPrimitivas, type AtributoDoBloco, type DadosDaObra, type DadosDoEscritorio, type Folha, type ItemDaFolha, type Primitiva, type Pt, type Traco, type VistaParaPrancha } from './tipos';
 import type { ItemDaLegenda, LinhaDoAco } from './quadro';
+import { dataUrlParaBytes } from './zip';
+import { pixelsDaImagem } from './dxf';
 
 /** O que a folha recebe de fora para um item: um desenho vetorial (em px de desenho) ou uma imagem. */
 export type ItemDesenhado =
@@ -31,7 +33,7 @@ export interface ContextoDaFolha {
    * O desenho do item, ou null enquanto não chegou (a foto do 3D é assíncrona) ou se não pode ser feito.
    * `legendaDeCores`: a vista traz a legenda das cores dos blocos (quando o quadro lateral da folha não a mostra).
    */
-  desenhar: (item: ItemDaFolha, prefixo: string, opcoes: { legendaDeCores: boolean }) => ItemDesenhado | null;
+  desenhar: (item: ItemDaFolha, prefixo: string, opcoes: { legendaDeCores: boolean; vetorial?: boolean }) => ItemDesenhado | null;
   /** O título do item quando o projetista não escreveu um ("Corte no contraforte C2", "Planta — 1ª fiada"). */
   tituloAutomatico?: (item: ItemDaFolha) => string;
   /** Composição para o ARQUIVO (PDF/DXF): o lugar tracejado de um desenho que não chegou não vai para o papel. */
@@ -47,6 +49,8 @@ export interface ItemPosto {
   caixa: [number, number, number, number];
   titulo: [number, number, number, number] | null;
   pendente: boolean;
+  /** O desenho (ou o título) passa da moldura ou cai em cima do carimbo / do quadro lateral: a tela avisa. */
+  invade: boolean;
 }
 
 export interface FolhaComposta {
@@ -70,14 +74,11 @@ const GROSSO = 0.5;    // mm — moldura da folha
 const n = (x: number): string => (Math.round(x * 1000) / 1000).toString();
 const larguraDoTexto = (t: string, altura: number, negrito = false): number => Prancha.largura(t, altura, negrito);
 
-/** Encolhe o texto até caber na largura (mínimo 1,5 mm); se nem assim couber, corta com reticências. */
-function caber(t: string, altura: number, largura: number): { t: string; altura: number } {
+/** A altura de letra (até 1,5 mm) para o texto caber na largura, SEM cortar (o atributo do carimbo vai inteiro). */
+function caberAltura(t: string, altura: number, largura: number): number {
   let a = altura;
   while (a > 1.5 && larguraDoTexto(t, a) > largura) a -= 0.1;
-  if (larguraDoTexto(t, a) <= largura) return { t, altura: a };
-  let s = t;
-  while (s.length > 1 && larguraDoTexto(s + '…', a) > largura) s = s.slice(0, -1);
-  return { t: s + '…', altura: a };
+  return a;
 }
 
 /** Quebra o texto em linhas que caibam na largura (por palavra). */
@@ -203,17 +204,28 @@ function carimbar(p: Papel, folha: Folha, ctx: ContextoDaFolha, x: number, y: nu
   const escalas = [...new Set(folha.itens.filter((i) => i.escala !== null).map((i) => i.escala as number))];
   const semEscala = folha.itens.some((i) => i.escala === null);
   const textoEscala = escalas.length === 0 ? 'Sem escala' : escalas.length === 1 && !semEscala ? rotuloDaEscala(escalas[0]) : 'Indicadas';
-  const linhaObra = [ctx.obra.obra, ctx.obra.endereco, ctx.obra.proprietario].filter((s) => s.trim()).join(' — ');
-  const resp = [ctx.escritorio.responsavel, ctx.escritorio.crea && `CREA ${ctx.escritorio.crea}`, ctx.obra.art && `ART ${ctx.obra.art}`].filter(Boolean).join(' · ');
-  const data = [ctx.obra.data, ctx.obra.revisao].filter((s) => s && s.trim()).join(' · ');
-  const celulas: { etiqueta: string; rotulo: string; valor: string; x0: number; x1: number; faixa: number }[] = [
-    { etiqueta: 'EMPRESA', rotulo: 'Empresa', valor: [ctx.escritorio.empresa, ctx.escritorio.contato].filter((s) => s && s.trim()).join(' — '), x0: xd, x1: x + w, faixa: 0 },
-    { etiqueta: 'OBRA', rotulo: 'Obra · endereço · proprietário', valor: linhaObra, x0: xd, x1: x + w, faixa: 1 },
-    { etiqueta: 'CONTEUDO', rotulo: 'Conteúdo', valor: folha.conteudo, x0: xd, x1: xd + wd * 0.72, faixa: 2 },
-    { etiqueta: 'FOLHA', rotulo: 'Folha', valor: `${String(ctx.numero).padStart(2, '0')}/${String(ctx.total).padStart(2, '0')}`, x0: xd + wd * 0.72, x1: x + w, faixa: 2 },
-    { etiqueta: 'RESPONSAVEL', rotulo: 'Resp. técnico · CREA · ART', valor: resp, x0: xd, x1: xd + wd * 0.5, faixa: 3 },
-    { etiqueta: 'ESCALA', rotulo: 'Escala', valor: textoEscala, x0: xd + wd * 0.5, x1: xd + wd * 0.72, faixa: 3 },
-    { etiqueta: 'DATA', rotulo: 'Data · rev.', valor: data, x0: xd + wd * 0.72, x1: x + w, faixa: 3 },
+  // Cada dado é um ATRIBUTO próprio do bloco (obra, endereço e proprietário separados; responsável, CREA e ART
+  // separados): o cadista que troca o carimbo pelo dele mapeia campo a campo. Na folha eles saem lado a lado na
+  // mesma faixa, com o separador como texto do bloco. O valor vai INTEIRO no atributo (cortado com "…" o
+  // proprietário sumia do arquivo); só a letra encolhe para caber.
+  type Parte = { etiqueta: string; valor: string; negrito?: boolean };
+  const folhaNo = `${String(ctx.numero).padStart(2, '0')}/${String(ctx.total).padStart(2, '0')}`;
+  const celulas: { rotulo: string; partes: Parte[]; sep: string; x0: number; x1: number; faixa: number }[] = [
+    { rotulo: 'Empresa', partes: [{ etiqueta: 'EMPRESA', valor: ctx.escritorio.empresa, negrito: true }, { etiqueta: 'CONTATO', valor: ctx.escritorio.contato }], sep: ' — ', x0: xd, x1: x + w, faixa: 0 },
+    { rotulo: 'Obra · endereço · proprietário', partes: [{ etiqueta: 'OBRA', valor: ctx.obra.obra }, { etiqueta: 'ENDERECO', valor: ctx.obra.endereco }, { etiqueta: 'PROPRIETARIO', valor: ctx.obra.proprietario }], sep: ' — ', x0: xd, x1: x + w, faixa: 1 },
+    { rotulo: 'Conteúdo', partes: [{ etiqueta: 'CONTEUDO', valor: folha.conteudo }], sep: '', x0: xd, x1: xd + wd * 0.72, faixa: 2 },
+    { rotulo: 'Folha', partes: [{ etiqueta: 'FOLHA', valor: folhaNo }], sep: '', x0: xd + wd * 0.72, x1: x + w, faixa: 2 },
+    {
+      rotulo: 'Resp. técnico · CREA · ART',
+      partes: [
+        { etiqueta: 'RESPONSAVEL', valor: ctx.escritorio.responsavel },
+        { etiqueta: 'CREA', valor: ctx.escritorio.crea ? `CREA ${ctx.escritorio.crea}` : '' },
+        { etiqueta: 'ART', valor: ctx.obra.art ? `ART ${ctx.obra.art}` : '' },
+      ],
+      sep: ' · ', x0: xd, x1: xd + wd * 0.5, faixa: 3,
+    },
+    { rotulo: 'Escala', partes: [{ etiqueta: 'ESCALA', valor: textoEscala }], sep: '', x0: xd + wd * 0.5, x1: xd + wd * 0.72, faixa: 3 },
+    { rotulo: 'Data · rev.', partes: [{ etiqueta: 'DATA', valor: ctx.obra.data }, { etiqueta: 'REVISAO', valor: ctx.obra.revisao }], sep: ' · ', x0: xd + wd * 0.72, x1: x + w, faixa: 3 },
   ];
   const aRotulo = Math.min(1.8, fh * 0.28);
   const aValor = Math.min(LETRA.titulo, fh * 0.42);
@@ -222,19 +234,45 @@ function carimbar(p: Papel, folha: Folha, ctx: ContextoDaFolha, x: number, y: nu
     const pr = p.texto([c.x0 + 1.2, y0 + 0.6 + aRotulo], c.rotulo, aRotulo, { cor: CINZA, camada: 'carimbo' }, false);
     guardar(pr);
     const largura = c.x1 - c.x0 - 2.4;
-    const v = caber(c.valor, aValor, largura);
-    const pv: Pt = [c.x0 + 1.2, y0 + fh - 1.2];
-    p.texto(pv, v.t, v.altura, { camada: 'carimbo', negrito: c.etiqueta === 'EMPRESA' }, false);
-    atributos.push({ etiqueta: c.etiqueta, valor: v.t, p: pv, altura: v.altura, ancora: 'start', cor: TINTA, camada: 'carimbo' });
+    const cheias = c.partes.filter((q) => q.valor.trim());
+    const tudo = cheias.map((q) => q.valor).join(c.sep);
+    const altura = caberAltura(tudo, aValor, largura);
+    let xc = c.x0 + 1.2;
+    const yv = y0 + fh - 1.2;
+    c.partes.forEach((q) => {
+      const cheia = q.valor.trim() !== '';
+      if (cheia && cheias.indexOf(q) > 0 && c.sep) {
+        const ps = p.texto([xc, yv], c.sep, altura, { camada: 'carimbo' }, false);
+        guardar(ps);
+        xc += larguraDoTexto(c.sep, altura);
+      }
+      // o atributo existe mesmo vazio (o campo fica no bloco para o cadista preencher)
+      if (cheia) p.texto([xc, yv], q.valor, altura, { camada: 'carimbo', negrito: q.negrito }, false);
+      atributos.push({ etiqueta: q.etiqueta, valor: q.valor, p: [xc, yv], altura, ancora: 'start', cor: TINTA, camada: 'carimbo' });
+      if (cheia) xc += larguraDoTexto(q.valor, altura, q.negrito);
+    });
   }
   p.prims.push({ k: 'bloco', nome: 'CARIMBO', prims, atributos });
   // a logomarca: fora do bloco (imagem dentro de bloco é o que mais quebra entre CADs)
   const logo = ctx.escritorio.logo;
   if (logo) {
+    // na proporção do arquivo: o DXF estica a imagem até o retângulo dado (o SVG não estica, por isso o PDF saía
+    // certo e o DXF com a logo três vezes mais alta)
     const ml = 2;
-    const lw = Math.min(L - 2 * ml, ctx.escritorio.logoLargura || L - 2 * ml);
-    const lh = h - 2 * ml;
-    p.imagem(x + (L - lw) / 2, y + ml, lw, lh, logo, 'logo.png', 'carimbo');
+    let px: [number, number] | null = null;
+    try {
+      px = pixelsDaImagem(dataUrlParaBytes(logo));
+    } catch {
+      px = null;
+    }
+    const prop = px && px[1] > 0 ? px[0] / px[1] : 1;
+    let lw = Math.min(L - 2 * ml, ctx.escritorio.logoLargura || L - 2 * ml);
+    let lh = lw / prop;
+    if (lh > h - 2 * ml) {
+      lh = h - 2 * ml;
+      lw = lh * prop;
+    }
+    p.imagem(x + (L - lw) / 2, y + (h - lh) / 2, lw, lh, logo, 'logo.png', 'carimbo');
   }
 }
 
@@ -320,6 +358,7 @@ function preencherQuadro(p: Papel, folha: Folha, ctx: ContextoDaFolha, x: number
 export function comporFolha(folha: Folha, ctx: ContextoDaFolha): FolhaComposta {
   const [W, H] = tamanhoDaFolha(folha.formato, folha.orientacao);
   const [x0, y0, x1, y1] = quadroUtil(folha.formato, folha.orientacao);
+  const [x1Moldura, y1Moldura] = [x1, y1];
   const p = new Papel();
   const defs: string[] = [];
   const itens: ItemPosto[] = [];
@@ -337,14 +376,14 @@ export function comporFolha(folha: Folha, ctx: ContextoDaFolha): FolhaComposta {
   // os desenhos
   folha.itens.forEach((item, k) => {
     const prefixo = `${ctx.prefixo ?? 'p'}${ctx.numero}i${k}`;
-    const d = ctx.desenhar(item, prefixo, { legendaDeCores });
+    const d = ctx.desenhar(item, prefixo, { legendaDeCores, vetorial: ctx.saida === true });
     if (!d) {
       // ainda sem desenho (a foto do 3D vem depois): o lugar fica marcado só na tela, não no arquivo
       const w = item.largura ?? 120;
       const h = item.altura ?? 80;
       if (ctx.saida) return;
       p.svg.push(`<rect x="${n(item.x)}" y="${n(item.y)}" width="${n(w)}" height="${n(h)}" fill="#f2f2f2" stroke="#bfbfbf" stroke-width="0.3" stroke-dasharray="2,1.5"/>`);
-      itens.push({ id: item.id, caixa: [item.x, item.y, w, h], titulo: null, pendente: true });
+      itens.push({ id: item.id, caixa: [item.x, item.y, w, h], titulo: null, pendente: true, invade: false });
       return;
     }
     const { k: escala, w, h } = encaixe(item, d);
@@ -359,7 +398,7 @@ export function comporFolha(folha: Folha, ctx: ContextoDaFolha): FolhaComposta {
       p.prims.push(...transformarPrimitivas(d.vista.primitivas, escala, dx, dy));
     }
     const t = titular(p, item, item.titulo.trim() || (ctx.tituloAutomatico?.(item) ?? ''), item.x, item.y + h);
-    itens.push({ id: item.id, caixa: [item.x, item.y, w, h], titulo: t, pendente: false });
+    itens.push({ id: item.id, caixa: [item.x, item.y, w, h], titulo: t, pendente: false, invade: false });
   });
 
   // quadro lateral e carimbo, no canto inferior direito
@@ -376,6 +415,18 @@ export function comporFolha(folha: Folha, ctx: ContextoDaFolha): FolhaComposta {
     quadroEstourou = preencherQuadro(p, folha, ctx, qx, cy - qh, folha.quadro.largura, qh);
   }
   carimbar(p, folha, ctx, cx, cy, cw, ch);
+
+  // quem invade: passa da moldura, ou cai sobre o carimbo ou o quadro lateral (o desenho com o título)
+  const cruza = (a: number[], b: number[]) => a[0] < b[0] + b[2] && a[0] + a[2] > b[0] && a[1] < b[1] + b[3] && a[1] + a[3] > b[1];
+  for (const it of itens) {
+    const [ix, iy, iw, ih] = it.caixa;
+    const t = it.titulo;
+    const x1 = Math.max(ix + iw, t ? t[0] + t[2] : -Infinity);
+    const y1 = Math.max(iy + ih, t ? t[1] + t[3] : -Infinity);
+    const todo = [ix, iy, x1 - ix, y1 - iy];
+    const fora = ix < x0 || iy < y0 || x1 > x1Moldura || y1 > y1Moldura;
+    it.invade = fora || cruza(todo, [cx, cy, cw, ch]) || (!!quadro && cruza(todo, quadro));
+  }
   // sem o quadro, a nota que vale para todo desenho da folha fica escrita logo acima do carimbo
   if (!quadroAberto || folha.quadro.notas?.length === 0) {
     p.texto([cx, cy - 2], 'Cotas em centímetros, exceto onde indicado.', LETRA.nota, { camada: 'textos' });

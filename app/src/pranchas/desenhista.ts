@@ -23,7 +23,7 @@ import type { ItemDesenhado } from './folha';
 import type { ItemDaFolha } from './tipos';
 
 export interface Desenhista {
-  desenhar: (item: ItemDaFolha, prefixo: string, opcoes?: { legendaDeCores: boolean }) => ItemDesenhado | null;
+  desenhar: (item: ItemDaFolha, prefixo: string, opcoes?: { legendaDeCores: boolean; vetorial?: boolean }) => ItemDesenhado | null;
   /** O título do desenho quando o projetista não escreveu um. */
   tituloAutomatico: (item: ItemDaFolha) => string;
   /** Solta o que ficou guardado (troca de muro). */
@@ -106,16 +106,18 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
       if (!modelo) return null;
       const c = item.conteudo;
       const leg = opcoes.legendaDeCores;
+      // para o arquivo (PDF), a hachura sai em traços de verdade (o padrão SVG o Chrome imprime como imagem de ~37 dpi)
+      const vet = opcoes.vetorial === true;
       if (c.tipo === '3d') {
         if (c.camera.estilo === 'realista') return foto3d(item);
         const largura = Math.round(item.largura ?? 160);
-        return vetor(`3d|${JSON.stringify(c.camera)}|${largura}|${prefixo}|${leg}`, () => ({ tipo: 'vetor', vista: vista3dParaPrancha(modelo, c.camera, largura, prefixo, { legendaDeCores: leg }) }));
+        return vetor(`3d|${JSON.stringify(c.camera)}|${largura}|${prefixo}|${leg}|${vet}`, () => ({ tipo: 'vetor', vista: vista3dParaPrancha(modelo, c.camera, largura, prefixo, { legendaDeCores: leg, hachuraVetorial: vet }) }));
       }
       if (c.tipo === 'frontal' || c.tipo === 'corte' || c.tipo === 'planta' || c.tipo === 'iso') {
         // isométrico sem escala: a projeção isométrica encurta as medidas (0,82), então não há "1:50" verdadeiro —
         // desenha-se na letra de 1:50 e a folha encaixa no tamanho pedido
         const escala = item.escala ?? 50;
-        return vetor(`${JSON.stringify(c)}|${escala}|${prefixo}|${leg}`, () => ({ tipo: 'vetor', vista: vistaParaPrancha(modelo, c, escala, prefixo, { legendaDeCores: leg }) }));
+        return vetor(`${JSON.stringify(c)}|${escala}|${prefixo}|${leg}|${vet}`, () => ({ tipo: 'vetor', vista: vistaParaPrancha(modelo, c, escala, prefixo, { legendaDeCores: leg, hachuraVetorial: vet }) }));
       }
       return null;
     },

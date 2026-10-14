@@ -97,7 +97,8 @@ function lerItem(v: unknown): ItemDaFolha | null {
   if (!i) return null;
   const conteudo = lerConteudo(i.conteudo);
   if (!conteudo) return null;
-  const escala = typeof i.escala === 'number' && ESCALAS.includes(i.escala) ? i.escala : null;
+  // o isométrico é sempre sem escala (a projeção encurta as medidas): arquivo antigo com "1:50" nele abre sem escala
+  const escala = conteudo.tipo !== 'iso' && typeof i.escala === 'number' && ESCALAS.includes(i.escala) ? i.escala : null;
   const item: ItemDaFolha = { id: txt(i.id) || novoId('i'), conteudo, escala, x: num(i.x, 30), y: num(i.y, 20), titulo: txt(i.titulo) };
   if (escala === null) {
     item.largura = Math.max(20, num(i.largura, 150));
