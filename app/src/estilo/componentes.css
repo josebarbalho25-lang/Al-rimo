@@ -1003,8 +1003,19 @@ body[data-theme='dark'] .prancheta.prancheta-cores {
   padding: 0 2px;
   cursor: pointer;
 }
-.tabela-ref tr.clicavel {
+.tabela-ref tr.clicavel,
+.tabela-ref td.clicavel {
   cursor: pointer;
+}
+.tabela-ref td.clicavel:hover {
+  background: color-mix(in srgb, var(--accent-3) 10%, transparent);
+}
+/* As notas da tabela da norma (Tabela 10 das juntas): o texto da norma, curto, embaixo da tabela. */
+.tabela-ref-notas {
+  margin: calc(6px * var(--escala-ui)) 0 0;
+  padding-left: 1.2em;
+  font-size: var(--fs-nota);
+  color: var(--muted);
 }
 /* Passar o mouse acende em azul, não em cinza: cinza é a zebra. */
 .tabela-ref tr.clicavel:hover,

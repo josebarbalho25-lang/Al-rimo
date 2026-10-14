@@ -235,11 +235,68 @@ function TabelaDeAlfa() {
   );
 }
 
+/*
+  Fig. 16 — NBR 16868-1, 10.2.3, Tabela 10: espaçamento máximo entre juntas verticais de controle (conferida na versão
+  oficial pelo Jose, 14/10). Só a linha do concreto: o app é só bloco de concreto. A norma RECOMENDA ("na ausência de
+  uma avaliação precisa"): o app não confere nem preenche — a tabela fica de consulta e o projetista decide (Jose, 14/10:
+  "deixa como está, mas coloca a tabela de referência"). Clicar num valor leva ele para o campo, como nas outras tabelas.
+*/
+const JUNTAS: ReadonlyArray<[string, number[]]> = [
+  ['Externa', [7, 6, 9, 8]],
+  ['Interna', [12, 10, 15, 12]],
+];
+function TabelaDeJuntas() {
+  const { definir, ler } = useTabela();
+  const atual = ler('junta_cada');
+  return (
+    <div className="tabela-ref-grupo">
+      <table className="tabela-ref" aria-label="NBR 16868-1, Tabela 10: espaçamento máximo entre juntas verticais de controle">
+        <thead>
+          <tr>
+            <th rowSpan={2}>Concreto</th>
+            <th colSpan={2}>Sem armadura horizontal</th>
+            <th colSpan={2}>Armadura horizontal ≥ 0,04 % (h · t)</th>
+            <th className="un" rowSpan={2} />
+          </tr>
+          <tr>
+            <th>t ≥ 14</th>
+            <th>t &lt; 14</th>
+            <th>t ≥ 14</th>
+            <th>t &lt; 14</th>
+          </tr>
+        </thead>
+        <tbody>
+          {JUNTAS.map(([local, valores]) => (
+            <tr key={local}>
+              <th scope="row">{local}</th>
+              {valores.map((v, i) => {
+                const on = mesmoValor(atual, v);
+                return (
+                  <td key={i} className={`clicavel${on ? ' on' : ''}`} onClick={() => definir('junta_cada', v)}>
+                    <button type="button" aria-pressed={on}>{v}</button>
+                  </td>
+                );
+              })}
+              <td className="un">m</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <ul className="tabela-ref-notas">
+        <li>Parede com abertura: −15 %</li>
+        <li>Bloco não curado a vapor: −20 % (sem abertura) · −30 % (com abertura)</li>
+        <li>Junta de dilatação: ≤ 24 m (10.2.2)</li>
+      </ul>
+    </div>
+  );
+}
+
 /** A tabela de referência que acompanha a figura (ou null). fig23 é SÓ a tabela: o desenho dela era a tabela. */
 export function TabelaDeReferencia({ figura }: { figura: string | undefined }) {
   if (figura === 'fig23') return <TabelaDoFbk />;
   if (figura === 'fig08') return <TabelaDaArgamassa />;
   if (figura === 'fig07') return <TabelaDeAlfa />;
+  if (figura === 'fig16') return <TabelaDeJuntas />;
   return null;
 }
 
