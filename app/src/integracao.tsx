@@ -14,6 +14,7 @@ import { Memoria } from '@/memoria/Memoria';
 import { Visor3D } from '@/visor/Visor3D';
 import { Desenhos } from '@/desenhos/Desenhos';
 import { Quantitativo } from '@/quantitativo/Quantitativo';
+import { TelaDasPranchas } from '@/pranchas/TelaDasPranchas';
 import type { Resultado } from '@/motor/tipos';
 
 // A memória pede a figura do card por número ('Fig. 11'); o acervo é o mesmo do botão das entradas.
@@ -40,6 +41,7 @@ export function ligarAsFrentes(): void {
       iso: (c) => c.modelo && <Desenhos modelo={c.modelo} vista="iso" selecionado={c.selecionado} onSelecionar={c.selecionar} />,
       memoria: (c) => c.resultado && <MemoriaDoProjeto resultado={c.resultado} />,
       quantitativo: (c) => c.modelo && <Quantitativo modelo={c.modelo} />,
+      pranchas: (c) => <TelaDasPranchas modelo={c.modelo} resultado={c.resultado} />,
     },
   });
 }
