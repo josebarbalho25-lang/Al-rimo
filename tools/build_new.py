@@ -338,9 +338,11 @@ line(E, r, 'γ do concreto', 25, 'kN/m³', 'Aba do Gilberto: 24.', 'inp', '0.0',
 line(E, r, 'γ do contraforte grauteado — opcional', None, 'kN/m³', 'Em branco = calculado logo abaixo (bloco com todos os furos grauteados). Preencha só para forçar outro valor.', 'inp', '0.0', 'gama_cf'); r += 1
 line(E, r, 'γ do contraforte grauteado (usado)', '=IF(ISNUMBER(gama_cf),gama_cf,22*r_liq+24*(1-r_liq))', 'kN/m³', 'γbloco·Aliq/Abr + γgraute·(1 − Aliq/Abr), com 22 e 24 kN/m³ como no peso da parede.', 'key', '0.00', 'gama_cf_us'); r += 1
 line(E, r, 'Carga vertical permanente no topo do muro', 0, 'kN/m', 'Estrutura apoiada no muro. A aba do Gilberto usa 2 m × sobrecarga (mínimo 2 tf/m²).', 'inp', '0.0', 'P_topo'); r += 1
-line(E, r, 'Sobrecarga sobre o talão estabiliza?', 'Sim', '', 'Sim = como a aba do Gilberto (decisão sua). Não = carga logo atrás do talão: empurra mas não pesa (combinação dos livros).', 'inp', None, 'q_est'); r += 1
+line(E, r, 'Sobrecarga sobre o talão estabiliza?', 'Sim', '', 'Só a sobrecarga q (o solo sobre o talão pesa sempre). Sim = como a aba do Gilberto (decisão sua). Não = q logo atrás do talão: empurra mas não pesa.', 'inp', None, 'q_est'); r += 1
 dv_qe = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validation(dv_qe); dv_qe.add(f'B{r-1}')
-line(E, r, "φ' do solo de apoio — opcional", None, '°', "Em branco = φ' adotado do solo contido. A aba do Gilberto usava o solo de cima.", 'inp', '0.0', 'phi_base'); r += 1
+# Obrigatório desde 14/10 (Jose): é o solo natural do laudo, sob a sapata. Padrão 25 = o φ' do exemplo (o mesmo da
+# aula, onde o Gilberto usava o solo de cima).
+line(E, r, "φ' do solo de apoio", 25, '°', "Solo natural sob a sapata (laudo de sondagem): atrito da base (tg δ) e passivo do dente.", 'inp', '0.0', 'phi_base'); r += 1
 line(E, r, "δ/φ' na base", 0.67, '', 'Atrito sapata-solo: tg δ. 2/3 é o usual; 1,0 = aba do Gilberto (areia).', 'inp', '0.00', 'dphi'); r += 1
 line(E, r, 'Adesão na base — opcional', 0, 'kPa', 'ATENÇÃO: resistência de curto prazo. A aba do Gilberto usa 0,5·SPT tf/m² em argila. Coerente com desprezar a coesão no empuxo: deixar 0.', 'inp', '0.0', 'ades_b'); r += 1
 # Aterro sobre a ponta (Jose, 12/10): o projetista embute o muro, compacta terra na frente e garante que ninguém mexe

@@ -436,7 +436,7 @@ function cardTombamento(r: Resultado): Card {
 function cardDeslizamento(r: Resultado): Card {
   const m = memoriaDe(r);
   const f = folhas(m);
-  const phiBaseDigitado = m.num('phi_base') !== null;       // ISNUMBER(phi_base)
+  const temPhiB = m.num('phi_b') !== null;                 // IF(ISNUMBER(phi_base); phi_base; "—") — obrigatório (14/10)
   const comAdesao = (m.num('ades_b') ?? 0) !== 0;          // adesão opcional, 0 por padrão (escolha do Jose)
   const frenteGarantida = m.texto('pass_on') === 'Sim';
   // sem a garantia, o dente do centro para trás (x_den ≤ 0) mobiliza o passivo dele (Jose, 13/10: "para escavar até
@@ -448,19 +448,18 @@ function cardDeslizamento(r: Resultado): Card {
   const Rat = m.g('R_at', 'R_{at}', 2, 'kN');
   const Rad = m.g('R_ad', 'R_{ad}', 2, 'kN');
   const Ep = m.g('E_p', 'E_p', 2, 'kN');
+  const Kpb = m.g('Kp_b', 'K_{p,b}', 3);
   const tgDelta = tan(rad(delb));
 
   const resistencias = secao('Resistências na base', [
-    phiBaseDigitado
-      ? m.passo('phi_b', "\\varphi'_b", null, { casas: 1, unidade: '°', origem: 'entrada' })
-      // folha sem o "°": a linha não repete o número quando ele já é o resultado ("φ'b = φ' = 25,0°"); com o
-      // grau na folha a substituição "25,0°" não casa com o resultado sem unidade e sairia duas vezes
-      : m.passo('phi_b', "\\varphi'_b", m.ent('phi_solo', "\\varphi'", { unidade: '' }), { casas: 1, unidade: '°' }),
-    m.passo('del_b', '\\delta_b', mul(m.ent('dphi', 'k_{\\delta}'), phib), { casas: 1, unidade: '°' }),
+    temPhiB && m.passo('phi_b', "\\varphi'_b", null, { casas: 1, unidade: '°', origem: 'entrada' }),
+    temPhiB && m.passo('del_b', '\\delta_b', mul(m.ent('dphi', 'k_{\\delta}'), phib), { casas: 1, unidade: '°' }),
     // N ≤ 0 (subpressão maior que o peso): a planilha zera o atrito com MAX(0; N)
-    m.passo('R_at', 'R_{at}', [mul(f.N, tgDelta), mul(max(cte(0, 0), f.N), tgDelta)], { casas: 2, unidade: 'kN' }),
+    temPhiB && m.passo('R_at', 'R_{at}', [mul(f.N, tgDelta), mul(max(cte(0, 0), f.N), tgDelta)], { casas: 2, unidade: 'kN' }),
     comAdesao && m.passo('R_ad', 'R_{ad}', mul(m.ent('ades_b', 'c_a'), f.B, f.L), { casas: 2, unidade: 'kN' }),
-    comPassivo && m.passo('E_p', 'E_p', mul(div(div(mul(f.Kp, f.gama, pot(frenteGarantida ? soma(f.hfr, f.hs, f.hden) : f.hden, 2)), DOIS), DOIS), f.L), {
+    // Kp do solo de apoio (Jose, 14/10): o dente está cravado no solo natural sob a sapata
+    comPassivo && temNumero(m, 'Kp_b') && m.passo('Kp_b', 'K_{p,b}', pot(tan(rad(soma(cte(45, 0), div(phib, DOIS)))), 2), { casas: 3, ref: { fonte: 'Aula 12.1' } }),
+    comPassivo && m.passo('E_p', 'E_p', mul(div(div(mul(Kpb, f.gama, pot(frenteGarantida ? soma(f.hfr, f.hs, f.hden) : f.hden, 2)), DOIS), DOIS), f.L), {
       casas: 2, unidade: 'kN', ref: NBR_PASSIVO,
     }),
   ], GILBERTO);
@@ -485,7 +484,7 @@ function cardDeslizamento(r: Resultado): Card {
     ref: GILBERTO,
     figura: 'Fig. 24',
     secoes: fs ? [resistencias, fs] : [resistencias],
-    avisos: [],
+    avisos: temPhiB ? [] : ["Digitar o φ' do solo de apoio (sondagem)"],
     aplicavel: true,
   };
 }

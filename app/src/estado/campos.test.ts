@@ -306,7 +306,7 @@ describe('valor que inverteria o veredito (achado da revisão)', () => {
       expect(lerDoCampo('1,4', c(n)), n).toEqual({ ok: true, valor: 1.4 });
     }
   });
-  it('ângulo de atrito acima de 60° fica vermelho; o da base em branco continua "auto"', () => {
+  it('ângulo de atrito acima de 60° fica vermelho; o da base é obrigatório (Jose, 14/10: vem do laudo)', () => {
     for (const n of ['phi_solo', 'phi_base']) {
       expect(lerDoCampo('90', c(n)), n).toEqual({ ok: false });
       expect(lerDoCampo('300', c(n)), n).toEqual({ ok: false });
@@ -314,7 +314,7 @@ describe('valor que inverteria o veredito (achado da revisão)', () => {
       expect(lerDoCampo('30', c(n)), n).toEqual({ ok: true, valor: 30 });
     }
     expect(lerDoCampo('0', c('phi_solo'))).toEqual({ ok: true, valor: 0 });
-    expect(lerDoCampo('', c('phi_base'))).toEqual({ ok: true, valor: null });
+    expect(lerDoCampo('', c('phi_base'))).toEqual({ ok: false });
   });
   it('junta: 0 é "sem junta"; com junta, no mínimo 2 m', () => {
     expect(lerDoCampo('0', c('junta_cada'))).toEqual({ ok: true, valor: 0 });

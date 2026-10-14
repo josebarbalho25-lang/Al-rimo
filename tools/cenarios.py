@@ -41,7 +41,7 @@ OPCOES = {
     'lat_pan': ['Apoiadas', 'Engastadas'], 'phi_pv': [6.3, 8, 10, 12.5, 16], 'pos_pv': ['2 barras (uma em cada face)', '1 barra centralizada'],
     'c_pv': [4, 5], 'phi_ph': [6.3, 10, 12.5, 16], 's_ph_dir': ['', 20, 40, 80, 120], 'pos_ph': ['Centralizada (d = t/2)', 'Encostada na face externa'], 'K_pv': [1, 1.5], 'K_ph': [0.5, 1],
     'bwv_dir': ['', 13.6], 'B_sap': [0.4, 1.0, 1.4, 2.5], 'h_sap': [0.2, 0.3, 0.5], 'a_ater': [0.05, 0.1, 0.5, 0.95, 1.5, 2.4], 'b_den': [0, 0.25], 'h_den': [0, 0.5],
-    'P_topo': [0, 10], 'q_est': ['Sim', 'Não'], 'phi_base': ['', 30], 'dphi': [0.67, 1], 'ades_b': [0, 20], 'pass_on': ['Sim', 'Não'], 'SPT_b': [5, 20], 'sig_adm_dir': ['', 150],
+    'P_topo': [0, 10], 'q_est': ['Sim', 'Não'], 'phi_base': [25, 30], 'dphi': [0.67, 1], 'ades_b': [0, 20], 'pass_on': ['Sim', 'Não'], 'SPT_b': [5, 20], 'sig_adm_dir': ['', 150],
     'cob_sap': [3, 5], 'phi_sap': [8, 10, 12.5, 16], 'phi_tor': [5, 6.3], 'bwh_els': [19, 20], 'fgk_dir': ['', 15, 30], 'psi_els': [1, 0.7], 'vao_ref': ['h', '2h'], 'sg_on': ['Sim', 'Não'], 'dxi': [1, 0.5], 'bw_dir': ['', 15],
 }
 # Entradas que chegaram depois do gabarito (12/10: peso próprio calculado). Sorteadas com um gerador PRÓPRIO, semeado

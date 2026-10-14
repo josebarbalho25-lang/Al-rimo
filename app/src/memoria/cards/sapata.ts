@@ -91,7 +91,7 @@ export const SIMBOLOS_SAPATA: Readonly<Record<string, string>> = {
   u_e: 'perímetro da linha média da seção vazada equivalente',
   'T_{Rd2}': 'momento torçor resistente das diagonais comprimidas',
   'A_{90}/s': 'estribo de torção por metro, por ramo',
-  '(A_{90}/s)_{m\\acute{\\imath}n}': 'estribo mínimo de torção por metro, por ramo (b_w = B)',
+  '(A_{90}/s)_{m\\acute{\\imath}n}': 'estribo mínimo de torção por metro, por ramo (b_w = 2·he)',
   s_t: 'espaçamento do estribo de torção',
   'A_{sl}': 'armadura longitudinal de torção, total no perímetro',
   // ── esperas: dobra do pé na sapata (aba Fundação, seção 10) ──
@@ -499,14 +499,18 @@ function cardTorcao(r: Parameters<AutorDeCards>[0]): Card {
   const fywd = div(f.fykKN, f.gs);
   const espT = celulaDoRotulo('Ø do estribo de torção: espaçamento');
   const a90 = m.num('A90_s') ?? 0;
+  const a90m = m.num('A90_m') ?? 0;
+  const A90m = m.g('A90_m', '(A_{90}/s)_{m\\acute{\\imath}n}', 2, 'cm²/m');
   const armadura = secao('Armadura de torção', [
     temNumero(m, 'A90_s') && m.passo('A90_s', 'A_{90}/s', div(f.T, mul(cte(2, 0), f.Ae, fywd)), { casas: 2, unidade: 'cm²/m', ref: NBR('17.5.1.6') }),
+    // bw = 2·he: as duas paredes da seção vazada (Jose, 14/10; dedução) — 2·he (m)·100 cm·100 por metro ÷ 2 ramos
     temNumero(m, 'A90_m') && m.passo('A90_m', '(A_{90}/s)_{m\\acute{\\imath}n}',
-      mul(cte(0.2, 1), div(mul(cte(0.3, 1), pot(f.fck, DOIS_TERCOS)), f.fyk), div(mul(cte(100, 0), f.Bcm), cte(2, 0))),
+      mul(cte(0.2, 1), div(mul(cte(0.3, 1), pot(f.fck, DOIS_TERCOS)), f.fyk), div(mul(cte(2, 0), f.he, cte(100, 0), cte(100, 0)), cte(2, 0))),
       { casas: 2, unidade: 'cm²/m', ref: NBR('17.4.1.1.1') }),
-    // MIN(20; ROUNDDOWN(π·Ø²/400/MAX(A90_s;0,0001)·100;0)) — o piso 0,0001 só aparece quando decide
+    // MIN(20; ROUNDDOWN(π·Ø²/400/MAX(A90_s; A90_m; 0,0001)·100;0)) — vale o maior entre o cálculo e o mínimo; o piso
+    // 0,0001 só aparece quando decide
     temNumero(m, espT) && m.passo(espT, 's_t',
-      min(cte(20, 0), espacamento(f.phiT, a90 < 0.0001 ? max(f.A90, cte(0.0001, 4)) : f.A90)), { casas: 0, unidade: 'cm' }),
+      min(cte(20, 0), espacamento(f.phiT, Math.max(a90, a90m) < 0.0001 ? max(f.A90, A90m, cte(0.0001, 4)) : max(f.A90, A90m))), { casas: 0, unidade: 'cm' }),
     temNumero(m, 'Asl_s') && m.passo('Asl_s', 'A_{sl}', div(mul(f.T, f.ue), mul(cte(2, 0), f.Ae, fywd)), { casas: 2, unidade: 'cm²', ref: NBR('17.5.1.6') }),
   ], NBR('17.5.1.6'));
 

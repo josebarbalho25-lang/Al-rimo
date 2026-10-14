@@ -68,7 +68,9 @@ Lf('M de tombamento em relação à base da sapata', '=(Mk_+Vk_*h_sap+h_sap^2*(2
 # Passivo (Jose, 13/10): com o solo da frente garantido, a face toda da frente (aterro + sapata + dente). Sem a garantia,
 # só o dente do centro para trás: o solo na frente dele está debaixo da sapata e não é escavado; vale a altura do dente
 # abaixo da base, sem o peso da sapata por cima (a favor). Dente para a ponta, sem garantia: nada.
-Lf('Passivo (frente garantida: Kp·γ·(h aterro + h + dente)²/2; senão dente do centro para trás: Kp·γ·h dente²/2) ÷ 2,0', '=IF(pass_on="Sim",Kp_*gama_solo*(h_fr+h_sap+h_den)^2/2/2*Lm,IF(AND(b_den>0,h_den>0,x_den<=0.0005),Kp_*gama_solo*h_den^2/2/2*Lm,0))', 'kN', 'Solo da frente no nível do aterro sobre a ponta (0 = topo da sapata). Reduzido por 2,0 (NBR 6122 7.6.3).', 'res', '0.00', 'E_p')
+# Kp do solo de APOIO (Jose, 14/10): o dente está cravado no solo natural sob a sapata, não no aterro de trás — Kp_b,
+# seção 5. O γ segue o do solo contido (não há entrada de γ do solo de apoio; DEDUÇÃO).
+Lf('Passivo (frente garantida: Kp·γ·(h aterro + h + dente)²/2; senão dente do centro para trás: Kp·γ·h dente²/2) ÷ 2,0', '=IF(pass_on="Sim",Kp_b*gama_solo*(h_fr+h_sap+h_den)^2/2/2*Lm,IF(AND(b_den>0,h_den>0,x_den<=0.0005),Kp_b*gama_solo*h_den^2/2/2*Lm,0))', 'kN', 'Kp do solo de apoio (seção 5). Solo da frente no nível do aterro sobre a ponta (0 = topo da sapata). Reduzido por 2,0 (NBR 6122 7.6.3).', 'res', '0.00', 'E_p')
 r += 1
 section(Fd, r, '4. Tombamento'); r += 1
 Lf('M estabilizante em relação ao pé', '=M_est', 'kN·m', 'Σ N·(B − x). Passivo não entra (a favor da segurança).', 'res', '0.00')
@@ -78,7 +80,11 @@ Lf('Excentricidade e = M/N', '=M_cen/N_tot', 'm', '+ = resultante para o pé; �
 Lf('Limite do Gilberto: |e| ≤ B/4', '=B_sap/4', 'm', 'Na aba original só para o lado do pé; aqui nos dois lados.', 'res', '0.000', 'e_lim')
 r += 1
 section(Fd, r, '5. Deslizamento'); r += 1
-Lf("φ' do solo de apoio", '=IF(ISNUMBER(phi_base),phi_base,phi_solo)', '°', '', 'res', '0.0', 'phi_b')
+# φ' do solo de apoio OBRIGATÓRIO (Jose, 14/10: "o solo embaixo da sapata é o solo natural, é o do laudo de
+# sondagem, é o que o calculista digita"): sem valor, nada de copiar o do solo contido — o deslizamento reprova
+# pedindo o valor (Verificações).
+Lf("φ' do solo de apoio", '=IF(ISNUMBER(phi_base),phi_base,"—")', '°', 'Entradas (laudo de sondagem). Sem valor, o deslizamento pede o dado.', 'res', '0.0', 'phi_b')
+Lf("Kp do solo de apoio = tg²(45° + φ'b/2)", '=TAN(RADIANS(45+phi_b/2))^2', '', 'Passivo do dente e da frente (seção 3).', 'res', '0.000', 'Kp_b', 'Rankine')
 Lf('δ = (δ/φ)·φ', '=dphi*phi_b', '°', '', 'res', '0.0', 'del_b')
 Lf('Atrito na base = N·tg δ', '=MAX(0,N_tot)*TAN(RADIANS(del_b))', 'kN', '', 'res', '0.00', 'R_at')
 Lf('Adesão na base = a·B·L', '=ades_b*B_sap*Lm', 'kN', 'Zero por padrão.', 'res', '0.00', 'R_ad')
@@ -141,8 +147,11 @@ Lf('ue = 2·[(B − he) + (h − he)]  [A/u < 2·c1: com 2c1]', '=IF(he_s>=2*c_e
 Lf('TRd2 = 0,5·αv2·fcd·Ae·he·sen2θ (θ = 45°)', '=0.5*(1-fck_s/250)*fcd_s*1000*Ae_s*he_s', 'kN·m', 'NBR 6118 17.5.1.5.', 'key', '0.00', 'TRd2_s')
 Lf('A90/s = TSd/(2·Ae·fywd) — por ramo', '=IF(T_sd>0,T_sd/(2*Ae_s*fyk_/gama_s*1000)*10000,0)', 'cm²/m', 'Estribo fechado, θ = 45°.', 'res', '0.00', 'A90_s')
 Lf('Asl = TSd·ue/(2·Ae·fyd) — total no perímetro', '=IF(T_sd>0,T_sd*ue_s/(2*Ae_s*fyk_/gama_s*1000)*10000,0)', 'cm²', 'Somar à armadura de flexão nas faces.', 'res', '0.00', 'Asl_s')
-Lf('Mínimo de estribo: ρsw = 0,2·fctm/fywk (bw = B)', '=IF(T_sd>0,0.2*0.3*fck_s^(2/3)/fyk_*B_sap*100*100/2,0)', 'cm²/m', 'Por ramo (NBR 6118 17.4.1.1.1). Com bw = largura toda fica alto em sapata larga — avaliar (dedução).', 'res', '0.00', 'A90_m')
-Lf('Ø do estribo de torção: espaçamento', '=IF(T_sd>0,MIN(20,ROUNDDOWN(PI()*phi_tor^2/400/MAX(A90_s,0.0001)*100,0)),"—")', 'cm', 'Pelo cálculo (sem o mínimo).', 'res', '0', 's_tor_f')
+# Mínimo com bw = 2·he (Jose, 14/10): as duas paredes da seção vazada equivalente são as que trabalham na torção.
+# Com bw = B (o mínimo de viga com a sapata inteira) a aula 12.3 pediria Ø10 c/7 para uma torção que o cálculo
+# resolve com 0,73 cm²/m — a sapata não é viga. DEDUÇÃO nossa; antes o espaçamento ignorava o mínimo.
+Lf('Mínimo de estribo: ρsw = 0,2·fctm/fywk (bw = 2·he)', '=IF(T_sd>0,0.2*0.3*fck_s^(2/3)/fyk_*2*he_s*100*100/2,0)', 'cm²/m', 'Por ramo (NBR 6118 17.4.1.1.1), bw = as duas paredes da seção vazada (dedução).', 'res', '0.00', 'A90_m')
+Lf('Ø do estribo de torção: espaçamento', '=IF(T_sd>0,MIN(20,ROUNDDOWN(PI()*phi_tor^2/400/MAX(A90_s,A90_m,0.0001)*100,0)),"—")', 'cm', 'Pelo maior entre o cálculo e o mínimo; até 20 cm.', 'res', '0', 's_tor_f')
 r += 1
 section(Fd, r, '9. Verificações'); r += 1
 CHKF = [
@@ -151,7 +160,8 @@ CHKF = [
     ('Tombamento: FS ≥ mínimo', '=IF(FS_t>=FS_tomb,"OK (FS = "&FIXED(FS_t,2)&")","NÃO OK (FS = "&FIXED(FS_t,2)&" < "&FIXED(FS_tomb,1)&")")'),
     ('Tombamento: |e| ≤ B/4 (Gilberto)', '=IF(ABS(e_f)<=B_sap/4,"OK (e = "&FIXED(e_f*100,1)&" cm)","NÃO OK (e = "&FIXED(e_f*100,1)&" cm > "&FIXED(B_sap*25,1)&")")'),
     ('Tombamento: resultado (vale o pior)', '=IF(AND(FS_t>=FS_tomb,ABS(e_f)<=B_sap/4),"OK","NÃO OK")'),
-    ('Deslizamento: FS ≥ mínimo', '=IF(FS_d>=FS_desl,"OK (FS = "&FIXED(FS_d,2)&")","NÃO OK (FS = "&FIXED(FS_d,2)&" < "&FIXED(FS_desl,1)&") — aumentar B, dente ou peso")'),
+    # FS_d em texto (sem φ'b; ou Hk = 0) daria VERDADEIRO no ≥ do Excel: o ÉNÚM vem antes
+    ('Deslizamento: FS ≥ mínimo', '=IF(ISNUMBER(FS_d),IF(FS_d>=FS_desl,"OK (FS = "&FIXED(FS_d,2)&")","NÃO OK (FS = "&FIXED(FS_d,2)&" < "&FIXED(FS_desl,1)&") — aumentar B, dente ou peso"),IF(ISNUMBER(phi_b),"—","NÃO OK — digitar o φ\' do solo de apoio (sondagem)"))'),
     # σadm em texto (SPT < 5 sem valor digitado): número ≤ texto daria VERDADEIRO no Excel — por isso o ÉNÚM antes
     ('Tensão: σ máx ≤ σadm', '=IF(ISNUMBER(s_adm),IF(s_hi<=s_adm,"OK ("&FIXED(s_hi,0)&" ≤ "&FIXED(s_adm,0)&" kPa)","NÃO OK ("&FIXED(s_hi,0)&" > "&FIXED(s_adm,0)&" kPa)"),"NÃO OK — SPT < 5: digitar o σadm (ensaio)")'),
     ('Tensão: sapata toda comprimida (|e| ≤ B/6)', '=IF(ABS(e_f)<=B_sap/6,"Sim","Não — parte descola (informativo)")'),

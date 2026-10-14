@@ -52,6 +52,7 @@ const SIMBOLOS_BASE: Readonly<Record<string, string>> = {
   "c'": 'coesão efetiva do solo',
   K_a: 'coeficiente de empuxo ativo (Rankine)',
   K_p: 'coeficiente de empuxo passivo (Rankine)',
+  'K_{p,b}': 'coeficiente de empuxo passivo do solo de apoio, sob a sapata',
   '\\sigma_{h,topo}': 'pressão horizontal total no topo do solo',
   '\\sigma_{h,base}': 'pressão horizontal total na base do muro',
   "\\sigma'_{h,topo}": 'pressão horizontal efetiva no topo do solo',

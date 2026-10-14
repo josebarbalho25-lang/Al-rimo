@@ -81,7 +81,8 @@ e dizer ao Jose o que mudou e por quê.
   a combinação sem ela); deslizamento só com atrito N·tg δ (δ = 2/3·φ padrão), **adesão opcional = 0**; **passivo da frente
   DESLIGADO por padrão (Jose, 10/10, pelo Bastos "Sapatas de Fundação" 1.8 e NBR 6122 7.6.3): só com garantia de que o
   solo da frente jamais será escavado/removido, e então dividido por 2,0** (aviso_passivo); tombamento com
-  **FS em torno do pé ≥ 2,0 E |e| ≤ B/4 (Gilberto), vale o pior**. σadm: digitado ou 20·SPT (Gilberto); a aba Fundação
+  **FS em torno do pé ≥ 2,0 E |e| ≤ B/4 (Gilberto), vale o pior**. σadm: digitado ou 20·mín(SPT; 20) (Gilberto, só dentro da faixa da regra — Jose, 14/10; com SPT < 5 não há
+  automático e a tensão reprova pedindo o σadm); a aba Fundação
   também sugere Mello 100·(√N − 1), cada regra com a faixa de N (`sadm_20N`, `sadm_mel` + `_fx`), e a calculadora de
   consulta embaixo da Fig. 15 lê esses nomes (Jose, 10/10). ⚠️ `estabilidade.ts` e `modulacao/leitura.ts` ainda leem
   algumas células da aba Fundação por ENDEREÇO (B101, B102, B104, B105, B96): linha nova acima delas exige ajustar.
@@ -357,9 +358,11 @@ e dizer ao Jose o que mudou e por quê.
   IFC/quantitativo com o muro real; Ag da conta pelo bloco desenhado (decidir).
   Relatórios dos agentes: `_trabalho/` (fora do git).
 
-- **Revisão "o auto é sempre a favor da segurança" (Jose, 13/10)** — Grupo 1 um por um com ele: item 1 (traspasse)
-  FEITO 14/10 (ver Convenções). Faltam: σadm 20·N com teto (N < 5 exige digitar), mínimo do estribo de torção
-  (s_tor_f ignora A90_m), Kp/γ do dente pelo solo de apoio (φ_b), φ_base auto. Grupo 2: "Novo" com os dados do
+- **Revisão "o auto é sempre a favor da segurança" (Jose, 13/10)** — Grupo 1 FEITO 14/10: traspasse (Convenções),
+  σadm com teto e exigido abaixo de SPT 5, estribo mínimo de torção com bw = 2·he, Kp do dente e da frente pelo
+  φ' do SOLO DE APOIO (Kp_b; o γ segue o do solo contido, dedução) e φ' do solo de apoio OBRIGATÓRIO (Jose: "é o
+  solo natural, do laudo de sondagem, é o que o calculista digita"; padrão 25 = exemplo; vazio → o deslizamento
+  reprova pedindo o dado). Grupo 2: "Novo" com os dados do
   projeto em branco + autos seguros, aula 12.2 como arquivo de exemplo. Grupos 3/4 um por um com ele (q_est, sg_on,
   M2d, fpk líquida, Δξ, vão 2h, painel apoiado × negativo nos intermediários, água × drenagem, Trav_lat/αv, bw,
   c_pv, AsMin, Ka_dir/d_dir…). A perna em L da barra da canaleta do contraforte ainda usa o ℓb da sapata (muda com a
@@ -383,7 +386,8 @@ e dizer ao Jose o que mudou e por quê.
 - Receber a NBR 16868-1 em PDF: conferir numeração de itens, Anexo E (βf) e os contornos do ábaco do ELS (lidos do slide).
 - Confirmar os FS da NBR 11682 (tombamento 2,0, deslizamento 1,5 — "pelo que sei").
 - Fig. 24 (tombamento e deslizamento no traço do Bastos, Fig. 1.116) FEITA 10/10: planilha e app; abre em dphi, ades_b, pass_on, FS_tomb, FS_desl.
-- Fundação: o mínimo de estribo de torção com bw = B fica alto em sapata larga (avaliar); peso do contraforte grauteado é estimativa.
+- Fundação: estribo de torção com mínimo de bw = 2·he (Jose, 14/10, dedução: as paredes da seção vazada; com bw = B a aula
+  12.3 pediria Ø10 c/7); o espaçamento vale o maior entre cálculo e mínimo. Peso do contraforte grauteado é estimativa.
 - **Sapata rígida × flexível — FEITO 13/10 (aba Sapata sobre molas, `tools/sapata_molas.py`):** a aba Fundação segue sendo a conta de projeto (pressão linear); a aba nova só VERIFICA, sem mudar número da Fundação. Classificação 22.6.1 (h ≥ 2/3 do maior balanço — muro fora do centro, dedução). Faixa de 1 m sobre molas: 13 nós (5 no talão, 2 no muro, 5 na ponta — com 23 nós e 5 passadas a aba tinha 5.500 células e o app ficava 5× mais lento; 13 nós ficam a < 1% da solução fechada), cargas = a tabela da Fundação espalhada pelo rótulo (dicionário LARG; rótulo novo sem largura = o build para), momentos Mk + Vk·h no eixo e o empuxo da altura da sapata na face aterrada; resolvida SEM matriz inversa (linha elástica nó a nó em 3 soluções + fim livre = sistema 2×2); 3 passadas partindo do contato do diagrama linear, soltando mola tracionada (passada sem mudança repete a anterior — o SE só calcula o ramo que vale); a faixa do contraforte faz 2 partindo do contato final da média e é "—" no balanço. Solução fechada (Krylov/Hetényi, base contínua) ao lado, só vale com a base toda apoiada. Conferido: molas = numpy com matriz de rigidez a 1e-14 m; fechada = numpy de 400 trechos a 1e-9 m; molas × fechada < 1%. O teste de velocidade do motor (golden.test.ts) virou limite POR CÉLULA (19 µs, o mesmo 30 ms/1.569 células de antes). Entre contrafortes: TORÇÃO sobre base elástica (não flexão: o momento do contraforte tem vetor ao longo do muro), kθ = k·B³/12, GJ com 15% (6118 14.6.7.2), β = √(kθ/GJ); a torção junto ao contraforte dá M/2 para QUALQUER rigidez (a seção 8 da Fundação está certa); o que muda é o pico por metro, fator (βL/2)/th(βL/2), que entra como ΔM numa 2ª faixa sobre molas. Envolvente linear × molas × fechada → MRd da armadura da Fundação e VRd1. Cortante a d da face pelas molas: Σ (R − P) × fração da influência do nó além da seção (colunas da seção 4; nó inteiro ou nada variava ~20% com a malha; assim bate com malha fina de 400 trechos a ~2%). Punção (19.5.2.2/19.5.2.3, 19.5.3.2) junto ao contraforte: pilar tenr × t com Md_cf; contorno a 2d interno, de borda (Wp1 deduzido por ∫|e|dℓ) ou cortado nos dois lados (vale a torção). Compressão diagonal no contorno C do muro (Bastos Ex. 6/7, + momento) e do contraforte. k: entrada nova `ks_dir` (opcional), sugestão 120·σadm (Bowles); tabela de consulta Bowles 9-1 + Terzaghi corrigido pela largura. k pequeno = sapata rígida = conta linear; k grande = molas; vale o pior. A fórmula de punção de sapata com 2d/a* do Bastos (1.21) NÃO está na NBR 6118:2023 (é do Eurocode) — não usada. Motor do app: COS, SIN, COSH, SINH, TANH. Falta: cards da memória no app para a aba nova.
 - Cisalhamento do painel não armado: hipótese Vsd = fd·l/2 nunca confirmada no vídeo.
 - Depois da planilha: app (3D, quantitativo, desenhos, memória auditável). Reaproveitar os SVG de `figs/`.
