@@ -60,6 +60,14 @@ export const IconeNovo = (p: PropsDoIcone) => (
   </Svg>
 );
 
+/** O muro de exemplo (aula 12.2): um livro aberto. */
+export const IconeExemplo = (p: PropsDoIcone) => (
+  <Svg {...p}>
+    <path d="M3.5 6c3-1 6-1 8.5 1 2.5-2 5.5-2 8.5-1v12.5c-3-1-6-1-8.5 1-2.5-2-5.5-2-8.5-1z" />
+    <path d="M12 7v12.5" />
+  </Svg>
+);
+
 export const IconeAbrir = (p: PropsDoIcone) => (
   <Svg {...p}>
     <path d="M3.5 6.5h6l2 2.5h9v10h-17z" />

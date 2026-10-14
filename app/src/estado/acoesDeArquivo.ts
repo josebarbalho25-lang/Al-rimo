@@ -12,6 +12,7 @@ import {
   desserializarProjeto,
   EXTENSAO,
   nomeDeArquivo,
+  projetoExemplo,
   projetoNovo,
   recadoDeAbertura,
   serializarProjeto,
@@ -61,6 +62,15 @@ export function novoProjeto(): boolean {
   alcaAtual = null;
   useApp.getState().carregar(projetoNovo(), null);
   avisar('Projeto novo');
+  return true;
+}
+
+/** O muro de exemplo (aula 12.2), sem arquivo: salvar pede nome, como o Novo. */
+export function abrirExemplo(): boolean {
+  if (!perderAlteracoes('O muro tem alterações não salvas. Abrir o exemplo mesmo assim?')) return false;
+  alcaAtual = null;
+  useApp.getState().carregar(projetoExemplo(), null);
+  avisar('Exemplo aberto');
   return true;
 }
 

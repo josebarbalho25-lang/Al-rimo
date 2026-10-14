@@ -19,6 +19,7 @@ import { textosDosAvisos } from '@/estado/avisosDaPlanilha';
 import { VERSAO_DESCONHECIDA } from '@/estado/projeto';
 import { ehRuim } from '@/estado/recadoRuim';
 import { leitorDoEstado, useApp, VERSAO_DA_CONTA } from '@/estado/store';
+import { useInterface } from '@/estado/interface';
 
 export function BarraDeEstado() {
   const erroConta = useApp((s) => s.erroConta);
@@ -26,10 +27,17 @@ export function BarraDeEstado() {
   const veredito = useApp((s) => s.veredito);
   const recado = useApp((s) => s.recado);
   const escolherAba = useApp((s) => s.escolherAba);
+  const faltando = useApp((s) => s.faltando);
+  const abrirNoCampo = useInterface((s) => s.abrirNoCampo);
 
   return (
     <footer className="statusbar">
-      {erroConta ? (
+      {/* muro novo com dado em branco: sem veredito (a conta não fecha), o que falta e o caminho até ele */}
+      {faltando.length > 0 && !erroConta ? (
+        <button className="situacao falta" title="Entradas" onClick={() => abrirNoCampo(faltando[0])}>
+          {faltando.length === 1 ? 'Falta 1 dado' : `Faltam ${faltando.length} dados`}
+        </button>
+      ) : erroConta ? (
         <span className="situacao naoPassa" title={erroConta}>
           Erro na conta
         </span>

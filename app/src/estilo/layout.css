@@ -326,6 +326,11 @@
   background: var(--err-bg);
   border: 1px solid var(--err-line);
 }
+.statusbar .situacao.falta {
+  color: var(--warn);
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-line);
+}
 .statusbar button.situacao:hover {
   filter: brightness(1.12);
 }

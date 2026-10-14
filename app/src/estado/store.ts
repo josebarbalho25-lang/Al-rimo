@@ -30,7 +30,8 @@ import {
 import type { AvisoDaPlanilha } from './avisosDaPlanilha';
 import { CHAVES, ehObjeto, guardarNaAba, lembrarDaAba } from './lembrete';
 import { SEM_LIGACOES, type IdAba, type Ligacoes, type Veredito } from './ligacoes';
-import { desserializarProjeto, projetoNovo, recadoDeAbertura, serializarProjeto, type Projeto } from './projeto';
+import { desserializarProjeto, projetoExemplo, recadoDeAbertura, serializarProjeto, type Projeto } from './projeto';
+import { dadosFaltando } from './novo';
 import { padroesDe, recalcular } from './recalculo';
 import { RECADO_RUIM, ruim } from './recadoRuim';
 
@@ -79,6 +80,11 @@ export interface EstadoDoApp {
   modelo: Modelo | null;
   erroModelo: string | null;
   veredito: Veredito | null;
+  /**
+   * Entradas obrigatórias sem valor (muro novo, Jose 13/10), na ordem do catálogo. Com alguma faltando o muro não é
+   * montado e não há veredito; a barra de estado diz quantas, e o campo fica marcado.
+   */
+  faltando: string[];
   /** O arquivo aberto foi salvo com outra versão da conta. */
   contaDoArquivo: string | null;
   /**
@@ -149,6 +155,10 @@ function travadoPeloComprimento(a: Alteracoes): boolean {
   modulação arredondou o comprimento (o "→"), a conta refaz com o arredondado.
 */
 function contaCom(lig: Ligacoes, alteracoes: Alteracoes, extras: Record<string, Valor>) {
+  // Dado do projeto em branco: a conta roda (a memória mostra o que dá), mas sem muro e sem veredito — nada de 3D ou
+  // "passa" com número inventado (estado/novo.ts).
+  const faltando = dadosFaltando(CAMPOS.values(), leitorDeValores(METAS, alteracoes, extras));
+  if (faltando.length) lig = { ...lig, gerador: null, veredito: null };
   const digitado = typeof extras.L_total === 'number' ? extras.L_total : PADROES_DO_MODELO.L_total;
   const rodar = (L: number | null) => {
     let final = alteracoes;
@@ -180,7 +190,7 @@ function contaCom(lig: Ligacoes, alteracoes: Alteracoes, extras: Record<string, 
       extras,
       PADROES_DO_MODELO,
     );
-    return { ...feito, alteracoes: final, ajustesNovos: ajustes };
+    return { ...feito, alteracoes: final, ajustesNovos: ajustes, faltando };
   };
   const primeira = rodar(typeof digitado === 'number' ? digitado : null);
   if (!travadoPeloComprimento(primeira.alteracoes)) return primeira;
@@ -256,8 +266,8 @@ interface Inicio {
   projeto fica marcado como alterado.
 */
 function projetoInicial(): Inicio {
-  // Primeira abertura (ou lembrete ilegível): o muro nasce aqui, com a identidade dele.
-  const vazio: Inicio = { p: projetoNovo(), arquivo: null, sujo: false, contaDoArquivo: null, recado: null };
+  // Primeira abertura (ou lembrete ilegível): abre o EXEMPLO — quem chega vê um muro inteiro; o Novo é em branco.
+  const vazio: Inicio = { p: projetoExemplo(), arquivo: null, sujo: false, contaDoArquivo: null, recado: null };
   const u = lembrarDaAba<Ultimo | null>(CHAVES.ultimoProjeto, null, (x): x is Ultimo | null => x === null || ehUltimo(x));
   if (!u) return vazio;
   const a = desserializarProjeto(u.texto, CAMPOS, VERSAO_DA_CONTA);

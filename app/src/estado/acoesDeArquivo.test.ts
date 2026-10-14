@@ -63,24 +63,40 @@ const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f
 const arquivoSemId = (titulo: string) =>
   JSON.stringify({ formato: 'alrimo', versaoDoArquivo: 2, versaoDaConta: 'x', titulo, alteracoes: { H_muro: 2.2 }, extras: {} });
 
-describe('dois muros novos não dividem GUID', () => {
-  it('Novo → outra identidade → nenhum GUID em comum, mesmo os dois "Sem título"', async () => {
+describe('dois muros não dividem GUID', () => {
+  // Desde 14/10 a 1ª abertura é o EXEMPLO e o Novo nasce em branco (sem muro até completar os dados): dois exemplos
+  // abertos um depois do outro são o par de muros iguais, com o mesmo título, que não pode dividir GUID.
+  it('Exemplo → outra identidade → nenhum GUID em comum, mesmo com o mesmo título', async () => {
     const app = await abrirApp(new Map());
     const a = app.useApp.getState();
-    expect(a.titulo).toBe('Sem título');
+    expect(a.titulo).toBe('Exemplo — aula 12.2');
     expect(a.idDoProjeto).toMatch(UUID_V4);
     const g1 = app.guidsDoIfc();
     expect(g1.length).toBeGreaterThan(50);
     expect(new Set(g1).size).toBe(g1.length);
 
-    app.novoProjeto();
+    app.abrirExemplo();
     const b = app.useApp.getState();
-    expect(b.titulo).toBe('Sem título');
+    expect(b.titulo).toBe('Exemplo — aula 12.2');
     expect(b.idDoProjeto).toMatch(UUID_V4);
     expect(b.idDoProjeto).not.toBe(a.idDoProjeto);
     expect(b.sujo).toBe(false);
     const g2 = app.guidsDoIfc();
     expect(g2.filter((g) => g1.includes(g))).toEqual([]);
+  });
+
+  it('Novo → identidade nova, "Sem título", dados do projeto em branco: sem muro e sem veredito até completar', async () => {
+    const app = await abrirApp(new Map());
+    const a = app.useApp.getState();
+    app.novoProjeto();
+    const b = app.useApp.getState();
+    expect(b.titulo).toBe('Sem título');
+    expect(b.idDoProjeto).not.toBe(a.idDoProjeto);
+    expect(b.sujo).toBe(false);
+    expect(b.faltando).toEqual(expect.arrayContaining(['H_muro', 'H_solo', 'gama_solo', 'phi_solo', 'B_sap', 'h_sap', 'L_total']));
+    expect(b.modelo).toBeNull();
+    expect(b.veredito).toBeNull();
+    expect(b.resultado).not.toBeNull();
   });
 
   it('a primeira abertura em outra máquina (navegador vazio) também nasce com identidade própria', async () => {

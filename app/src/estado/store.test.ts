@@ -3,6 +3,7 @@
 // estragado no navegador). Cada teste "recarrega a página" (módulos novos) com
 // um localStorage de mentira, que sobrevive à recarga como o de verdade.
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { alteracoesDoExemplo } from './novo';
 
 function armazenamento(m: Map<string, string>) {
   return {
@@ -77,7 +78,8 @@ describe('o último projeto no navegador', () => {
     app.useApp.getState().escolherAba('memoria');
     app = await abrirApp(m);
     const s = app.useApp.getState();
-    expect(s.alteracoes).toEqual({ H_muro: 2.2, Tipo_muro: 'Contrafortes' });
+    // a 1ª abertura é o exemplo (14/10): as alterações dele + as duas desta sessão
+    expect(s.alteracoes).toEqual({ ...alteracoesDoExemplo(), H_muro: 2.2, Tipo_muro: 'Contrafortes' });
     expect(s.sujo).toBe(true);
     expect(s.aba).toBe('memoria');
     expect(s.resultado?.num('H_muro')).toBe(2.2);
@@ -95,7 +97,7 @@ describe('o último projeto no navegador', () => {
     expect(app.lembrarLarguraDoPainel()).toBeNull();
     const s = app.useApp.getState();
     expect(s.aba).toBe('3d');
-    expect(s.alteracoes).toEqual({});
+    expect(s.alteracoes).toEqual(alteracoesDoExemplo());
     expect(s.resultado).not.toBeNull();
   });
 

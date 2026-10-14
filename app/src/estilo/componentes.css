@@ -204,6 +204,15 @@ body[data-theme='dark'] .escolha-desenho .placa {
 .entrada.apagada .entrada-controle:focus-within {
   opacity: 1;
 }
+/* Dado do projeto em branco (muro novo, 14/10): o controle ganha a moldura de alerta até ser preenchido. */
+.entrada.faltando .campo,
+.entrada.faltando select {
+  border-color: var(--warn-line);
+  background: var(--warn-bg);
+}
+.entrada.faltando > label {
+  color: var(--warn);
+}
 
 /* ── CAMPOS ─────────────────────────────────────────────────────────────── */
 

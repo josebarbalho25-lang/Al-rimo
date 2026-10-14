@@ -345,7 +345,8 @@ describe('valor vindo de arquivo (validarValor)', () => {
     expect(validarValor(c('H_muro'), 'abc')).toEqual({ ok: false });
     expect(validarValor(c('H_muro'), { a: 1 })).toEqual({ ok: false });
     expect(validarValor(c('H_muro'), Number.NaN)).toEqual({ ok: false });
-    expect(validarValor(c('H_muro'), null)).toEqual({ ok: false });
+    // vazio passa em qualquer campo (14/10): o muro novo nasce com dados em branco e pode ser salvo pela metade
+    expect(validarValor(c('H_muro'), null)).toEqual({ ok: true, valor: null });
     expect(validarValor(c('s_dir'), null)).toEqual({ ok: true, valor: null });
   });
   it('opção: a da lista, com a caixa da lista; fora da lista é recusada', () => {

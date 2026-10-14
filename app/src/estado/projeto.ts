@@ -14,6 +14,7 @@
 
 import type { Alteracoes, Valor } from '@/motor/tipos';
 import { validarValor, type Campo } from './campos';
+import { alteracoesDoExemplo, alteracoesDoNovo, extrasDoNovo, TITULO_DO_EXEMPLO } from './novo';
 import { ruim } from './recadoRuim';
 
 export const EXTENSAO = '.alrimo';
@@ -81,8 +82,14 @@ export function novoIdDeProjeto(): string {
 }
 
 /** O muro em branco do Novo e da primeira abertura — já com a identidade dele. */
+/** O muro novo: dados do terreno e do projeto em branco, automáticos seguros (estado/novo.ts — Jose, 13/10). */
 export function projetoNovo(): Projeto {
-  return { id: novoIdDeProjeto(), titulo: 'Sem título', alteracoes: {}, extras: {} };
+  return { id: novoIdDeProjeto(), titulo: 'Sem título', alteracoes: alteracoesDoNovo(), extras: extrasDoNovo() };
+}
+
+/** O muro de exemplo: a aula 12.2, com a sapata rígida (estado/novo.ts). Identidade própria a cada abertura. */
+export function projetoExemplo(): Projeto {
+  return { id: novoIdDeProjeto(), titulo: TITULO_DO_EXEMPLO, alteracoes: alteracoesDoExemplo(), extras: {} };
 }
 
 export function serializarProjeto(p: Projeto, versaoDaConta: string): string {

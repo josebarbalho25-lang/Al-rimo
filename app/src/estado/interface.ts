@@ -18,6 +18,10 @@ interface EstadoDaInterface {
   /** A entrada por figuras está aberta. */
   porFiguras: boolean;
   abrirPorFiguras: () => void;
+  /** Abre a entrada por figuras na aba do campo e com o foco nele (o "Faltam N dados" da barra de estado). */
+  abrirNoCampo: (nome: string) => void;
+  /** O campo em que a entrada por figuras abre (null = a 1ª aba). */
+  campoInicial: string | null;
   fecharPorFiguras: () => void;
   /** A lista da esquerda está recolhida na faixa fina. */
   listaRecolhida: boolean;
@@ -26,7 +30,9 @@ interface EstadoDaInterface {
 
 export const useInterface = create<EstadoDaInterface>((set, get) => ({
   porFiguras: false,
-  abrirPorFiguras: () => set({ porFiguras: true }),
+  campoInicial: null,
+  abrirPorFiguras: () => set({ porFiguras: true, campoInicial: null }),
+  abrirNoCampo: (nome) => set({ porFiguras: true, campoInicial: nome }),
   fecharPorFiguras: () => set({ porFiguras: false }),
   listaRecolhida: lembrar(CHAVES.lista, false, ehBooleano),
   alternarLista: () => {

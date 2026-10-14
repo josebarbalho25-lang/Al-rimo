@@ -23,6 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } fr
 import { createPortal } from 'react-dom';
 import { campoEspelhado, secaoVisivel } from '@/estado/campos';
 import { CAMPOS, SECOES } from '@/estado/store';
+import { useInterface } from '@/estado/interface';
 import { figuraDaEntrada } from '@/figuras/mapa';
 import { CorteDoMuro } from '@/figuras/dinamicas/CorteDoMuro';
 import type { Valor } from '@/motor/tipos';
@@ -41,9 +42,12 @@ const NO_CORTE = new Set(['H_muro', 'H_solo', 't_bloco', 'Tipo_muro', 'q_sobre',
 export function EntradaPorFiguras({ aoFechar }: { aoFechar: () => void }) {
   const { ler, propsDaLinha } = useLinhasDeEntrada();
   const secoes = SECOES.filter((s) => secaoVisivel(s, ler));
-  const [aba, setAba] = useState(secoes[0]?.id ?? '');
-  const [ativo, setAtivo] = useState<string | null>(null);
-  const [focar, setFocar] = useState<string | null>(null);
+  const campoInicial = useInterface((s) => s.campoInicial);
+  const [aba, setAba] = useState(
+    () => secoes.find((s) => campoInicial && s.campos.some((c) => c.meta.nome === campoInicial))?.id ?? secoes[0]?.id ?? '',
+  );
+  const [ativo, setAtivo] = useState<string | null>(campoInicial);
+  const [focar, setFocar] = useState<string | null>(campoInicial);
   const campos = useRef<HTMLDivElement>(null);
   const caixaDaFigura = useRef<HTMLDivElement>(null);
   // A cota clicada no corte vivo: a caixinha do número abre em cima dela, como no CAD (Jose, 12/10).

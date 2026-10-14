@@ -16,6 +16,7 @@ import { useCallback, useState } from 'react';
 import {
   exportarIfc,
   imprimirMemoria,
+  abrirExemplo,
   abrirProjeto,
   novoProjeto,
   salvarProjeto,
@@ -28,6 +29,7 @@ import { JanelaDoTermo } from './TermoDeUso';
 import {
   IconeAbrir,
   IconeEngrenagem,
+  IconeExemplo,
   IconeExportar,
   IconeFigura,
   IconeImprimir,
@@ -69,6 +71,9 @@ export function TopBar() {
         </button>
         <button className="btn-icone" title="Abrir  ·  Ctrl+O" onClick={() => void abrirProjeto()}>
           <IconeAbrir tamanho={16} />
+        </button>
+        <button className="btn-icone" title="Exemplo — aula 12.2" onClick={() => abrirExemplo()}>
+          <IconeExemplo tamanho={16} />
         </button>
         <button
           className="btn-icone"

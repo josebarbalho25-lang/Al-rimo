@@ -333,7 +333,10 @@ export function lerDoCampo(texto: string, campo: Regras): LidoDoCampo {
  *   · o resto que o campo recusaria é recusado (quem chama conta e avisa).
  */
 export function validarValor(campo: Campo, v: unknown): { ok: true; valor: Valor } | { ok: false } {
-  if (v === null) return campo.opcional || campo.meta.padrao === null ? { ok: true, valor: null } : { ok: false };
+  // Vazio passa em QUALQUER campo (14/10): o muro novo nasce com os dados do projeto em branco e pode ser salvo pela
+  // metade. Antes o vazio de campo obrigatório voltava para o padrão — o número da aula — sem ninguém ver; agora ele
+  // reabre vazio e a barra de estado conta o que falta (estado/novo.ts).
+  if (v === null) return { ok: true, valor: null };
   // Lista dependente: o que vale depende das outras entradas do MESMO arquivo, que ainda não foram lidas. Aqui
   // passa o número que o campo aceitaria; o que sair da lista a conta ajusta depois (ajustarAsListas).
   if (campo.controle === 'numero' || campo.opcoesRef) {

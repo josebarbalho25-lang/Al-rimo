@@ -361,10 +361,14 @@ e dizer ao Jose o que mudou e por quê.
   σadm com teto e exigido abaixo de SPT 5, estribo mínimo de torção com bw = 2·he, Kp do dente e da frente pelo
   φ' do SOLO DE APOIO (Kp_b; o γ segue o do solo contido, dedução) e φ' do solo de apoio OBRIGATÓRIO (Jose: "é o
   solo natural, do laudo de sondagem, é o que o calculista digita"; padrão 25 = exemplo; vazio → o deslizamento
-  reprova pedindo o dado). Grupo 2: "Novo" com os dados do
-  projeto em branco + autos seguros, aula 12.2 como arquivo de exemplo. Grupos 3/4 um por um com ele (q_est, sg_on,
-  M2d, fpk líquida, Δξ, vão 2h, painel apoiado × negativo nos intermediários, água × drenagem, Trav_lat/αv, bw,
-  c_pv, AsMin, Ka_dir/d_dir…). A perna em L da barra da canaleta do contraforte ainda usa o ℓb da sapata (muda com a
+  reprova pedindo o dado). Grupo 2 FEITO 14/10 (`estado/novo.ts`): o Novo abre com os dados do terreno e do
+  projeto EM BRANCO (H_muro, H_solo, NSPT, γ, φ', q, B, h, a, SPT da base, φ' da base, comprimento), sem dente, e
+  Ka/s/d no automático (K fica 1,0, o do curso); enquanto falta dado a conta roda mas não há muro nem veredito — a
+  barra de estado diz "Faltam N dados" e leva ao 1º, a linha fica marcada. Vazio é aceito no arquivo (antes voltava
+  ao número da aula). Exemplo = aula 12.2 (AULA_122_ENTRADAS) com a sapata a 0,45 (0,40 fica 3 mm abaixo do
+  (1,40 − 0,19)/3); botão do livro na barra de cima; é também a 1ª abertura do app. Grupos 3/4: q_est (Sim) e sg_on
+  (Sim) são decisões dele — não reabrir sem fonte (memória feedback_nao_reabrir_sem_fonte); faltam o painel apoiado ×
+  negativo nos intermediários e água × drenagem, e os do curso (M2d, fpk líquida, Δξ, vão 2h, AsMin) seguem a régua. A perna em L da barra da canaleta do contraforte ainda usa o ℓb da sapata (muda com a
   barra em U, anotação 1 abaixo).
 - **Junção de 14/10:** desenho-peso (dente, desenhos da sapata, graute em grade, peso, traspasse) e sapata-molas (aba
   Sapata sobre molas) juntas no main; o que estava solto no main foi para o stash "main sem commit antes da junção

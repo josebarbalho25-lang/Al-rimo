@@ -78,6 +78,7 @@ export function useLinhasDeEntrada() {
   const ajustesDeLista = useApp((s) => s.ajustesDeLista);
   const resultado = useApp((s) => s.resultado);
   const avisosDaConta = useApp((s) => s.avisosDaConta);
+  const faltando = useApp((s) => s.faltando);
   const definir = useApp((s) => s.definir);
 
   const ler = useMemo(() => leitorDoEstado({ alteracoes, extras }), [alteracoes, extras]);
@@ -118,6 +119,7 @@ export function useLinhasDeEntrada() {
   const propsDoCampo = (c: Campo) => {
     const trava = valorTravado(c.meta.nome, ler);
     return {
+      faltando: faltando.includes(c.meta.nome),
       campo: c,
       opcoes: opcoesVivas.get(c.meta.nome) ?? c.opcoes,
       valor: trava ?? ler(c.meta.nome),
@@ -232,6 +234,7 @@ export const LinhaDeEntrada = memo(function LinhaDeEntrada({
   aviso,
   figura,
   auto = null,
+  faltando = false,
   comDesenho = false,
   figuraAberta,
   definir,
@@ -251,6 +254,8 @@ export const LinhaDeEntrada = memo(function LinhaDeEntrada({
   figura: string | null;
   /** Entrada opcional: o valor que a conta usou quando o campo está vazio (aparece apagado no lugar do "auto"). */
   auto?: string | null;
+  /** Dado do projeto em branco (muro novo): a linha fica marcada até ser preenchida (estado/novo.ts). */
+  faltando?: boolean;
   /** Entrada por figuras: a escolha que se desenha vira botões com desenho (EscolhaComDesenho). */
   comDesenho?: boolean;
   figuraAberta: boolean;
@@ -277,7 +282,7 @@ export const LinhaDeEntrada = memo(function LinhaDeEntrada({
   // Entrada por figuras: escolha que se desenha — rótulo em cima, os botões com desenho embaixo, a linha toda.
   if (comDesenho && !travado && campo.controle !== 'numero' && temDesenho(nome, opcoes)) {
     return (
-      <div className={`entrada entrada-desenho${ativa ? '' : ' apagada'}`} data-campo={nome}>
+      <div className={`entrada entrada-desenho${ativa ? '' : ' apagada'}${faltando ? ' faltando' : ''}`} data-campo={nome}>
         <label title={campo.dica}>{campo.curto}</label>
         {botaoFigura}
         <EscolhaComDesenho nome={nome} rotulo={campo.curto} opcoes={opcoes} valor={valor} aoEscolher={mudar} />
@@ -305,7 +310,7 @@ export const LinhaDeEntrada = memo(function LinhaDeEntrada({
   const largo = campo.controle === 'lista' && !campo.meta.unidade;
 
   return (
-    <div className={`entrada${ativa ? '' : ' apagada'}`} data-campo={nome}>
+    <div className={`entrada${ativa ? '' : ' apagada'}${faltando ? ' faltando' : ''}`} data-campo={nome}>
       <label title={campo.dica}>{campo.curto}</label>
       <div className={`entrada-controle${largo ? ' largo' : ''}`}>
         {controle}
