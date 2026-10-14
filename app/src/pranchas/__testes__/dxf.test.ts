@@ -5,6 +5,10 @@
 
   A folha de exemplo tem um de cada: moldura, linhas, tracejada, disco cheio, textos com acento/Ø/φ/≥ e um a 90°,
   uma hachura de cada padrão (a da alvenaria com furo), uma imagem PNG e o carimbo com 3 atributos.
+
+  O que a revisão de 14/10 achou e não pode voltar: camada que muda de cor de um arquivo para outro, fundo sólido na
+  camada do desenho (plotado em monocromático vira borrão), acento quebrado (o arquivo é 1252), carimbo com ponto
+  base no canto da FOLHA (o do escritório não cai no lugar), linha repetida e texto vazio.
 */
 import { afterAll, describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
@@ -15,9 +19,13 @@ import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import { HACHURA } from '@/desenhos/hachuras';
 import {
-  MAIUSCULA_DA_ARIAL, corDoCad, espessuraDoCad, gerarDxf, nomeDoCad, pacoteDxf, pixelsDaImagem, textoAscii,
+  MAIUSCULA_DA_ARIAL, bytesDoDxf, corDoCad, espessuraDoCad, gerarDxf, nomeDoCad, pacoteDxf, pixelsDaImagem, quaseBranco,
+  semRepetidas, textoDoCad,
   type FolhaDxf,
 } from '../dxf';
+import { CAMADAS } from '../camadasDxf';
+import { comporFolha, type ContextoDaFolha } from '../folha';
+import { novaFolha } from '../padrao';
 import { PADRAO_DO_MATERIAL } from '../padroesDxf';
 import type { Primitiva, Pt, Traco } from '../tipos';
 import { crc32, dataUrlParaBytes, zipar } from '../zip';
@@ -36,9 +44,10 @@ const temEzdxf = (() => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Rel = Record<string, any>;
 let nArq = 0;
+/** O DXF em texto vai para o disco como o app grava: em bytes da página 1252. */
 function validar(conteudo: string | Uint8Array, ext: 'dxf' | 'zip'): Rel {
   const arq = join(PASTA, `t${++nArq}.${ext}`);
-  writeFileSync(arq, conteudo);
+  writeFileSync(arq, typeof conteudo === 'string' ? bytesDoDxf(conteudo) : conteudo);
   const r = spawnSync(PYTHON, ['-I', VALIDADOR, arq, '--estrito', '--json'], {
     encoding: 'utf8', env: { ...process.env, PYTHONIOENCODING: 'utf-8' }, maxBuffer: 64 * 1024 * 1024,
   });
@@ -142,17 +151,28 @@ function entidades(dxf: string, secao: 'ENTITIES' | 'BLOCKS'): Ent[] {
 const val = (e: Ent, c: number): string | undefined => e.g.find(([k]) => k === c)?.[1];
 const num = (e: Ent, c: number): number => Number(val(e, c));
 
+/** As camadas da tabela LAYER: nome → [cor (62), espessura (370)]. */
+function camadas(dxf: string): Record<string, [number, number]> {
+  const out: Record<string, [number, number]> = {};
+  for (const m of dxf.matchAll(/\nLAYER\n5\n[0-9A-F]+\n[\s\S]*?\n2\n([^\n]+)\n70\n\d+\n62\n(-?\d+)\n[\s\S]*?\n370\n(-?\d+)\n/g)) out[m[1]] = [Number(m[2]), Number(m[3])];
+  return out;
+}
+
 describe('dxf — gerado (sem Python)', () => {
   const folha = folhaDeExemplo();
   const { dxf, imagens } = gerarDxf(folha);
   const ents = entidades(dxf, 'ENTITIES');
   const conta = (t: string) => ents.filter((e) => e.tipo === t).length;
 
-  it('é DXF 2004 em milímetros, 100 % ASCII', () => {
+  it('é DXF 2004 em milímetros, na página 1252: o acento vai em byte, o resto em \\U+', () => {
     expect(dxf).toMatch(/\$ACADVER\n1\nAC1018\n/);
+    expect(dxf).toMatch(/\$DWGCODEPAGE\n3\nANSI_1252\n/);
     expect(dxf).toMatch(/\$INSUNITS\n70\n4\n/);
     expect(dxf).toMatch(/\$MEASUREMENT\n70\n1\n/);
-    expect(/^[\n\x20-\x7e]*$/.test(dxf)).toBe(true);
+    // nada fora da página 1252 sobra no texto do arquivo
+    const bytes = bytesDoDxf(dxf);
+    expect(bytes.length).toBe([...dxf].length);
+    expect(bytes.includes(0x3f) && !dxf.includes('?')).toBe(false);
   });
 
   it('uma entidade por primitiva (fundo da hachura e disco cheio viram HATCH SOLID por baixo)', () => {
@@ -178,14 +198,14 @@ describe('dxf — gerado (sem Python)', () => {
     expect([num(img, 10), num(img, 20)]).toEqual([300, 197]);
   });
 
-  it('texto em ASCII com \\U+, altura da maiúscula, alinhamento e giro', () => {
-    for (const t of TEXTOS) expect(dxf).toContain(textoAscii(t));
-    expect(textoAscii('Ø10 c/40')).toBe('\\U+00D810 c/40');
-    expect(textoAscii("φ' = 30°")).toBe("\\U+03C6' = 30\\U+00B0");
-    expect(textoAscii('≥')).toBe('\\U+2265');
-    expect(textoAscii('ção')).toBe('\\U+00E7\\U+00E3o');
+  it('texto: o que a 1252 tem fica, o resto vira \\U+; altura da maiúscula, alinhamento e giro', () => {
+    for (const t of TEXTOS) expect(dxf).toContain(textoDoCad(t));
+    expect(textoDoCad('Ø10 c/40')).toBe('Ø10 c/40');
+    expect(textoDoCad("φ' = 30°")).toBe("\\U+03C6' = 30°");
+    expect(textoDoCad('As ≥ 0,15 % — 2 × 3 m² · ação')).toBe('As \\U+2265 0,15 % — 2 × 3 m² · ação');
+    expect(textoDoCad('−1\ndois')).toBe('\\U+22121 dois');
     const textos = ents.filter((e) => e.tipo === 'TEXT');
-    const de = (s: string) => textos.find((e) => val(e, 1) === textoAscii(s))!;
+    const de = (s: string) => textos.find((e) => val(e, 1) === textoDoCad(s))!;
     expect(num(de(TEXTOS[0]), 40)).toBeCloseTo(3.5 * MAIUSCULA_DA_ARIAL, 6);
     expect(val(de(TEXTOS[0]), 72)).toBeUndefined();          // start = esquerda
     expect(num(de(TEXTOS[1]), 72)).toBe(1);                   // middle = centro, pelo 2º ponto
@@ -197,26 +217,50 @@ describe('dxf — gerado (sem Python)', () => {
     expect(dxf).toMatch(/\nSTYLE\n5\n[0-9A-F]+\n330\n[0-9A-F]+\n100\nAcDbSymbolTableRecord\n100\nAcDbTextStyleTableRecord\n2\nALRIMO\n[\s\S]*?\n3\narial\.ttf\n/);
   });
 
-  it('cor verdadeira + índice mais próximo; preto vira o 7 sem cor verdadeira; espessura no padrão do CAD', () => {
+  it('cp1252 em bytes: "ç" é 0xE7, "—" é 0x97, "Ø" é 0xD8; o pacote grava os bytes, não UTF-8', () => {
+    const b = bytesDoDxf('ação — Ø');
+    expect([...b]).toEqual([0x61, 0xe7, 0xe3, 0x6f, 0x20, 0x97, 0x20, 0xd8]);
+    const zip = pacoteDxf([folhaDeExemplo()], new Date(2026, 9, 14));
+    // "Fundação" em 1252 está dentro do zip; em UTF-8 ("Ã§") não
+    const procura = (agulha: number[]) => zip.some((_, i) => agulha.every((x, k) => zip[i + k] === x));
+    expect(procura([0x46, 0x75, 0x6e, 0x64, 0x61, 0xe7, 0xe3, 0x6f])).toBe(true);
+    expect(procura([0xc3, 0xa7])).toBe(false);
+  });
+
+  it('cor e espessura POR CAMADA: a entidade não leva 62/420/370; a camada leva os da tabela', () => {
     const l = ents.find((e) => e.tipo === 'LINE' && val(e, 8) === 'EIXOS')!;
-    expect(num(l, 420)).toBe(0xff0000);
-    expect(num(l, 62)).toBe(1);
-    expect(num(l, 370)).toBe(13);
+    for (const c of [62, 420, 370]) expect(val(l, c)).toBeUndefined();
     const moldura = ents.find((e) => e.tipo === 'LWPOLYLINE' && val(e, 8) === 'MOLDURA')!;
-    expect(val(moldura, 420)).toBeUndefined();
-    expect(num(moldura, 62)).toBe(7);
-    expect(num(moldura, 370)).toBe(50);
+    for (const c of [62, 420, 370]) expect(val(moldura, c)).toBeUndefined();
     expect(num(moldura, 70)).toBe(1);                          // fechada
+    const cam = camadas(dxf);
+    expect(cam.MOLDURA).toEqual([CAMADAS.MOLDURA.aci, 50]);
+    expect(cam.EIXOS).toEqual([CAMADAS.EIXOS.aci, 13]);
+    expect(cam.ALVENARIA).toEqual([CAMADAS.ALVENARIA.aci, espessuraDoCad(CAMADAS.ALVENARIA.espessura)]);
+    expect(cam['0']).toEqual([7, -3]);                         // a camada 0 com a espessura padrão, não 0,00 mm
     expect(corDoCad('#787878')).toEqual({ aci: 8, verdadeira: 0x787878 });
     expect(corDoCad('#1a1a1a')).toEqual({ aci: 7 });
     expect([0.2, 0.2045, 0.36, 0.5, 3].map(espessuraDoCad)).toEqual([20, 20, 35, 50, 211]);
   });
 
-  it('tracejado vira LTYPE próprio (mm de papel) e a camada leva a cor mais frequente', () => {
+  it('a tabela de camadas não depende do desenho: a mesma cor e espessura em arquivos diferentes', () => {
+    // o mesmo GRAUTE, num arquivo quase todo azul e noutro todo preto (antes a camada pegava a cor mais usada)
+    const folhaCom = (cor: string): FolhaDxf => ({
+      nome: 'x', largura: 100, altura: 100,
+      prims: Array.from({ length: 5 }, (_, i): Primitiva => ({ k: 'linha', a: [0, i], b: [10, i], e: tr('graute', cor, 0.2) })),
+    });
+    const a = camadas(gerarDxf(folhaCom('#2e75b6')).dxf);
+    const b = camadas(gerarDxf(folhaCom('#000000')).dxf);
+    expect(a.GRAUTE).toEqual(b.GRAUTE);
+    expect(a.GRAUTE).toEqual([CAMADAS.GRAUTE.aci, espessuraDoCad(CAMADAS.GRAUTE.espessura)]);
+    // a convenção do Pró-Viga onde ela vale
+    expect([CAMADAS.CONCRETO.aci, CAMADAS.COTAS.aci, CAMADAS.TEXTOS.aci, CAMADAS.ACO.aci]).toEqual([8, 8, 7, 1]);   // aço em vermelho, como no PDF
+  });
+
+  it('tracejado vira LTYPE próprio (mm de papel); a linha tracejada continua "por camada" em cor', () => {
     expect(dxf).toMatch(/\nLTYPE\n[\s\S]*?\n2\nTRACEJADO_2_1\n[\s\S]*?\n73\n2\n40\n3\n49\n2\n74\n0\n49\n-1\n/);
     const l = ents.find((e) => e.tipo === 'LINE' && val(e, 8) === 'EIXOS')!;
     expect(val(l, 6)).toBe('TRACEJADO_2_1');
-    expect(dxf).toMatch(/\nLAYER\n[\s\S]*?\n2\nEIXOS\n70\n0\n62\n1\n420\n16711680\n/);
   });
 
   it('hachura: par-ímpar, não associativa, padrão do CAD com as linhas de definição na escala do papel', () => {
@@ -232,17 +276,85 @@ describe('dxf — gerado (sem Python)', () => {
     // ANSI31 a 45°, espaçamento 3,175 × escala = 1,36 mm (o que o app desenha: 6 px ÷ 4,4)
     const [ox, oy] = [num(alv, 45), num(alv, 46)];
     expect(Math.hypot(ox, oy)).toBeCloseTo(6 / 4.4, 3);
-    const terra = hs.find((h) => val(h, 2) === 'EARTH')!;
-    expect(num(terra, 78)).toBe(6);
-    expect(num(terra, 420)).toBe(parseInt(HACHURA.terra.slice(1), 16));   // risco marrom por cima…
-    const fundoTerra = hs[hs.indexOf(terra) - 1];
-    expect(val(fundoTerra, 2)).toBe('SOLID');                              // …do fundo bege, que vem antes
-    expect(num(fundoTerra, 420)).toBe(parseInt(HACHURA.terraFundo.slice(1), 16));
     const graute = hs.filter((h) => val(h, 8) === 'GRAUTE');
     expect(graute.map((h) => val(h, 2))).toEqual(['ANSI31']);              // graute: só o risco, sem fundo
-    // o disco cheio: dois arcos de 180° (bulge 1)
+    // o disco cheio: dois arcos de 180° (bulge 1), na camada da barra (é o desenho dela, não fundo)
     const disco = hs.find((h) => val(h, 8) === 'ACO')!;
     expect(disco.g.filter(([c]) => c === 42).map(([, v]) => Number(v))).toEqual([1, 1]);
+    expect(val(disco, 420)).toBeUndefined();
+  });
+
+  it('fundo sólido na camada -FUNDO, na cor verdadeira; o risco fica na camada do material, por camada', () => {
+    const hs = ents.filter((e) => e.tipo === 'HATCH');
+    const terra = hs.find((h) => val(h, 2) === 'EARTH')!;
+    expect(val(terra, 8)).toBe('TERRENO');
+    expect(val(terra, 420)).toBeUndefined();
+    const fundoTerra = hs[hs.indexOf(terra) - 1];                          // o fundo vem antes (por baixo)
+    expect([val(fundoTerra, 2), val(fundoTerra, 8)]).toEqual(['SOLID', 'TERRENO-FUNDO']);
+    expect(num(fundoTerra, 420)).toBe(parseInt(HACHURA.terraFundo.slice(1), 16));
+    const amarelo = hs.find((h) => val(h, 2) === 'SOLID' && num(h, 420) === 0xffff80)!;   // o bloco canaleta
+    expect(val(amarelo, 8)).toBe('ALVENARIA-FUNDO');
+    expect(new Set(hs.filter((h) => val(h, 2) === 'SOLID' && val(h, 8) !== 'ACO').map((h) => val(h, 8)!.endsWith('-FUNDO')))).toEqual(new Set([true]));
+    // as faces do 3D Cores já são fundo: camada própria, sem sufixo
+    const f = gerarDxf({ nome: 'f', largura: 50, altura: 50, prims: [{ k: 'hachura', aneis: [ret(0, 0, 10, 10)], padrao: 'solido', fundo: '#787878', camada: '3d-faces' }] });
+    expect(entidades(f.dxf, 'ENTITIES').map((e) => val(e, 8))).toEqual(['3D-FACES']);
+  });
+
+  it('branco e quase-branco não vão (sólido nem traço): plotado em monocromático sairiam pretos', () => {
+    expect(['#fff', '#ffffff', '#f6f6f6', '#f7f7f7', '#F0F0F0'].every(quaseBranco)).toBe(true);
+    expect(['#ffffb7', '#ffff80', '#ede4dd', '#efefef', 'none', undefined].some(quaseBranco)).toBe(false);
+    const f = gerarDxf({
+      nome: 'b', largura: 50, altura: 50,
+      prims: [
+        { k: 'hachura', aneis: [ret(0, 0, 10, 10)], padrao: 'solido', fundo: '#f6f6f6', camada: 'drenagem', borda: tr('drenagem', '#f6f6f6', 0.2) },
+        { k: 'hachura', aneis: [ret(0, 0, 10, 10)], padrao: 'alvenaria', fundo: '#ffffff', risco: '#7f7f7f', camada: 'alvenaria' },
+        { k: 'polilinha', pts: ret(1, 1, 5, 5), fechada: true, e: tr('concreto', '#ffffff', 0.3) },
+        { k: 'linha', a: [0, 0], b: [5, 5], e: tr('concreto', '#f7f7f7', 0.3) },
+      ],
+    });
+    // só o risco da alvenaria (o fundo branco dela não)
+    expect(entidades(f.dxf, 'ENTITIES').map((e) => `${e.tipo} ${val(e, 2)}`)).toEqual(['HATCH ANSI31']);
+  });
+
+  it('linha, polilinha e hachura repetidas saem uma vez só (fica a última cópia); texto vazio não sai', () => {
+    const e = tr('alvenaria', '#000000', 0.2);
+    const ps: Primitiva[] = [
+      { k: 'linha', a: [0, 0], b: [10, 0], e },
+      { k: 'linha', a: [10, 0], b: [0, 0], e },                                   // a mesma, ao contrário
+      { k: 'linha', a: [0, 0], b: [10, 0], e: tr('cotas', '#000000', 0.2) },       // outra camada: fica
+      { k: 'polilinha', pts: ret(0, 0, 5, 5), fechada: true, e },
+      { k: 'polilinha', pts: [...ret(0, 0, 5, 5)].reverse().slice(1).concat([[0, 5]]), fechada: true, e },   // outro começo e sentido
+      { k: 'hachura', aneis: [ret(0, 0, 5, 5)], padrao: 'solido', fundo: '#787878', camada: 'alvenaria', borda: e },
+      { k: 'hachura', aneis: [ret(0, 0, 5, 5)], padrao: 'solido', fundo: '#787878', camada: 'alvenaria', borda: e },
+      { k: 'texto', p: [0, 0], t: '', altura: 2, ancora: 'start', angulo: 0, cor: '#000', camada: 'quadro' },
+      { k: 'texto', p: [0, 0], t: '   ', altura: 2, ancora: 'start', angulo: 0, cor: '#000', camada: 'quadro' },
+    ];
+    const limpas = semRepetidas(ps);
+    expect(limpas.map((q) => q.k)).toEqual(['linha', 'linha', 'hachura', 'polilinha']);
+    const out = entidades(gerarDxf({ nome: 'd', largura: 50, altura: 50, prims: ps }).dxf, 'ENTITIES');
+    expect(out.map((q) => `${q.tipo} ${val(q, 8)}`)).toEqual(['LINE ALVENARIA', 'LINE COTAS', 'HATCH ALVENARIA-FUNDO', 'LWPOLYLINE ALVENARIA']);
+    expect(out.some((q) => q.tipo === 'TEXT')).toBe(false);
+  });
+
+  it('texto com máscara (o halo do SVG) vira MTEXT com a máscara na cor do desenho', () => {
+    const f = gerarDxf({
+      nome: 'm', largura: 100, altura: 100,
+      prims: [
+        { k: 'texto', p: [20, 50], t: 'aterro {1}', altura: 3, ancora: 'start', angulo: 0, cor: '#a67857', mascara: true, camada: 'textos' },
+        { k: 'texto', p: [60, 50], t: 'solo 260', altura: 2.5, ancora: 'middle', angulo: 90, cor: '#404040', mascara: true, camada: 'cotas' },
+      ],
+    });
+    const ms = entidades(f.dxf, 'ENTITIES');
+    expect(ms.map((q) => q.tipo)).toEqual(['MTEXT', 'MTEXT']);
+    const [a, b] = ms;
+    expect([num(a, 90), num(a, 63), num(a, 45)]).toEqual([3, 0, 1.2]);
+    expect(val(a, 1)).toBe('aterro \\{1\\}');                         // a chave é comando no MTEXT: vai escapada
+    expect(num(a, 71)).toBe(4);                                          // meio à esquerda
+    // o meio da maiúscula: meia altura acima da linha de base (y do DXF = 100 − 50)
+    expect(num(a, 20)).toBeCloseTo(50 + (3 * MAIUSCULA_DA_ARIAL) / 2, 6);
+    expect(num(b, 71)).toBe(5);
+    expect([num(b, 11), num(b, 21)]).toEqual([0, 1]);                    // girado 90° pelo vetor de direção
+    expect(num(b, 10)).toBeCloseTo(60 - (2.5 * MAIUSCULA_DA_ARIAL) / 2, 6);
   });
 
   it('imagem vinculada a imagens/, pixels lidos do PNG, tamanho em mm de papel', () => {
@@ -259,19 +371,28 @@ describe('dxf — gerado (sem Python)', () => {
     expect(dxf).toMatch(/\nCLASS\n1\nIMAGE\n2\nAcDbRasterImage\n/);
   });
 
-  it('carimbo: BLOCK com a geometria e um ATTDEF por atributo; INSERT no 0,0 com os ATTRIB do INSERT', () => {
+  it('carimbo: BLOCK com o ponto base no canto inferior direito dele; INSERT nesse canto, com os ATTRIB', () => {
     const bl = entidades(dxf, 'BLOCKS');
     const ini = bl.findIndex((e) => e.tipo === 'BLOCK' && val(e, 2) === 'CARIMBO');
     const fim = bl.findIndex((e, i) => i > ini && e.tipo === 'ENDBLK');
     const dentro = bl.slice(ini + 1, fim);
     expect(dentro.map((e) => e.tipo)).toEqual(['LWPOLYLINE', 'LINE', 'ATTDEF', 'ATTDEF', 'ATTDEF']);
     expect(num(bl[ini], 70)).toBe(2);                         // tem atributo variável
+    expect([num(bl[ini], 10), num(bl[ini], 20)]).toEqual([0, 0]);
+    // a geometria relativa ao canto inferior direito (410, 287 no papel): tudo à esquerda e acima de 0,0
+    const borda = dentro[0];
+    const xs = borda.g.filter(([c]) => c === 10).map(([, v]) => Number(v));
+    const ys = borda.g.filter(([c]) => c === 20).map(([, v]) => Number(v));
+    expect([Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]).toEqual([-160, 0, 0, 57]);
+    const obra = dentro.find((e) => e.tipo === 'ATTDEF' && val(e, 2) === 'OBRA')!;
+    expect([num(obra, 10), num(obra, 20)]).toEqual([255 - 410, 287 - 245]);
     expect(dentro.filter((e) => e.tipo === 'ATTDEF').map((e) => [val(e, 2), val(e, 3)])).toEqual([['OBRA', 'OBRA'], ['FOLHA', 'FOLHA'], ['ESCALA', 'ESCALA']]);
     const ins = ents.find((e) => e.tipo === 'INSERT')!;
-    expect([val(ins, 2), num(ins, 10), num(ins, 20), num(ins, 41), num(ins, 66)]).toEqual(['CARIMBO', 0, 0, 1, 1]);
+    expect([val(ins, 2), num(ins, 10), num(ins, 20), num(ins, 41), num(ins, 66)]).toEqual(['CARIMBO', 410, 297 - 287, 1, 1]);
     const i = ents.indexOf(ins);
     const atrs = ents.slice(i + 1, i + 4);
-    expect(atrs.map((e) => [val(e, 2), val(e, 1)])).toEqual([['OBRA', textoAscii('Muro de arrimo — Uberaba')], ['FOLHA', '01/03'], ['ESCALA', '1:25']]);
+    expect(atrs.map((e) => [val(e, 2), val(e, 1)])).toEqual([['OBRA', 'Muro de arrimo — Uberaba'], ['FOLHA', '01/03'], ['ESCALA', '1:25']]);
+    expect([num(atrs[0], 10), num(atrs[0], 20)]).toEqual([255, 297 - 245]);   // o ATTRIB fica onde estava na folha
     for (const a of atrs) expect(val(a, 330)).toBe(val(ins, 5));   // dono = o INSERT
     expect(ents[i + 4].tipo).toBe('SEQEND');
     expect(val(ents[i + 4], 330)).toBe(val(ins, 5));
@@ -288,10 +409,59 @@ describe('dxf — gerado (sem Python)', () => {
   });
 });
 
+// ── o carimbo da folha de verdade (folha.ts → dxf.ts) ──
+
+function contexto(): ContextoDaFolha {
+  return {
+    numero: 1,
+    total: 1,
+    obra: { obra: 'Muro de arrimo — Ação', endereco: 'Rua A, 10', proprietario: 'José da Conceição', art: '123', data: '14/10/2026', revisao: 'R00' },
+    escritorio: { empresa: 'Escritório Ação φ ≥', responsavel: 'Eng. Fulano', crea: 'MG-1', contato: '', logo: null, logoLargura: 30 },
+    notasAutomaticas: [],
+    legenda: [],
+    aco: { linhas: [{ bitola: 'Ø10', comprimento: 1, massa: 1 }], total: 1 },
+    desenhar: () => null,
+    saida: true,
+  };
+}
+
+describe('dxf — o carimbo da folha', () => {
+  it('A1: o INSERT no canto inferior direito do carimbo (831, 10), a EMPRESA em negrito', () => {
+    const c = comporFolha(novaFolha('Formas'), contexto());
+    const { dxf } = gerarDxf({ nome: 'a', largura: c.largura, altura: c.altura, prims: c.primitivas });
+    const ents = entidades(dxf, 'ENTITIES');
+    const ins = ents.find((e) => e.tipo === 'INSERT')!;
+    const [cx, cy, cw, ch] = c.carimbo;
+    expect([val(ins, 2), num(ins, 10), num(ins, 20)]).toEqual(['CARIMBO', cx + cw, c.altura - (cy + ch)]);
+    expect(val(ins, 8)).toBe('CARIMBO');
+    const empresa = ents.find((e) => e.tipo === 'ATTRIB' && val(e, 2) === 'EMPRESA')!;
+    expect([val(empresa, 1), val(empresa, 7)]).toEqual(['Escritório Ação \\U+03C6 \\U+2265', 'ALRIMO_NEGRITO']);
+    expect(val(ents.find((e) => e.tipo === 'ATTRIB' && val(e, 2) === 'OBRA')!, 7)).toBe('ALRIMO');
+    // a moldura do bloco termina no ponto base: a borda do carimbo vai de (−180, 0) a (0, 50)
+    const bl = entidades(dxf, 'BLOCKS');
+    const ini = bl.findIndex((e) => e.tipo === 'BLOCK' && val(e, 2) === 'CARIMBO');
+    const borda = bl[ini + 1];
+    const xs = borda.g.filter(([k]) => k === 10).map(([, v]) => Number(v));
+    const ys = borda.g.filter(([k]) => k === 20).map(([, v]) => Number(v));
+    expect([Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]).toEqual([-cw, 0, 0, ch]);
+    // a borda do papel tem camada própria (fina), a moldura a dela (grossa)
+    expect(camadas(dxf).FOLHA[1]).toBeLessThan(camadas(dxf).MOLDURA[1]);
+  });
+
+  it('carimbo de outro tamanho é outro bloco: CARIMBO_200X60, no mesmo canto', () => {
+    const f = novaFolha('Formas');
+    f.carimbo = { largura: 200, altura: 60 };
+    const c = comporFolha(f, contexto());
+    const ents = entidades(gerarDxf({ nome: 'a', largura: c.largura, altura: c.altura, prims: c.primitivas }).dxf, 'ENTITIES');
+    const ins = ents.find((e) => e.tipo === 'INSERT')!;
+    expect([val(ins, 2), val(ins, 8), num(ins, 10), num(ins, 20)]).toEqual(['CARIMBO_200X60', 'CARIMBO', 831, 10]);
+  });
+});
+
 // Para abrir a folha de exemplo num CAD de verdade: ALRIMO_DXF_AMOSTRA=<pasta> npx vitest run src/pranchas
 it.runIf(!!process.env.ALRIMO_DXF_AMOSTRA)('grava a folha de exemplo (dxf + zip) na pasta pedida', () => {
   const pasta = process.env.ALRIMO_DXF_AMOSTRA!;
-  writeFileSync(join(pasta, 'exemplo.dxf'), gerarDxf(folhaDeExemplo()).dxf);
+  writeFileSync(join(pasta, 'exemplo.dxf'), bytesDoDxf(gerarDxf(folhaDeExemplo()).dxf));
   writeFileSync(join(pasta, 'exemplo.zip'), pacoteDxf([folhaDeExemplo()]));
 });
 
@@ -320,8 +490,9 @@ describe('dxf — auxiliares', () => {
   });
 });
 
-describe.skipIf(!temEzdxf)('dxf — conferido pelo ezdxf', () => {
-  it('a folha de exemplo: audit sem erro e recover sem conserto', () => {
+// o Python sobe a cada caso (alguns segundos com a máquina carregada): prazo largo
+describe.skipIf(!temEzdxf)('dxf — conferido pelo ezdxf', { timeout: 60_000 }, () => {
+  it('a folha de exemplo: audit sem erro e recover sem conserto; o texto lido com acento, φ e ≥', () => {
     const { dxf } = gerarDxf(folhaDeExemplo());
     const rel = validar(dxf, 'dxf');
     expect(rel.erros).toEqual([]);
@@ -329,9 +500,25 @@ describe.skipIf(!temEzdxf)('dxf — conferido pelo ezdxf', () => {
     expect(rel.avisos).toEqual([]);
     expect(rel.ok).toBe(true);
     expect(rel.versao).toBe('AC1018');
+    expect(rel.codepage).toBe('ANSI_1252');
     expect(rel.entidades).toEqual({ CIRCLE: 1, HATCH: 13, IMAGE: 1, INSERT: 1, LINE: 3, LWPOLYLINE: 3, TEXT: 5 });
     expect(rel.blocos.CARIMBO).toEqual({ LWPOLYLINE: 1, LINE: 1, ATTDEF: 3 });
     expect(rel.imagens).toEqual([{ arquivo: 'imagens/foto_3D.png', pixels: [4, 3] }]);
+    expect(rel.textos).toEqual(expect.arrayContaining([...TEXTOS, 'Muro de arrimo — Uberaba']));
+    expect(rel.camadas.GRAUTE).toEqual({ cor: CAMADAS.GRAUTE.aci, espessura: espessuraDoCad(CAMADAS.GRAUTE.espessura) });
+  });
+
+  it('o carimbo da folha: "Escritório Ação φ ≥" lido certo; MTEXT com máscara passa no recover', () => {
+    const c = comporFolha(novaFolha('Formas'), contexto());
+    const prims: Primitiva[] = [
+      ...c.primitivas,
+      { k: 'texto', p: [100, 100], t: 'aterro — φ', altura: 3, ancora: 'start', angulo: 0, cor: '#a67857', mascara: true, camada: 'textos' },
+    ];
+    const rel = validar(gerarDxf({ nome: 'a', largura: c.largura, altura: c.altura, prims }).dxf, 'dxf');
+    expect(rel.ok).toBe(true);
+    expect(rel.consertos).toEqual([]);
+    expect(rel.textos).toEqual(expect.arrayContaining(['Escritório Ação φ ≥', 'Muro de arrimo — Ação', 'José da Conceição', 'aterro — φ']));
+    expect(rel.mascaras).toBe(1);
   });
 
   it('o validador tem dente: handle repetido e dono errado reprovam', () => {
@@ -357,6 +544,7 @@ describe.skipIf(!temEzdxf)('dxf — conferido pelo ezdxf', () => {
     for (const d of rel.dxf) {
       expect(d.erros).toEqual([]);
       expect(d.consertos).toEqual([]);
+      expect(d.textos).toContain('Fundação');   // os bytes 1252 de dentro do zip lidos como 1252
     }
     expect(rel.dxf[1].imagens.map((i: Rel) => i.arquivo)).toEqual(['imagens/foto_3D.png', 'imagens/foto_3D_2.png']);
     expect(rel.arquivos.every((f: Rel) => f.metodo === 0)).toBe(true);   // store, sem compressão

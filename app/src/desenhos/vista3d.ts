@@ -29,13 +29,21 @@
   - CORTE: fica x ≤ X, como no visor (o lado de lá some, de onde quer que se olhe); a face cortada é desenhada,
     hachurada como no corte lateral, quando quem olha está do lado dela (v·x > 0).
 
+  PRIMITIVAS (o DXF): o pintor resolve o SVG porque a face de cima TAPA a de baixo; o DXF não tapa (o branco de
+  papel não vai — plotado em monocromático sairia preto — e o CAD nem sempre desenha na ordem do arquivo), e o
+  Opaco, que é massa branca + aresta, saía como ARAME: todas as arestas escondidas à mostra. Por isso as primitivas
+  do 3D não são o rastro do pintor: cada aresta é recortada, no plano do desenho, contra as faces pintadas DEPOIS
+  dela (a ordem do pintor) e fica só o trecho que se vê (semArestasEscondidas). O Opaco vai só com essas arestas;
+  o Cores leva também as faces, na ordem do pintor, numa camada própria (3d-faces → 3D-FACES), com as arestas por
+  cima. A face cortada vai com a hachura dela (é convenção de prancha) e conta como face que tapa. O SVG não muda.
+
   LIMITES do pintor (onde ele pode errar a ordem): peças cujas caixas se interpenetram e não caem nos casos acima
   — o "T" de graute no encontro do pilar com a canaleta, com os blocos ocultos (graute com graute, mesma cor: a
   troca quase não se vê); perfil não retilíneo e não convexo (hoje nenhum); e, DENTRO de uma peça não convexa
   que não foi partida, a ordem das faces é pela profundidade do centro. O véu do terreno fica sempre atrás.
 */
 import type { Barra, Modelo, Vec2, Vec3 } from '@/modelo/tipos';
-import type { Camera3d } from '@/pranchas/tipos';
+import type { Camera3d, Primitiva, Traco } from '@/pranchas/tipos';
 import { acabamentoDaPeca, categoriasDaBarra, categoriasDaPeca, visivel, type Categoria } from '@/visor/lotes';
 import { corDaPeca, corDoAco, opacidadeDoTerreno, tracoDoEstilo, type EstiloVisual } from '@/visor/estiloVisual';
 import { lerPaleta } from '@/visor/tema3d';
@@ -402,7 +410,7 @@ function camadaDaPeca(tp: Solido['peca']['tipo']): string {
 }
 
 export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {}): Prancha {
-  const pr = new Prancha(o.prefixo ?? 'des', o.hachuraVetorial);
+  const pr = new PranchaDo3d(o.prefixo ?? 'des', o.hachuraVetorial);
   const c = montarCena(m, cam);
   const { v, dir, cima, luz } = c.base;
   const opaco = c.estilo === 'opaco';
@@ -501,6 +509,7 @@ export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {})
     }
   }
   pr.fechar();
+  pr.marcas.pecas = pr.quantas();
 
   // ── face cortada: só quem olha do lado dela a vê ─────────────────────────────────────────────────────────────────
   if (c.corte !== null && v[0] > 1e-6) {
@@ -535,6 +544,9 @@ export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {})
     pr.fechar();
   }
 
+  pr.marcas.cena = pr.quantas();
+  pr.marcas.opaco = opaco;
+
   // ── armadura por cima de tudo (o modo Armadura do visor), a mais funda primeiro ─────────────────────────────────
   const diametros = new Set<number>();
   if (cam.armadura) {
@@ -549,6 +561,7 @@ export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {})
     }
     pr.fechar();
   }
+  pr.marcas.armadura = pr.quantas();
 
   // ── legenda embaixo, título em cima ──────────────────────────────────────────────────────────────────────────────
   const { viewBox } = pr.partes(0);
@@ -575,4 +588,312 @@ function corDoCores(s: Solido): string {
   if (tp === 'MANTA') return COR.manta;
   if (TUBOS.has(tp)) return '#ffffff';
   return corBase(s);
+}
+
+// ── o 3D para o DXF: só o que se vê ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A prancha do 3D: o SVG é o do pintor, como sempre; as primitivas (o que vai para o DXF) passam pela remoção das
+ * arestas escondidas (o cabeçalho explica). As marcas dizem onde acaba cada parte do rastro: as peças (o véu do
+ * terreno vem antes delas), a cena (com a face cortada) e a armadura; o que vem depois (legenda, título) passa
+ * como está.
+ */
+class PranchaDo3d extends Prancha {
+  readonly marcas = { pecas: 0, cena: 0, armadura: 0, opaco: false };
+  private guardadas: { n: number; ps: Primitiva[] } | null = null;
+
+  quantas(): number {
+    return super.primitivas().length;
+  }
+
+  override primitivas(): Primitiva[] {
+    const todas = super.primitivas();
+    if (this.guardadas?.n === todas.length) return [...this.guardadas.ps];
+    const { pecas, cena, armadura, opaco } = this.marcas;
+    const ps = [
+      ...semArestasEscondidas(todas.slice(0, cena), pecas, opaco),
+      // a barra do modo Armadura vai na cor da bitola (a cor é a informação): no DXF, cor própria
+      ...todas.slice(cena, armadura).map((q) => (q.k === 'polilinha' || q.k === 'linha' ? { ...q, e: { ...q.e, corPropria: true } } : q)),
+      ...todas.slice(armadura),
+    ];
+    this.guardadas = { n: todas.length, ps };
+    return [...ps];
+  }
+}
+
+type Caixa = [number, number, number, number];
+
+/** Uma face que tapa: os anéis (par-ímpar, como a hachura) e a caixa. `i` = a posição no rastro do pintor. */
+interface Oclusor {
+  i: number;
+  aneis: Pt[][];
+  cx: Caixa;
+}
+
+/** Folga da borda (px de desenho): a aresta que corre NA borda de uma face pintada depois (a quina que as duas faces
+ *  do bloco dividem, a junta entre dois blocos) é aresta de verdade e fica. ~0,2 µm de papel. */
+const NA_BORDA = 1e-3;
+/** Trecho visível menor que isto (px de desenho, ~5 µm de papel) é resto de conta, não traço. */
+const TRECHO_MINIMO = 0.02;
+
+const caixaDe = (pts: Pt[]): Caixa => {
+  let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const [x, y] of pts) [x0, y0, x1, y1] = [Math.min(x0, x), Math.min(y0, y), Math.max(x1, x), Math.max(y1, y)];
+  return [x0, y0, x1, y1];
+};
+
+/*
+  As três funções abaixo rodam centenas de milhares de vezes num muro comprido (cada aresta contra cada face que a
+  cruza): sem desmontar ponto em [x, y] nem criar lista a cada chamada — o recorte do 3D de um muro de 6 m cai de
+  ~300 ms para ~100 ms, e a folha na tela recompõe sem engasgar quando o desenho muda.
+*/
+
+/** Ponto dentro dos anéis (par-ímpar) e longe da borda de todos eles. */
+function dentroComFolga(x: number, y: number, aneis: Pt[][]): boolean {
+  let d = false;
+  for (const a of aneis) {
+    for (let i = 0, j = a.length - 1; i < a.length; j = i++) {
+      const pi = a[i];
+      const pj = a[j];
+      if (pi[1] > y !== pj[1] > y && x < ((pj[0] - pi[0]) * (y - pi[1])) / (pj[1] - pi[1]) + pi[0]) d = !d;
+    }
+  }
+  if (!d) return false;
+  const folga2 = NA_BORDA * NA_BORDA;
+  for (const a of aneis) {
+    for (let i = 0, j = a.length - 1; i < a.length; j = i++) {
+      const px = a[j][0];
+      const py = a[j][1];
+      const ex = a[i][0] - px;
+      const ey = a[i][1] - py;
+      const L2 = ex * ex + ey * ey;
+      const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - px) * ex + (y - py) * ey) / L2)) : 0;
+      const qx = x - px - t * ex;
+      const qy = y - py - t * ey;
+      if (qx * qx + qy * qy <= folga2) return false;
+    }
+  }
+  return true;
+}
+
+const cortesDoSegmento: number[] = [];
+
+/**
+ * Os trechos [t0, t1] do segmento AB que a face tapa (acrescentados em `tap`): corta AB nas bordas dela e testa o
+ * meio de cada pedaço.
+ */
+function tapados(a: Pt, b: Pt, aneis: Pt[][], tap: [number, number][]): void {
+  const ax = a[0];
+  const ay = a[1];
+  const dx = b[0] - ax;
+  const dy = b[1] - ay;
+  const d2 = dx * dx + dy * dy;
+  const ts = cortesDoSegmento;
+  ts.length = 0;
+  ts.push(0, 1);
+  for (const anel of aneis) {
+    for (let k = 0; k < anel.length; k++) {
+      const p = anel[k];
+      const q = anel[k + 1 === anel.length ? 0 : k + 1];
+      const ex = q[0] - p[0];
+      const ey = q[1] - p[1];
+      const den = dx * ey - dy * ex;
+      if (den * den <= 1e-24 * d2 * (ex * ex + ey * ey)) continue;   // paralelas
+      const wx = p[0] - ax;
+      const wy = p[1] - ay;
+      const t = (wx * ey - wy * ex) / den;
+      const u = (wx * dy - wy * dx) / den;
+      if (t > 0 && t < 1 && u >= -1e-9 && u <= 1 + 1e-9) ts.push(t);
+    }
+  }
+  if (ts.length > 2) ts.sort((u, v) => u - v);   // sem corte, um pedaço só: [0, 1]
+  for (let k = 0; k + 1 < ts.length; k++) {
+    const t0 = ts[k];
+    const t1 = ts[k + 1];
+    if (t1 - t0 < 1e-9) continue;
+    const tm = (t0 + t1) / 2;
+    if (dentroComFolga(ax + tm * dx, ay + tm * dy, aneis)) tap.push([t0, t1]);
+  }
+}
+
+/**
+ * Grade de busca: cada face fica nas casas que a caixa dela cobre, e a aresta só é testada contra as faces das casas
+ * que a caixa dela cobre — sem isso seriam todas contra todas (dezenas de milhares de cada lado num muro comprido).
+ */
+class Grade {
+  private readonly casas: (number[] | undefined)[];
+  private readonly marca: Int32Array;
+  private consulta = 0;
+  private readonly x0: number;
+  private readonly y0: number;
+  private readonly passo: number;
+  private readonly n: number;
+
+  constructor(private readonly oclusores: Oclusor[]) {
+    this.marca = new Int32Array(oclusores.length);
+    let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const { cx } of oclusores) [x0, y0, x1, y1] = [Math.min(x0, cx[0]), Math.min(y0, cx[1]), Math.max(x1, cx[2]), Math.max(y1, cx[3])];
+    if (!oclusores.length) [x0, y0, x1, y1] = [0, 0, 1, 1];
+    this.n = Math.max(1, Math.min(256, Math.ceil(Math.sqrt(oclusores.length))));
+    this.x0 = x0;
+    this.y0 = y0;
+    this.passo = Math.max(x1 - x0, y1 - y0, 1e-9) / this.n;
+    this.casas = new Array(this.n * this.n);
+    oclusores.forEach((o, k) => {
+      for (let i = this.col(o.cx[0]); i <= this.col(o.cx[2]); i++) {
+        for (let j = this.lin(o.cx[1]); j <= this.lin(o.cx[3]); j++) (this.casas[i * this.n + j] ??= []).push(k);
+      }
+    });
+  }
+
+  private col(v: number): number {
+    return Math.max(0, Math.min(this.n - 1, Math.floor((v - this.x0) / this.passo)));
+  }
+
+  private lin(v: number): number {
+    return Math.max(0, Math.min(this.n - 1, Math.floor((v - this.y0) / this.passo)));
+  }
+
+  /** Acrescenta em `tap` o que as faces pintadas depois de `i` tapam do segmento AB. */
+  tapar(i: number, a: Pt, b: Pt, tap: [number, number][]): void {
+    const x0 = Math.min(a[0], b[0]);
+    const x1 = Math.max(a[0], b[0]);
+    const y0 = Math.min(a[1], b[1]);
+    const y1 = Math.max(a[1], b[1]);
+    const q = ++this.consulta;
+    for (let ci = this.col(x0); ci <= this.col(x1); ci++) {
+      for (let cj = this.lin(y0); cj <= this.lin(y1); cj++) {
+        const casa = this.casas[ci * this.n + cj];
+        if (!casa) continue;
+        for (const k of casa) {
+          if (this.marca[k] === q) continue;
+          this.marca[k] = q;
+          const o = this.oclusores[k];
+          if (o.i <= i) continue;
+          const cx = o.cx;
+          if (cx[0] > x1 || cx[2] < x0 || cx[1] > y1 || cx[3] < y0) continue;
+          tapados(a, b, o.aneis, tap);
+        }
+      }
+    }
+  }
+}
+
+/** Os trechos visíveis de AB, em t: [0, 1] menos o que as faces de depois tapam. */
+function trechosVisiveis(a: Pt, b: Pt, i: number, grade: Grade): [number, number][] {
+  const tap: [number, number][] = [];
+  grade.tapar(i, a, b, tap);
+  if (!tap.length) return [[0, 1]];
+  tap.sort((u, v) => u[0] - v[0]);
+  const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+  const out: [number, number][] = [];
+  let t = 0;
+  for (const [t0, t1] of tap) {
+    if (t0 > t + 1e-9 && (t0 - t) * L >= TRECHO_MINIMO) out.push([t, t0]);
+    t = Math.max(t, t1);
+  }
+  if ((1 - t) * L >= TRECHO_MINIMO) out.push([t, 1]);
+  return out;
+}
+
+const mesmaCor = (a?: string, b?: string) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+
+/**
+ * O rastro do pintor (véu, peças, face cortada) → o que vai para o DXF: no Cores, as faces (camada 3d-faces, na
+ * ordem do pintor); a hachura da face cortada; e por cima de tudo só os trechos VISÍVEIS das arestas — cada uma
+ * recortada contra as faces pintadas depois dela. A borda que tem a cor da própria face (o véu do terreno, a divisa
+ * das peças partidas) não é aresta e não vai. Polilinha inteira à vista (a barra no corte) segue polilinha.
+ * `fimDasPecas`: onde acaba o rastro das peças (daí em diante, a face cortada).
+ */
+export function semArestasEscondidas(cena: Primitiva[], fimDasPecas: number, opaco: boolean): Primitiva[] {
+  const oclusores: Oclusor[] = [];
+  const faces: Primitiva[] = [];
+  const cortes: Primitiva[] = [];
+  const tracos: { i: number; pts: Pt[]; fechada: boolean; e: Traco; original?: Primitiva }[] = [];
+  const soltos: Primitiva[] = [];
+  cena.forEach((q, i) => {
+    switch (q.k) {
+      case 'hachura': {
+        const aneis = q.aneis.filter((a) => a.length >= 3);
+        if (aneis.length) oclusores.push({ i, aneis, cx: caixaDe(aneis.flat()) });
+        const face = q.padrao === 'solido' && i < fimDasPecas;
+        if (face && !opaco) faces.push({ ...q, camada: '3d-faces', borda: undefined });
+        else if (!face) cortes.push({ ...q, borda: undefined });
+        if (q.borda && !mesmaCor(q.borda.cor, q.fundo)) for (const a of aneis) tracos.push({ i, pts: a, fechada: true, e: q.borda });
+        break;
+      }
+      case 'linha':
+        tracos.push({ i, pts: [q.a, q.b], fechada: false, e: q.e });
+        break;
+      case 'polilinha':
+        tracos.push({ i, pts: q.pts, fechada: q.fechada, e: q.e, original: q });
+        break;
+      default:
+        soltos.push(q);
+    }
+  });
+  const grade = new Grade(oclusores);
+  const linhas: Primitiva[] = [];
+  for (const t of tracos) {
+    const n = t.pts.length;
+    const segs = t.pts.slice(0, t.fechada ? n : n - 1).map((a, k): [Pt, Pt] => [a, t.pts[(k + 1) % n]]);
+    const vis = segs.map(([a, b]) => trechosVisiveis(a, b, t.i, grade));
+    if (t.original && vis.every((v) => v.length === 1 && v[0][0] === 0 && v[0][1] === 1)) {
+      linhas.push(t.original);
+      continue;
+    }
+    segs.forEach(([a, b], k) => {
+      for (const [t0, t1] of vis[k]) {
+        const P = (u: number): Pt => [a[0] + u * (b[0] - a[0]), a[1] + u * (b[1] - a[1])];
+        linhas.push({ k: 'linha', a: P(t0), b: P(t1), e: t.e });
+      }
+    });
+  }
+  return [...faces, ...cortes, ...juntarColineares(linhas), ...soltos];
+}
+
+/**
+ * Trechos na mesma reta, com o mesmo traço, que se sobrepõem ou se encostam viram uma linha só: a aresta que duas
+ * faces vizinhas dividem (cada uma com o seu pedaço) e a fiada que corre de bloco em bloco. Aqui pode juntar sem
+ * medo da ordem: depois das arestas do 3D não vem preenchimento nenhum que as cubra.
+ */
+function juntarColineares(ps: Primitiva[]): Primitiva[] {
+  const grupos = new Map<string, { a: Pt; b: Pt; t0: number; t1: number; e: Traco }[]>();
+  const out: Primitiva[] = [];
+  for (const q of ps) {
+    if (q.k !== 'linha') {
+      out.push(q);
+      continue;
+    }
+    const [dx, dy] = [q.b[0] - q.a[0], q.b[1] - q.a[1]];
+    if (Math.hypot(dx, dy) < 1e-9) continue;
+    let th = Math.atan2(dy, dx);
+    if (th < 0) th += Math.PI;
+    if (th >= Math.PI - 1e-9) th = 0;
+    const [c, s] = [Math.cos(th), Math.sin(th)];
+    const d = -s * q.a[0] + c * q.a[1];
+    const [ta, tb] = [c * q.a[0] + s * q.a[1], c * q.b[0] + s * q.b[1]];
+    const [a, b, t0, t1] = ta <= tb ? [q.a, q.b, ta, tb] : [q.b, q.a, tb, ta];
+    // nem a espessura nem a cor separam (no DXF as duas são as da camada; só a cor própria conta); a junta fica
+    // com a maior espessura
+    const chave = `${q.e.camada}|${q.e.corPropria ? q.e.cor : ''}|${q.e.tracejado?.join(',') ?? ''}|${Math.round(th * 1e7)}|${Math.round(d * 1e4)}`;
+    const g = grupos.get(chave);
+    if (g) g.push({ a, b, t0, t1, e: q.e });
+    else grupos.set(chave, [{ a, b, t0, t1, e: q.e }]);
+  }
+  for (const g of grupos.values()) {
+    g.sort((u, v) => u.t0 - v.t0);
+    let atual = { ...g[0] };
+    for (const p of g.slice(1)) {
+      if (p.t0 <= atual.t1 + 1e-6) {
+        if (p.t1 > atual.t1) [atual.b, atual.t1] = [p.b, p.t1];
+        if (p.e.espessura > atual.e.espessura) atual.e = p.e;
+      } else {
+        out.push({ k: 'linha', a: atual.a, b: atual.b, e: atual.e });
+        atual = { ...p };
+      }
+    }
+    out.push({ k: 'linha', a: atual.a, b: atual.b, e: atual.e });
+  }
+  return out;
 }

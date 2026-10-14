@@ -511,6 +511,8 @@ export class Prancha {
       k: 'texto', p: [x, y], t, altura: tam, ancora: anc, angulo: o.vertical ? 90 : 0, cor, camada: o.camada ?? 'textos',
     };
     if (o.negrito) p.negrito = true;
+    // o halo do SVG (rótulo legível sobre hachura) vira MTEXT com máscara de fundo no DXF
+    if (o.halo) p.mascara = true;
     this.prims.push(p);
   }
 

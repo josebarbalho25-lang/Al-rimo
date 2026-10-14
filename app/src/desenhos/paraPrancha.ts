@@ -14,12 +14,12 @@
   que muda é o muro.
 */
 import type { Modelo } from '@/modelo/tipos';
-import { PX_POR_MM, escalaDaVista, type Camera3d, type PedidoDeVista, type VistaParaPrancha } from '@/pranchas/tipos';
+import { PX_POR_MM, escalaDaVista, type Camera3d, type PedidoDeVista, type Primitiva, type VistaParaPrancha } from '@/pranchas/tipos';
 import { desenharVistaFrontal } from './vistaFrontal';
 import { desenharCorteLateral } from './corteLateral';
 import { desenharPlanta } from './planta';
 import { desenharIsometrico } from './isometrico';
-import { desenharVista3d, larguraProjetada } from './vista3d';
+import { desenharVista3d, larguraProjetada, semArestasEscondidas } from './vista3d';
 import type { OpcoesDaVista, Prancha } from './prancha';
 
 /**
@@ -46,7 +46,7 @@ export function vistaParaPrancha(m: Modelo, pedido: PedidoDeVista, escala: numbe
       break;
     case 'iso':
       pr = desenharIsometrico(m, { ...o, vista: pedido.vista, corteX: pedido.corteX ?? null });
-      break;
+      return semEscondidasNoIso(entregar(pr));
   }
   return entregar(pr);
 }
@@ -62,6 +62,20 @@ export function vista3dParaPrancha(m: Modelo, camera: Camera3d, larguraMm: numbe
   // muro sem largura (vazio, ou visto de quina exata): fica em 1:50, para a folha não receber escala infinita
   const S = w > 1e-6 ? (larguraMm * PX_POR_MM) / w : escalaDaVista(50);
   return entregar(desenharVista3d(m, camera, { S, semTitulo: true, prefixo, semLegendaDeCores: !opcoes.legendaDeCores, hachuraVetorial: opcoes.hachuraVetorial }));
+}
+
+/**
+ * O isométrico usa o mesmo pintor do 3D: no PDF o pintor resolve, mas no DXF (com as faces numa camada que o
+ * cadista congela para plotar em preto e branco) as arestas de trás apareciam todas. As primitivas das peças passam
+ * pela mesma remoção de linhas ocultas do 3D; a legenda e os textos (o fim do rastro) seguem como estão.
+ */
+function semEscondidasNoIso(v: VistaParaPrancha): VistaParaPrancha {
+  const ps = v.primitivas;
+  const camada = (q: Primitiva): string =>
+    q.k === 'linha' || q.k === 'polilinha' ? q.e.camada : q.k === 'circulo' ? q.e?.camada ?? '' : q.k === 'bloco' ? '' : q.camada;
+  let fim = ps.findIndex((q) => ['legenda', 'textos', 'cotas', 'titulos'].includes(camada(q)));
+  if (fim < 0) fim = ps.length;
+  return { ...v, primitivas: [...semArestasEscondidas(ps.slice(0, fim), fim, false), ...ps.slice(fim)] };
 }
 
 function entregar(pr: Prancha): VistaParaPrancha {

@@ -26,7 +26,7 @@ const PEDIDOS: [string, PedidoDeVista][] = [
 ];
 
 /** Camadas que o DXF recebe (prancha.ts, cabeçalho). */
-const CAMADAS = new Set(['alvenaria', 'graute', 'concreto', 'aco', 'terreno', 'drenagem', 'cotas', 'eixos', 'textos', 'legenda', 'geral']);
+const CAMADAS = new Set(['alvenaria', 'graute', 'concreto', 'aco', 'terreno', 'drenagem', 'cotas', 'eixos', 'textos', 'legenda', 'geral', '3d-faces']);
 
 type Caixa = [number, number, number, number];
 

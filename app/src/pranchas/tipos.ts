@@ -46,6 +46,9 @@ export interface Traco {
   cor: string;             // #rrggbb (cor verdadeira; o DXF guarda a cor verdadeira, não só o índice do CAD)
   espessura: number;       // na unidade das coordenadas (px de desenho na vista; mm na folha)
   tracejado?: number[];    // comprimentos traço/espaço, na mesma unidade; ausente = contínuo
+  /** A cor É informação (a bitola da barra no 3D com Armadura): o DXF grava a cor verdadeira em vez de "por
+   *  camada". Sem isto, o traço sai na cor da camada — o cadista controla cor e pena pela camada. */
+  corPropria?: boolean;
 }
 
 export type Primitiva =
@@ -55,13 +58,17 @@ export type Primitiva =
   /** Área preenchida: anéis pela regra par-ímpar (o furo do bloco vazado de verdade). `fundo` = cor do fundo do
    *  padrão (a terra é riscada sobre o bege; o sólido usa só ele). `borda` desenha o contorno junto. */
   | { k: 'hachura'; aneis: Pt[][]; padrao: PadraoHachura; fundo?: string; risco?: string; camada: string; borda?: Traco }
-  /** Texto: `p` = ponto de inserção na linha de base; ângulo em graus, ANTI-horário (cota vertical = 90). */
-  | { k: 'texto'; p: Pt; t: string; altura: number; ancora: 'start' | 'middle' | 'end'; angulo: number; cor: string; negrito?: boolean; camada: string }
+  /** Texto: `p` = ponto de inserção na linha de base; ângulo em graus, ANTI-horário (cota vertical = 90).
+   *  `mascara`: texto escrito em cima de hachura (o halo branco do SVG) — no DXF vai como MTEXT com máscara de
+   *  fundo na cor do desenho, que tapa a hachura só atrás da letra. */
+  | { k: 'texto'; p: Pt; t: string; altura: number; ancora: 'start' | 'middle' | 'end'; angulo: number; cor: string; negrito?: boolean; mascara?: boolean; camada: string }
   /** Imagem (a foto do 3D): canto superior esquerdo, largura e altura. No DXF vai como imagem vinculada ao arquivo. */
   | { k: 'imagem'; p: Pt; largura: number; altura: number; arquivo: string; dataUrl: string; camada: string }
   /** Grupo que vira BLOCO no DXF (o carimbo: quem tem carimbo próprio troca o bloco inteiro de uma vez). Os
-   *  atributos são os campos preenchíveis (texto com etiqueta). */
-  | { k: 'bloco'; nome: string; prims: Primitiva[]; atributos: AtributoDoBloco[] };
+   *  atributos são os campos preenchíveis (texto com etiqueta). `base` = o ponto base do bloco (o do carimbo é o
+   *  canto inferior direito dele: o carimbo do escritório, com o ponto base no canto, cai no mesmo lugar); sem
+   *  ela, o DXF usa o canto inferior direito da geometria do bloco. */
+  | { k: 'bloco'; nome: string; prims: Primitiva[]; atributos: AtributoDoBloco[]; base?: Pt };
 
 export interface AtributoDoBloco {
   etiqueta: string;        // 'OBRA', 'CONTEUDO', 'FOLHA', 'ESCALA', 'DATA', 'RESPONSAVEL'…
@@ -70,6 +77,7 @@ export interface AtributoDoBloco {
   altura: number;
   ancora: 'start' | 'middle' | 'end';
   cor: string;
+  negrito?: boolean;
   camada: string;
 }
 
@@ -85,7 +93,7 @@ export function transformarPrimitivas(ps: Primitiva[], k: number, dx: number, dy
       case 'hachura': return { ...q, aneis: q.aneis.map((a) => a.map(P)), borda: q.borda ? T(q.borda) : undefined };
       case 'texto': return { ...q, p: P(q.p), altura: q.altura * k };
       case 'imagem': return { ...q, p: P(q.p), largura: q.largura * k, altura: q.altura * k };
-      case 'bloco': return { ...q, prims: transformarPrimitivas(q.prims, k, dx, dy), atributos: q.atributos.map((a) => ({ ...a, p: P(a.p), altura: a.altura * k })) };
+      case 'bloco': return { ...q, prims: transformarPrimitivas(q.prims, k, dx, dy), atributos: q.atributos.map((a) => ({ ...a, p: P(a.p), altura: a.altura * k })), base: q.base ? P(q.base) : undefined };
     }
   });
 }

@@ -9,7 +9,9 @@
              de dentro; cada imagem que um DXF referencia (IMAGEDEF) tem de estar no zip, no caminho relativo;
   --estrito  conserto do ezdxf também reprova (não só erro). O app usa este modo: um arquivo que o ezdxf precisou
              consertar é um arquivo que o AutoCAD pode recusar;
-  --json     imprime o relatório em JSON (UTF-8) para o teste do app ler.
+  --json     imprime o relatório em JSON (UTF-8) para o teste do app ler. O relatório traz também a tabela de
+             camadas (cor e espessura), os textos como o CAD os mostra (página 1252 e \\U+XXXX já decodificados
+             pelo recover) e quantos MTEXT têm máscara de fundo.
 
 Sai com código 0 se não houver erro, 1 se houver, 2 se nem abrir o arquivo.
 Rodar SEMPRE com `python -I` (não carrega módulo da pasta atual nem da pasta do arquivo).
@@ -54,10 +56,29 @@ def _texto(entrada):
     return f'{entrada.code}: {entrada.message}{alvo}'
 
 
+def _textos(doc):
+    """Os textos como o CAD os mostra (o recover já decodificou a página 1252 e o \\U+XXXX): TEXT, MTEXT (sem os
+    códigos de formatação), ATTRIB e ATTDEF, no desenho e nos blocos."""
+    out = []
+    lugares = [doc.modelspace()] + [b for b in doc.blocks if not b.name.startswith('*')]
+    for lugar in lugares:
+        for e in lugar:
+            t = e.dxftype()
+            if t == 'MTEXT':
+                out.append(e.plain_text())
+            elif t in ('TEXT', 'ATTDEF'):
+                out.append(e.dxf.text)
+            if t == 'INSERT':
+                out += [a.dxf.text for a in e.attribs]
+    return out
+
+
 def validar_dxf(caminho, nome=None):
-    """Relatório de um arquivo .dxf: erros, consertos, avisos, contagem por tipo e imagens referenciadas."""
+    """Relatório de um arquivo .dxf: erros, consertos, avisos, contagem por tipo, imagens referenciadas, camadas
+    (cor e espessura) e os textos lidos como o CAD os mostra."""
     rel = {'arquivo': nome or os.path.basename(caminho), 'erros': [], 'consertos': [], 'avisos': [],
-           'versao': None, 'entidades': {}, 'imagens': [], 'blocos': {}}
+           'versao': None, 'codepage': None, 'entidades': {}, 'imagens': [], 'blocos': {}, 'camadas': {},
+           'textos': [], 'mascaras': 0}
     coletor = _Coletor()
     log = logging.getLogger('ezdxf')
     log.addHandler(coletor)
@@ -69,6 +90,8 @@ def validar_dxf(caminho, nome=None):
             doc = None
         if doc is not None:
             rel['versao'] = doc.dxfversion
+            rel['codepage'] = doc.header.get('$DWGCODEPAGE')
+            rel['camadas'] = {L.dxf.name: {'cor': L.dxf.color, 'espessura': L.dxf.get('lineweight')} for L in doc.layers}
             aud = doc.audit()
             rel['erros'] += [_texto(e) for e in aud.errors]
             rel['consertos'] += [_texto(f) for f in aud.fixes]
@@ -85,9 +108,11 @@ def validar_dxf(caminho, nome=None):
                 rel['imagens'].append({'arquivo': d.dxf.filename,
                                        'pixels': [int(d.dxf.image_size.x), int(d.dxf.image_size.y)]})
         try:
-            _, aud2 = recover.readfile(caminho)
+            doc2, aud2 = recover.readfile(caminho)
             rel['erros'] += ['recover: ' + _texto(e) for e in aud2.errors]
             rel['consertos'] += ['recover: ' + _texto(f) for f in aud2.fixes]
+            rel['textos'] = _textos(doc2)
+            rel['mascaras'] = sum(1 for e in doc2.modelspace().query('MTEXT') if e.dxf.get('bg_fill', 0))
         except Exception as ex:
             rel['erros'].append(f'recover.readfile falhou: {type(ex).__name__}: {ex}')
     finally:
