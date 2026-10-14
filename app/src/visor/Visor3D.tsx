@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //  visor/Visor3D.tsx — o muro em 3D: orbitar, enquadrar, ocultar, selecionar,
-//  cortar e fotografar. Só visualização: nada aqui muda o modelo.
+//  cortar, fotografar e mandar a foto para a prancha. Só visualização: nada
+//  aqui muda o modelo.
 // ---------------------------------------------------------------------------
 //  Molde: a prévia de carga do A-PORT (`ui/PreviaDaCarga.tsx`) — câmera
 //  ortográfica, `frameloop="demand"` (só desenha quando algo muda: parado, o
@@ -30,20 +31,23 @@ import { Canvas, useFrame, useThree, type RootState } from '@react-three/fiber';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import type { Modelo, Vec3 } from '@/modelo/tipos';
+import { enviarParaPrancha } from '@/pranchas/envio';
 import { Fundo, Luzes, Terno } from './ambiente';
 import { BarraDoVisor } from './BarraDoVisor';
 import { OrbitaNoShift, VooDaCamera, DURACAO_VOO, type Voo } from './camera';
-import { baixar, capturar } from './captura';
+import { baixar, capturar, ESCALA_DA_FOTO } from './captura';
 import { construirCena3D, type Cena3D } from './cena3d';
 import { ControleDoCorte, CorteNoPalco, planoDoCorte } from './Corte';
 import { CuboDeVistas } from './CuboDeVistas';
 import { DIRECOES, enquadramento, type VistaNomeada } from './enquadrar';
-import { guardarEstilo, lembrarEstilo, paletaDoPalco, type EstiloVisual } from './estiloVisual';
+import { guardarEstilo, lembrarEstilo, type EstiloVisual } from './estiloVisual';
 import { desenharLegenda, LegendaDasCores } from './LegendaDasCores';
 import { desenharLegendaDasBitolas, LegendaDasBitolas } from './LegendaDasBitolas';
 import type { Categoria } from './lotes';
 import { PainelDaPeca } from './PainelDaPeca';
-import { lerPaleta, observarTema, themeColor, type PaletaVisor } from './tema3d';
+import { palcoDoTema } from './palco3d';
+import { lerPontoDeVista, proporcaoDaCamera } from './pontoDeVista';
+import { lerPaleta, observarTema, type PaletaVisor } from './tema3d';
 import './visor.css';
 
 /** Clique × arraste: só é clique se o ponteiro andou menos que isto entre descer e subir (o LIMIAR_CAIXA_PX do A-PORT). */
@@ -153,7 +157,7 @@ export function Visor3D({ modelo, selecionado, onSelecionar }: PropsDoVisor3D) {
   const estiloAtual = useRef(estilo);
   estiloAtual.current = estilo;
   // O Opaco é papel nos dois temas: fundo, letra dos eixos e contorno do corte saem desta paleta, não da do tema.
-  const palco = useMemo(() => paletaDoPalco(paleta, estilo, themeColor('--papel', '#ffffff'), themeColor('--papel-tinta', '#262626')), [paleta, estilo]);
+  const palco = useMemo(() => palcoDoTema(paleta, estilo), [paleta, estilo]);
 
   // A cena só se remonta quando o MODELO muda; tema, estilo, ocultar, Raio-X, corte e seleção se aplicam por cima.
   const cena = useMemo(() => construirCena3D(modelo, paletaAtual.current, estiloAtual.current), [modelo]);
@@ -265,8 +269,22 @@ export function Visor3D({ modelo, selecionado, onSelecionar }: PropsDoVisor3D) {
     const legenda = armadura && diametros.length
       ? (g: CanvasRenderingContext2D, w: number, _h: number, e: number) => desenharLegendaDasBitolas(g, w, diametros, palco, e)
       : estilo === 'cores' && classes.size ? (g: CanvasRenderingContext2D, w: number, _h: number, e: number) => desenharLegenda(g, w, classes, palco, e) : undefined;
-    const url = capturar(st, 2, () => cena.pintarSelecao(null), () => cena.pintarSelecao(selAtual.current), legenda);
+    const url = capturar(st, ESCALA_DA_FOTO, () => cena.pintarSelecao(null), () => cena.pintarSelecao(selAtual.current), legenda);
     baixar(url, 'al-rimo-3d.png');
+  };
+
+  /*
+    ENVIAR PARA A PRANCHA: a mesma foto (mesma cena, sem anotações nem seleção), sem a legenda pintada — a prancha
+    tem a dela no quadro lateral — e com o ponto de vista, para a prancha refazer a foto quando o muro mudar
+    (`fotoRefeita.ts`). Sem prancha ouvindo, o pedido não vai a lugar nenhum.
+  */
+  const enviarFoto = () => {
+    const st = agora();
+    if (!st) return;
+    const ctl = st.controls as unknown as { target: THREE.Vector3 } | null;
+    const camera = lerPontoDeVista(st.camera, ctl?.target ?? null, { estilo, armadura, corte: corte.ligado ? xCorte : null, ocultas });
+    const dataUrl = capturar(st, ESCALA_DA_FOTO, () => cena.pintarSelecao(null), () => cena.pintarSelecao(selAtual.current));
+    enviarParaPrancha({ tipo: '3d', dataUrl, camera, proporcao: proporcaoDaCamera(st.camera) });
   };
 
   const alternar = (c: Categoria) =>
@@ -350,6 +368,7 @@ export function Visor3D({ modelo, selecionado, onSelecionar }: PropsDoVisor3D) {
           corte={corte.ligado}
           aoCorte={ligarCorte}
           aoFoto={fotografar}
+          aoEnviarParaPrancha={enviarFoto}
           estilo={estilo}
           aoEstilo={escolherEstilo}
           extra={corte.ligado ? <ControleDoCorte x={xCorte} min={caixaTotal.min[0]} max={caixaTotal.max[0]} aoMudar={moverCorte} /> : null}

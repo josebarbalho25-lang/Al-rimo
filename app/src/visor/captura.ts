@@ -16,13 +16,19 @@ import type * as THREE from 'three';
 export const ANOTACAO = 'anotacaoDoVisor';
 
 /**
+ * A foto sai com o dobro dos pixels da tela (a do botão Foto e a que vai para a
+ * prancha). A foto refeita conta com ela para desbotar o traço como a tela.
+ */
+export const ESCALA_DA_FOTO = 2;
+
+/**
  * Pinta por cima da foto (a legenda do Cores). Recebe o pincel, o tamanho da
  * foto em pixels e a escala dela.
  */
 export type Decorar = (g: CanvasRenderingContext2D, largura: number, altura: number, escala: number) => void;
 
 /** Fotografa a cena em `escala` × o tamanho CSS do canvas. Devolve o PNG como data URL. */
-export function capturar(st: RootState, escala = 2, antes?: () => void, depois?: () => void, decorar?: Decorar): string {
+export function capturar(st: RootState, escala = ESCALA_DA_FOTO, antes?: () => void, depois?: () => void, decorar?: Decorar): string {
   const { gl, scene, camera } = st;
   const densidade = gl.getPixelRatio();
   const escondidos: THREE.Object3D[] = [];

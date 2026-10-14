@@ -4,7 +4,7 @@
 //  Mesma régua da família do A-PORT (`iconesBase.tsx`): grade de 24, traço de
 //  1,75, peça com miolo pintado de leve (MASSA), o que some tracejado (SOME),
 //  monocromático (`currentColor`). Ajustar, Corte, Olho, Cubo e Planta são os
-//  do A-PORT; Frente, Lateral, Raio-X e Foto são novos, na mesma régua.
+//  do A-PORT; Frente, Lateral, Raio-X, Foto e Prancha são novos, na mesma régua.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { SVGProps } from 'react';
@@ -96,6 +96,19 @@ export const IconeFoto = (p: P) => (
   <Svg {...p}>
     <path d="M3 8h4l1.6-2.5h6.8L17 8h4v11.5H3z" {...MASSA} />
     <circle cx="12" cy="13.5" r="3.4" />
+  </Svg>
+);
+
+/**
+ * Enviar para a prancha: a folha deitada com o carimbo no canto (é o que faz uma folha ser prancha) e a seta
+ * descendo para dentro dela.
+ */
+export const IconePrancha = (p: P) => (
+  <Svg {...p}>
+    <path d="M3 7.5h18v12.5H3z" />
+    <path d="M14.5 16h6.5v4h-6.5z" {...MASSA} />
+    <path d="M9 2.5v9.5" />
+    <path d="M5.75 8.75L9 12l3.25-3.25" />
   </Svg>
 );
 
