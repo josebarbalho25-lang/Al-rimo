@@ -112,6 +112,8 @@ export interface OpcoesDaVista {
   semTitulo?: boolean;
   /** Prefixo dos ids dos padrões e marcadores: a folha tem várias vistas num SVG só, os ids não podem colidir. */
   prefixo?: string;
+  /** Tira da legenda as cores dos blocos: na prancha elas estão no quadro lateral, uma vez para a folha toda. */
+  semLegendaDeCores?: boolean;
 }
 
 export type Pt = [number, number];

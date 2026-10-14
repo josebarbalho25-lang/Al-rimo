@@ -187,11 +187,11 @@ export function desenharVistaFrontal(m: Modelo, o: OpcoesDaVista = {}): Prancha 
     pr.texto(X(xIni) + (o.semTitulo ? 0 : 150), yTit, 'PROVISÓRIO', { tam: 13, ancora: 'start', negrito: true, cor: COR.especial });
   }
   // legenda: só o que está desenhado (o tipo de bloco que não entrou no muro não aparece)
-  const itens: [string, Amostra][] = itensDasTintas(tintasPresentes([...noPlano, ...naFrente]));
+  const itens: [string, Amostra][] = o.semLegendaDeCores ? [] : itensDasTintas(tintasPresentes([...noPlano, ...naFrente]));
   if (grautes.length) itens.push(['Graute', 'graute']);
   if (barras.some((b) => b.papel !== 'ESPERA')) itens.push(['Barra', 'barra']);
   if (barras.some((b) => b.papel === 'ESPERA')) itens.push(['Espera', 'espera']);
-  desenharLegenda(pr, X(xIni), linhaTotal + 30, itens, Math.max(320, X(xFim) - X(xIni)));
+  if (itens.length) desenharLegenda(pr, X(xIni), linhaTotal + 30, itens, Math.max(320, X(xFim) - X(xIni)));
   return pr;
 }
 

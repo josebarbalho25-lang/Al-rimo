@@ -27,7 +27,8 @@ import type { OpcoesDaVista, Prancha } from './prancha';
  * - `caixa` justa (margem 0): o respiro em volta e o título são da folha.
  */
 export function vistaParaPrancha(m: Modelo, pedido: PedidoDeVista, escala: number, prefixo: string): VistaParaPrancha {
-  const o: OpcoesDaVista = { S: escalaDaVista(escala), semTitulo: true, prefixo };
+  // a legenda das cores dos blocos vai uma vez só, no quadro lateral da folha
+  const o: OpcoesDaVista = { S: escalaDaVista(escala), semTitulo: true, prefixo, semLegendaDeCores: true };
   let pr: Prancha;
   switch (pedido.tipo) {
     case 'frontal':
@@ -56,7 +57,7 @@ export function vista3dParaPrancha(m: Modelo, camera: Camera3d, larguraMm: numbe
   const w = larguraProjetada(m, camera);
   // muro sem largura (vazio, ou visto de quina exata): fica em 1:50, para a folha não receber escala infinita
   const S = w > 1e-6 ? (larguraMm * PX_POR_MM) / w : escalaDaVista(50);
-  return entregar(desenharVista3d(m, camera, { S, semTitulo: true, prefixo }));
+  return entregar(desenharVista3d(m, camera, { S, semTitulo: true, prefixo, semLegendaDeCores: true }));
 }
 
 function entregar(pr: Prancha): VistaParaPrancha {

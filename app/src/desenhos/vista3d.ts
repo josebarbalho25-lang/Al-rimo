@@ -552,7 +552,7 @@ export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {})
 
   // ── legenda embaixo, título em cima ──────────────────────────────────────────────────────────────────────────────
   const { viewBox } = pr.partes(0);
-  const itens: [string, Amostra][] = opaco ? [] : itensDasTintas(tintasPresentes(ordem.map((pd) => pd.s)));
+  const itens: [string, Amostra][] = opaco || o.semLegendaDeCores ? [] : itensDasTintas(tintasPresentes(ordem.map((pd) => pd.s)));
   for (const d of [...diametros].sort((a, b) => a - b)) itens.push([rotuloDaBitola(d), { fill: corDaBitola(d), stroke: TRACO_DA_PECA, sw: 0.7 }]);
   if (itens.length) desenharLegenda(pr, viewBox[0], viewBox[1] + viewBox[3] + 28, itens, Math.max(320, viewBox[2]));
   const titulo = c.corte !== null ? `Vista 3D — corte em x = ${metros(c.corte)} m` : 'Vista 3D';

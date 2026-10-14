@@ -66,7 +66,8 @@ export const MAIUSCULA_DA_ARIAL = 1467 / 2048;
 const ESPESSURAS = [0, 5, 9, 13, 15, 18, 20, 25, 30, 35, 40, 50, 53, 60, 70, 80, 90, 100, 106, 120, 140, 158, 200, 211];
 
 export function espessuraDoCad(mm: number): number {
-  const c = mm * 100;
+  // traço fino abaixo de 0,13 mm não sai na plotadora (o contorno do furo no isométrico tem 0,07 mm no papel)
+  const c = (mm > 0 ? Math.max(mm, 0.13) : 0) * 100;
   return ESPESSURAS.reduce((m, v) => (Math.abs(v - c) < Math.abs(m - c) ? v : m), 0);
 }
 
@@ -344,11 +345,15 @@ class Gravador {
 
   private hachura(alvo: EntitiesManager, q: Extract<Primitiva, { k: 'hachura' }>): void {
     const padrao = PADRAO_DO_MATERIAL[q.padrao];
+    // O branco de papel (o fundo atrás do bloco cortado, que no SVG tapa o que está por baixo) não vai para o DXF:
+    // plotado em monocromático, sólido branco sai PRETO. No DXF ninguém fica por baixo dele (a terra do corte já
+    // contorna as peças), então não há o que tapar.
+    const papel = (c?: string) => !!c && /^#f{3}(f{3})?$/i.test(c.trim());
     if (q.padrao === 'solido') {
-      this.preencher(alvo, q.aneis, padrao, q.fundo ?? q.risco ?? '#000000', q.camada);
+      if (!papel(q.fundo ?? q.risco)) this.preencher(alvo, q.aneis, padrao, q.fundo ?? q.risco ?? '#000000', q.camada);
     } else {
       // o fundo vem antes (por baixo), o padrão por cima na cor do risco: a terra é risco marrom sobre bege
-      if (q.fundo) this.preencher(alvo, q.aneis, PADRAO_DO_MATERIAL.solido, q.fundo, q.camada);
+      if (q.fundo && !papel(q.fundo)) this.preencher(alvo, q.aneis, PADRAO_DO_MATERIAL.solido, q.fundo, q.camada);
       this.preencher(alvo, q.aneis, padrao, q.risco ?? riscoPadrao(q.padrao), q.camada);
     }
     if (q.borda) for (const anel of q.aneis) this.polilinha(alvo, anel, true, q.borda);

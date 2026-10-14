@@ -130,7 +130,7 @@ export function desenharPlanta(m: Modelo, fiada = 0, o: OpcoesDaVista = {}): Pra
   }
   if (m.familia.provisoria && cfs.length) pr.texto(X(xIni) + (o.semTitulo ? 0 : 190), yTit, 'PROVISÓRIO', { tam: 13, ancora: 'start', negrito: true, cor: COR.especial });
   // legenda só com os tipos que aparecem NESTA fiada (a 1ª não tem canaleta; a do topo é só canaleta)
-  desenharLegenda(pr, X(xIni), linhaLegenda, itensDasTintas(tintasPresentes(cortados.map((q) => q.s))), Math.max(320, X(xFim) - X(xIni)));
+  if (!o.semLegendaDeCores) desenharLegenda(pr, X(xIni), linhaLegenda, itensDasTintas(tintasPresentes(cortados.map((q) => q.s))), Math.max(320, X(xFim) - X(xIni)));
   return pr;
 }
 

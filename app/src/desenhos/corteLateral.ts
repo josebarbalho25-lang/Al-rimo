@@ -148,12 +148,25 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
   const tela = (p: Vec2): Pt => [U(p[0]), V(p[1])];
   const aneis = (r: Regiao): Pt[][] => [r.contorno, ...r.furos].map((a) => a.map(tela));
 
+  // as seções primeiro (só os dados): a terra precisa delas para contorná-las
+  const cortados = sol
+    .map((s) => ({ s, r: secao(s, 'X', x0) }))
+    .filter((q) => q.r.length)
+    .sort((a, b) => (ORDEM[a.s.peca.tipo] ?? 3) - (ORDEM[b.s.peca.tipo] ?? 3));
+
   // ── terreno ────────────────────────────────────────────────────────────────────────────────────────────────────
+  // A terra CONTORNA a sapata, o dreno e o contraforte enterrado (furos no polígono, regra par-ímpar): no SVG a peça
+  // pintada por cima já tapava, mas no DXF as duas hachuras ficavam uma em cima da outra (EARTH sob AR-CONC).
+  // Entra como furo só o CONTORNO de fora de cada peça que está dentro da terra — o graute do furo mora dentro do
+  // bloco, e o furo do tubo dentro da brita: contá-los de novo inverteria a regra e a terra voltaria lá dentro.
   pr.abrir('data-camada="terreno"');
-  pr.poligono(
-    [[yPerto, zFundo], [yLonge, zFundo], [yLonge, H_solo], [t, H_solo], [t, 0], [0, 0], [0, zFrente], [yPerto, zFrente]].map((p) => tela(p as Vec2)),
-    { fill: pr.padrao('solo'), stroke: 'none' },
-  );
+  const contornoDaTerra: Vec2[] = [[yPerto, zFundo], [yLonge, zFundo], [yLonge, H_solo], [t, H_solo], [t, 0], [0, 0], [0, zFrente], [yPerto, zFrente]];
+  const FURA_A_TERRA = new Set<string>(['SAPATA', 'DRENO', 'AREIA', 'MANTA', 'GRAUTE_CANALETA']);
+  const furosDaTerra = cortados
+    .filter(({ s }) => FURA_A_TERRA.has(s.peca.tipo) || ALVENARIA.has(s.peca.tipo))
+    .flatMap(({ r }) => r.map((q) => q.contorno))
+    .filter((c) => c.length >= 3 && dentroDoPoligono(centroDoAnel(c), contornoDaTerra));
+  pr.caminho([contornoDaTerra, ...furosDaTerra].map((a) => a.map(tela)), { fill: pr.padrao('solo'), stroke: 'none' });
   pr.linha(U(yPerto), V(zFrente), U(zFrente > 0 ? 0 : Math.min(0, yMin)), V(zFrente), { stroke: COR.solo, sw: 1.8 });
   pr.linha(U(t), V(H_solo), U(yLonge), V(H_solo), { stroke: COR.solo, sw: 1.8 });
   pr.texto(U(yLonge) + 8, V(H_solo) + 16, 'aterro', { tam: 11, ancora: 'start', cor: COR.solo, negrito: true, halo: true });
@@ -169,10 +182,6 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
   }
 
   // ── seções ─────────────────────────────────────────────────────────────────────────────────────────────────────
-  const cortados = sol
-    .map((s) => ({ s, r: secao(s, 'X', x0) }))
-    .filter((q) => q.r.length)
-    .sort((a, b) => (ORDEM[a.s.peca.tipo] ?? 3) - (ORDEM[b.s.peca.tipo] ?? 3));
   pr.abrir('data-camada="secao"');
   for (const { s, r } of cortados) {
     const e = estiloDaSecao(s, pr);
@@ -287,4 +296,30 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
 
 export function corteLateral(m: Modelo, x?: number): string {
   return desenharCorteLateral(m, x).svg();
+}
+
+/** Centro de área de um anel (para saber de que lado da terra a peça está). */
+function centroDoAnel(a: Vec2[]): Vec2 {
+  let A = 0, cx = 0, cy = 0;
+  for (let i = 0; i < a.length; i++) {
+    const [x1, y1] = a[i];
+    const [x2, y2] = a[(i + 1) % a.length];
+    const c = x1 * y2 - x2 * y1;
+    A += c;
+    cx += (x1 + x2) * c;
+    cy += (y1 + y2) * c;
+  }
+  if (Math.abs(A) < 1e-9) return [a.reduce((s, p) => s + p[0], 0) / a.length, a.reduce((s, p) => s + p[1], 0) / a.length];
+  return [cx / (3 * A), cy / (3 * A)];
+}
+
+/** Ponto dentro do polígono (regra par-ímpar). */
+function dentroDoPoligono([x, y]: Vec2, poli: Vec2[]): boolean {
+  let dentro = false;
+  for (let i = 0, j = poli.length - 1; i < poli.length; j = i++) {
+    const [xi, yi] = poli[i];
+    const [xj, yj] = poli[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) dentro = !dentro;
+  }
+  return dentro;
 }

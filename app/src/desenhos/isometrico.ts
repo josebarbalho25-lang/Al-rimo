@@ -294,7 +294,7 @@ export function desenharIsometrico(m: Modelo, o: OpcoesIso = {}): Prancha {
 
   // título acima e legenda abaixo de tudo o que foi desenhado
   const { viewBox } = pr.partes(0);
-  desenharLegenda(pr, viewBox[0], viewBox[1] + viewBox[3] + 28, itensDasTintas(tintasPresentes(pecas)), Math.max(320, viewBox[2]));
+  if (!o.semLegendaDeCores) desenharLegenda(pr, viewBox[0], viewBox[1] + viewBox[3] + 28, itensDasTintas(tintasPresentes(pecas)), Math.max(320, viewBox[2]));
   // na prancha o título é dela (embaixo do desenho); o PROVISÓRIO fica, é aviso e não título
   const titulo = corte !== null ? `Isométrico — corte em x = ${metros(corte)} m` : 'Isométrico';
   if (!o.semTitulo) pr.texto(viewBox[0], viewBox[1] - 14, titulo, { tam: 15, ancora: 'start', negrito: true });
