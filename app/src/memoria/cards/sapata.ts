@@ -17,7 +17,7 @@
 import dados from '@/motor/planilha.gerada.json';
 import type { PlanilhaExportada } from '@/motor/tipos';
 import type { AutorDeCards, Card, Expr, Passo, Ref } from '../tipos';
-import { arredBaixo, avaliar, cte, div, max, min, mul, nome, par, pi, pot, raiz, soma, sub } from '../expr';
+import { arredBaixo, arredCima, avaliar, cte, div, max, min, mul, nome, par, pi, pot, raiz, soma, sub } from '../expr';
 import { memoriaDe, secao } from '../passo';
 import type { Memoria } from '../passo';
 import { desenhoDaFlexaoDaSapata, desenhoDoCortanteDaSapata } from '../desenhoDaSapata';
@@ -100,6 +100,18 @@ export const SIMBOLOS_SAPATA: Readonly<Record<string, string>> = {
   'h_{dob,v}': 'altura de sapata que a dobra da espera do painel pede',
   'h_{dob,cf}': 'altura de sapata que a dobra da espera do contraforte pede',
   'h_{dob,cc}': 'altura de sapata que a dobra da espera das construtivas pede',
+  // ── traspasse espera × barra, no graute (aba Fundação, seção 10 — Jose, 13/10) ──
+  'f_{bd}': 'resistência de aderência de cálculo da barra no graute',
+  'f_{yd}': 'resistência de cálculo ao escoamento do aço',
+  '\\ell_{b,gr}/\\phi': 'comprimento de ancoragem reto no graute, em diâmetros',
+  '\\ell_{b,c}/\\phi': 'comprimento de ancoragem reto no concreto da sapata, em diâmetros',
+  '\\alpha_{0t}': 'coeficiente da proporção de barras emendadas na mesma seção',
+  r_v: 'As,nec/As,ef da barra vertical do painel (a face que pede mais)',
+  'r_{cf}': 'As,nec/As,ef da armadura principal do contraforte',
+  '\\ell_{0t}': 'traspasse da espera com a barra vertical, acima da sapata',
+  '\\ell_{0t,v}': 'traspasse da espera com a barra vertical do painel',
+  '\\ell_{0t,cf}': 'traspasse da espera com a principal do contraforte',
+  '\\ell_{0t,cc}': 'traspasse da espera com as construtivas do contraforte',
 };
 
 const ABA = 'Fundação';
@@ -536,6 +548,65 @@ export function passoDaDobra(m: Memoria, e: Espera): Passo | null {
   });
 }
 
+/*
+  TRASPASSE espera × barra do muro (Jose, 13/10: "NBR 6118: 2,0 × ℓb no graute"; aba Fundação, seção 10). A emenda
+  fica dentro do furo grauteado: a aderência é a do graute (fgk no lugar do fck). α0t = 2,0 porque todas as esperas
+  emendam na base (Tab. 9.4, mais de 50% na mesma seção). ℓ0t = α0t·ℓb·As,nec/As,ef ≥ máx(0,3·α0t·ℓb; 15φ; 20 cm),
+  arredondado para cima ao cm como a planilha (CEILING). Construtiva não tem conta: sem a relação de áreas (vale 1).
+  O ℓb no concreto da sapata entra aqui porque usa o mesmo α0t: é o das emendas da armadura longitudinal da sapata.
+*/
+export interface BarraEmendada {
+  id: string;          // nome da célula do traspasse (l0t_v, l0t_pv...)
+  simbolo: string;
+  phi: Expr;           // Ø em cm
+  r: Expr | null;      // As,nec/As,ef (null: construtiva, vale 1)
+}
+
+/** O ℓb no graute (fbd e ℓb/φ) e o α0t: os passos comuns a todas as esperas. */
+function passosDoLbNoGraute(m: Memoria): Passo[] {
+  const fgk = m.g('fgk_', 'f_{gk}', 1, 'MPa');
+  const fyd = m.g('fyd_', 'f_{yd}', 1, 'MPa');
+  const fbd = m.g('fbd_gr', 'f_{bd}', 3, 'MPa');
+  const out: Passo[] = [];
+  if (temNumero(m, 'fbd_gr')) {
+    out.push(m.passo('fbd_gr', 'f_{bd}', div(mul(cte(2.25, 2), cte(0.21, 2), pot(fgk, DOIS_TERCOS)), cte(1.4, 1)),
+      { casas: 3, unidade: 'MPa', ref: NBR('9.3.2.1') }));
+  }
+  if (temNumero(m, 'lbphi_gr')) {
+    out.push(m.passo('lbphi_gr', '\\ell_{b,gr}/\\phi', div(fyd, mul(cte(4, 0), fbd)), { casas: 1, ref: NBR('9.4.2.4') }));
+  }
+  if (temNumero(m, 'a0t')) out.push(m.passo('a0t', '\\alpha_{0t}', null, { casas: 1, origem: 'tabela', ref: NBR('Tab. 9.4') }));
+  return out;
+}
+
+/** Uma emenda: ℓ0t = ⌈máx(α0t·ℓb/φ·φ·r; 0,3·α0t·ℓb/φ·φ; 15φ; 20)⌉. null quando a planilha deixou "—". */
+export function passoDoTraspasse(m: Memoria, b: BarraEmendada): Passo | null {
+  if (m.valor(b.id) === null) return null;
+  const a0t = m.g('a0t', '\\alpha_{0t}', 1);
+  const lbphi = m.g('lbphi_gr', '\\ell_{b,gr}/\\phi', 1);
+  const nec = b.r ? mul(a0t, lbphi, b.phi, b.r) : mul(a0t, lbphi, b.phi);
+  return m.passo(b.id, b.simbolo, arredCima(max(nec, mul(cte(0.3, 1), a0t, lbphi, b.phi), mul(cte(15, 0), b.phi), cte(20, 0))),
+    { casas: 0, unidade: 'cm', ref: NBR('9.5.2.2.1') });
+}
+
+/**
+ * A seção do traspasse: o ℓb no graute, as relações de área (antes da emenda que as usa), as emendas e, por último,
+ * o ℓb no concreto da sapata. Seção vazia quando nenhuma emenda tem número.
+ */
+export function secaoDoTraspasse(m: Memoria, barras: BarraEmendada[], relacoes: (Passo | null | false)[] = []) {
+  const emendas = barras.map((b) => passoDoTraspasse(m, b));
+  const titulo = 'Traspasse espera × barra, no graute';
+  if (!emendas.some(Boolean)) return secao(titulo, []);
+  const fyd = m.g('fyd_', 'f_{yd}', 1, 'MPa');
+  const fctd = m.g('fctd_s', 'f_{ctd}', 3, 'MPa');
+  return secao(titulo, [
+    ...passosDoLbNoGraute(m),
+    ...relacoes,
+    ...emendas,
+    temNumero(m, 'lbphi_c') && m.passo('lbphi_c', '\\ell_{b,c}/\\phi', div(fyd, mul(cte(4, 0), cte(2.25, 2), fctd)), { casas: 1, ref: NBR('9.4.2.4') }),
+  ], NBR('9.5.2.2'));
+}
+
 /** Contrafortes: as esperas do painel, do contraforte e das construtivas. (No balanço, a do card de ancoragem.) */
 function cardEsperas(r: Parameters<AutorDeCards>[0]): Card {
   const m = memoriaDe(r);
@@ -558,14 +629,26 @@ function cardEsperas(r: Parameters<AutorDeCards>[0]): Card {
       ]
     : [];
   const sec = secao('Dobra do pé na sapata', passos, DEDUCAO);
+  const trasp = contrafortes
+    ? secaoDoTraspasse(m, [
+        { id: 'l0t_pv', simbolo: '\\ell_{0t,v}', phi: m.ent('phi_pv', '\\phi_v', emCm), r: m.g('r_pv', 'r_v', 3) },
+        { id: 'l0t_cf', simbolo: '\\ell_{0t,cf}', phi: m.ent('phi_cf', '\\phi_{cf}', emCm), r: m.g('r_cf', 'r_{cf}', 3) },
+        { id: 'l0t_cc', simbolo: '\\ell_{0t,cc}', phi: m.ent('phi_cc', '\\phi_{cc}', emCm), r: null },
+      ], [
+        // IF(ISNUMBER(As_...); MIN(1; As/As,ef); 1) — a planilha publica a relação já decidida
+        temNumero(m, 'r_pv') && m.passo('r_pv', 'r_v', null, { casas: 3, origem: 'calculado' }),
+        temNumero(m, 'r_cf') && m.passo('r_cf', 'r_{cf}', null, { casas: 3, origem: 'calculado' }),
+      ])
+    : null;
+  const secoes = [sec, trasp].filter((s): s is NonNullable<typeof s> => !!s && s.passos.length > 0);
   return {
     id: 'sapata.esperas',
     titulo: 'Esperas na fundação · contrafortes',
     ref: NBR('Tab. 9.1'),
     figura: 'Fig. 9',
-    secoes: sec.passos.length > 0 ? [sec] : [],
+    secoes,
     avisos: [],
-    aplicavel: contrafortes && sec.passos.length > 0,
+    aplicavel: contrafortes && secoes.length > 0,
   };
 }
 

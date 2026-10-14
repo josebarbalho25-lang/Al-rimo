@@ -13,7 +13,7 @@ import type { AutorDeCards, Card, Expr, Ref, Secao } from '../tipos';
 import { arredBaixo, arredCima, cte, div, max, min, mul, pi, pot, raiz, soma, sub } from '../expr';
 import { memoriaDe, secao, type Memoria } from '../passo';
 import { nbr, nt } from '../formato';
-import { passoDaDobra } from './sapata';
+import { passoDaDobra, secaoDoTraspasse } from './sapata';
 import { desenhoDaFaixaEmPlanta, desenhoDasForcasNaFaixa } from '../desenhoDaSecaoI';
 
 export const SIMBOLOS_BALANCO: Readonly<Record<string, string>> = {
@@ -536,12 +536,16 @@ function cardAncoragem(m: Memoria, f: Folhas, c: Ctx): Card {
     }),
   ], { fonte: 'Dedução' });
 
+  // A emenda da espera com a barra do muro, acima da sapata (Jose, 13/10: 2,0 × ℓb no graute). Mesma conta das
+  // esperas dos contrafortes; a relação de áreas é a da ancoragem (r_anc), já mostrada acima.
+  const traspasse = secaoDoTraspasse(m, [{ id: 'l0t_v', simbolo: '\\ell_{0t}', phi: f.phiCm, r: f.rAnc }]);
+
   return {
     id: 'balanco.ancoragem',
-    titulo: 'Ancoragem na fundação · muro em balanço',
+    titulo: 'Ancoragem e traspasse da espera · muro em balanço',
     ref: NBR('12.7.2'),
     figura: 'Fig. 9',
-    secoes: so([comprimento, adotado, dobra]),
+    secoes: so([comprimento, adotado, dobra, traspasse]),
     avisos: [],
     aplicavel: c.balanco,
   };

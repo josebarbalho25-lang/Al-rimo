@@ -19,7 +19,7 @@ export const ENTRADAS_DO_MODELO: EntradaMeta[] = [
   { nome: 'junta_cada', rotulo: 'Junta de controle a cada', padrao: 0, unidade: 'm', nota: '0 = sem junta. Com contrafortes, a junta fica entre dois contrafortes encostados; muro e sapata cortados juntos.', figura: 'Fig. 16', opcoes: null, formato: '0.00', secao: MODELO, ref: 'modelo!junta_cada' },
   { nome: 'cinta_topo', rotulo: 'Cinta no topo (canaleta)', padrao: 'Sim', unidade: '', nota: 'Última fiada em canaleta grauteada com barra horizontal.', figura: 'Fig. 5', opcoes: ['Sim', 'Não'], formato: 'General', secao: MODELO, ref: 'modelo!cinta_topo' },
   { nome: 'phi_cinta', rotulo: 'Ø da barra da cinta', padrao: 10, unidade: 'mm', nota: '', figura: 'Fig. 5', opcoes: [6.3, 8, 10, 12.5, 16], formato: '0.0', secao: MODELO, ref: 'modelo!phi_cinta' },
-  { nome: 'traspasse_dir', rotulo: 'Traspasse espera × barra — opcional', padrao: null, unidade: 'cm', nota: 'Em branco = ℓb adotado na conta da ancoragem.', figura: 'Fig. 9', opcoes: null, formato: '0', secao: MODELO, ref: 'modelo!traspasse_dir' },
+  { nome: 'traspasse_dir', rotulo: 'Traspasse espera × barra — opcional', padrao: null, unidade: 'cm', nota: 'Em branco = 2,0 × ℓb no graute (NBR 6118), por barra. Emendas defasadas: digitar menos.', figura: 'Fig. 9', opcoes: null, formato: '0', secao: MODELO, ref: 'modelo!traspasse_dir' },
 
   { nome: 'barbaca_on', rotulo: 'Barbacãs', padrao: 'Sim', unidade: '', nota: '', figura: 'Fig. 17', opcoes: ['Sim', 'Não'], formato: 'General', secao: DRENAGEM, ref: 'modelo!barbaca_on' },
   { nome: 'barbaca_phi', rotulo: 'Ø do barbacã', padrao: 50, unidade: 'mm', nota: '', figura: 'Fig. 17', opcoes: null, formato: '0', secao: DRENAGEM, ref: 'modelo!barbaca_phi' },

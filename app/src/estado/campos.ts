@@ -628,6 +628,9 @@ export const VALOR_AUTO: Readonly<Record<string, string>> = {
   fgk_dir: 'fgk_',
   // K da flexão horizontal do painel (13/10): vazio = 0,5 (seção horizontal não toda grauteada) ou 1,0 (total)
   K_ph: 'K_ph_us',
+  // traspasse (13/10): vazio = 2,0 × ℓb no graute (NBR 6118). Só o balanço mostra o número — com contrafortes são
+  // três barras com traspasses diferentes (painel, contraforte, construtivas) e o campo fica "auto"
+  traspasse_dir: 'l0t_v',
 };
 
 /** O valor em que o campo fica travado na situação atual, ou undefined (campo livre). */
