@@ -10,7 +10,8 @@ HACHURA = dict(
     brita='#4a4a4a', britaFundo='#c3bfb5',
 )
 
-E = 2   # concreto, areia e brita no dobro da amostra (proporção do Revit do Jose)
+# tamanho de cada hachura, calibrado pelo Jose (14/10) — o mesmo ESCALA do hachuras.ts
+ESCALA = dict(terra=48 * 0.4, concreto=2 * 0.85, areia=2 * 0.25, brita=2 * 0.55)
 
 
 def _sorteio(semente):
@@ -27,7 +28,7 @@ def _f1(x):
     return str(int(v)) if v == int(v) else str(v)
 
 
-def _risco(x, y, ang, l, cor):
+def _risco(E, x, y, ang, l, cor):
     x, y, l = x * E, y * E, l * E
     return (f'<line x1="{_f1(x)}" y1="{_f1(y)}" x2="{_f1(x + l * math.cos(ang))}" y2="{_f1(y + l * math.sin(ang))}" '
             f'stroke="{cor}" stroke-width="0.6"/>')
@@ -39,7 +40,7 @@ def _ladrilho(id_, lado, fundo, miolo):
 
 
 def _terra(id_):
-    c = 48
+    c = ESCALA['terra']
     T = 2 * c
     seg = []
     for k in (0, 0.375, 0.75):
@@ -61,15 +62,17 @@ def _terra(id_):
 
 def _areia(id_):
     r = _sorteio(11)
+    E = ESCALA['areia']
     s = ''
     for _ in range(70):
         x, y, a, l = r() * 60, r() * 60, r() * 6.28, 0.6 + r() * 0.9
-        s += _risco(x, y, a, l, HACHURA['areia'])
+        s += _risco(E, x, y, a, l, HACHURA['areia'])
     return _ladrilho(id_, 60 * E, HACHURA['areiaFundo'], s)
 
 
 def _concreto(id_):
     r = _sorteio(23)
+    E = ESCALA['concreto']
     s = ''
     for _ in range(22):
         x, y, raio, a0 = 6 + r() * 68, 6 + r() * 68, 1.4 + r() * 1.6, r() * 6.28
@@ -77,13 +80,13 @@ def _concreto(id_):
         s += f'<polygon points="{" ".join(p)}" fill="none" stroke="{HACHURA["concreto"]}" stroke-width="0.6"/>'
     for _ in range(45):
         x, y, a, l = r() * 80, r() * 80, r() * 6.28, 0.5 + r() * 1.2
-        s += _risco(x, y, a, l, HACHURA['concreto'])
+        s += _risco(E, x, y, a, l, HACHURA['concreto'])
     return _ladrilho(id_, 80 * E, HACHURA['concretoFundo'], s)
 
 
 def _brita(id_):
     r = _sorteio(7)
-    T, n = 72, 8
+    T, n, E = 72, 8, ESCALA['brita']
     passo = T / n
     s = ''
     for i in range(n):

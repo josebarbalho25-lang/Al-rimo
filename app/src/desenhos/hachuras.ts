@@ -2,7 +2,7 @@
   HACHURAS DE MATERIAL — as do Revit do Jose (14/10): terra (trançado de três riscos, deitado e em pé alternando),
   areia (pontinhos) e concreto (triângulos e riscos), nas cores dele; a brita, que no Revit dele não tinha uma boa,
   ficou em pedras de quina viva (escolha do Jose entre três opções, 14/10: "opção A" — brita é pedra britada; o
-  círculo é a convenção de seixo rolado). A terra 4× maior que a amostra ("coloca a hachura da terra maior 4x"), no trançado do EARTH.
+  círculo é a convenção de seixo rolado). Terra no trançado do EARTH. Tamanhos calibrados por ele na régua (ESCALA).
 
   Os pontos "aleatórios" saem de um sorteio com semente fixa: o mesmo desenho a cada vez (teste e exportação
   estáveis). Cada pedra perto da borda do ladrilho é desenhada também do outro lado, para o ladrilho emendar sem
@@ -31,12 +31,13 @@ function sorteio(semente: number): () => number {
 const f1 = (x: number): string => (Math.round(x * 10) / 10).toString();
 
 /**
- * Concreto, areia e brita no dobro do tamanho da amostra: a proporção que o Jose mostrou no Revit (14/10) — a casa
- * da terra tem uns sete triângulos de concreto de largura, e o concreto e a areia dele são ralos. O traço fica fino.
+ * O tamanho de cada hachura, calibrado pelo Jose na régua (14/10, `_trabalho/calibrar_hachuras.html`: "terra 0,40,
+ * concreto 0,85, areia 0,25, brita 0,55" sobre a 1ª proposta — terra com casa de 48 e as outras no dobro da amostra).
+ * Muda só o desenho; o traço fica fino em qualquer tamanho.
  */
-const E = 2;
+const ESCALA = { terra: 48 * 0.4, concreto: 2 * 0.85, areia: 2 * 0.25, brita: 2 * 0.55 } as const;
 
-function risco(x: number, y: number, ang: number, l: number, cor: string): string {
+function risco(E: number, x: number, y: number, ang: number, l: number, cor: string): string {
   [x, y, l] = [x * E, y * E, l * E];
   return `<line x1="${f1(x)}" y1="${f1(y)}" x2="${f1(x + l * Math.cos(ang))}" y2="${f1(y + l * Math.sin(ang))}" stroke="${cor}" stroke-width="0.6"/>`;
 }
@@ -53,7 +54,7 @@ function ladrilho(id: string, lado: number, fundo: string, miolo: string): strin
  * 1ª tentativa não davam).
  */
 function terra(id: string): string {
-  const c = 48;
+  const c = ESCALA.terra;
   const T = 2 * c;
   const seg: [number, number, number, number][] = [];
   for (const k of [0, 0.375, 0.75]) {
@@ -79,26 +80,28 @@ function terra(id: string): string {
 function areia(id: string): string {
   const r = sorteio(11);
   let s = '';
-  for (let i = 0; i < 70; i++) s += risco(r() * 60, r() * 60, r() * 6.28, 0.6 + r() * 0.9, HACHURA.areia);
+  const E = ESCALA.areia;
+  for (let i = 0; i < 70; i++) s += risco(E, r() * 60, r() * 60, r() * 6.28, 0.6 + r() * 0.9, HACHURA.areia);
   return ladrilho(id, 60 * E, HACHURA.areiaFundo, s);
 }
 
 function concreto(id: string): string {
   const r = sorteio(23);
+  const E = ESCALA.concreto;
   let s = '';
   for (let i = 0; i < 22; i++) {
     const x = 6 + r() * 68, y = 6 + r() * 68, raio = 1.4 + r() * 1.6, a0 = r() * 6.28;
     const p = [0, 1, 2].map((v) => `${f1(E * (x + raio * Math.cos(a0 + v * 2.094)))},${f1(E * (y + raio * Math.sin(a0 + v * 2.094)))}`);
     s += `<polygon points="${p.join(' ')}" fill="none" stroke="${HACHURA.concreto}" stroke-width="0.6"/>`;
   }
-  for (let i = 0; i < 45; i++) s += risco(r() * 80, r() * 80, r() * 6.28, 0.5 + r() * 1.2, HACHURA.concreto);
+  for (let i = 0; i < 45; i++) s += risco(E, r() * 80, r() * 80, r() * 6.28, 0.5 + r() * 1.2, HACHURA.concreto);
   return ladrilho(id, 80 * E, HACHURA.concretoFundo, s);
 }
 
 /** Brita: pedras de 5 a 7 lados, de quina viva, uma por casa de uma grade 8 × 8 com o centro sacudido. */
 function brita(id: string): string {
   const r = sorteio(7);
-  const T = 72, n = 8, passo = T / n;
+  const T = 72, n = 8, passo = T / n, E = ESCALA.brita;
   let s = '';
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {

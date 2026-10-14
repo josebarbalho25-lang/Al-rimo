@@ -262,9 +262,9 @@ e dizer ao Jose o que mudou e por quê.
   (perguntar ao Jose se atravessa). Código: `modulacao/entorno.ts` (pacoteDoDreno, bordaDoPacote).
 - **Hachuras do Revit do Jose (14/10):** terra = trançado EARTH do AutoCAD (casa 48 px, #a67857 sobre #dbc9bb),
   concreto (#5d5d5d sobre #d4d4d4), areia (#5d5d5d sobre #ffffb7), brita = pedras de quina viva (opção A, #4a4a4a sobre
-  #c3bfb5); concreto/areia/brita no dobro da amostra (proporção do Revit dele). Um gerador só por lado:
-  `app/src/desenhos/hachuras.ts` (desenhos do app) e `figs/app/hachuras.py` (figuras), mesma semente. Calibração de
-  tamanho em andamento: `_trabalho/calibrar_hachuras.html`.
+  #c3bfb5). Tamanhos CALIBRADOS por ele na régua (`_trabalho/calibrar_hachuras.html`): terra ×0,40, concreto ×0,85,
+  areia ×0,25, brita ×0,55 sobre a 1ª proposta (constante ESCALA). Um gerador por lado: `app/src/desenhos/hachuras.ts`
+  (desenhos do app) e `figs/app/hachuras.py` (figuras), mesma semente e mesma ESCALA — mudou um, muda o outro.
 - **Armadura no 3D e canaleta no IFC (Jose, 14/10):** o Raio-X virou o botão **Armadura** — as peças não mudam e as
   barras saem por cima de tudo (apaga a profundidade antes delas, como o "visualizar desobstruído" do Revit), com luz,
   na cor da bitola dele (Revit, Casa F., vista "Iso Escada": Ø5 #00ffff, 6,3 #00ff00, 8 #ff8000, 10 #ff0000, 12,5
