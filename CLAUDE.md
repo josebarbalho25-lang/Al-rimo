@@ -190,6 +190,19 @@ e dizer ao Jose o que mudou e por quê.
   GERAR, com biblioteca pronta; mm de papel "como plotado"; hachuras EARTH/AR-CONC/AR-SAND/GRAVEL; carimbo como bloco
   com atributos; .zip). 3D: Realista vai como IMAGEM; Cores e Opaco saem em VETOR (pintor do isométrico com a câmera
   livre do visor). Contrato: `app/src/pranchas/tipos.ts`.
+  FEITO 14/10 (no main): aba Pranchas (`pranchas/TelaDasPranchas.tsx`), "Enviar para a prancha" no 3D e "Prancha"
+  nas abas 2D (canal `pranchas/envio.ts` → folha ativa), folha composta em mm (`folha.ts`: moldura 20/10, carimbo
+  180×50 como BLOCO com um atributo por dado e ponto base no canto inferior direito, quadro lateral com notas que a
+  conta sustenta, legenda e resumo do aço por categoria), vistas em escala fixa com PX_POR_MM 4,4 (cota com corpo
+  2,5 mm), isométrico e 3D sem escala (largura), títulos automáticos, aviso vermelho de desenho fora da moldura ou
+  sobre carimbo/quadro, desenho VIVO (desenhista por muro, 300 ms após a última tecla; 3D Realista refeito fora da
+  tela com fundo transparente). PDF pelo diálogo de impressão com uma página por folha e HACHURA EM VETOR (era
+  imagem de 37 dpi). DXF (`dxf.ts` sobre `@tarikjabiri/dxf` 2.9.0, AC1018, cp1252): tabela fixa de camadas
+  (`camadasDxf.ts`, aço vermelho ACI 1), fundos em `*-FUNDO`/`3D-FACES` (congelar para plotar em preto e branco),
+  3D e isométrico sem arestas escondidas, padrões EARTH/AR-CONC/AR-SAND/GRAVEL/ANSI31, .zip com uma prancha por
+  arquivo e as imagens; `tools/validar_dxf.py --estrito` (ezdxf) é o critério. Três revisores adversariais + dois
+  agentes de correção passaram; pendências do Jose em "PENDÊNCIAS ANOTADAS". Ao mudar dependência do app: `npm
+  install` no `app/` do main E reiniciar o servidor da porta 5180 (o Vite guarda o erro de import).
 - **Depois das pranchas: empacotar e vender** seguindo o Pró-Viga (`proviga-3d-limpo`: Electron, tela de ativação,
   `licenca.js`, contrato no instalador, gerar-icone a partir do SVG). GitHub: o Jose disse para deixar o push para
   depois (14/10; só esta máquina).
