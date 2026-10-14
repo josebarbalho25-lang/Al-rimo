@@ -74,12 +74,12 @@ export const IconeCamadas = (p: P) => (
   </Svg>
 );
 
-/** Raio-X: o bloco tracejado (vira vidro) e o pilar de graute com a barra, cheios. */
-export const IconeRaioX = (p: P) => (
+/** Armadura: o bloco apagado atrás e duas barras por cima, uma com a dobra (o "desobstruído" do Revit). */
+export const IconeArmadura = (p: P) => (
   <Svg {...p}>
     <path d="M3.5 5.5h17v13h-17z" {...SOME} />
-    <path d="M9.5 5.5h5v13h-5z" {...MASSA} />
-    <path d="M12 3v18" strokeWidth={2.2} />
+    <path d="M9 3v18" strokeWidth={2.2} />
+    <path d="M15 3v14a3 3 0 0 0 3 3h3" strokeWidth={2.2} />
   </Svg>
 );
 

@@ -40,6 +40,7 @@ import { CuboDeVistas } from './CuboDeVistas';
 import { DIRECOES, enquadramento, type VistaNomeada } from './enquadrar';
 import { guardarEstilo, lembrarEstilo, paletaDoPalco, type EstiloVisual } from './estiloVisual';
 import { desenharLegenda, LegendaDasCores } from './LegendaDasCores';
+import { desenharLegendaDasBitolas, LegendaDasBitolas } from './LegendaDasBitolas';
 import type { Categoria } from './lotes';
 import { PainelDaPeca } from './PainelDaPeca';
 import { lerPaleta, observarTema, themeColor, type PaletaVisor } from './tema3d';
@@ -186,7 +187,7 @@ export function Visor3D({ modelo, selecionado, onSelecionar }: PropsDoVisor3D) {
   selAtual.current = sel;
 
   const [ocultas, setOcultas] = useState<ReadonlySet<Categoria>>(() => new Set());
-  const [raioX, setRaioX] = useState(false);
+  const [armadura, setArmadura] = useState(false);
   const caixaTotal = useMemo(() => cena.caixaVisivel(), [cena]);
   const [corte, setCorte] = useState<{ ligado: boolean; x: number }>(() => ({ ligado: false, x: (caixaTotal.min[0] + caixaTotal.max[0]) / 2 }));
   // O corte sobrevive à troca do modelo, mas não fora dele: um muro mais curto não pode ficar com o plano no vazio.
@@ -212,9 +213,9 @@ export function Visor3D({ modelo, selecionado, onSelecionar }: PropsDoVisor3D) {
     invalidar();
   }, [cena, ocultas]);
   useLayoutEffect(() => {
-    cena.aplicarRaioX(raioX);
+    cena.aplicarArmadura(armadura);
     invalidar();
-  }, [cena, raioX]);
+  }, [cena, armadura]);
   useLayoutEffect(() => {
     planoDoCorte(xCorte, plano.current);
     cena.aplicarCorte(corte.ligado ? [plano.current] : []);
@@ -227,9 +228,10 @@ export function Visor3D({ modelo, selecionado, onSelecionar }: PropsDoVisor3D) {
 
   // A sombra do Realista se redesenha só quando o que está aceso muda (ver `ambiente.tsx`): este objeto
   // muda de identidade exatamente nessas horas.
-  const versaoDaSombra = useMemo(() => ({}), [cena, ocultas, raioX, corte.ligado, xCorte]);
+  const versaoDaSombra = useMemo(() => ({}), [cena, ocultas, armadura, corte.ligado, xCorte]);
   const caixaDaSombra = useMemo(() => cena.caixaTotal(), [cena]);
   const classes = useMemo(() => cena.classesVisiveis(ocultas), [cena, ocultas]);
+  const diametros = useMemo(() => cena.diametrosVisiveis(ocultas), [cena, ocultas]);
 
   const presentes = useMemo(() => {
     const s = new Set<Categoria>();
@@ -258,8 +260,11 @@ export function Visor3D({ modelo, selecionado, onSelecionar }: PropsDoVisor3D) {
   const fotografar = () => {
     const st = agora();
     if (!st) return;
-    // No Cores a legenda vai junto: a foto vai para a obra, e cor sem legenda não diz qual é o bloco.
-    const legenda = estilo === 'cores' && classes.size ? (g: CanvasRenderingContext2D, w: number, _h: number, e: number) => desenharLegenda(g, w, classes, palco, e) : undefined;
+    // No Cores a legenda vai junto: a foto vai para a obra, e cor sem legenda não diz qual é o bloco. Com a Armadura
+    // ligada, vai a das bitolas (é ela que está na tela).
+    const legenda = armadura && diametros.length
+      ? (g: CanvasRenderingContext2D, w: number, _h: number, e: number) => desenharLegendaDasBitolas(g, w, diametros, palco, e)
+      : estilo === 'cores' && classes.size ? (g: CanvasRenderingContext2D, w: number, _h: number, e: number) => desenharLegenda(g, w, classes, palco, e) : undefined;
     const url = capturar(st, 2, () => cena.pintarSelecao(null), () => cena.pintarSelecao(selAtual.current), legenda);
     baixar(url, 'al-rimo-3d.png');
   };
@@ -332,7 +337,7 @@ export function Visor3D({ modelo, selecionado, onSelecionar }: PropsDoVisor3D) {
       </Canvas>
       <div className="v3-overlay">
         {pego && <PainelDaPeca pego={pego} modelo={modelo} aoFechar={() => selecionar(null)} />}
-        {estilo === 'cores' && <LegendaDasCores classes={classes} />}
+        {armadura ? <LegendaDasBitolas diametros={diametros} /> : estilo === 'cores' && <LegendaDasCores classes={classes} />}
         <CuboDeVistas paleta={paleta} obterQuaternion={() => estado.current?.camera.quaternion ?? null} aoVoar={voar} registrar={registrarCubo} />
         <BarraDoVisor
           aoVista={(v: VistaNomeada) => voar(DIRECOES[v])}
@@ -340,8 +345,8 @@ export function Visor3D({ modelo, selecionado, onSelecionar }: PropsDoVisor3D) {
           ocultas={ocultas}
           presentes={presentes}
           aoAlternar={alternar}
-          raioX={raioX}
-          aoRaioX={() => setRaioX((r) => !r)}
+          armadura={armadura}
+          aoArmadura={() => setArmadura((a) => !a)}
           corte={corte.ligado}
           aoCorte={ligarCorte}
           aoFoto={fotografar}

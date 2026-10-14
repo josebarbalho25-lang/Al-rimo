@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { construirCena3D } from './cena3d';
 import { corDoAco } from './estiloVisual';
+import { corDaBitola } from './coresDasBitolas';
 import { muroDeExemplo } from './exemploDeModelo';
 import type { Categoria } from './lotes';
 import { lerPaleta } from './tema3d';
@@ -52,12 +53,41 @@ describe('cena 3D montada (sem WebGL)', () => {
     c.aplicarVisibilidade(new Set());
   });
 
-  it('Raio-X: o bloco vira vidro e o clique atravessa até o graute', () => {
-    c.aplicarRaioX(true);
-    // Primeiro furo grauteado do bloco 0, fiada 2: x 25–170 mm.
-    expect(c.pegar(raioDe(0.1, 0.5))).toBe('T1.GF.c000.f02');
-    c.aplicarRaioX(false);
-    expect(c.pegar(raioDe(0.1, 0.5))).toBe('T1.M.f02.p000');
+  it('Armadura: a barra vem por cima do bloco (o "desobstruído" do Revit) e o clique acha a barra através dele', () => {
+    // A barra vertical V000 sobe em x = 97,5 mm, dentro do bloco 0: o raio de frente bate primeiro no bloco.
+    expect(c.pegar(raioDe(0.0975, 0.5))).toBe('T1.M.f02.p000');
+    c.aplicarArmadura(true);
+    expect(c.pegar(raioDe(0.0975, 0.5))).toBe('B.V000');
+    for (const b of c.barras) {
+      const mat = b.malha.material as THREE.Material;
+      expect(mat.depthTest).toBe(false);
+      expect(b.malha.renderOrder).toBeGreaterThan(2);
+    }
+    // o bloco NÃO vira vidro (era o que poluía o Raio-X: as arestas de trás de todos os blocos)
+    const bloco = c.lotes.find((l) => l.lote.acabamento === 'alvenaria')!;
+    expect((bloco.malha.material as THREE.Material).transparent).toBe(false);
+    c.aplicarArmadura(false);
+    expect(c.pegar(raioDe(0.0975, 0.5))).toBe('T1.M.f02.p000');
+    for (const b of c.barras) expect((b.malha.material as THREE.Material).depthTest).toBe(true);
+  });
+
+  it('Armadura: cada Ø na cor da bitola do Jose (Revit, "Iso Escada"); desligada, o aço do estilo', () => {
+    c.aplicarArmadura(true);
+    for (const b of c.barras) {
+      const a = b.lote.geometria.getAttribute('color');
+      const esperada = new THREE.Color(corDaBitola(b.lote.diametro));
+      // a cor mora num Float32Array: confere com a tolerância do float
+      expect(a.getX(0)).toBeCloseTo(esperada.r, 6);
+      expect(a.getY(0)).toBeCloseTo(esperada.g, 6);
+      expect(a.getZ(0)).toBeCloseTo(esperada.b, 6);
+    }
+    expect(c.diametrosVisiveis(new Set())).toEqual([...new Set(c.barras.map((b) => b.lote.diametro))].sort((x, y) => x - y));
+    c.aplicarArmadura(false);
+    const aco = new THREE.Color(corDoAco('cores'));
+    const a = c.barras[0].lote.geometria.getAttribute('color');
+    expect(a.getX(0)).toBeCloseTo(aco.r, 6);
+    expect(a.getY(0)).toBeCloseTo(aco.g, 6);
+    expect(a.getZ(0)).toBeCloseTo(aco.b, 6);
   });
 
   it('o corte: o lado cortado não se pega (o clique atravessa)', () => {

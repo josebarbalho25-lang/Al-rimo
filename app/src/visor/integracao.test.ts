@@ -106,21 +106,18 @@ describe('o visor e a modulação põem cada peça no mesmo lugar', () => {
     c.dispose();
   });
 
-  it('aula122: com Raio-X o clique no graute acha o graute ou a barra, nunca o bloco', () => {
+  it('aula122: com a Armadura o clique de frente numa barra do muro acha a barra, não o bloco da frente', () => {
     const m = modelo('aula122', { L_total: 6 });
     const c = construirCena3D(m, paleta);
-    c.aplicarRaioX(true);
-    // Um graute de furo da fiada do meio, ou, se o arranjo não tiver, o da canaleta.
-    const meio = Math.floor(m.dims.n_fiadas / 2);
-    const graute =
-      m.pecas.find((p) => p.tipo === 'GRAUTE_FURO' && p.grupo === 'muro' && p.fiada === meio) ??
-      m.pecas.find((p) => p.tipo.startsWith('GRAUTE') && p.grupo === 'muro')!;
-    expect(graute).toBeDefined();
-    const k = caixaGlobal(graute, m.geometrias[graute.geometria]!);
-    const id = c.pegar(raioDeFrente(((k.min[0] + k.max[0]) / 2) * MM, ((k.min[2] + k.max[2]) / 2) * MM));
+    c.aplicarArmadura(true);
+    const barra = m.barras.find((b) => b.papel === 'VERT_MURO')!;
+    expect(barra).toBeDefined();
+    // a meia altura da barra vertical, no x dela (eixo em mm, global do trecho 1)
+    const [x, , z0] = barra.eixo[0];
+    const z1 = barra.eixo[barra.eixo.length - 1][2];
+    const id = c.pegar(raioDeFrente(x * MM, ((z0 + z1) / 2) * MM));
     const pego = id ? c.achar(id) : null;
-    expect(pego).not.toBeNull();
-    expect(pego!.tipo === 'barra' || pego!.peca.tipo.startsWith('GRAUTE')).toBe(true);
+    expect(pego?.tipo).toBe('barra');
     c.dispose();
   });
 });

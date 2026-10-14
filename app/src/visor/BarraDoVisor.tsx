@@ -2,7 +2,7 @@
 //  visor/BarraDoVisor.tsx — a barra de baixo do visor: só ícone, dica curta
 // ---------------------------------------------------------------------------
 //  Molde: a barra da vista do A-PORT (`ui/BarraDaVista.tsx`, canto de baixo
-//  do palco). Vistas · Enquadrar · Mostrar/ocultar · Raio-X · Corte ·
+//  do palco). Vistas · Enquadrar · Mostrar/ocultar · Armadura · Corte ·
 //  Estilo (Cores, Realista, Opaco) · Foto.
 //  Mostrar/ocultar abre uma lista de GRUPOS com o nome de cada um (rótulo +
 //  controle): sete ícones inventados para Graute, Drenagem, Terreno... seriam
@@ -25,7 +25,7 @@ import {
   IconeFrente,
   IconeIso,
   IconeLateral,
-  IconeRaioX,
+  IconeArmadura,
   IconeTopo,
 } from './icones';
 import { CATEGORIAS, type Categoria } from './lotes';
@@ -53,8 +53,8 @@ export interface PropsDaBarra {
   /** Grupos que existem neste muro (balanço não tem contraforte): os outros ficam apagados na lista. */
   presentes: ReadonlySet<Categoria>;
   aoAlternar: (c: Categoria) => void;
-  raioX: boolean;
-  aoRaioX: () => void;
+  armadura: boolean;
+  aoArmadura: () => void;
   corte: boolean;
   aoCorte: () => void;
   aoFoto: () => void;
@@ -117,8 +117,8 @@ export function BarraDoVisor(p: PropsDaBarra) {
           </div>
         )}
       </div>
-      <Botao titulo="Raio-X" acao="raiox" on={p.raioX} aoClicar={p.aoRaioX}>
-        <IconeRaioX />
+      <Botao titulo="Armadura" acao="armadura" on={p.armadura} aoClicar={p.aoArmadura}>
+        <IconeArmadura />
       </Botao>
       <Botao titulo="Corte" acao="corte" on={p.corte} aoClicar={p.aoCorte}>
         <IconeCorte />

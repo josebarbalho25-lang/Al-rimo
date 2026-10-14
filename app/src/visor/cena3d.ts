@@ -20,7 +20,13 @@
 //
 //  ⚠️ O ESTILO (Cores, Realista, Opaco — `estiloVisual.ts`) TROCA SÓ MATERIAL
 //  E COR. A malha, a matriz e o mapa do clique são os mesmos: por isso a
-//  seleção, o Raio-X e o corte valem nos três sem nenhum caso especial.
+//  seleção, a Armadura e o corte valem nos três sem nenhum caso especial.
+//
+//  ⚠️ ARMADURA (Jose, 14/10 — era o Raio-X): como o "visualizar desobstruído"
+//  do Revit. As peças NÃO mudam (o vidro do Raio-X mostrava as arestas de
+//  trás de todos os blocos: poluído); a barra é desenhada por último, sem
+//  teste de profundidade, em cor chapada da bitola (coresDasBitolas.ts) — por
+//  cima de bloco, graute e sapata, de qualquer ângulo. Fica melhor no Opaco.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import * as THREE from 'three';
@@ -31,20 +37,12 @@ import { materialDoAcabamento, materialDoAco } from './materiaisDoEstilo';
 import { caixaDaPeca, caixaLocal, MM, arestasDaGeometria, moldeDaGeometria, type Caixa } from './perfil3d';
 import { emMetro, montarLotes, unirCaixas, visivel, type Acabamento, type Categoria, type Lote } from './lotes';
 import type { PaletaVisor } from './tema3d';
-
-/** Opacidade do Raio-X: o bloco vira vidro fosco, e graute e barra aparecem dentro. */
-const OPACIDADE_RAIO_X = 0.14;
-/**
- * O graute no Raio-X fica MEIO transparente: a barra vertical mora dentro dele,
- * e com o graute cheio o Raio-X mostrava o pilar mas escondia o aço — que é o
- * que se quer ver (visto na bancada).
- */
-const OPACIDADE_GRAUTE_RAIO_X = 0.45;
+import { corDaBitola } from './coresDasBitolas';
 
 /** Acabamentos que levam traço. Graute (empilhado por fiada) riscaria o pilar de linhas a cada 20 cm. */
 const COM_ARESTA: ReadonlySet<Acabamento> = new Set(['alvenaria', 'concreto']);
-/** Acabamentos que o Raio-X deixa translúcidos: o bloco e a sapata (para ver a armadura dela). */
-const NO_RAIO_X: ReadonlySet<Acabamento> = new Set(['alvenaria', 'concreto']);
+/** Ordem de desenho da barra na Armadura: depois de tudo (peças 0, traço 2). */
+const ORDEM_DA_ARMADURA = 10;
 
 export type Pego = { tipo: 'peca'; peca: Peca } | { tipo: 'barra'; barra: Barra };
 
@@ -73,13 +71,16 @@ export interface Cena3D {
   /** O que o id é: peça ou barra. */
   achar(id: string): Pego | null;
   aplicarPaleta(p: PaletaVisor): void;
-  /** Troca material e cor de tudo (seleção, Raio-X, corte e o que está oculto continuam como estavam). */
+  /** Troca material e cor de tudo (seleção, Armadura, corte e o que está oculto continuam como estavam). */
   aplicarEstilo(e: EstiloVisual): void;
   aplicarVisibilidade(ocultas: ReadonlySet<Categoria>): void;
-  aplicarRaioX(ligado: boolean): void;
+  /** A armadura por cima de tudo, na cor da bitola (o "desobstruído" do Revit). */
+  aplicarArmadura(ligada: boolean): void;
+  /** Os Ø das barras acesas com estes grupos ocultos (a legenda da Armadura). */
+  diametrosVisiveis(ocultas: ReadonlySet<Categoria>): number[];
   aplicarCorte(planos: readonly THREE.Plane[]): void;
   pintarSelecao(id: string | null): void;
-  /** O id do primeiro acerto VISÍVEL do raio (respeita ocultar, Raio-X e corte). */
+  /** O id do primeiro acerto VISÍVEL do raio (respeita ocultar e corte; na Armadura, a barra vem antes da peça). */
   pegar(raio: THREE.Raycaster): string | null;
   /** Envoltória do que está aceso (sem o terreno), metro. */
   caixaVisivel(): Caixa;
@@ -146,33 +147,24 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
   let estilo = estiloInicial;
   let paletaAtual = paleta;
   let ocultas: ReadonlySet<Categoria> = new Set();
-  let raioX = false;
+  let armadura = false;
   let planos: readonly THREE.Plane[] = [];
   let selecionado: string | null = null;
 
   /*
     ── Materiais: um por estilo × acabamento, criados na primeira vez que o
     estilo aparece e guardados (voltar a um estilo não recompila nada). Quem
-    nasce depois já nasce com o Raio-X e o corte do momento.
+    nasce depois já nasce com o corte do momento.
   */
   const materiais = new Map<EstiloVisual, Map<Acabamento, MaterialDaPeca>>();
   const acos = new Map<EstiloVisual, MaterialDaPeca>();
-  /** O véu do terreno (do estilo) e o vidro do Raio-X: os dois únicos jeitos de uma peça ficar transparente. */
+  /** O véu do terreno (do estilo): o único jeito de uma peça ficar transparente. */
   const ajustarTransparencia = (m: MaterialDaPeca, a: Acabamento, e: EstiloVisual) => {
-    if (a === 'terreno') {
-      // O terreno é só referência: nunca tapa o muro, em estilo nenhum. (A opacidade é a do estilo DONO do
-      // material, não a do estilo na tela: o Raio-X passa por todos os materiais já criados.)
-      m.transparent = true;
-      m.opacity = opacidadeDoTerreno(e);
-      m.depthWrite = false;
-      return;
-    }
-    if (!NO_RAIO_X.has(a) && a !== 'graute') return;
-    m.transparent = raioX;
-    m.opacity = raioX ? (a === 'graute' ? OPACIDADE_GRAUTE_RAIO_X : OPACIDADE_RAIO_X) : 1;
-    // Sem gravar profundidade: o graute e a barra lá dentro passam pelo vidro.
-    m.depthWrite = !raioX;
-    m.needsUpdate = true;
+    if (a !== 'terreno') return;
+    // O terreno é só referência: nunca tapa o muro, em estilo nenhum (a opacidade é a do estilo DONO do material).
+    m.transparent = true;
+    m.opacity = opacidadeDoTerreno(e);
+    m.depthWrite = false;
   };
   const material = (e: EstiloVisual, a: Acabamento): MaterialDaPeca => {
     let doEstilo = materiais.get(e);
@@ -194,7 +186,11 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
     return m;
   };
   const tracoComum = materialDoTraco();
-  const tracoRaioX = materialDoTraco();
+  /*
+    O aço da Armadura: cor chapada (sem sombreado — Jose: "precisa do sombreado não"), e sem teste nem gravação de
+    profundidade — desenhado por último (ORDEM_DA_ARMADURA), passa por cima do que estiver na frente.
+  */
+  const acoDaArmadura = new THREE.MeshBasicMaterial({ color: 0xffffff, vertexColors: true, depthTest: false, depthWrite: false });
 
   // ── Moldes: um por Geometria usada (o sólido e as arestas dele) ──
   const moldes = new Map<string, { geo: THREE.BufferGeometry; arestas: THREE.BufferAttribute }>();
@@ -259,10 +255,12 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
     k.malha.malha.setColorAt(k.i, cor);
     k.malha.malha.instanceColor!.needsUpdate = true;
   };
+  const corDaBarra = (b: MalhaDeBarras) => (armadura ? corDaBitola(b.lote.diametro) : corDoAco(estilo));
   const corBaseDe = (id: string): string | null => {
     const k = indicePorId.get(id);
     if (k) return corDoLote(k.malha);
-    return faixaPorId.has(id) ? corDoAco(estilo) : null;
+    const f = faixaPorId.get(id);
+    return f ? corDaBarra(f.malha) : null;
   };
   const pintar = (id: string, hex: string) => {
     if (indicePorId.has(id)) pintarPeca(id, hex);
@@ -276,41 +274,35 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
       for (let i = 0; i < l.lote.ids.length; i++) l.malha.setColorAt(i, cor);
       l.malha.instanceColor!.needsUpdate = true;
     }
-    cor.set(corDoAco(estilo));
     for (const b of barras) {
+      cor.set(corDaBarra(b));
       const a = b.lote.geometria.getAttribute('color') as THREE.BufferAttribute;
       for (let v = 0; v < a.count; v++) a.setXYZ(v, cor.r, cor.g, cor.b);
       a.needsUpdate = true;
     }
     const t = tracoDoEstilo(estilo, paletaAtual);
-    if (t) {
-      tracoComum.color.set(t.cor);
-      tracoRaioX.color.set(t.cor);
-    }
+    if (t) tracoComum.color.set(t.cor);
     if (selecionado) pintar(selecionado, paletaAtual.selecionado);
   };
 
   /*
-    ⚠️ A SOMBRA É SÓ DO REALISTA, e só de quem é sólido de verdade: o terreno é
-    véu (não faz sombra, só a recebe) e, no Raio-X, o bloco e a sapata viram
-    vidro — vidro fazendo sombra cheia escureceria justo o graute e a barra que
-    o Raio-X existe para mostrar.
+    ⚠️ A SOMBRA É SÓ DO REALISTA, e só de quem é sólido de verdade: o terreno é véu (não faz sombra, só a recebe).
+    Na Armadura a barra é chapada e fica por cima: nem faz nem recebe sombra.
   */
   const ajustarSombras = () => {
     const comSombra = estilo === 'realista';
     for (const l of lotes) {
-      const a = l.lote.acabamento;
       l.malha.receiveShadow = comSombra;
-      l.malha.castShadow = comSombra && a !== 'terreno' && !(raioX && NO_RAIO_X.has(a));
+      l.malha.castShadow = comSombra && l.lote.acabamento !== 'terreno';
     }
-    for (const b of barras) b.malha.castShadow = b.malha.receiveShadow = comSombra;
+    for (const b of barras) b.malha.castShadow = b.malha.receiveShadow = comSombra && !armadura;
   };
 
   let ultimoZoom: number | null = null;
   const aplicarEstilo = (e: EstiloVisual) => {
     estilo = e;
     for (const l of lotes) l.malha.material = material(e, l.lote.acabamento);
-    for (const b of barras) b.malha.material = aco(e);
+    for (const b of barras) b.malha.material = armadura ? acoDaArmadura : aco(e);
     const t = tracoDoEstilo(e, paletaAtual);
     for (const l of lotes) if (l.traco) l.traco.visible = !!t && l.malha.visible;
     repintar();
@@ -337,15 +329,21 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
     for (const b of barras) b.malha.visible = visivel(b.lote.categorias, o);
   };
 
-  const aplicarRaioX = (ligado: boolean) => {
-    raioX = ligado;
-    for (const [e, doEstilo] of materiais) for (const [a, m] of doEstilo) ajustarTransparencia(m, a, e);
-    for (const l of lotes) if (l.traco && NO_RAIO_X.has(l.lote.acabamento)) l.traco.material = ligado ? tracoRaioX : tracoComum;
+  const aplicarArmadura = (ligada: boolean) => {
+    armadura = ligada;
+    for (const b of barras) {
+      b.malha.material = ligada ? acoDaArmadura : aco(estilo);
+      b.malha.renderOrder = ligada ? ORDEM_DA_ARMADURA : 0;
+    }
+    repintar();
     ajustarSombras();
   };
 
+  const diametrosVisiveis = (o: ReadonlySet<Categoria>): number[] =>
+    [...new Set(barras.filter((b) => visivel(b.lote.categorias, o)).map((b) => b.lote.diametro))].sort((a, b) => a - b);
+
   const todosOsMateriais = (): THREE.Material[] => {
-    const ms: THREE.Material[] = [tracoComum, tracoRaioX, ...acos.values()];
+    const ms: THREE.Material[] = [tracoComum, acoDaArmadura, ...acos.values()];
     for (const doEstilo of materiais.values()) ms.push(...doEstilo.values());
     return ms;
   };
@@ -370,9 +368,8 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
     if (f === fatorDoTraco) return;
     fatorDoTraco = f;
     tracoComum.opacity = t.opacidade * f;
-    tracoRaioX.opacity = t.opacidade * 0.6 * f;
     // Traço apagado não é desenhado (economiza a chamada de desenho de longe).
-    tracoComum.visible = tracoRaioX.visible = f > 0;
+    tracoComum.visible = f > 0;
   };
 
   const pintarSelecao = (id: string | null) => {
@@ -384,13 +381,21 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
     if (selecionado) pintar(selecionado, paletaAtual.selecionado);
   };
 
-  const pegavel = (l: MalhaDoLote) =>
-    l.malha.visible && l.lote.acabamento !== 'terreno' && !(raioX && NO_RAIO_X.has(l.lote.acabamento));
+  const pegavel = (l: MalhaDoLote) => l.malha.visible && l.lote.acabamento !== 'terreno';
 
   const pegar = (raio: THREE.Raycaster): string | null => {
+    // Na Armadura a barra está por cima de tudo na tela: o clique acha a barra antes da peça que está na frente dela.
+    if (armadura) {
+      const daBarra = pegarEm(raio, barras.filter((b) => b.malha.visible).map((b) => b.malha));
+      if (daBarra) return daBarra;
+    }
     const alvos: THREE.Object3D[] = [];
     for (const l of lotes) if (pegavel(l)) alvos.push(l.malha);
     for (const b of barras) if (b.malha.visible) alvos.push(b.malha);
+    return pegarEm(raio, alvos);
+  };
+
+  const pegarEm = (raio: THREE.Raycaster, alvos: THREE.Object3D[]): string | null => {
     if (!alvos.length) return null;
     for (const h of raio.intersectObjects(alvos, false)) {
       // O lado cortado não existe para o clique (meio milímetro de tolerância, a folga do corte).
@@ -487,7 +492,7 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
     for (const m of todosOsMateriais()) m.dispose();
   };
 
-  // Estado inicial coerente: nada oculto, sem Raio-X, sem corte, no estilo pedido.
+  // Estado inicial coerente: nada oculto, sem Armadura, sem corte, no estilo pedido.
   aplicarVisibilidade(ocultas);
   aplicarEstilo(estilo);
 
@@ -500,7 +505,8 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
     aplicarPaleta,
     aplicarEstilo,
     aplicarVisibilidade,
-    aplicarRaioX,
+    aplicarArmadura,
+    diametrosVisiveis,
     aplicarCorte,
     aplicarZoom,
     pintarSelecao,

@@ -139,26 +139,25 @@ describe('estilo: a cena troca de cara sem se remontar', () => {
     for (const x of c.barras) expect(x.malha.castShadow).toBe(true);
   });
 
-  it('Raio-X no Realista: o bloco vira vidro e deixa de fazer sombra (o graute lá dentro não pode escurecer)', () => {
-    c.aplicarRaioX(true);
+  it('Armadura no Realista: o bloco continua sólido e com sombra; a barra, chapada e por cima, sem sombra', () => {
+    c.aplicarArmadura(true);
     const b = lote('bloco 14x19x39');
-    expect((b.malha.material as THREE.Material).transparent).toBe(true);
-    expect(b.malha.castShadow).toBe(false);
-    // O clique atravessa o vidro, como nos outros estilos.
-    expect(c.pegar(raioDe(0.1, 0.5))).toBe('T1.GF.c000.f02');
-    // Trocar de estilo com o Raio-X ligado: o estilo novo nasce já em vidro.
+    expect((b.malha.material as THREE.Material).transparent).toBe(false);
+    expect(b.malha.castShadow).toBe(true);
+    for (const x of c.barras) expect(x.malha.castShadow).toBe(false);
+    // Trocar de estilo com a Armadura ligada: a barra continua por cima (o material dela não é o do estilo).
     c.aplicarEstilo('opaco');
-    expect((lote('bloco 14x19x39').malha.material as THREE.Material).transparent).toBe(true);
-    c.aplicarRaioX(false);
-    expect((lote('bloco 14x19x39').malha.material as THREE.Material).transparent).toBe(false);
+    for (const x of c.barras) expect((x.malha.material as THREE.Material).depthTest).toBe(false);
+    c.aplicarArmadura(false);
+    for (const x of c.barras) expect((x.malha.material as THREE.Material).depthTest).toBe(true);
     expect(c.pegar(raioDe(0.1, 0.5))).toBe('T1.M.f02.p000');
   });
 
-  it('o véu do terreno é de cada estilo: ligar o Raio-X em um não muda o terreno do outro', () => {
+  it('o véu do terreno é de cada estilo: ligar a Armadura em um não muda o terreno do outro', () => {
     c.aplicarEstilo('realista');
     c.aplicarEstilo('cores');
-    c.aplicarRaioX(true);
-    c.aplicarRaioX(false);
+    c.aplicarArmadura(true);
+    c.aplicarArmadura(false);
     c.aplicarEstilo('realista');
     const terreno = c.lotes.find((l) => l.lote.acabamento === 'terreno')!;
     expect((terreno.malha.material as THREE.Material).opacity).toBe(opacidadeDoTerreno('realista'));

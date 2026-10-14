@@ -311,6 +311,10 @@ body[data-theme='dark'] .v3-cubo-tela {
   min-height: calc(18px * var(--escala-ui, 1));
   white-space: nowrap;
 }
+/* Bitola na Armadura: bolinha, como a legenda de vergalhões das pranchas. */
+.v3-legenda-cor.redonda {
+  border-radius: 50%;
+}
 .v3-legenda-cor {
   width: calc(11px * var(--escala-ui, 1));
   height: calc(11px * var(--escala-ui, 1));
