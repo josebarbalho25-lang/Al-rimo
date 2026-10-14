@@ -34,7 +34,7 @@ export const useEscritorio = create<EstadoDoEscritorio>()((set, get) => ({
 }));
 
 /** Lê um arquivo de imagem e devolve um PNG (data URL) de no máximo `lado` px no lado maior. */
-export function logoEmPng(arquivo: File, lado = 800): Promise<string> {
+export function logoEmPng(arquivo: File, lado = 600): Promise<string> {
   return new Promise((ok, falha) => {
     const leitor = new FileReader();
     leitor.onerror = () => falha(new Error('não foi possível ler a imagem'));
@@ -42,16 +42,21 @@ export function logoEmPng(arquivo: File, lado = 800): Promise<string> {
       const img = new Image();
       img.onerror = () => falha(new Error('imagem inválida'));
       img.onload = () => {
-        const k = Math.min(1, lado / Math.max(img.naturalWidth || lado, img.naturalHeight || lado));
-        const w = Math.max(1, Math.round((img.naturalWidth || lado) * k));
-        const h = Math.max(1, Math.round((img.naturalHeight || lado) * k));
-        const c = document.createElement('canvas');
-        c.width = w;
-        c.height = h;
-        const g = c.getContext('2d');
-        if (!g) return falha(new Error('sem canvas'));
-        g.drawImage(img, 0, 0, w, h);
-        ok(c.toDataURL('image/png'));
+        try {
+          const k = Math.min(1, lado / Math.max(img.naturalWidth || lado, img.naturalHeight || lado));
+          const w = Math.max(1, Math.round((img.naturalWidth || lado) * k));
+          const h = Math.max(1, Math.round((img.naturalHeight || lado) * k));
+          const c = document.createElement('canvas');
+          c.width = w;
+          c.height = h;
+          const g = c.getContext('2d');
+          if (!g) return falha(new Error('sem canvas'));
+          g.drawImage(img, 0, 0, w, h);
+          ok(c.toDataURL('image/png'));
+        } catch (e) {
+          // SVG sem tamanho, canvas contaminado: a promessa responde, senão o botão fica mudo
+          falha(e instanceof Error ? e : new Error('imagem inválida'));
+        }
       };
       img.src = String(leitor.result);
     };

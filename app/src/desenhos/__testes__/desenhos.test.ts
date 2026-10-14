@@ -54,7 +54,7 @@ describe.each(Object.entries(MODELOS))('%s', (_, m) => {
     const r = rotulos(svgs.frontal);
     expect(r).toContain(cm(m.dims.L_real));
     expect(r).toContain(`muro ${cm(m.dims.H_muro)}`);
-    expect(r).toContain(`h = ${cm(m.dims.H_solo)}`);
+    expect(r).toContain(`solo ${cm(m.dims.H_solo)}`);
     if (m.dims.trechos.length > 1) for (const t of m.dims.trechos) expect(r).toContain(cm(t.x1 - t.x0));
     const cf = m.dims.contrafortes;
     if (cf.length >= 2) {
@@ -87,7 +87,7 @@ describe.each(Object.entries(MODELOS))('%s', (_, m) => {
     expect(r).toContain(cm(300));                               // h_sap do exemplo
     expect(r).toContain(cm(500));                               // h_den
     expect(r).toContain(cm(250));                               // b_den
-    expect(r).toContain(`h = ${cm(m.dims.H_solo)}`);
+    expect(r).toContain(`solo ${cm(m.dims.H_solo)}`);
     expect(r).toContain(`muro ${cm(m.dims.H_muro)}`);
     const dEsperado = Math.max(...m.barras.filter((b) => b.papel === 'VERT_MURO' && Math.abs(b.eixo[0][0] - cortesPadrao(m)[0].x) < 1).map((b) => b.eixo[0][1]));
     expect(r).toContain(`d = ${cm(dEsperado)}`);
@@ -121,14 +121,14 @@ describe('contrafortes', () => {
 
   it('corte no contraforte enterrado: tenr e d até as barras da ponta', () => {
     const r = rotulos(corteLateral(m, m.dims.contrafortes[1].x));
-    expect(r).toContain('tenr = 59');
+    expect(r).toContain('contraforte 59');
     expect(r).toContain('d = 49,5');          // 590 − 95 (centro do furo da ponta)
     expect(r.some((q) => q.includes('C2'))).toBe(true);
   });
 
   it('corte no contraforte aparente: d medido da ponta comprimida', () => {
     const r = rotulos(corteLateral(ap, ap.dims.contrafortes[1].x));
-    expect(r).toContain('tenr = 59');
+    expect(r).toContain('contraforte 59');
     expect(r).toContain('d = 52');            // barras a 7 cm da face do solo: 59 − 7
   });
 
@@ -137,7 +137,7 @@ describe('contrafortes', () => {
     expect(r).toContain('2×160');
     expect(r).toContain(cm(m.dims.L_real));
     expect(r).toContain('t = 19');
-    expect(r).toContain('tenr = 59');
+    expect(r).toContain('contraforte 59');
     expect(r).toContain('Planta — 1ª fiada');
   });
 

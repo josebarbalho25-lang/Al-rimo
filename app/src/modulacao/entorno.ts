@@ -231,7 +231,9 @@ export function drenagem(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidades): v
     for (const [xa, xb] of faixas) {
       const Lf = xb - xa;
       if (Lf <= 0) continue;
-      const n = Math.max(1, Math.round(Lf / p.barbaca_s));
+      // espaçamento pedido é o MÁXIMO (Jose: barbacã "a cada 1,50 m"): arredondar para baixo o número de barbacãs
+      // deixava 2,00 m entre dois deles num muro de 6,6 m (medido na revisão de 14/10)
+      const n = Math.max(1, Math.ceil(Lf / p.barbaca_s - 1e-9));
       conta.pedidos += n;
       for (let i = 0; i < n; i++) {
         const alvo = xa + ((i + 0.5) * Lf) / n;

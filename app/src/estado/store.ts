@@ -359,8 +359,12 @@ export const useApp = create<EstadoDoApp>()((set, get) => ({
   },
 
   mudarPranchas(f) {
-    const pranchas = f(get().pranchas);
-    if (pranchas !== get().pranchas) set({ pranchas, sujo: true });
+    const antes = get().pranchas;
+    const pranchas = f(antes);
+    // as mexidas criam objetos novos mesmo sem mudar nada (excluir o que não existe, redigitar o mesmo número):
+    // compara o conteúdo (as pranchas não têm desenho nem foto, é texto pequeno) para não acender o • à toa
+    if (pranchas === antes || JSON.stringify(pranchas) === JSON.stringify(antes)) return;
+    set({ pranchas, sujo: true });
   },
 
   escolherAba(aba) {

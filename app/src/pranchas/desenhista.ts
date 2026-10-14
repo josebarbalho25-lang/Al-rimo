@@ -17,13 +17,19 @@
 import type { Modelo } from '@/modelo/tipos';
 import { refazerFoto } from '@/visor/fotoRefeita';
 import { vista3dParaPrancha, vistaParaPrancha } from '@/desenhos/paraPrancha';
+import { cortesPadrao } from '@/desenhos/corteLateral';
+import { metros } from '@/desenhos/formato';
 import type { ItemDesenhado } from './folha';
 import type { ItemDaFolha } from './tipos';
 
 export interface Desenhista {
-  desenhar: (item: ItemDaFolha, prefixo: string) => ItemDesenhado | null;
+  desenhar: (item: ItemDaFolha, prefixo: string, opcoes?: { legendaDeCores: boolean }) => ItemDesenhado | null;
+  /** O título do desenho quando o projetista não escreveu um. */
+  tituloAutomatico: (item: ItemDaFolha) => string;
   /** Solta o que ficou guardado (troca de muro). */
   descartar: () => void;
+  /** Espera as fotos pedidas chegarem (PDF e DXF não podem sair com o lugar tracejado no meio da folha). */
+  esperarFotos: () => Promise<void>;
 }
 
 /** Resolução da foto no papel: 250 pontos por polegada (nítida no PDF de prancha), até 4000 px no lado maior. */
@@ -44,6 +50,8 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
   // a última foto pronta de cada ponto de vista: ao redimensionar, a folha mostra a anterior enquanto a nova sai
   const ultima = new Map<string, { dataUrl: string; proporcao: number }>();
   let vivo = true;
+  // as fotos a caminho: quem exporta espera por elas
+  const aCaminho = new Set<Promise<unknown>>();
 
   const foto3d = (item: ItemDaFolha): ItemDesenhado | null => {
     if (!modelo || item.conteudo.tipo !== '3d') return null;
@@ -58,7 +66,10 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
     const anterior = ultima.get(ponto);
     if (tem === 'pedida' || tem === 'falhou') return anterior ? imagem(anterior) : null;
     fotos.set(chave, 'pedida');
-    refazerFoto(modelo, camera, w, h, { papel: true }).then(
+    const pedido = refazerFoto(modelo, camera, w, h, { papel: true, cancelado: () => !vivo });
+    aCaminho.add(pedido);
+    void pedido.finally(() => aCaminho.delete(pedido)).catch(() => undefined);
+    pedido.then(
       (dataUrl) => {
         if (!vivo) return;
         fotos.set(chave, { dataUrl, proporcao: w / h });
@@ -91,19 +102,48 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
   };
 
   return {
-    desenhar: (item, prefixo) => {
+    desenhar: (item, prefixo, opcoes = { legendaDeCores: false }) => {
       if (!modelo) return null;
       const c = item.conteudo;
+      const leg = opcoes.legendaDeCores;
       if (c.tipo === '3d') {
         if (c.camera.estilo === 'realista') return foto3d(item);
         const largura = Math.round(item.largura ?? 160);
-        return vetor(`3d|${JSON.stringify(c.camera)}|${largura}|${prefixo}`, () => ({ tipo: 'vetor', vista: vista3dParaPrancha(modelo, c.camera, largura, prefixo) }));
+        return vetor(`3d|${JSON.stringify(c.camera)}|${largura}|${prefixo}|${leg}`, () => ({ tipo: 'vetor', vista: vista3dParaPrancha(modelo, c.camera, largura, prefixo, { legendaDeCores: leg }) }));
       }
       if (c.tipo === 'frontal' || c.tipo === 'corte' || c.tipo === 'planta' || c.tipo === 'iso') {
+        // isométrico sem escala: a projeção isométrica encurta as medidas (0,82), então não há "1:50" verdadeiro —
+        // desenha-se na letra de 1:50 e a folha encaixa no tamanho pedido
         const escala = item.escala ?? 50;
-        return vetor(`${JSON.stringify(c)}|${escala}|${prefixo}`, () => ({ tipo: 'vetor', vista: vistaParaPrancha(modelo, c, escala, prefixo) }));
+        return vetor(`${JSON.stringify(c)}|${escala}|${prefixo}|${leg}`, () => ({ tipo: 'vetor', vista: vistaParaPrancha(modelo, c, escala, prefixo, { legendaDeCores: leg }) }));
       }
       return null;
+    },
+    tituloAutomatico: (item) => {
+      const c = item.conteudo;
+      switch (c.tipo) {
+        case 'frontal':
+          return 'Vista frontal';
+        case 'corte': {
+          if (!modelo) return 'Corte';
+          const cortes = cortesPadrao(modelo);
+          const x = c.x ?? cortes[0]?.x;
+          const achado = x === undefined ? undefined : cortes.find((q) => Math.abs(q.x - x) <= modelo.familia.t / 2);
+          if (achado?.rotulo.startsWith('Contraforte')) return `Corte no ${achado.rotulo.replace('Contraforte', 'contraforte')}`;
+          return x === undefined ? 'Corte' : `Corte em x = ${metros(x)} m`;
+        }
+        case 'planta':
+          return `Planta — ${c.fiada + 1}ª fiada`;
+        case 'iso':
+          return 'Isométrico';
+        case '3d':
+          return 'Perspectiva';
+        default:
+          return '';
+      }
+    },
+    esperarFotos: async () => {
+      while (aCaminho.size) await Promise.allSettled([...aCaminho]);
     },
     descartar: () => {
       vivo = false;

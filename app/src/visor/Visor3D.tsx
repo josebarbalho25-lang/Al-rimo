@@ -283,8 +283,9 @@ export function Visor3D({ modelo, selecionado, onSelecionar }: PropsDoVisor3D) {
     if (!st) return;
     const ctl = st.controls as unknown as { target: THREE.Vector3 } | null;
     const camera = lerPontoDeVista(st.camera, ctl?.target ?? null, { estilo, armadura, corte: corte.ligado ? xCorte : null, ocultas });
-    const dataUrl = capturar(st, ESCALA_DA_FOTO, () => cena.pintarSelecao(null), () => cena.pintarSelecao(selAtual.current));
-    enviarParaPrancha({ tipo: '3d', dataUrl, camera, proporcao: proporcaoDaCamera(st.camera) });
+    // sem foto: a prancha refaz a dela (fundo de papel, na resolução do papel); fotografar aqui travava a tela por
+    // nada (PNG em 2× síncrono que ninguém usava)
+    enviarParaPrancha({ tipo: '3d', dataUrl: '', camera, proporcao: proporcaoDaCamera(st.camera) });
   };
 
   const alternar = (c: Categoria) =>

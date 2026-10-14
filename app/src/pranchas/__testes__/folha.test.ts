@@ -90,10 +90,49 @@ describe('folha composta', () => {
     const f = novaFolha('');
     const c = comporFolha(f, ctx());
     const textos = c.primitivas.filter((p) => p.k === 'texto').map((p) => (p.k === 'texto' ? p.t : ''));
-    expect(textos).toEqual(expect.arrayContaining(['NOTAS GERAIS', 'LEGENDA', 'RESUMO DO AÇO (CA-50)', 'Aço CA-50.']));
+    expect(textos).toEqual(expect.arrayContaining(['NOTAS GERAIS', 'LEGENDA', 'RESUMO DO AÇO', 'Aço CA-50.']));
     expect(c.quadroEstourou).toBe(false);
     f.quadro.altura = 20;
     expect(comporFolha(f, ctx()).quadroEstourou).toBe(true);
+  });
+
+  it('desenho sem escala na folha (3D, isométrico): o carimbo diz "Indicadas"', () => {
+    const f = novaFolha('');
+    f.itens.push({ id: 'a', conteudo: { tipo: 'corte' }, escala: 25, x: 40, y: 30, titulo: 'Corte A' });
+    f.itens.push({ id: 'b', conteudo: { tipo: 'iso', vista: 'frente-direita', corteX: null }, escala: null, x: 300, y: 30, largura: 100, altura: 60, titulo: '' });
+    const v = Object.fromEntries(blocos(comporFolha(f, ctx()).primitivas)[0].atributos.map((a) => [a.etiqueta, a.valor]));
+    expect(v.ESCALA).toBe('Indicadas');
+  });
+
+  it('quadro fechado: a vista traz a legenda das cores e a folha escreve "Cotas em centímetros" sobre o carimbo', () => {
+    const f = novaFolha('', 'A4', 'deitada');
+    f.itens.push({ id: 'a', conteudo: { tipo: 'frontal' }, escala: 50, x: 40, y: 30, titulo: '' });
+    const pedidas: boolean[] = [];
+    const c = comporFolha(f, ctx({ desenhar: (_i, _p, o) => (pedidas.push(o.legendaDeCores), { tipo: 'vetor', vista }) }));
+    expect(pedidas).toEqual([true]);
+    expect(c.primitivas.some((p) => p.k === 'texto' && p.t === 'Cotas em centímetros, exceto onde indicado.')).toBe(true);
+    const aberta = novaFolha('');
+    aberta.itens.push({ id: 'a', conteudo: { tipo: 'frontal' }, escala: 50, x: 40, y: 30, titulo: '' });
+    const pedidas2: boolean[] = [];
+    comporFolha(aberta, ctx({ desenhar: (_i, _p, o) => (pedidas2.push(o.legendaDeCores), { tipo: 'vetor', vista }) }));
+    expect(pedidas2).toEqual([false]);
+  });
+
+  it('título em branco = automático; para o arquivo, desenho que não chegou não deixa o tracejado', () => {
+    const f = novaFolha('');
+    f.itens.push({ id: 'a', conteudo: { tipo: 'planta', fiada: 2 }, escala: 50, x: 40, y: 30, titulo: '' });
+    const c = comporFolha(f, ctx({ tituloAutomatico: () => 'Planta — 3ª fiada' }));
+    expect(c.primitivas.some((p) => p.k === 'texto' && p.t === 'PLANTA — 3ª FIADA')).toBe(true);
+    const saida = comporFolha(f, ctx({ desenhar: () => null, saida: true }));
+    expect(saida.svg).not.toContain('stroke-dasharray="2,1.5"');
+  });
+
+  it('sem escala: manda a largura pedida, a altura sai da proporção do desenho', () => {
+    const f = novaFolha('');
+    f.itens.push({ id: 'a', conteudo: { tipo: 'iso', vista: 'frente-direita', corteX: null }, escala: null, x: 40, y: 30, largura: 110, altura: 999, titulo: '' });
+    const [, , w, h] = comporFolha(f, ctx()).itens[0].caixa;
+    expect(w).toBeCloseTo(110, 6);
+    expect(h).toBeCloseTo(110 * 220 / 440, 6);
   });
 
   it('A4 em pé: quadro lateral começa fechado e o carimbo ocupa a largura útil inteira', () => {

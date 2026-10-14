@@ -15,11 +15,25 @@ export function noItem(p: PranchasDoProjeto, folha: string, item: string, f: (x:
   return naFolha(p, folha, (x) => ({ ...x, itens: x.itens.map((i) => (i.id === item ? f(i) : i)) }));
 }
 
-/** Lugar de partida para um desenho novo: em cascata a partir do canto superior esquerdo do quadro útil. */
+/** Lugar de partida para um desenho novo: em cascata a partir do canto superior esquerdo do quadro útil (a cada
+ *  6 a cascata recomeça um pouco ao lado — o 7º não cai em cima do 1º). */
 export function lugarNovo(folha: Folha): [number, number] {
   const [x0, y0] = quadroUtil(folha.formato, folha.orientacao);
   const k = folha.itens.length;
-  return [x0 + 15 + 20 * (k % 6), y0 + 15 + 20 * (k % 6)];
+  const volta = Math.floor(k / 6);
+  return [x0 + 15 + 20 * (k % 6) + 8 * volta, y0 + 15 + 20 * (k % 6)];
+}
+
+/** A folha ativa: a escolhida, ou a 1ª. A MESMA regra para a tela e para o "Enviar para a prancha". */
+export function folhaAtiva(p: PranchasDoProjeto, ativa: string | null): Folha | null {
+  return p.folhas.find((f) => f.id === ativa) ?? p.folhas[0] ?? null;
+}
+
+/** Prende o desenho na folha: pelo menos um canto de 10 mm dentro do papel (desenho fora fica inalcançável). */
+export function dentroDaFolha(item: ItemDaFolha, larguraDaFolha: number, alturaDaFolha: number): ItemDaFolha {
+  const x = Math.min(Math.max(item.x, -((item.largura ?? 100) - 10)), larguraDaFolha - 10);
+  const y = Math.min(Math.max(item.y, 0), alturaDaFolha - 10);
+  return x === item.x && y === item.y ? item : { ...item, x, y };
 }
 
 export const NOMES_DO_CONTEUDO: Record<ConteudoDoItem['tipo'], string> = {
@@ -40,7 +54,7 @@ export const ESCALA_INICIAL: Record<PedidoDeVista['tipo'], number> = { frontal: 
  * novas, a folha que recebeu e o item criado.
  */
 export function porNaFolha(p: PranchasDoProjeto, alvo: string | null, fazer: (folha: Folha) => ItemDaFolha): { pranchas: PranchasDoProjeto; folha: string; item: ItemDaFolha } {
-  let folha = p.folhas.find((f) => f.id === alvo) ?? p.folhas[p.folhas.length - 1];
+  let folha = folhaAtiva(p, alvo);
   let base = p;
   if (!folha) {
     folha = novaFolha('');
@@ -51,10 +65,15 @@ export function porNaFolha(p: PranchasDoProjeto, alvo: string | null, fazer: (fo
   return { pranchas: naFolha(base, id, (f) => ({ ...f, itens: [...f.itens, item] })), folha: id, item };
 }
 
-/** Item de uma vista 2D, na escala de partida dela. */
+/**
+ * Item de uma vista 2D, na escala de partida dela, com o título em branco (= automático: "Corte no contraforte C2",
+ * "Planta — 1ª fiada"; o projetista escreve outro se quiser). O isométrico vai SEM escala: a projeção isométrica
+ * encurta as medidas (fator 0,82), e "1:50" embaixo dele seria mentira.
+ */
 export function itemDaVista(folha: Folha, pedido: PedidoDeVista): ItemDaFolha {
   const [x, y] = lugarNovo(folha);
-  return { id: novoId('i'), conteudo: pedido, escala: ESCALA_INICIAL[pedido.tipo], x, y, titulo: NOMES_DO_CONTEUDO[pedido.tipo] };
+  if (pedido.tipo === 'iso') return { id: novoId('i'), conteudo: pedido, escala: null, x, y, largura: 160, altura: 110, titulo: '' };
+  return { id: novoId('i'), conteudo: pedido, escala: ESCALA_INICIAL[pedido.tipo], x, y, titulo: '' };
 }
 
 /** Item do 3D: sem escala, com ~1/3 da largura útil da folha (até 180 mm) e a proporção da foto. */
@@ -63,5 +82,5 @@ export function itemDo3d(folha: Folha, camera: Camera3d, proporcao: number): Ite
   const [x, y] = lugarNovo(folha);
   const largura = Math.round(Math.min(180, (x1 - x0) * 0.35));
   const prop = proporcao > 0.1 ? proporcao : 1.5;
-  return { id: novoId('i'), conteudo: { tipo: '3d', camera, proporcao: prop }, escala: null, x, y, largura, altura: largura / prop, titulo: NOMES_DO_CONTEUDO['3d'] };
+  return { id: novoId('i'), conteudo: { tipo: '3d', camera, proporcao: prop }, escala: null, x, y, largura, altura: largura / prop, titulo: '' };
 }

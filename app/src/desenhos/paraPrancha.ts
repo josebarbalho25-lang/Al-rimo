@@ -26,9 +26,10 @@ import type { OpcoesDaVista, Prancha } from './prancha';
  * - planta: `fiada` conta de 0 (0 = 1ª fiada), como no desenharPlanta;
  * - `caixa` justa (margem 0): o respiro em volta e o título são da folha.
  */
-export function vistaParaPrancha(m: Modelo, pedido: PedidoDeVista, escala: number, prefixo: string): VistaParaPrancha {
-  // a legenda das cores dos blocos vai uma vez só, no quadro lateral da folha
-  const o: OpcoesDaVista = { S: escalaDaVista(escala), semTitulo: true, prefixo, semLegendaDeCores: true };
+export function vistaParaPrancha(m: Modelo, pedido: PedidoDeVista, escala: number, prefixo: string, opcoes: { legendaDeCores?: boolean } = {}): VistaParaPrancha {
+  // a legenda das cores dos blocos vai uma vez só, no quadro lateral da folha — a não ser que a folha peça (quadro
+  // fechado)
+  const o: OpcoesDaVista = { S: escalaDaVista(escala), semTitulo: true, prefixo, semLegendaDeCores: !opcoes.legendaDeCores };
   let pr: Prancha;
   switch (pedido.tipo) {
     case 'frontal':
@@ -53,11 +54,11 @@ export function vistaParaPrancha(m: Modelo, pedido: PedidoDeVista, escala: numbe
  * junto) ocupando `larguraMm` de papel; a legenda vem embaixo, dentro da caixa. A câmera do visor é ortográfica:
  * dá para pedir escala de verdade depois (desenharVista3d aceita S direto, como as outras vistas).
  */
-export function vista3dParaPrancha(m: Modelo, camera: Camera3d, larguraMm: number, prefixo: string): VistaParaPrancha {
+export function vista3dParaPrancha(m: Modelo, camera: Camera3d, larguraMm: number, prefixo: string, opcoes: { legendaDeCores?: boolean } = {}): VistaParaPrancha {
   const w = larguraProjetada(m, camera);
   // muro sem largura (vazio, ou visto de quina exata): fica em 1:50, para a folha não receber escala infinita
   const S = w > 1e-6 ? (larguraMm * PX_POR_MM) / w : escalaDaVista(50);
-  return entregar(desenharVista3d(m, camera, { S, semTitulo: true, prefixo, semLegendaDeCores: true }));
+  return entregar(desenharVista3d(m, camera, { S, semTitulo: true, prefixo, semLegendaDeCores: !opcoes.legendaDeCores }));
 }
 
 function entregar(pr: Prancha): VistaParaPrancha {

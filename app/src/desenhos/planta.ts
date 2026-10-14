@@ -118,7 +118,7 @@ export function desenharPlanta(m: Modelo, fiada = 0, o: OpcoesDaVista = {}): Pra
   if (cf) {
     const [ya, yb] = cf.aparente ? [cf.min[1], t] : [0, cf.max[1]];
     const xCota = Math.min(X(cf.min[0]), X(xIni)) - 50;
-    pr.cotaV(xCota, Y(ya), Y(yb), `tenr = ${cm(yb - ya)}`, { de: [X(cf.min[0]), X(cf.min[0])] });
+    pr.cotaV(xCota, Y(ya), Y(yb), `contraforte ${cm(yb - ya)}`, { de: [X(cf.min[0]), X(cf.min[0])] });
   }
   pr.fechar();
 

@@ -27,8 +27,18 @@ export interface ContextoDaFolha {
   notasAutomaticas: string[];
   legenda: ItemDaLegenda[];
   aco: { linhas: LinhaDoAco[]; total: number };
-  /** O desenho do item, ou null enquanto não chegou (a foto do 3D é assíncrona) ou se não pode ser feito. */
-  desenhar: (item: ItemDaFolha, prefixo: string) => ItemDesenhado | null;
+  /**
+   * O desenho do item, ou null enquanto não chegou (a foto do 3D é assíncrona) ou se não pode ser feito.
+   * `legendaDeCores`: a vista traz a legenda das cores dos blocos (quando o quadro lateral da folha não a mostra).
+   */
+  desenhar: (item: ItemDaFolha, prefixo: string, opcoes: { legendaDeCores: boolean }) => ItemDesenhado | null;
+  /** O título do item quando o projetista não escreveu um ("Corte no contraforte C2", "Planta — 1ª fiada"). */
+  tituloAutomatico?: (item: ItemDaFolha) => string;
+  /** Composição para o ARQUIVO (PDF/DXF): o lugar tracejado de um desenho que não chegou não vai para o papel. */
+  saida?: boolean;
+  /** Começo dos ids dos padrões ('p' na tela): a cópia de impressão usa outro — dois ids iguais no mesmo documento
+   *  e o padrão da cópia resolveria no da tela, escondido na impressão (o Chrome não pinta padrão de display:none). */
+  prefixo?: string;
 }
 
 /** Onde o item ficou na folha (mm): o quadro do desenho e o do título — a tela usa para arrastar e redimensionar. */
@@ -137,16 +147,17 @@ function encaixe(item: ItemDaFolha, d: ItemDesenhado): { k: number; w: number; h
   }
   const [, , cw, ch] = d.vista.caixa;
   if (item.escala !== null) return { k: 1 / PX_POR_MM, w: cw / PX_POR_MM, h: ch / PX_POR_MM };
-  // sem escala (3D em vetor): o desenho cabe no quadro pedido, sem deformar
+  // sem escala (3D em vetor, isométrico): manda a LARGURA pedida, e a altura sai da proporção do desenho — o campo
+  // "Largura (mm)" do painel é a largura que sai no papel (com a proporção da foto, o 3D de um muro comprido saía
+  // com um terço do pedido)
   const w = item.largura ?? 150;
-  const h = item.altura ?? 100;
-  const k = Math.min(w / cw, h / ch);
-  return { k, w: cw * k, h: ch * k };
+  const k = w / cw;
+  return { k, w, h: ch * k };
 }
 
 /** O título embaixo do desenho: "CORTE A" sublinhado, a escala ao lado. */
-function titular(p: Papel, item: ItemDaFolha, x: number, yBase: number): [number, number, number, number] | null {
-  const titulo = item.titulo.trim().toUpperCase();
+function titular(p: Papel, item: ItemDaFolha, nome: string, x: number, yBase: number): [number, number, number, number] | null {
+  const titulo = nome.trim().toUpperCase();
   const escala = item.escala !== null ? `ESC. ${rotuloDaEscala(item.escala)}` : '';
   if (!titulo && !escala) return null;
   const y = yBase + 2 + LETRA.titulo;
@@ -187,13 +198,16 @@ function carimbar(p: Papel, folha: Folha, ctx: ContextoDaFolha, x: number, y: nu
     p.linha(a, b, e, false);
     guardar({ k: 'linha', a, b, e });
   }
+  // uma escala só na folha toda: ela; mais de uma, ou escala e desenho sem escala juntos: "Indicadas" (cada desenho
+  // tem a sua embaixo dele)
   const escalas = [...new Set(folha.itens.filter((i) => i.escala !== null).map((i) => i.escala as number))];
-  const textoEscala = escalas.length === 0 ? 'Sem escala' : escalas.length === 1 ? rotuloDaEscala(escalas[0]) : 'Indicadas';
+  const semEscala = folha.itens.some((i) => i.escala === null);
+  const textoEscala = escalas.length === 0 ? 'Sem escala' : escalas.length === 1 && !semEscala ? rotuloDaEscala(escalas[0]) : 'Indicadas';
   const linhaObra = [ctx.obra.obra, ctx.obra.endereco, ctx.obra.proprietario].filter((s) => s.trim()).join(' — ');
   const resp = [ctx.escritorio.responsavel, ctx.escritorio.crea && `CREA ${ctx.escritorio.crea}`, ctx.obra.art && `ART ${ctx.obra.art}`].filter(Boolean).join(' · ');
   const data = [ctx.obra.data, ctx.obra.revisao].filter((s) => s && s.trim()).join(' · ');
   const celulas: { etiqueta: string; rotulo: string; valor: string; x0: number; x1: number; faixa: number }[] = [
-    { etiqueta: 'EMPRESA', rotulo: 'Empresa', valor: ctx.escritorio.empresa, x0: xd, x1: x + w, faixa: 0 },
+    { etiqueta: 'EMPRESA', rotulo: 'Empresa', valor: [ctx.escritorio.empresa, ctx.escritorio.contato].filter((s) => s && s.trim()).join(' — '), x0: xd, x1: x + w, faixa: 0 },
     { etiqueta: 'OBRA', rotulo: 'Obra · endereço · proprietário', valor: linhaObra, x0: xd, x1: x + w, faixa: 1 },
     { etiqueta: 'CONTEUDO', rotulo: 'Conteúdo', valor: folha.conteudo, x0: xd, x1: xd + wd * 0.72, faixa: 2 },
     { etiqueta: 'FOLHA', rotulo: 'Folha', valor: `${String(ctx.numero).padStart(2, '0')}/${String(ctx.total).padStart(2, '0')}`, x0: xd + wd * 0.72, x1: x + w, faixa: 2 },
@@ -279,13 +293,13 @@ function preencherQuadro(p: Papel, folha: Folha, ctx: ContextoDaFolha, x: number
   }
 
   if (folha.quadro.quadroDeAco && ctx.aco.linhas.length) {
-    tituloDaSecao('RESUMO DO AÇO (CA-50)');
-    const colunas = [0, 0.3, 0.68];
+    tituloDaSecao('RESUMO DO AÇO');
+    const colunas = [0, 0.38, 0.7];
     const lin = LETRA.nota + 2.2;
     const cab = ['Bitola', 'Compr. (m)', 'Massa (kg)'];
     const corpo = [
       ...ctx.aco.linhas.map((l) => [l.bitola, l.comprimento.toFixed(1).replace('.', ','), l.massa.toFixed(1).replace('.', ',')]),
-      ['Total', '', ctx.aco.total.toFixed(1).replace('.', ',')],
+      ['Total', '', ctx.aco.total.toFixed(1).replace('.', ',')],   // a soma das linhas já arredondadas (quadro.ts)
     ];
     const linhasTab = [cab, ...corpo];
     if (cabe(lin * linhasTab.length)) {
@@ -315,14 +329,20 @@ export function comporFolha(folha: Folha, ctx: ContextoDaFolha): FolhaComposta {
   p.rect(0, 0, W, H, p.traco('moldura', FINO, '#a6a6a6'));
   p.rect(x0, y0, x1 - x0, y1 - y0, p.traco('moldura', GROSSO));
 
+  // a legenda das cores vai no quadro lateral; com o quadro fechado (A3/A4 de partida) ou sem a legenda, volta
+  // para dentro de cada vista — a frontal e a planta pintadas com as cores do Jose não podem sair sem legenda
+  const quadroAberto = folha.quadro.altura > 1 && folha.quadro.largura > 1;
+  const legendaDeCores = !(quadroAberto && folha.quadro.legenda);
+
   // os desenhos
   folha.itens.forEach((item, k) => {
-    const prefixo = `p${ctx.numero}i${k}`;
-    const d = ctx.desenhar(item, prefixo);
+    const prefixo = `${ctx.prefixo ?? 'p'}${ctx.numero}i${k}`;
+    const d = ctx.desenhar(item, prefixo, { legendaDeCores });
     if (!d) {
       // ainda sem desenho (a foto do 3D vem depois): o lugar fica marcado só na tela, não no arquivo
       const w = item.largura ?? 120;
       const h = item.altura ?? 80;
+      if (ctx.saida) return;
       p.svg.push(`<rect x="${n(item.x)}" y="${n(item.y)}" width="${n(w)}" height="${n(h)}" fill="#f2f2f2" stroke="#bfbfbf" stroke-width="0.3" stroke-dasharray="2,1.5"/>`);
       itens.push({ id: item.id, caixa: [item.x, item.y, w, h], titulo: null, pendente: true });
       return;
@@ -338,7 +358,7 @@ export function comporFolha(folha: Folha, ctx: ContextoDaFolha): FolhaComposta {
       p.svg.push(`<g transform="matrix(${n(escala)} 0 0 ${n(escala)} ${n(dx)} ${n(dy)})">${d.vista.corpo}</g>`);
       p.prims.push(...transformarPrimitivas(d.vista.primitivas, escala, dx, dy));
     }
-    const t = titular(p, item, item.x, item.y + h);
+    const t = titular(p, item, item.titulo.trim() || (ctx.tituloAutomatico?.(item) ?? ''), item.x, item.y + h);
     itens.push({ id: item.id, caixa: [item.x, item.y, w, h], titulo: t, pendente: false });
   });
 
@@ -356,6 +376,10 @@ export function comporFolha(folha: Folha, ctx: ContextoDaFolha): FolhaComposta {
     quadroEstourou = preencherQuadro(p, folha, ctx, qx, cy - qh, folha.quadro.largura, qh);
   }
   carimbar(p, folha, ctx, cx, cy, cw, ch);
+  // sem o quadro, a nota que vale para todo desenho da folha fica escrita logo acima do carimbo
+  if (!quadroAberto || folha.quadro.notas?.length === 0) {
+    p.texto([cx, cy - 2], 'Cotas em centímetros, exceto onde indicado.', LETRA.nota, { camada: 'textos' });
+  }
 
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}mm" height="${H}mm">` +

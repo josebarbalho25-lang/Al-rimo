@@ -84,7 +84,7 @@ describe.skipIf(!casos.length).each(casos.map((c) => [c.cenario, c] as const))('
     const rot = rotulos(svgs.frontal);
     expect(rot).toContain(cm(m.dims.L_real));
     expect(rot).toContain(`muro ${cm(m.dims.H_muro)}`);
-    expect(rot).toContain(`h = ${cm(m.dims.H_solo)}`);
+    expect(rot).toContain(`solo ${cm(m.dims.H_solo)}`);
     for (let i = 1; i <= m.dims.n_fiadas; i++) expect(rot).toContain(String(i));
     // as duas alturas são as da planilha (09/10): H_solo para o solo, H_muro para o muro (lista de fiadas)
     const Hs = metroEmCm(r, 'H_solo');
@@ -116,7 +116,7 @@ describe.skipIf(!casos.length).each(casos.map((c) => [c.cenario, c] as const))('
     expect(m.dims.contrafortes.some((q) => Math.abs(q.x - c[0].x) <= t / 2)).toBe(false);
     if (m.dims.contrafortes.length) {
       expect(c.length).toBe(2);
-      expect(rotulos(svgs.corte1).some((q) => q.startsWith('tenr = '))).toBe(true);
+      expect(rotulos(svgs.corte1).some((q) => q.startsWith('contraforte '))).toBe(true);
     }
   });
 

@@ -173,7 +173,7 @@ export function desenharVistaFrontal(m: Modelo, o: OpcoesDaVista = {}): Prancha 
   const xNum = X(xIni) - 10 - Prancha.largura(String(n_fiadas), tamFiada);
   const xc1 = xNum - 16;
   pr.cotaV(xc1, Y(0), Y(H_muro), `muro ${cm(H_muro)}`, { de: [X(xIni), xNum] });
-  pr.cotaV(xc1 - 30, Y(0), Y(H_solo), `h = ${cm(H_solo)}`, { de: [xNum, xNum] });
+  pr.cotaV(xc1 - 30, Y(0), Y(H_solo), `solo ${cm(H_solo)}`, { de: [xNum, xNum] });
   pr.fechar();
 
   // ── título e legenda ──────────────────────────────────────────────────────────────────────────────────────────

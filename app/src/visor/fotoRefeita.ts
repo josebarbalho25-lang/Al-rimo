@@ -134,8 +134,19 @@ let fila: Promise<unknown> = Promise.resolve();
  * a altura visível do muro é a guardada (a mesma foto em qualquer tamanho). Se
  * o tamanho passar do que a placa aguenta, sai menor, na mesma proporção.
  */
-export async function refazerFoto(modelo: Modelo, camera: Camera3d, larguraPx: number, alturaPx: number, opcoes: { papel?: boolean } = {}): Promise<string> {
-  const vez = fila.then(() => fotografarFora(modelo, camera, larguraPx, alturaPx, opcoes.papel === true));
+export async function refazerFoto(
+  modelo: Modelo,
+  camera: Camera3d,
+  larguraPx: number,
+  alturaPx: number,
+  opcoes: { papel?: boolean; cancelado?: () => boolean } = {},
+): Promise<string> {
+  // pedido de quem já não quer (a prancha de um muro que mudou): sai da fila sem desenhar — senão as fotos do muro
+  // novo esperam atrás das do muro velho, cada uma com seu toDataURL de até 4000 px
+  const vez = fila.then(() => {
+    if (opcoes.cancelado?.()) throw new Error('foto refeita: pedido cancelado');
+    return fotografarFora(modelo, camera, larguraPx, alturaPx, opcoes.papel === true);
+  });
   // A fila anda mesmo quando uma foto falha (a falha vai para quem pediu aquela foto).
   fila = vez.catch(() => undefined);
   return vez;

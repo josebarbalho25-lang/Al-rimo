@@ -246,7 +246,7 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
   if (yd !== null) pr.cotaH(U(faceComprimida), U(yd), topo - 40, `d = ${cm(Math.abs(yd - faceComprimida))}`, { de: [topo - 30, topo - 30] });
   if (cfCortado) {
     const [ya, yb] = cfCortado.aparente ? [cfCortado.min[1], t] : [0, cfCortado.max[1]];
-    pr.cotaH(U(ya), U(yb), topo - 64, `tenr = ${cm(yb - ya)}`, { de: [topo, V(cfCortado.max[2])] });
+    pr.cotaH(U(ya), U(yb), topo - 64, `contraforte ${cm(yb - ya)}`, { de: [topo, V(cfCortado.max[2])] });
   }
   // alturas: muro (lado da frente) e solo (lado do aterro)
   const uFace = U(Math.min(0, cfCortado?.aparente ? cfCortado.min[1] : 0));
@@ -257,7 +257,7 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
   if (comTraspasse) pr.cotaV(uFace + 22, V(0), V(zTraspasse), `traspasse ${cm(zTraspasse)}`, { lado: 1, de: [uFace, uFace] });
   const uFrente = uFace + (comTraspasse ? 50 : 26);
   pr.cotaV(uFrente, V(0), V(H_muro), `muro ${cm(H_muro)}`, { lado: 1, de: [uFace, uFace] });
-  pr.cotaV(U(yLonge) - 22, V(0), V(H_solo), `h = ${cm(H_solo)}`, { lado: -1 });
+  pr.cotaV(U(yLonge) - 22, V(0), V(H_solo), `solo ${cm(H_solo)}`, { lado: -1 });
   // sapata: medidas tiradas do perfil cortado (o que está desenhado), não das entradas
   const sap = cortados.find((q) => q.s.peca.tipo === 'SAPATA');
   if (sap) {

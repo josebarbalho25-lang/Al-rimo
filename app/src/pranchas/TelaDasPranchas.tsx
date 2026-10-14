@@ -4,10 +4,10 @@
 //  Jose, 14/10: "prancha pronta de uma forma bem intuitiva e prática". À
 //  esquerda as folhas (01, 02…) e o painel do que está selecionado (folha,
 //  desenho, carimbo, quadro lateral); no meio a folha de papel, na mesa cinza.
-//  O desenho se ARRASTA pela folha; o 3D (sem escala) e o carimbo e o quadro
-//  lateral se REDIMENSIONAM pela alça. Durante o arrasto só a moldura azul se
-//  move — o papel se recompõe ao soltar (redesenhar a folha a cada passo do
-//  mouse travaria a tela num A0 cheio).
+//  O desenho se ARRASTA pela folha; o 3D e o isométrico (sem escala), o
+//  carimbo e o quadro lateral se REDIMENSIONAM pela alça. Durante o arrasto só
+//  a moldura azul se move — o papel se recompõe ao soltar (redesenhar a folha
+//  a cada passo do mouse travaria a tela num A0 cheio).
 //
 //  Painel = rótulo + valor + controle, sem texto explicativo (regra do Jose).
 // ═══════════════════════════════════════════════════════════════════════════
@@ -16,29 +16,34 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import type { Modelo } from '@/modelo/tipos';
 import type { Resultado } from '@/motor/tipos';
 import { useApp } from '@/estado/store';
+import { ruim } from '@/estado/recadoRuim';
+import { nomeDeArquivo } from '@/estado/projeto';
 import { comporFolha, type ContextoDaFolha, type FolhaComposta } from './folha';
 import { CARIMBO_MIN, ESCALAS, ORDEM_DOS_FORMATOS, quadroLateralPadrao, rotuloDaEscala, tamanhoDaFolha } from './formatos';
 import { novaFolha } from './padrao';
-import { itemDaVista, naFolha, noItem, NOMES_DO_CONTEUDO, porNaFolha } from './acoes';
+import { dentroDaFolha, folhaAtiva, itemDaVista, naFolha, noItem, NOMES_DO_CONTEUDO, porNaFolha } from './acoes';
 import { usePranchasUi } from './ui';
 import { legendaDasCores, notasAutomaticas, quadroDeAco } from './quadro';
-import { criarDesenhista } from './desenhista';
+import { criarDesenhista, type Desenhista } from './desenhista';
 import { logoEmPng, useEscritorio } from './escritorio';
 import { imprimirPranchas } from './pdf';
 import { pacoteDxf } from './dxf';
-import { nomeDeArquivo } from '@/estado/projeto';
-import type { ConteudoDoItem, DadosDaObra, Folha, Formato, ItemDaFolha, Orientacao } from './tipos';
+import type { ConteudoDoItem, DadosDaObra, Folha, Formato, ItemDaFolha, Orientacao, PranchasDoProjeto } from './tipos';
 
 type Selecao = { tipo: 'item'; id: string } | { tipo: 'carimbo' } | { tipo: 'quadro' } | null;
 
 /** O que está sendo arrastado: só a moldura azul anda; o papel muda ao soltar. */
 type Arrasto =
-  | { tipo: 'mover'; id: string; x0: number; y0: number; px: number; py: number; dx: number; dy: number }
+  | { tipo: 'mover'; id: string; x0: number; y0: number; px: number; py: number; dx: number; dy: number; solto: boolean }
   | { tipo: 'tamanho'; id: string; px: number; py: number; w0: number; h0: number; dw: number; dh: number }
   | { tipo: 'carimbo'; px: number; py: number; w0: number; h0: number; dw: number; dh: number }
   | { tipo: 'quadro'; px: number; py: number; w0: number; h0: number; dw: number; dh: number };
 
 const AZUL = '#0080ff';
+/** Folga do clique: menos que isto (px de tela) é tremida da mão, não arrasto — o desenho não sai do lugar. */
+const FOLGA_DO_CLIQUE_PX = 3;
+/** Espera depois da última tecla nas entradas para redesenhar a folha (cada tecla é um muro novo). */
+const ESPERA_DO_MURO_MS = 300;
 
 const s = {
   raiz: { position: 'absolute', inset: 0, display: 'flex', minHeight: 0 } as CSSProperties,
@@ -61,7 +66,7 @@ const s = {
     display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--gap-2, 8px)', padding: 'var(--gap-2, 8px)',
     fontSize: 'var(--fs-rotulo, 12.5px)', borderBottom: '1px solid var(--line, #d9dee4)',
   } as CSSProperties,
-  mesa: { flex: 1, minHeight: 0, overflow: 'auto', background: '#8f949a', padding: 24 } as CSSProperties,
+  mesa: { flex: 1, minHeight: 0, overflow: 'auto', background: '#8f949a', padding: 24, outline: 'none' } as CSSProperties,
   botao: { flex: 'none', padding: '0 10px' } as CSSProperties,
 };
 
@@ -74,8 +79,8 @@ function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode
   );
 }
 
-function Texto({ valor, aoMudar }: { valor: string; aoMudar: (v: string) => void }) {
-  return <input className="campo" type="text" value={valor} onChange={(e) => aoMudar(e.target.value)} />;
+function Texto({ valor, aoMudar, sugestao }: { valor: string; aoMudar: (v: string) => void; sugestao?: string }) {
+  return <input className="campo" type="text" value={valor} placeholder={sugestao} onChange={(e) => aoMudar(e.target.value)} />;
 }
 
 function Numero({ valor, aoMudar, min = 0 }: { valor: number; aoMudar: (v: number) => void; min?: number }) {
@@ -96,10 +101,28 @@ function Numero({ valor, aoMudar, min = 0 }: { valor: number; aoMudar: (v: numbe
   );
 }
 
+/** O valor, só depois que ele parou de mudar por `ms` (o muro novo a cada tecla não redesenha a folha a cada tecla). */
+function useAssentado<T>(valor: T, ms: number): T {
+  const [assentado, setAssentado] = useState(valor);
+  useEffect(() => {
+    const r = setTimeout(() => setAssentado(valor), ms);
+    return () => clearTimeout(r);
+  }, [valor, ms]);
+  return assentado;
+}
+
+/** Prende na folha nova os desenhos de uma folha que mudou de formato ou de orientação. */
+function prenderNaFolha(f: Folha): Folha {
+  const [W, H] = tamanhoDaFolha(f.formato, f.orientacao);
+  return { ...f, itens: f.itens.map((i) => dentroDaFolha(i, W, H)) };
+}
+
 export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; resultado: Resultado | null }) {
   const pranchas = useApp((st) => st.pranchas);
   const tituloDoMuro = useApp((st) => st.titulo);
+  const carregamento = useApp((st) => st.carregamento);
   const mudar = useApp((st) => st.mudarPranchas);
+  const dizer = useApp((st) => st.dizer);
   const escritorio = useEscritorio((st) => st.dados);
   const mudarEscritorio = useEscritorio((st) => st.mudar);
   const ativa = usePranchasUi((st) => st.ativa);
@@ -107,11 +130,15 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
   const [sel, setSel] = useState<Selecao>(null);
   const [zoom, setZoom] = useState(1);
   const [arrasto, setArrasto] = useState<Arrasto | null>(null);
+  const [exportando, setExportando] = useState(false);
   const mesaRef = useRef<HTMLDivElement>(null);
   const [mesa, setMesa] = useState<[number, number]>([900, 600]);
 
-  const folha = pranchas.folhas.find((f) => f.id === ativa) ?? pranchas.folhas[0] ?? null;
+  const folha = folhaAtiva(pranchas, ativa);
   const numero = folha ? pranchas.folhas.indexOf(folha) + 1 : 0;
+
+  // outro muro aberto: a seleção do muro anterior não vale (Delete nela acenderia o • num arquivo recém-aberto)
+  useEffect(() => setSel(null), [carregamento]);
 
   // o tamanho da mesa: no zoom 1 a folha INTEIRA cabe (carimbo à vista, como o "ajustar à janela" do CAD) e o zoom
   // amplia a partir daí
@@ -123,21 +150,38 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
     return () => ro.disconnect();
   }, []);
 
-  // a foto do 3D chega depois: quando chega, `versao` sobe e a folha se recompõe
+  // O desenhista nasce e morre DENTRO do efeito: no modo de desenvolvimento o React monta, desmonta e monta de novo
+  // — criado num useMemo e descartado na limpeza, o desenhista guardado ficava morto e a foto do Realista nunca
+  // chegava. A foto do 3D chega depois: quando chega, `versao` sobe e a folha se recompõe.
+  const muro = useAssentado(modelo, ESPERA_DO_MURO_MS);
+  const [desenhista, setDesenhista] = useState<Desenhista | null>(null);
   const [versao, setVersao] = useState(0);
-  const desenhista = useMemo(() => criarDesenhista(modelo, () => setVersao((v) => v + 1)), [modelo]);
-  useEffect(() => () => desenhista.descartar(), [desenhista]);
+  useEffect(() => {
+    const d = criarDesenhista(muro, () => setVersao((v) => v + 1));
+    setDesenhista(d);
+    return () => d.descartar();
+  }, [muro]);
+
   const base = useMemo(
     () => ({
       escritorio,
-      notasAutomaticas: notasAutomaticas(resultado, modelo),
-      legenda: legendaDasCores(modelo),
-      aco: quadroDeAco(modelo),
+      notasAutomaticas: notasAutomaticas(resultado, muro),
+      legenda: legendaDasCores(muro),
+      aco: quadroDeAco(muro, resultado),
     }),
-    [escritorio, resultado, modelo],
+    [escritorio, resultado, muro],
   );
   const contexto = useCallback(
-    (n: number, total: number, obra: DadosDaObra): ContextoDaFolha => ({ ...base, numero: n, total, obra, desenhar: desenhista.desenhar }),
+    (n: number, total: number, obra: DadosDaObra, saida = false): ContextoDaFolha => ({
+      ...base,
+      numero: n,
+      total,
+      obra,
+      desenhar: (item, prefixo, o) => desenhista?.desenhar(item, prefixo, o) ?? null,
+      tituloAutomatico: (item) => desenhista?.tituloAutomatico(item) ?? NOMES_DO_CONTEUDO[item.conteudo.tipo],
+      saida,
+      prefixo: saida ? 'imp' : 'p',
+    }),
     // `versao` entra para a folha se recompor quando a foto do 3D chega
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [base, desenhista, versao],
@@ -147,12 +191,29 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
     [folha, numero, pranchas.folhas.length, pranchas.obra, contexto],
   );
 
-  /** Todas as folhas compostas, na ordem (PDF e DXF saem do mesmo desenho que está na tela). */
-  const todas = () => pranchas.folhas.map((f, i) => comporFolha(f, contexto(i + 1, pranchas.folhas.length, pranchas.obra)));
+  /**
+   * Todas as folhas para o ARQUIVO: compõe uma vez (o que pede as fotos do Realista das folhas que não estavam na
+   * tela), espera as fotos e compõe de novo — o PDF e o DXF nunca saem com o lugar tracejado.
+   */
+  const todasParaSaida = async (p: PranchasDoProjeto): Promise<FolhaComposta[]> => {
+    const compor = () => p.folhas.map((f, i) => comporFolha(f, contexto(i + 1, p.folhas.length, p.obra, true)));
+    compor();
+    await desenhista?.esperarFotos();
+    return compor();
+  };
 
-  /** DXF: uma prancha por arquivo, num .zip com a pasta das imagens (o 3D e a logo vão vinculados). */
-  const baixarDxf = () => {
-    const compostas = todas();
+  const exportar = async (fazer: (c: FolhaComposta[]) => void | Promise<void>) => {
+    if (exportando) return;
+    setExportando(true);
+    try {
+      await fazer(await todasParaSaida(pranchas));
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  /** DXF: uma prancha por arquivo, num .zip com a pasta das imagens (o 3D do Realista e a logo vão vinculados). */
+  const baixarDxf = (compostas: FolhaComposta[]) => {
     const folhas = compostas.map((c, i) => {
       const f = pranchas.folhas[i];
       const nome = `${String(i + 1).padStart(2, '0')}${f.conteudo ? ` - ${f.conteudo}` : ''}`;
@@ -178,6 +239,8 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
   };
   const excluirFolha = () => {
     if (!folha) return;
+    // a folha montada não some com um clique sem volta
+    if (folha.itens.length && !window.confirm(`Excluir a folha ${String(numero).padStart(2, '0')} com ${folha.itens.length} desenho(s)?`)) return;
     mudar((p) => ({ ...p, folhas: p.folhas.filter((f) => f.id !== folha.id) }));
     setAtiva(null);
     setSel(null);
@@ -198,15 +261,14 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
     [folha, mudar],
   );
 
-  // Delete apaga o desenho selecionado (fora de campo de texto)
+  // Delete apaga o desenho selecionado SÓ com o foco na mesa (clicar na folha a foca): digitando no painel de
+  // entradas, o Enter tira o foco do campo e um Backspace seguinte apagava o desenho sem a pessoa ver
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
-      const alvo = e.target as HTMLElement | null;
-      if (alvo && (alvo.tagName === 'INPUT' || alvo.tagName === 'TEXTAREA' || alvo.tagName === 'SELECT')) return;
-      if ((e.key === 'Delete' || e.key === 'Backspace') && sel?.tipo === 'item') {
-        e.preventDefault();
-        excluirItem(sel.id);
-      }
+      if (!(e.key === 'Delete' || e.key === 'Backspace') || sel?.tipo !== 'item') return;
+      if (!mesaRef.current || document.activeElement !== mesaRef.current) return;
+      e.preventDefault();
+      excluirItem(sel.id);
     };
     window.addEventListener('keydown', aoTeclar);
     return () => window.removeEventListener('keydown', aoTeclar);
@@ -214,6 +276,10 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
 
   // ── arrastar no papel ─────────────────────────────────────────────────────
   const capaRef = useRef<SVGSVGElement>(null);
+  const [W, H] = folha ? tamanhoDaFolha(folha.formato, folha.orientacao) : [841, 594];
+  const larguraPx = Math.min(mesa[0], (mesa[1] * W) / H) * zoom;
+  const mmPorPx = W / Math.max(1, larguraPx);
+
   const mm = (e: PE): [number, number] => {
     const svg = capaRef.current;
     const m = svg?.getScreenCTM();
@@ -223,6 +289,7 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
   };
   const apertar = (e: PE, a: Arrasto) => {
     e.stopPropagation();
+    mesaRef.current?.focus({ preventScroll: true });
     (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
     setArrasto(a);
   };
@@ -231,21 +298,27 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
     const [x, y] = mm(e);
     const dx = Math.round((x - arrasto.px) * 2) / 2;
     const dy = Math.round((y - arrasto.py) * 2) / 2;
-    if (arrasto.tipo === 'mover') setArrasto({ ...arrasto, dx, dy });
-    else setArrasto({ ...arrasto, dw: dx, dh: dy });
+    if (arrasto.tipo === 'mover') {
+      const solto = arrasto.solto || Math.hypot(x - arrasto.px, y - arrasto.py) > FOLGA_DO_CLIQUE_PX * mmPorPx;
+      setArrasto({ ...arrasto, dx: solto ? dx : 0, dy: solto ? dy : 0, solto });
+    } else setArrasto({ ...arrasto, dw: dx, dh: dy });
+  };
+  /** O tamanho que o redimensionar dá, já com a proporção travada (a moldura-fantasma mostra o resultado). */
+  const tamanhoTravado = (a: Extract<Arrasto, { tipo: 'tamanho' }>): [number, number] => {
+    const prop = a.w0 / Math.max(1, a.h0);
+    const w = Math.max(20, Math.abs(a.dw) >= Math.abs(a.dh) * prop ? a.w0 + a.dw : (a.h0 + a.dh) * prop);
+    return [w, w / prop];
   };
   const soltar = () => {
     const a = arrasto;
     setArrasto(null);
     if (!a || !folha) return;
-    if (a.tipo === 'mover' && (a.dx || a.dy)) mudar((p) => noItem(p, folha.id, a.id, (i) => ({ ...i, x: a.x0 + a.dx, y: a.y0 + a.dy })));
+    if (a.tipo === 'mover' && (a.dx || a.dy)) {
+      mudar((p) => noItem(p, folha.id, a.id, (i) => dentroDaFolha({ ...i, x: a.x0 + a.dx, y: a.y0 + a.dy }, W, H)));
+    }
     if (a.tipo === 'tamanho' && (a.dw || a.dh)) {
-      // o 3D mantém a proporção: vale o lado que mais andou
-      mudar((p) => noItem(p, folha.id, a.id, (i) => {
-        const prop = a.w0 / Math.max(1, a.h0);
-        const w = Math.max(20, Math.abs(a.dw) >= Math.abs(a.dh) * prop ? a.w0 + a.dw : (a.h0 + a.dh) * prop);
-        return { ...i, largura: w, altura: w / prop };
-      }));
+      const [w, h] = tamanhoTravado(a);
+      mudar((p) => noItem(p, folha.id, a.id, (i) => ({ ...i, largura: w, altura: h })));
     }
     if (a.tipo === 'carimbo' && (a.dw || a.dh)) {
       // a alça fica no canto de cima à esquerda: puxar para a esquerda/para cima aumenta
@@ -258,15 +331,18 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
 
   // ── o painel do que está selecionado ──────────────────────────────────────
   const itemSel = folha && sel?.tipo === 'item' ? folha.itens.find((i) => i.id === sel.id) ?? null : null;
+  const caixaSel = itemSel ? composta?.itens.find((i) => i.id === itemSel.id)?.caixa ?? null : null;
   const mudarItem = (f: (i: ItemDaFolha) => ItemDaFolha) => folha && itemSel && mudar((p) => noItem(p, folha.id, itemSel.id, f));
 
-  const subirLogo = (arquivo: File | undefined) => {
+  const subirLogo = (alvo: HTMLInputElement) => {
+    const arquivo = alvo.files?.[0];
+    // o mesmo arquivo de novo (depois de Remover) tem de disparar outra vez
+    alvo.value = '';
     if (!arquivo) return;
-    logoEmPng(arquivo).then((logo) => mudarEscritorio({ logo }), () => useApp.getState().dizer('Imagem da logo não reconhecida'));
+    logoEmPng(arquivo).then((logo) => mudarEscritorio({ logo }), () => dizer(ruim('Imagem da logo não reconhecida')));
   };
 
-  const [W, H] = folha ? tamanhoDaFolha(folha.formato, folha.orientacao) : [841, 594];
-  const larguraPx = Math.min(mesa[0], (mesa[1] * W) / H) * zoom;
+  const desenhosDaFolha = composta?.itens ?? [];
 
   return (
     <div style={s.raiz} data-frente="pranchas">
@@ -277,7 +353,7 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
               {String(i + 1).padStart(2, '0')}{f.conteudo ? ` · ${f.conteudo}` : ''}
             </button>
           ))}
-          <button type="button" style={s.chip} onClick={adicionarFolha} title="Nova folha">+</button>
+          <button type="button" style={s.chip} onClick={adicionarFolha} title="Nova folha" aria-label="Nova folha">+</button>
         </div>
 
         {folha && !sel && (
@@ -287,7 +363,7 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
             <Linha rotulo="Formato">
               <select className="campo" value={folha.formato} onChange={(e) => {
                 const formato = e.target.value as Formato;
-                mudarFolha((f) => ({ ...f, formato, quadro: { ...f.quadro, ...quadroLateralPadrao(formato, f.orientacao, f.carimbo) } }));
+                mudarFolha((f) => prenderNaFolha({ ...f, formato, quadro: { ...f.quadro, ...quadroLateralPadrao(formato, f.orientacao, f.carimbo) } }));
               }}>
                 {ORDEM_DOS_FORMATOS.map((x) => <option key={x} value={x}>{x}</option>)}
               </select>
@@ -295,7 +371,7 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
             <Linha rotulo="Orientação">
               <select className="campo" value={folha.orientacao} onChange={(e) => {
                 const orientacao = e.target.value as Orientacao;
-                mudarFolha((f) => ({ ...f, orientacao, quadro: { ...f.quadro, ...quadroLateralPadrao(f.formato, orientacao, f.carimbo) } }));
+                mudarFolha((f) => prenderNaFolha({ ...f, orientacao, quadro: { ...f.quadro, ...quadroLateralPadrao(f.formato, orientacao, f.carimbo) } }));
               }}>
                 <option value="deitada">Deitada</option>
                 <option value="em_pe">Em pé</option>
@@ -308,15 +384,27 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
         {itemSel && (
           <div style={s.grupo}>
             <span style={s.tituloDoGrupo}>{NOMES_DO_CONTEUDO[itemSel.conteudo.tipo]}</span>
-            <Linha rotulo="Título"><Texto valor={itemSel.titulo} aoMudar={(v) => mudarItem((i) => ({ ...i, titulo: v }))} /></Linha>
-            {itemSel.conteudo.tipo !== '3d' ? (
+            <Linha rotulo="Título">
+              <Texto valor={itemSel.titulo} sugestao={desenhista?.tituloAutomatico(itemSel)} aoMudar={(v) => mudarItem((i) => ({ ...i, titulo: v }))} />
+            </Linha>
+            {itemSel.escala !== null ? (
               <Linha rotulo="Escala">
-                <select className="campo" value={String(itemSel.escala ?? '')} onChange={(e) => mudarItem((i) => ({ ...i, escala: Number(e.target.value) }))}>
+                <select className="campo" value={String(itemSel.escala)} onChange={(e) => mudarItem((i) => ({ ...i, escala: Number(e.target.value) }))}>
                   {ESCALAS.map((x) => <option key={x} value={x}>{rotuloDaEscala(x)}</option>)}
                 </select>
               </Linha>
             ) : (
-              <Linha rotulo="Largura (mm)"><Numero valor={itemSel.largura ?? 150} min={20} aoMudar={(v) => mudarItem((i) => ({ ...i, largura: v, altura: v / ((i.conteudo.tipo === '3d' && i.conteudo.proporcao) || 1.5) }))} /></Linha>
+              <Linha rotulo="Largura (mm)">
+                <Numero
+                  valor={caixaSel?.[2] ?? itemSel.largura ?? 150}
+                  min={20}
+                  aoMudar={(v) => {
+                    // a altura acompanha a proporção do desenho que está na folha
+                    const prop = caixaSel ? caixaSel[2] / Math.max(1, caixaSel[3]) : (itemSel.largura ?? 150) / Math.max(1, itemSel.altura ?? 100);
+                    mudarItem((i) => ({ ...i, largura: v, altura: v / prop }));
+                  }}
+                />
+              </Linha>
             )}
             {itemSel.conteudo.tipo === 'planta' && modelo && (
               <Linha rotulo="Fiada">
@@ -350,18 +438,19 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
             <Linha rotulo="Revisão"><Texto valor={pranchas.obra.revisao} aoMudar={(v) => mudarObra({ revisao: v })} /></Linha>
             <span style={{ ...s.tituloDoGrupo, marginTop: 6 }}>Escritório</span>
             <Linha rotulo="Empresa"><Texto valor={escritorio.empresa} aoMudar={(v) => mudarEscritorio({ empresa: v })} /></Linha>
+            <Linha rotulo="Contato"><Texto valor={escritorio.contato} aoMudar={(v) => mudarEscritorio({ contato: v })} /></Linha>
             <Linha rotulo="Responsável"><Texto valor={escritorio.responsavel} aoMudar={(v) => mudarEscritorio({ responsavel: v })} /></Linha>
             <Linha rotulo="CREA"><Texto valor={escritorio.crea} aoMudar={(v) => mudarEscritorio({ crea: v })} /></Linha>
             <Linha rotulo="Logomarca">
               <span style={{ display: 'flex', gap: 6 }}>
-                <label className="btn-caixa" style={{ cursor: 'pointer' }}>
+                <label className="btn-caixa" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center' }}>
                   {escritorio.logo ? 'Trocar' : 'Carregar'}
-                  <input type="file" accept="image/png,image/jpeg,image/svg+xml" style={{ display: 'none' }} onChange={(e) => subirLogo(e.target.files?.[0])} />
+                  <input type="file" accept="image/png,image/jpeg,image/svg+xml" style={{ display: 'none' }} onChange={(e) => subirLogo(e.target)} />
                 </label>
-                {escritorio.logo && <button type="button" className="btn-caixa" onClick={() => mudarEscritorio({ logo: null })}>Tirar</button>}
+                {escritorio.logo && <button type="button" className="btn-caixa" onClick={() => mudarEscritorio({ logo: null })}>Remover</button>}
               </span>
             </Linha>
-            {escritorio.logo && <Linha rotulo="Largura da logo"><Numero valor={escritorio.logoLargura} min={5} aoMudar={(v) => mudarEscritorio({ logoLargura: v })} /></Linha>}
+            {escritorio.logo && <Linha rotulo="Largura da logo (mm)"><Numero valor={escritorio.logoLargura} min={5} aoMudar={(v) => mudarEscritorio({ logoLargura: v })} /></Linha>}
             <Linha rotulo="Largura (mm)"><Numero valor={folha.carimbo.largura} min={CARIMBO_MIN.largura} aoMudar={(v) => mudarFolha((f) => ({ ...f, carimbo: { ...f.carimbo, largura: v } }))} /></Linha>
             <Linha rotulo="Altura (mm)"><Numero valor={folha.carimbo.altura} min={CARIMBO_MIN.altura} aoMudar={(v) => mudarFolha((f) => ({ ...f, carimbo: { ...f.carimbo, altura: v } }))} /></Linha>
           </div>
@@ -375,7 +464,12 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
             <Linha rotulo="Legenda"><input type="checkbox" checked={folha.quadro.legenda} onChange={(e) => mudarFolha((f) => ({ ...f, quadro: { ...f.quadro, legenda: e.target.checked } }))} /></Linha>
             <Linha rotulo="Resumo do aço"><input type="checkbox" checked={folha.quadro.quadroDeAco} onChange={(e) => mudarFolha((f) => ({ ...f, quadro: { ...f.quadro, quadroDeAco: e.target.checked } }))} /></Linha>
             <Linha rotulo="Notas">
-              <select className="campo" value={folha.quadro.notas === null ? 'auto' : 'proprias'} onChange={(e) => mudarFolha((f) => ({ ...f, quadro: { ...f.quadro, notas: e.target.value === 'auto' ? null : [...base.notasAutomaticas] } }))}>
+              <select className="campo" value={folha.quadro.notas === null ? 'auto' : 'proprias'} onChange={(e) => {
+                const auto = e.target.value === 'auto';
+                // voltar ao automático joga fora o texto digitado: só com confirmação
+                if (auto && folha.quadro.notas && folha.quadro.notas.join('\n') !== base.notasAutomaticas.join('\n') && !window.confirm('Voltar às notas automáticas e descartar as editadas?')) return;
+                mudarFolha((f) => ({ ...f, quadro: { ...f.quadro, notas: auto ? null : [...base.notasAutomaticas] } }));
+              }}>
                 <option value="auto">Automáticas</option>
                 <option value="proprias">Editadas</option>
               </select>
@@ -407,26 +501,21 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
           </label>
           <span style={{ flex: 1 }} />
           <div className="cad-escolha">
-            <button type="button" style={s.botao} onClick={() => setZoom((z) => Math.max(0.5, z / 1.25))} title="Diminuir">−</button>
+            <button type="button" style={s.botao} onClick={() => setZoom((z) => Math.max(0.5, z / 1.25))} title="Diminuir" aria-label="Diminuir">−</button>
             <button type="button" style={s.botao} onClick={() => setZoom(1)}>Ajustar</button>
-            <button type="button" style={s.botao} onClick={() => setZoom((z) => Math.min(6, z * 1.25))} title="Aumentar">+</button>
+            <button type="button" style={s.botao} onClick={() => setZoom((z) => Math.min(6, z * 1.25))} title="Aumentar" aria-label="Aumentar">+</button>
           </div>
           <div className="cad-escolha">
-            <button
-              type="button"
-              style={s.botao}
-              disabled={!pranchas.folhas.length}
-              onClick={() => void imprimirPranchas(todas())}
-            >
+            <button type="button" style={s.botao} disabled={!pranchas.folhas.length || exportando} onClick={() => void exportar((c) => imprimirPranchas(c))}>
               PDF
             </button>
-            <button type="button" style={s.botao} disabled={!pranchas.folhas.length} onClick={baixarDxf}>
+            <button type="button" style={s.botao} disabled={!pranchas.folhas.length || exportando} onClick={() => void exportar(baixarDxf)}>
               DXF
             </button>
           </div>
         </div>
 
-        <div ref={mesaRef} style={s.mesa} onPointerDown={() => setSel(null)}>
+        <div ref={mesaRef} style={s.mesa} tabIndex={0} onPointerDown={() => { setSel(null); mesaRef.current?.focus({ preventScroll: true }); }}>
           {composta && folha ? (
             <div style={{ position: 'relative', width: larguraPx, height: (larguraPx * H) / W, margin: '0 auto', boxShadow: '0 2px 10px rgba(0,0,0,0.35)' }}>
               <div style={{ position: 'absolute', inset: 0, lineHeight: 0 }} dangerouslySetInnerHTML={{ __html: composta.svg.replace(/width="[\d.]+mm" height="[\d.]+mm"/, 'width="100%" height="100%"') }} />
@@ -438,46 +527,8 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
                 onPointerUp={soltar}
                 onPointerCancel={soltar}
               >
-                {/* os desenhos: clicar seleciona, arrastar move */}
-                {composta.itens.map((it) => {
-                  const item = folha.itens.find((i) => i.id === it.id);
-                  if (!item) return null;
-                  const ligado = sel?.tipo === 'item' && sel.id === it.id;
-                  const a = arrasto && 'id' in arrasto && arrasto.id === it.id ? arrasto : null;
-                  const dx = a?.tipo === 'mover' ? a.dx : 0;
-                  const dy = a?.tipo === 'mover' ? a.dy : 0;
-                  const [x, y, w, h] = it.caixa;
-                  const ww = a?.tipo === 'tamanho' ? Math.max(20, w + a.dw) : w;
-                  const hh = a?.tipo === 'tamanho' ? Math.max(15, h + a.dh) : h;
-                  return (
-                    <g key={it.id}>
-                      <rect
-                        x={x + dx} y={y + dy} width={ww} height={hh}
-                        fill="transparent"
-                        stroke={ligado || a ? AZUL : 'transparent'}
-                        strokeWidth={0.6}
-                        style={{ cursor: 'move' }}
-                        onPointerDown={(e) => {
-                          setSel({ tipo: 'item', id: it.id });
-                          const [px, py] = mm(e);
-                          apertar(e, { tipo: 'mover', id: it.id, x0: item.x, y0: item.y, px, py, dx: 0, dy: 0 });
-                        }}
-                      />
-                      {pendenteRotulo(it.pendente, x + dx, y + dy, ww, hh, NOMES_DO_CONTEUDO[item.conteudo.tipo])}
-                      {ligado && item.escala === null && (
-                        <rect
-                          x={x + ww - 2.5} y={y + hh - 2.5} width={5} height={5} fill={AZUL}
-                          style={{ cursor: 'nwse-resize' }}
-                          onPointerDown={(e) => {
-                            const [px, py] = mm(e);
-                            apertar(e, { tipo: 'tamanho', id: it.id, px, py, w0: w, h0: h, dw: 0, dh: 0 });
-                          }}
-                        />
-                      )}
-                    </g>
-                  );
-                })}
-                {/* quadro lateral: a alça no canto de cima à esquerda puxa largura e altura */}
+                {/* quadro lateral: a alça no canto de cima à esquerda puxa largura e altura (por baixo dos desenhos:
+                    um desenho em cima do quadro ainda se pega) */}
                 {composta.quadro && (() => {
                   const [qx, qy, qw, qh] = composta.quadro;
                   const a = arrasto?.tipo === 'quadro' ? arrasto : null;
@@ -487,7 +538,7 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
                       <rect
                         x={qx + (a?.dw ?? 0)} y={qy + (a?.dh ?? 0)} width={qw - (a?.dw ?? 0)} height={qh - (a?.dh ?? 0)}
                         fill="transparent" stroke={ligado || a ? AZUL : composta.quadroEstourou ? '#e0685a' : 'transparent'} strokeWidth={0.6}
-                        onPointerDown={(e) => { e.stopPropagation(); setSel({ tipo: 'quadro' }); }}
+                        onPointerDown={(e) => { e.stopPropagation(); mesaRef.current?.focus({ preventScroll: true }); setSel({ tipo: 'quadro' }); }}
                       />
                       {ligado && (
                         <rect
@@ -511,7 +562,7 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
                       <rect
                         x={cx + (a?.dw ?? 0)} y={cy + (a?.dh ?? 0)} width={cw - (a?.dw ?? 0)} height={ch - (a?.dh ?? 0)}
                         fill="transparent" stroke={ligado || a ? AZUL : 'transparent'} strokeWidth={0.6}
-                        onPointerDown={(e) => { e.stopPropagation(); setSel({ tipo: 'carimbo' }); }}
+                        onPointerDown={(e) => { e.stopPropagation(); mesaRef.current?.focus({ preventScroll: true }); setSel({ tipo: 'carimbo' }); }}
                       />
                       {ligado && (
                         <rect
@@ -525,6 +576,44 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
                     </g>
                   );
                 })()}
+                {/* os desenhos: clicar seleciona, arrastar move */}
+                {desenhosDaFolha.map((it) => {
+                  const item = folha.itens.find((i) => i.id === it.id);
+                  if (!item) return null;
+                  const ligado = sel?.tipo === 'item' && sel.id === it.id;
+                  const a = arrasto && 'id' in arrasto && arrasto.id === it.id ? arrasto : null;
+                  const dx = a?.tipo === 'mover' ? a.dx : 0;
+                  const dy = a?.tipo === 'mover' ? a.dy : 0;
+                  const [x, y, w, h] = it.caixa;
+                  const [ww, hh] = a?.tipo === 'tamanho' ? tamanhoTravado(a) : [w, h];
+                  return (
+                    <g key={it.id}>
+                      <rect
+                        x={x + dx} y={y + dy} width={ww} height={hh}
+                        fill="transparent"
+                        stroke={ligado || a ? AZUL : 'transparent'}
+                        strokeWidth={0.6}
+                        style={{ cursor: 'move' }}
+                        onPointerDown={(e) => {
+                          setSel({ tipo: 'item', id: it.id });
+                          const [px, py] = mm(e);
+                          apertar(e, { tipo: 'mover', id: it.id, x0: item.x, y0: item.y, px, py, dx: 0, dy: 0, solto: false });
+                        }}
+                      />
+                      {pendenteRotulo(it.pendente, x + dx, y + dy, ww, hh, NOMES_DO_CONTEUDO[item.conteudo.tipo])}
+                      {ligado && item.escala === null && (
+                        <rect
+                          x={x + ww - 2.5} y={y + hh - 2.5} width={5} height={5} fill={AZUL}
+                          style={{ cursor: 'nwse-resize' }}
+                          onPointerDown={(e) => {
+                            const [px, py] = mm(e);
+                            apertar(e, { tipo: 'tamanho', id: it.id, px, py, w0: w, h0: h, dw: 0, dh: 0 });
+                          }}
+                        />
+                      )}
+                    </g>
+                  );
+                })}
               </svg>
             </div>
           ) : (
