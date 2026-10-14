@@ -3,7 +3,7 @@ S = 6.0
 W, H = 1100, 470
 s = SVG(W, H)
 s.text(30, 34, 'Fig. 2 — Blocos de concreto: dimensões usadas na planilha (planta)', size=18, anchor='start', weight='bold')
-s.text(30, 56, 'Parede do bloco (hf) = parede longitudinal; septos com a mesma espessura. Valores da tabela de blocos da aula.', size=13, anchor='start', color=C['note'])
+s.text(30, 56, 'Parede do bloco (hf) = parede longitudinal; septos com a mesma espessura. Valores adotados para a família 39.', size=13, anchor='start', color=C['note'])
 blocks = [('14 × 39', 14, 39, 2.7, 0.57, 117), ('19 × 39', 19, 39, 3.5, 0.54, 170)]   # só a família 39 (09/10)
 x = 140
 for nome, t, L, hf, rl, ag in blocks:

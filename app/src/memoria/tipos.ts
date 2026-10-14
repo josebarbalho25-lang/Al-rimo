@@ -12,10 +12,16 @@
 */
 import type { Resultado } from '@/motor/tipos';
 
-/** Como a fonte é desenhada: "NBR 16868-1 · 11.2" / "ABCP · Tab. 3.2" / "Aula 12.3". */
+/**
+  Como a fonte é desenhada: "NBR 16868-1 · 11.2" / "ABCP · Tab. 3.2" / "Critério adotado".
+
+  Produto comercial (Jose, 14/10): a fonte é a ORIGEM da regra — norma, livro ou teoria —, nunca curso, aula ou
+  pessoa. Convenção de projeto sem outra fonte (δadm = vão/250, K digitado, he da flecha, seção I com alma = furo +
+  septos, largura de influência do contraforte, roteiro da fundação) é 'Critério adotado', sem item.
+*/
 export interface Ref {
-  fonte: 'NBR 16868-1' | 'NBR 6118' | 'NBR 6122' | 'NBR 11682' | 'NBR 6120' | 'ABCP' | 'Aula 12.1' | 'Aula 12.2' | 'Aula 12.3'
-    | 'Libânio' | 'Gilberto' | 'Curso' | 'Dedução'
+  fonte: 'NBR 16868-1' | 'NBR 6118' | 'NBR 6122' | 'NBR 11682' | 'NBR 6120' | 'NBR 6136' | 'ABCP'
+    | 'Libânio' | 'Rankine' | 'Cintra, Aoki e Albiero' | 'Critério adotado' | 'Dedução'
     // medida tirada dos templates de montagem que o Jose modelou no Revit (dados/encaixes_revit/)
     | 'Template do Revit';
   item?: string;

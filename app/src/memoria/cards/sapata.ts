@@ -125,7 +125,8 @@ const ABA = 'Fundação';
 const P = dados as unknown as PlanilhaExportada;
 
 const NBR = (item?: string): Ref => (item ? { fonte: 'NBR 6118', item } : { fonte: 'NBR 6118' });
-const GILBERTO: Ref = { fonte: 'Gilberto' };
+// a reação do solo integrada em 20 fatias até a face (momento e cortante): roteiro adotado, sem norma que o fixe
+const CRITERIO: Ref = { fonte: 'Critério adotado' };
 const DEDUCAO: Ref = { fonte: 'Dedução' };
 
 // O expoente de fct,m = 0,3·fck^(2/3) escrito "2/3" nas duas linhas, como na norma; vale 2/3, como na planilha.
@@ -301,7 +302,7 @@ function secaoFatia(m: Memoria, f: Folhas, L: Lado) {
     m.passo(cS, `\\sigma_{${i},1}`, sigma, { casas: 3, unidade: 'kPa' }),
     m.passo(cQ, `q_{${i},1}`, liquida, { casas: 3, unidade: 'kPa' }),
     m.passo(cM, `M_{${i},1}`, mul(qq, dx, braco), { casas: 3, unidade: 'kN·m/m' }),
-  ], GILBERTO);
+  ], CRITERIO);
 }
 
 // ───────────────────────────── flexão ─────────────────────────────
@@ -335,7 +336,7 @@ function cardFlexao(r: Parameters<AutorDeCards>[0], L: Lado): Card {
 
   const momento = secao('Momento na face e armadura', [
     temNumero(m, L.Mk) && m.passo(L.Mk, `M_{k,${i}}`,
-      nome(intervalo(L.dM), `\\sum_{i=1}^{20} M_{${i},i}`, 2, 'kN·m/m'), { casas: 2, unidade: 'kN·m/m', ref: GILBERTO }),
+      nome(intervalo(L.dM), `\\sum_{i=1}^{20} M_{${i},i}`, 2, 'kN·m/m'), { casas: 2, unidade: 'kN·m/m', ref: CRITERIO }),
     temNumero(m, L.Md) && m.passo(L.Md, `M_{d,${i}}`, majorado(m, L.Mk, Mk), { casas: 2, unidade: 'kN·m/m' }),
     xResiste
       ? m.passo(L.x, `x_${i}`, xExpr, { casas: 2, unidade: 'cm', ref: NBR('17.2.2') })
@@ -426,7 +427,7 @@ function cardCortante(r: Parameters<AutorDeCards>[0]): Card {
     const expr = somaV < 0 ? mul(cte(1.4, 1), max(cte(0, 0), soma20)) : mul(cte(1.4, 1), soma20);
     const vale = temNumero(m, 'VRd1_s');
     return m.passo(L.Vsd, `V_{Sd,${L.i}}`, expr, {
-      casas: 2, unidade: 'kN/m', ref: GILBERTO,
+      casas: 2, unidade: 'kN/m', ref: CRITERIO,
       verif: vale
         ? { chave: `sapata.cortante.${L.i === 'p' ? 'ponta' : 'talao'}`, rotulo: `Cortante ${L.i === 'p' ? 'na ponta' : 'no talão'} VSd ≤ VRd1`, limite: f.VRd1, relacao: '<=' }
         : undefined,

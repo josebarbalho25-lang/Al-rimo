@@ -4,7 +4,7 @@ W, H = 1180, 700
 s = SVG(W, H)
 s.rect(0, 0, W, 64, fill='#c00000', stroke='none')
 s.text(30, 30, 'Fig. 4 — POSIÇÃO DA BARRA: ENCOSTADA DO LADO DO SOLO — NÃO CENTRALIZAR', size=19, anchor='start', weight='bold', color='#ffffff')
-s.text(30, 52, 'O cálculo usa d = 14 cm no bloco de 19 (aula 12.2). O costume de obra é deixar a barra no meio do furo, com d = 9,5 cm.', size=13, anchor='start', color='#ffffff')
+s.text(30, 52, 'O cálculo usa d = 14 cm no bloco de 19 (barra a 5 cm da face do solo). O costume de obra é deixar a barra no meio do furo, com d = 9,5 cm.', size=13, anchor='start', color='#ffffff')
 def cell(x0, y0, bary, ok):
     t, hf, L = 19, 3.5, 21.25
     X = lambda v: x0 + v * S; Y = lambda v: y0 + v * S
@@ -33,7 +33,7 @@ cell(690, y1 + 45, 9.5, False)
 # consequências
 y = 490
 s.text(60, y, 'Por que importa', size=15, anchor='start', weight='bold')
-txt = ['• O braço de alavanca cai cerca de 1/3. No exemplo da aula, o As necessário passa de 1,52 para 2,46 cm²/m e o Ø10 c/40 deixa de atender.',
+txt = ['• O braço de alavanca cai cerca de 1/3. Num balanço de 1,6 m em bloco 19, o As necessário passa de 1,52 para 2,46 cm²/m e o Ø10 c/40 deixa de atender.',
        '• A planilha mostra isso na aba Muro em balanço, em "E se a barra for centralizada na obra?". Se der NÃO, o projeto depende da barra encostada.',
        'Como garantir na obra', '• Indicar em planta, no corte e nas notas: "armadura vertical encostada na face do solo — não centralizar".',
        '• Espaçador ou gabarito na espera e na barra; amarrar a barra na espera; conferir a posição antes de grautear.']

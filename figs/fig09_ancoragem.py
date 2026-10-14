@@ -24,7 +24,7 @@ s.line(xw - 220, yb, xw + t + 220, yb, stroke=C['line'], sw=1.4)
 # quadro de fórmulas
 bx, by = 720, 110
 s.rect(bx, by, 430, 300, fill='#f7f7f7', stroke='#bfbfbf', sw=1)
-lines = [('Na planilha (aba Muro em balanço):', True), ('lb da tabela: Ø, concreto e zona (aula 12.2)', False),
+lines = [('Na planilha (aba Muro em balanço):', True), ('lb da tabela: Ø, concreto e zona (NBR 6118, 9.4.2)', False),
          ('com gancho: 0,7·lb', False), ('lb,nec = lb · As,calc / As,ef', False), ('lb,mín = máx(0,3·lb ; 10Ø ; 10 cm)  (NBR 6118)', False),
          ('ancoragem = máx(lb,nec ; lb,mín)', True), ('', False), ('Campos das Entradas:', True), ('"Concreto da fundação" (C20 / C25 / C30)', False),
          ('"Zona de aderência" (barra vertical: boa)', False), ('"Gancho na ponta da espera?"', False), ('', False), ('O traspasse espera × barra do muro não é', False), ('calculado nesta planilha: detalhar no projeto.', False)]

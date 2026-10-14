@@ -4,7 +4,7 @@ S = 1.75                      # px por cm
 W, H = 1180, 700
 s = SVG(W, H)
 s.text(30, 34, 'Fig. 13 — Painel entre contrafortes (elevação, vista de fora)', size=18, anchor='start', weight='bold')
-s.text(30, 56, 'Placa com base engastada na sapata corrida, topo livre e laterais nos contrafortes. Exemplo da aula 12.3: l = 1,50 m, h = 2,60 m.', size=13, anchor='start', color=C['note'])
+s.text(30, 56, 'Placa com base engastada na sapata corrida, topo livre e laterais nos contrafortes. Exemplo: l = 1,50 m, h = 2,60 m.', size=13, anchor='start', color=C['note'])
 l, h, e = 150, 260, 14
 x0, yb = 150, 590                 # x do eixo do contraforte esquerdo; y da base do painel
 X = lambda v: x0 + v * S

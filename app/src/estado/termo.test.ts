@@ -83,6 +83,12 @@ describe('o texto e a versão do termo', () => {
     expect(fontes).not.toBe(ARQUIVO);
     expect(t.impressaoDigital(t.textoDoTermo(fontes))).toBe(base);
   });
+
+  it('a base técnica cita normas e literatura publicada, sem curso nem pessoa (14/10, produto comercial)', () => {
+    // O arquivo INTEIRO vai para o pacote do app (import ?raw), notas internas incluídas: a regra vale para ele todo.
+    expect(ARQUIVO).not.toMatch(/Carini|Gilberto|\bcurso\b|\baulas?\b|material didático/i);
+    expect(ARQUIVO).toContain('NBR 16868-1');
+  });
 });
 
 describe('o aceite', () => {

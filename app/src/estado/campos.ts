@@ -95,8 +95,8 @@ const rotuloDeOpcao = (v: Valor): string =>
   typeof v === 'number' ? String(v).replace('.', ',') : v === null ? 'auto' : String(v);
 
 /**
- * Os rótulos das opções, sem a citação de fonte ("Líquida (curso)" →
- * "Líquida", "Bruta (NBR)" → "Bruta"): fonte é da memória, não do painel. O
+ * Os rótulos das opções, sem a citação de fonte ("Bruta (NBR)" → "Bruta"; o
+ * parêntese que diz o que é, como "Viga (b·d)", fica): fonte é da memória, não do painel. O
  * VALOR não muda — é o texto que a planilha compara. Se tirar a fonte deixar
  * duas opções com o mesmo nome, ficam as originais (a fonte era o que as
  * distinguia).
@@ -109,8 +109,8 @@ function rotulosDasOpcoes(valores: Valor[]): string[] {
 
 /**
  * Cabe em botões? A coluna do controle tem ~104 px na escala 1; cada letra
- * gasta ~6,5 px e cada botão ~12 px de folga. "Sim | Não", "C20 | C25 | C30" e
- * "Curso | NBR" cabem; "Balanço | Contrafortes" não — vira lista, que é melhor
+ * gasta ~6,5 px e cada botão ~12 px de folga. "Sim | Não" e "C20 | C25 | C30"
+ * cabem; "Balanço | Contrafortes" e "Viga (b·d) | Parede (b·t)" não — vira lista, que é melhor
  * do que um botão com reticências no meio da palavra.
  */
 function cabeEmBotoes(rotulos: string[]): boolean {

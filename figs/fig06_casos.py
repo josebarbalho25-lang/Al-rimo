@@ -17,7 +17,7 @@ def pan(x, y, w, h, free, title, note):
     for i, l in enumerate(note):
         s.text(x + w / 2, y + h + 34 + i * 17, l, size=12, color=C['note'])
 pan(90, 150, 220, 200, ['dir'], 'Caso 11', ['lateral direita livre', '(ex.: extremidade do muro sem barra)'])
-pan(430, 150, 220, 200, [], 'Caso 13', ['4 bordas apoiadas', 'painel entre barras e canaletas', '(arrimo da aula 12.2)'])
+pan(430, 150, 220, 200, [], 'Caso 13', ['4 bordas apoiadas', 'painel entre barras e canaletas', '(muro em balanço armado)'])
 pan(770, 150, 220, 200, ['sup'], 'Caso 18', ['topo livre', '(último painel sem cinta no topo)'])
-s.text(30, 455, 'Campo das Entradas: "Caso de vinculação do painel". O βf sai da tabela do caso (planilha 11 do curso), interpolado em h/l e μ.', size=11, anchor='start', color=C['note'])
+s.text(30, 455, 'Campo das Entradas: "Caso de vinculação do painel". O βf sai da tabela do caso (NBR 16868-1, Anexo E), interpolado em h/l e μ.', size=11, anchor='start', color=C['note'])
 s.save('fig06_casos.svg'); print('ok')

@@ -17,8 +17,8 @@ AULA_122_ENTRADAS = {'sg_on': 'Não', 'peso_par': 3.0}
 
 VAL123 = {
     'H_muro': 2.6, 'H_solo': 2.6, 't_bloco': 14, 'Graute': 40, 'Tipo_muro': 'Contrafortes',
-    'Ka_dir': 0.4, 'gama_solo': 20, 'q_sobre': 0, 'c_solo': 0, 'Agua': 'Não', 'fbk_': 10, 'fpk_ref': 'Líquida (curso)',
-    'K_dir': 1, 'AsMin_crit': 'Curso', 'M2d_on': 'Não', 'arg_cls': 'acima de 7,0 MPa', 'fgk_dir': 20, 'h_pan': 0.8,
+    'Ka_dir': 0.4, 'gama_solo': 20, 'q_sobre': 0, 'c_solo': 0, 'Agua': 'Não', 'fbk_': 10, 'fpk_ref': 'Líquida',
+    'K_dir': 1, 'AsMin_crit': 'Viga (b·d)', 'M2d_on': 'Não', 'arg_cls': 'acima de 7,0 MPa', 'fgk_dir': 20, 'h_pan': 0.8,
     'psi_els': 1, 'vao_ref': '2h',
     # aula: 1,50 m e contraforte de 59 (14×29). Na família 14×39: o vão da lista mais perto de 1,50 e o contraforte de 54.
     'l_cf': 1.35, 'tenr_': 54,
@@ -31,9 +31,9 @@ PHI_FURO = [6.3, 8, 10, 12.5, 16, 20]
 OPCOES = {
     't_bloco': [14, 19], 'Trav_lat': ['Sim', 'Não'],
     'Ka_dir': ['', 0.33, 0.5], 'phi_solo': [20, 30, 35], 'c_solo': [0, 10, 25], 'q_sobre': [0, 5, 20], 'Agua': ['Sim', 'Não'], 'z_NA': [0, 0.5, 1.5],
-    'fbk_': [4, 6, 8, 10, 12, 16, 24], 'Graute': ['parcial', 20], 'fpk_ref': ['Líquida (curso)', 'Bruta (NBR)'],
+    'fbk_': [4, 6, 8, 10, 12, 16, 24], 'Graute': ['parcial', 20], 'fpk_ref': ['Líquida', 'Bruta'],
     'phi_v': PHI_FURO, 'd_dir': ['', 9.5, 14], 'K_dir': ['', 1, 1.5],
-    'AsMin_crit': ['Curso', 'NBR'], 'M2d_on': ['Sim', 'Não'], 'fck_fund': ['C20', 'C25', 'C30'], 'zona_ad': ['Boa', 'Má'], 'gancho_': ['Sim', 'Não'],
+    'AsMin_crit': ['Viga (b·d)', 'Parede (b·t)'], 'M2d_on': ['Sim', 'Não'], 'fck_fund': ['C20', 'C25', 'C30'], 'zona_ad': ['Boa', 'Má'], 'gancho_': ['Sim', 'Não'],
     'h_pan': [0.4, 0.8, 1.2, 1.6], 'arg_cls': ['1,5 a 3,4 MPa', '3,5 a 7,0 MPa', 'acima de 7,0 MPa'], 'caso_pan': [13, 18, 11], 'beta_dir': ['', 0.1],
     'sig_pan': [0, 0.1], 'Tipo_muro': ['Balanço', 'Contrafortes'],
     'pos_cf': ['Enterrado (lado do solo)', 'Aparente (lado de fora)'], 'tipo_cf': ['Intermediário', 'Extremidade'], 'bal_cf': [0, 0.5, 1.5],
@@ -90,6 +90,19 @@ def bitolas_com_espera(sc):
     return [b for b in PHI_FURO if base + (5 if b < 20 else 8) * b / 10 + 2 * b / 10 <= sc['h_sap'] * 100 + 1e-9]
 
 
+# O gerador próprio das entradas novas (r2, no sortear) é semeado pelo TEXTO do cenário. Os rótulos de duas listas
+# mudaram em 14/10 (produto comercial, sem citar o curso): 'Líquida (curso)' → 'Líquida', 'Bruta (NBR)' → 'Bruta',
+# 'Curso' → 'Viga (b·d)', 'NBR' → 'Parede (b·t)'. Mesma posição nas listas, então o sorteio principal não muda; mas a
+# semente do r2 mudaria com o texto novo, e o sorteio17, o sorteio23... virariam outros muros. A semente continua sendo
+# feita com os rótulos de antes — só a semente: o cenário sai com os rótulos novos.
+_ROTULO_DA_SEMENTE = {'fpk_ref': {'Líquida': 'Líquida (curso)', 'Bruta': 'Bruta (NBR)'},
+                      'AsMin_crit': {'Viga (b·d)': 'Curso', 'Parede (b·t)': 'NBR'}}
+
+
+def _valores_da_semente(sc):
+    return {k: _ROTULO_DA_SEMENTE.get(k, {}).get(v, v) for k, v in sc.items()}
+
+
 def sortear(rnd):
     """Um cenário com valores aceitos pela planilha. '' = em branco (None)."""
     sc = {k: rnd.choice(v) for k, v in OPCOES.items()}
@@ -101,7 +114,7 @@ def sortear(rnd):
     for k in PHI_ESPERA:
         if cabem and k in sc and sc[k] not in cabem:
             sc[k] = max([b for b in cabem if b <= sc[k]] or cabem[:1])
-    r2 = random.Random(repr(sorted(sc.items())))
+    r2 = random.Random(repr(sorted(_valores_da_semente(sc).items())))
     sc.update({k: r2.choice(v) for k, v in OPCOES_NOVAS.items()})
     # graute a cada X (13/10): o sorteio principal escolhe parcial × todos (20) — sequência de antes; o parcial vira
     # uma grade de 40 a 6t no gerador próprio, e as barras descem para a grade (a lista da planilha só oferece

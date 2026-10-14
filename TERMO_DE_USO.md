@@ -67,15 +67,15 @@
 
 4.2. **Base técnica.** O cálculo segue:
 
-   a) o curso de alvenaria estrutural do Prof. Matheus Carini, aulas de muro de arrimo (12.1 a 12.3);
+   a) a ABNT NBR 16868-1:2020 (alvenaria estrutural — projeto);
    b) o manual da ABCP *Parâmetros de Projeto de Alvenaria Estrutural* (Parsekian & Medeiros);
-   c) a ABNT NBR 16868-1:2020 (alvenaria estrutural — projeto);
-   d) a ABNT NBR 6118, para o concreto armado da sapata corrida;
-   e) tabelas de placas da literatura técnica (Bares, adaptadas por L. M. Pinheiro), para os painéis entre contrafortes.
+   c) a ABNT NBR 6118, para o concreto armado da sapata corrida; a ABNT NBR 6122, para a fundação; e a ABNT NBR 6120, para os pesos específicos dos materiais;
+   d) tabelas de placas da literatura técnica (Bares, adaptadas por L. M. Pinheiro), para os painéis entre contrafortes;
+   e) a literatura técnica de geotecnia e fundações: empuxo pela teoria de Rankine; estabilidade da sapata corrida (Bastos); tabelas de sugestão de parâmetros do solo e de tensão admissível (Godoy, Alonso, Gerscovich, Joppert Jr., Teixeira & Godoy, Cintra, Aoki & Albiero, Mello).
 
-4.3. Essas fontes contêm hipóteses simplificadoras, critérios didáticos e, em alguns pontos, divergências entre si. O aplicativo adota as escolhas indicadas na memória de cálculo, e cada linha da memória mostra a fórmula, os valores e a fonte, **justamente para que o engenheiro confira**. Onde o material didático e a norma vigente divergirem, cabe ao engenheiro decidir e responder pela decisão.
+4.3. Essas fontes contêm hipóteses simplificadoras e, em alguns pontos, divergências entre si. O aplicativo adota as escolhas indicadas na memória de cálculo — onde nenhuma fonte decide, marcadas como critério adotado —, e cada linha da memória mostra a fórmula, os valores e a fonte, **justamente para que o engenheiro confira**. Onde a literatura técnica, um critério adotado e a norma vigente divergirem, cabe ao engenheiro decidir e responder pela decisão.
 
-4.4. **Sem vínculo nem endosso.** O Prof. Matheus Carini, a ABCP, os autores do manual, a ABNT e os autores das tabelas citadas não participam do aplicativo, não o revisaram, não o endossam e não respondem por ele. A menção a eles é referência bibliográfica.
+4.4. **Sem vínculo nem endosso.** A ABCP, os autores do manual, a ABNT e os autores das tabelas e da literatura citadas não participam do aplicativo, não o revisaram, não o endossam e não respondem por ele. A menção a eles é referência bibliográfica.
 
 4.5. **Normas técnicas.** O aplicativo não reproduz nem licencia texto de norma da ABNT. O USUÁRIO deve ter exemplar legítimo e vigente das normas que aplicar e conferir os resultados contra elas.
 
@@ -110,7 +110,7 @@
    h) a especificação e o controle da execução: escavação, escoramento, sequência executiva, controle tecnológico de blocos, argamassa, graute e prismas, compactação do reaterro e segurança do trabalho;
    i) a compatibilização com os projetos de arquitetura e instalações e com as construções e divisas vizinhas.
 
-5.6. **Sugestão não é decisão.** Valores sugeridos pelo aplicativo — tabelas de solo do material didático, tensão admissível estimada a partir do SPT, fatores de segurança padrão, dimensões e espaçamentos automáticos — são ponto de partida. **Adotá-los é decisão do engenheiro.** Os fatores de segurança padrão devem ser conferidos contra as normas aplicáveis ao caso (por exemplo, ABNT NBR 11682 e NBR 6122).
+5.6. **Sugestão não é decisão.** Valores sugeridos pelo aplicativo — tabelas de solo da literatura técnica, tensão admissível estimada a partir do SPT, fatores de segurança padrão, dimensões e espaçamentos automáticos — são ponto de partida. **Adotá-los é decisão do engenheiro.** Os fatores de segurança padrão devem ser conferidos contra as normas aplicáveis ao caso (por exemplo, ABNT NBR 11682 e NBR 6122).
 
 5.7. **Coesão.** O aplicativo aceita coesão do solo maior que zero, com aviso. Considerar coesão é decisão do projetista, que deve fundamentá-la em ensaio e responde por ela.
 
@@ -189,7 +189,7 @@
 
 10.3. O aplicativo incorpora componentes de código aberto de terceiros, sujeitos às respectivas licenças, cuja relação acompanha o aplicativo. Em caso de conflito, prevalece a licença do componente, somente quanto a ele.
 
-10.4. Os direitos sobre o curso, o manual, as normas e as tabelas citados no item 4.2 pertencem aos respectivos titulares.
+10.4. Os direitos sobre o manual, as normas, as tabelas e a literatura citados no item 4.2 pertencem aos respectivos titulares.
 
 ---
 
@@ -376,7 +376,7 @@ Quase todos têm também cláusula de **dados** e de **alteração do termo**.
 - **Engenheiro habilitado e ART:** nenhum dos contratos lidos fala nisso. Só o EULA do Pró-Viga e este Termo.
 - **Dever explícito de conferir os resultados:** só a SCIA no contrato (3.5), a CYPE no aviso e a CSI no manual.
 - **Parâmetros do solo como escolha do projetista**, recomendação de ensaio, **limites de altura**, **montagens fechadas** e **lista do que o aplicativo não faz** na parte geotécnica (percolação e variação do nível d'água, estabilidade global, terreno inclinado).
-- **Base técnica declarada** (curso, manual ABCP, NBR 16868-1) e **ausência de endosso** dos autores citados.
+- **Base técnica declarada** (normas ABNT, manual ABCP, literatura técnica) e **ausência de endosso** dos autores citados.
 - **Gratuidade como contrato benéfico** (Código Civil, art. 392), com a ressalva do que a lei não deixa afastar — no espírito da licença educacional da SCIA.
 - **Nada sai da máquina do usuário** — o contrário da telemetria de CSI, IDEA, TQS e AltoQi.
 - **Aplicativo que se atualiza sozinho:** dever de guardar a memória emitida, que registra a versão.
@@ -424,9 +424,10 @@ CONFERIDO NO CÓDIGO ANTES DE ESCREVER A CLÁUSULA 11 (não é suposição):
 HOSPEDAGEM (11.5): escrita genérica porque o servidor ainda não foi escolhido.
   Quando escolher, conferir se o provedor grava log/cookie e ajustar o texto.
 
-PROF. CARINI (4.2/4.4): o Termo cita o curso como referência, o que é citação.
-  Usar o NOME dele em divulgação do app é outra coisa (Código Civil, art. 18:
-  nome alheio em propaganda comercial precisa de autorização). Vale pedir a ele.
+BASE TÉCNICA (4.2/4.4), 14/10: produto comercial — a base cita só normas e
+  literatura publicada, como referência bibliográfica. Usar NOME de pessoa em
+  divulgação do app é outra coisa (Código Civil, art. 18: nome alheio em
+  propaganda comercial precisa de autorização).
 
 9.1 (contrato benéfico, CC art. 392): o app existe para atrair público para o
   Pró-Viga. Um juiz pode ver nisso remuneração indireta e tratar como serviço

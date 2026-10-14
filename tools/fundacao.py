@@ -4,7 +4,7 @@
 # flexão/cortante pela NBR 6118 e torção (contrafortes) pela NBR 6118 17.5.
 Fd = wb.create_sheet('Fundação', 7)
 title(Fd, 'Fundação — sapata corrida (estabilidade e dimensionamento)',
-      'Roteiro da aba "Fundação Sapata Corrida p muro" (Eng. Gilberto), adaptado. Muro em balanço: faixa de 1 m. Contrafortes: módulo = espaçamento entre contrafortes. x medido a partir da borda aterrada.')
+      'Muro em balanço: faixa de 1 m. Contrafortes: módulo = espaçamento entre contrafortes. x medido a partir da borda aterrada.')
 header(Fd, 3, ['Item', 'Valor', 'Unid.', 'Observação', 'Fonte'])
 r = 4
 def Lf(label, f, unit='', note='', kind='res', fmt=None, nm=None, src=None):
@@ -69,7 +69,7 @@ section(Fd, r, '3. Empuxo até a base da sapata'); r += 1
 Lf('σh na base do muro', '=sh_base', 'kPa', '', 'res', '0.00')
 Lf('σh na base da sapata', '=sh_base+h_sap*(Ka_*(gama_solo-IF(AND(Agua="Sim",H_solo+h_sap>z_NA),gama_w,0))+IF(AND(Agua="Sim",H_solo+h_sap>z_NA),gama_w,0))', 'kPa', 'Continua o perfil por mais h da sapata.', 'res', '0.00', 'sh_b2')
 Lf('Hk — empuxo total no módulo', '=(Vk_+(sh_base+sh_b2)/2*h_sap)*Lm', 'kN', '', 'key', '0.00', 'H_k')
-Lf('M de tombamento em relação à base da sapata', '=(Mk_+Vk_*h_sap+h_sap^2*(2*sh_base+sh_b2)/6)*Lm', 'kN·m', 'Mk na base do muro + Vk·h sapata + fatia da sapata. (A aba do Gilberto soma Vk·h.)', 'key', '0.00', 'M_tb')
+Lf('M de tombamento em relação à base da sapata', '=(Mk_+Vk_*h_sap+h_sap^2*(2*sh_base+sh_b2)/6)*Lm', 'kN·m', 'Mk na base do muro + Vk·h sapata + fatia da sapata.', 'key', '0.00', 'M_tb')
 # Passivo (Jose, 13/10): com o solo da frente garantido, a face toda da frente (aterro + sapata + dente). Sem a garantia,
 # só o dente do centro para trás: o solo na frente dele está debaixo da sapata e não é escavado; vale a altura do dente
 # abaixo da base, sem o peso da sapata por cima (a favor). Dente para a ponta, sem garantia: nada.
@@ -80,9 +80,9 @@ r += 1
 section(Fd, r, '4. Tombamento'); r += 1
 Lf('M estabilizante em relação ao pé', '=M_est', 'kN·m', 'Σ N·(B − x). Passivo não entra (a favor da segurança).', 'res', '0.00')
 Lf('FS = M estabilizante / M de tombamento', '=IF(M_tb>0,M_est/M_tb,99)', '', 'Mínimo nas Entradas.', 'key', '0.00', 'FS_t')
-Lf('M no centro da sapata (+ = para o pé)', '=M_tb+M_vc', 'kN·m', 'Como a aba do Gilberto: M de tombamento + Σ N·(x − B/2).', 'res', '0.000', 'M_cen')
+Lf('M no centro da sapata (+ = para o pé)', '=M_tb+M_vc', 'kN·m', 'M de tombamento + Σ N·(x − B/2).', 'res', '0.000', 'M_cen')
 Lf('Excentricidade e = M/N', '=M_cen/N_tot', 'm', '+ = resultante para o pé; − = para o aterro.', 'key', '0.000', 'e_f')
-Lf('Limite do Gilberto: |e| ≤ B/4', '=B_sap/4', 'm', 'Na aba original só para o lado do pé; aqui nos dois lados.', 'res', '0.000', 'e_lim')
+Lf('Limite: |e| ≤ B/4', '=B_sap/4', 'm', 'Critério adotado, nos dois lados.', 'res', '0.000', 'e_lim')
 r += 1
 section(Fd, r, '5. Deslizamento'); r += 1
 # φ' do solo de apoio OBRIGATÓRIO (Jose, 14/10: "o solo embaixo da sapata é o solo natural, é o do laudo de
@@ -93,7 +93,7 @@ Lf("Kp do solo de apoio = tg²(45° + φ'b/2)", '=TAN(RADIANS(45+phi_b/2))^2', '
 Lf('δ = (δ/φ)·φ', '=dphi*phi_b', '°', '', 'res', '0.0', 'del_b')
 Lf('Atrito na base = N·tg δ', '=MAX(0,N_tot)*TAN(RADIANS(del_b))', 'kN', '', 'res', '0.00', 'R_at')
 Lf('Adesão na base = a·B·L', '=ades_b*B_sap*Lm', 'kN', 'Zero por padrão.', 'res', '0.00', 'R_ad')
-Lf('FS = (atrito + adesão + passivo)/Hk', '=(R_at+R_ad+E_p)/H_k', '', 'Mínimo nas Entradas (aba do Gilberto: 1,5).', 'key', '0.00', 'FS_d')
+Lf('FS = (atrito + adesão + passivo)/Hk', '=(R_at+R_ad+E_p)/H_k', '', 'Mínimo nas Entradas.', 'key', '0.00', 'FS_d')
 r += 1
 section(Fd, r, '6. Tensões no solo'); r += 1
 Lf('σ média = N/(B·L)', '=N_tot/(B_sap*Lm)', 'kPa', '', 'res', '0.0', 's_med')
@@ -104,7 +104,7 @@ Lf('σ mín', '=IF(ABS(e_f)<=B_sap/6,s_med*(1-6*ABS(e_f)/B_sap),0)', 'kPa', '', 
 Lf('Lado da σ máx', '=IF(e_f>=0,"pé (borda externa)","talão (borda aterrada)")', '', '', 'res')
 # Duas regras práticas pelo SPT da base, cada uma com a faixa de N em que vale (Jose, 10/10: calculadora embaixo da
 # Fig. 15). Só sugestão: o σadm usado é o digitado ou o automático abaixo.
-Lf('Sugestão: 20·SPT (N/50 MPa)', '=20*SPT_b', 'kPa', 'Regra prática da aba do Gilberto (Cintra, Aoki e Albiero). Vale para 5 ≤ N ≤ 20.', 'sug', '0', 'sadm_20N', 'Cintra, Aoki e Albiero (2011)')
+Lf('Sugestão: 20·SPT (N/50 MPa)', '=20*SPT_b', 'kPa', 'Regra prática (Cintra, Aoki e Albiero). Vale para 5 ≤ N ≤ 20.', 'sug', '0', 'sadm_20N', 'Cintra, Aoki e Albiero (2011)')
 Lf('20·SPT: faixa de validade', '=IF(AND(SPT_b>=5,SPT_b<=20),"Dentro (5 ≤ N ≤ 20)","Fora (vale para 5 ≤ N ≤ 20)")', '', '', 'res', None, 'sadm_20N_fx')
 Lf('Sugestão: Mello 100·(√SPT − 1)', '=100*(SQRT(SPT_b)-1)', 'kPa', 'Mello (1975). Vale para 4 ≤ N ≤ 16.', 'sug', '0', 'sadm_mel', 'Mello (1975), em Cintra, Aoki e Albiero (2011)')
 Lf('Mello: faixa de validade', '=IF(AND(SPT_b>=4,SPT_b<=16),"Dentro (4 ≤ N ≤ 16)","Fora (vale para 4 ≤ N ≤ 16)")', '', '', 'res', None, 'sadm_mel_fx')
@@ -125,9 +125,9 @@ for tag, lab, mk in (('t', 'ponta', 'Mk_toe'), ('h', 'talão', 'Mk_heel')):
     Lf(f'Md {lab} = 1,4·Mk', f'=1.4*MAX(0,{mk})', 'kN·m/m', '', 'res', '0.00', f'Md_{tag}s')
     Lf(f'x {lab}', f'=IFERROR(1.25*d_s*(1-SQRT(1-Md_{tag}s*100/(0.425*100*d_s^2*fcd_s/10))),"não resiste")', 'cm', 'Bloco 0,8x com 0,85fcd.', 'res', '0.00', f'x_{tag}s')
     Lf(f'As {lab}', f'=IFERROR(Md_{tag}s*100/(fyk_/gama_s/10*(d_s-0.4*x_{tag}s)),"—")', 'cm²/m', '', 'res', '0.00', f'As_{tag}s')
-Lf('As,mín = 0,15%·b·h', '=0.0015*100*h_sap*100', 'cm²/m', 'NBR 6118 (fck ≤ 30). A aba do Gilberto usa máx(2·As,nec; 0,15·h).', 'res', '0.00', 'As_ms')
+Lf('As,mín = 0,15%·b·h', '=0.0015*100*h_sap*100', 'cm²/m', 'NBR 6118 (fck ≤ 30).', 'res', '0.00', 'As_ms')
 Lf('As principal (maior entre ponta, talão e mínimo)', '=MAX(IF(ISNUMBER(As_ts),As_ts,0),IF(ISNUMBER(As_hs),As_hs,0),As_ms)', 'cm²/m', 'Mesma armadura nas duas faces se os dois balanços pedirem.', 'key', '0.00', 'As_ps')
-Lf('Espaçamento com o Ø principal', '=MIN(20,2*h_sap*100,ROUNDDOWN(PI()*phi_sap^2/400/As_ps*100,0))', 'cm', 'NBR 6118: ≤ 20 cm e ≤ 2h. (A aba do Gilberto limita a 30.)', 'key', '0', 's_ps')
+Lf('Espaçamento com o Ø principal', '=MIN(20,2*h_sap*100,ROUNDDOWN(PI()*phi_sap^2/400/As_ps*100,0))', 'cm', 'NBR 6118: ≤ 20 cm e ≤ 2h.', 'key', '0', 's_ps')
 Lf('As secundária = máx(0,9; 20% As; 0,5·As,mín)', '=MAX(0.9,0.2*As_ps,0.5*As_ms)', 'cm²/m', '', 'res', '0.00', 'As_ss')
 Lf('Espaçamento com o Ø secundário', '=MIN(33,ROUNDDOWN(PI()*phi_sap2^2/400/As_ss*100,0))', 'cm', '', 'res', '0', 's_ss')
 Lf('fctd = 0,7·0,3·fck^(2/3)/1,4', '=0.21*fck_s^(2/3)/1.4', 'MPa', '', 'res', '0.000', 'fctd_s')
@@ -183,7 +183,7 @@ CHKF = [
     ('Muro apoiado na sapata', '=IF(AND(a_ater>=t_m/2-0.001,a_ater<=B_sap-t_m/2+0.001),"OK","NÃO OK — o muro sai da sapata: distância da borda aterrada ao eixo deve ficar entre t/2 e B − t/2")'),
     ('Contraforte apoiado na sapata', '=cf_cabe'),
     ('Tombamento: FS ≥ mínimo', '=IF(FS_t>=FS_tomb,"OK (FS = "&FIXED(FS_t,2)&")","NÃO OK (FS = "&FIXED(FS_t,2)&" < "&FIXED(FS_tomb,1)&")")'),
-    ('Tombamento: |e| ≤ B/4 (Gilberto)', '=IF(ABS(e_f)<=B_sap/4,"OK (e = "&FIXED(e_f*100,1)&" cm)","NÃO OK (e = "&FIXED(e_f*100,1)&" cm > "&FIXED(B_sap*25,1)&")")'),
+    ('Tombamento: |e| ≤ B/4', '=IF(ABS(e_f)<=B_sap/4,"OK (e = "&FIXED(e_f*100,1)&" cm)","NÃO OK (e = "&FIXED(e_f*100,1)&" cm > "&FIXED(B_sap*25,1)&")")'),
     ('Tombamento: resultado (vale o pior)', '=IF(AND(FS_t>=FS_tomb,ABS(e_f)<=B_sap/4),"OK","NÃO OK")'),
     # FS_d em texto (sem φ'b; ou Hk = 0) daria VERDADEIRO no ≥ do Excel: o ÉNÚM vem antes
     ('Deslizamento: FS ≥ mínimo', '=IF(ISNUMBER(FS_d),IF(FS_d>=FS_desl,"OK (FS = "&FIXED(FS_d,2)&")","NÃO OK (FS = "&FIXED(FS_d,2)&" < "&FIXED(FS_desl,1)&") — aumentar B, dente ou peso"),IF(ISNUMBER(phi_b),"—","NÃO OK — digitar o φ\' do solo de apoio (sondagem)"))'),
@@ -200,7 +200,7 @@ CHKF = [
     ('Torção: espessura equivalente he', '=IF(T_sd=0,"— (sem contrafortes)",IF(he_s>=2*c_eixo_s,"OK (A/u ≥ 2·c1)",IF(he_s<=MIN(B_sap,h_sap)-2*c_eixo_s,"OK (A/u < 2·c1: Ae pelos eixos das barras de canto)","NÃO OK — A/u > bw − 2·c1: aumentar a altura da sapata")))'),
 ]
 # Nome nas linhas que o app lê (antes por endereço: B101, B102, B104, B105 — uma linha nova acima as mudava de lugar).
-NOME_CHK = {'Tombamento: FS ≥ mínimo': 'chk_fs_t', 'Tombamento: |e| ≤ B/4 (Gilberto)': 'chk_e_t',
+NOME_CHK = {'Tombamento: FS ≥ mínimo': 'chk_fs_t', 'Tombamento: |e| ≤ B/4': 'chk_e_t',
             'Deslizamento: FS ≥ mínimo': 'chk_fs_d', 'Tensão: σ máx ≤ σadm': 'chk_sig',
             'Sapata rígida: h ≥ (B − t)/3': 'chk_rig', 'Compressão diagonal na face do muro': 'chk_bw',
             'Compressão diagonal junto ao contraforte': 'chk_bc'}

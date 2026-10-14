@@ -388,7 +388,11 @@ e dizer ao Jose o que mudou e por quê.
   aba, cada um com os nomes de que precisa. Prova: spec_planilha.json e golden idênticos antes/depois. SÓ DEPOIS da
   junção da sessão "sapata sobre molas" (branch sapata-molas), que mexe no gerador.
 - **FILA DO JOSE (14/10, tarde — só anotado; ele confere o IFC da canaleta antes):**
-  1. Tirar 100% das referências ao Gilberto e ao Carini (e às aulas dele: "Aula 12.2", "Aula 12.3", "Curso · planilha
+  1. FEITO 14/10 (texto visível da planilha, do app, da memória, das figuras e do termo; comentários de código
+     ficam). Listas renomeadas: fpk_ref 'Líquida'/'Bruta'; AsMin_crit 'Viga (b·d)'/'Parede (b·t)' (fórmulas
+     LEFT(AsMin_crit,4)="Viga"); arquivo antigo traduz ao abrir (projeto.ts OPCAO_RENOMEADA); o sorteio r2 guarda a
+     semente com os rótulos velhos (cenarios.py). Planilha entregue: planilha/Arrimo Alvenaria.xlsx. Exemplo do app:
+     'Exemplo — muro em balanço'. Fonte nova onde era o curso: norma/livro ou 'Critério adotado'. Tirar 100% das referências ao Gilberto e ao Carini (e às aulas dele: "Aula 12.2", "Aula 12.3", "Curso · planilha
      06"…) do software e da planilha — produto comercial. A conta NÃO muda (a régua continua sendo a do curso); só sai
      o nome. Cada citação precisa de substituta: a norma/livro de onde a regra vem (NBR 16868-1, NBR 6118, NBR 6122,
      ABCP/Parsekian, Bastos…) ou "critério adotado" quando é convenção do curso (δadm 2h/250, K = 1,0, As,mín 0,15 %…).

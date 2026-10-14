@@ -1,5 +1,5 @@
 /*
-  CARDS — Painel não armado entre barras e canaletas + ELS do balanço (abas "Painel não armado" e "ELS", aula 12.2).
+  CARDS — Painel não armado entre barras e canaletas + ELS do balanço (abas "Painel não armado" e "ELS").
 
   Cada `if` ESPELHA um IF da planilha (βf manual; LN na mesa × na alma; Ma ≤ Mr; σsg somado; vão 2h; grauteamento
   total) — a memória escolhe que conta CONTAR, nunca que número publicar.
@@ -89,10 +89,13 @@ export const SIMBOLOS_PAINELELS: Readonly<Record<string, string>> = {
 };
 
 const NBR = (item: string): Ref => ({ fonte: 'NBR 16868-1', item });
-const AULA_121: Ref = { fonte: 'Aula 12.1' };
-const AULA_122: Ref = { fonte: 'Aula 12.2' };
-const CURSO_06: Ref = { fonte: 'Curso', item: 'planilha 06' };
-const CURSO_11: Ref = { fonte: 'Curso', item: 'planilha 11' };
+const RANKINE: Ref = { fonte: 'Rankine' };
+// convenção de projeto sem outra fonte: pressão média do painel de baixo, alma = furo + 2 septos, h_eq, δadm = vão/250
+const CRITERIO: Ref = { fonte: 'Critério adotado' };
+// seção I fissurada e Branson
+const NBR_ELS: Ref = NBR('9.2.3');
+// interpolação linear na Tab. E.1 (Nota 1 da tabela)
+const TAB_E1: Ref = NBR('Tab. E.1');
 const DEDUCAO: Ref = { fonte: 'Dedução' };
 
 const PAINEL = 'Painel não armado';
@@ -157,8 +160,8 @@ const comPassos = (secoes: Secao[]) => secoes.filter((s) => s.passos.length > 0)
   com a força V_i de cada fatia a uma altura a_i da base, todas abaixo do topo do solo (a_i ≤ h_solo):
     flecha no nível do solo:  ΣD_i = Σ V_i·a_i²·(3·h_solo − a_i)/6   (coluna M do perfil, vezes Em·I)
     rotação acima do solo:    ΣR_i = Σ V_i·a_i²/2                    (coluna N, vezes Em·I), constante até o topo
-  S_δ = ΣD_i + ΣR_i·(h_muro − h_solo). Com o solo no topo do muro a segunda parcela é zero e a linha mostra só ΣD_i,
-  como na aula 12.2. A planilha soma as duas sempre; com h_muro = h_solo, ΣR·0 = 0 e o número é o mesmo.
+  S_δ = ΣD_i + ΣR_i·(h_muro − h_solo). Com o solo no topo do muro a segunda parcela é zero e a linha mostra só ΣD_i
+  (linha elástica do balanço). A planilha soma as duas sempre; com h_muro = h_solo, ΣR·0 = 0 e o número é o mesmo.
 */
 export function passoDaSomaDaFlecha(m: Memoria): Passo {
   const somaD = m.g('Solo e Empuxo!M44:M83', '\\sum_{i=1}^{40} D_i', 4, 'kN·m³/m');
@@ -168,7 +171,7 @@ export function passoDaSomaDaFlecha(m: Memoria): Passo {
     ? soma(somaD, mul(m.g('Solo e Empuxo!N44:N83', '\\sum_{i=1}^{40} R_i', 4, 'kN·m²/m'),
         par(sub(m.ent('H_muro', 'h_{muro}'), m.ent('H_solo', 'h_{solo}')))))
     : somaD;
-  return m.passo('sum_d', 'S_{\\delta}', expr, { casas: 4, unidade: 'kN·m³/m', ref: acima ? DEDUCAO : AULA_122 });
+  return m.passo('sum_d', 'S_{\\delta}', expr, { casas: 4, unidade: 'kN·m³/m', ...(acima ? { ref: DEDUCAO } : {}) });
 }
 
 // ───────────────────────────── painel não armado ─────────────────────────────
@@ -238,10 +241,10 @@ function cardPainel(r: Parameters<AutorDeCards>[0]): Card {
     tem('z_pan') && m.passo('z_pan', 'z_{pan}', [sub(hs, hp), max(cte(0, 0), sub(hs, hp))], {
       casas: 2, unidade: 'm', ...((m.num('H_solo') ?? 0) < (m.num('hp_') ?? 0) ? { ref: DEDUCAO } : {}),
     }),
-    tem('sp_top') && m.passo('sp_top', '\\sigma_{h,sup}', alternativasSup, { casas: 2, unidade: 'kPa', ref: AULA_121 }),
+    tem('sp_top') && m.passo('sp_top', '\\sigma_{h,sup}', alternativasSup, { casas: 2, unidade: 'kPa', ref: RANKINE }),
     tem('sp_med') && m.passo('sp_med', '\\sigma_{h,m}', div(soma(sSup, sBase), cte(2, 0)), { casas: 2, unidade: 'kPa' }),
     tem('fd_pan') && m.passo('fd_pan', 'w_d', mul(gf, sMed), { casas: 2, unidade: 'kN/m²', ref: NBR('E.3') }),
-  ], AULA_122);
+  ], CRITERIO);
 
   // ── tração na flexão (Tab. 3) ──
   const ftkN = m.g('ftk_nor', 'f_{tk,\\perp}', 2, 'MPa');
@@ -285,10 +288,10 @@ function cardPainel(r: Parameters<AutorDeCards>[0]): Card {
       const txE = m.g('txp', 't_x', 3);
       const tyE = m.g('typ', 't_y', 3);
       const um = cte(1, 0);
-      // interpolação linear na tabela, como a planilha 11 do curso (Nota 1 da Tab. E.1 permite).
+      // interpolação linear na tabela (Nota 1 da Tab. E.1 permite).
       // IF(jp>=11;0;...) e IF(ip>=9;0;...): fator nulo = ponto da própria tabela, sem conta a mostrar
-      if (tx !== 0) passosBeta.push(m.passo('txp', 't_x', div(sub(hl, cH(jp)), sub(cH(jp + 1), cH(jp))), { casas: 3, ref: CURSO_11 }));
-      if (ty !== 0) passosBeta.push(m.passo('typ', 't_y', div(sub(cMu(ip), muTab), sub(cMu(ip), cMu(ip + 1))), { casas: 3, ref: CURSO_11 }));
+      if (tx !== 0) passosBeta.push(m.passo('txp', 't_x', div(sub(hl, cH(jp)), sub(cH(jp + 1), cH(jp))), { casas: 3, ref: TAB_E1 }));
+      if (ty !== 0) passosBeta.push(m.passo('typ', 't_y', div(sub(cMu(ip), muTab), sub(cMu(ip), cMu(ip + 1))), { casas: 3, ref: TAB_E1 }));
       const j2 = Math.min(11, jp + 1), i2 = Math.min(9, ip + 1);
       const naLinha = (i: number) => soma(mul(sub(um, txE), cB(i, jp)), mul(txE, cB(i, j2)));
       let beta: Expr | null = null;
@@ -369,7 +372,7 @@ function cardPainel(r: Parameters<AutorDeCards>[0]): Card {
   return {
     id: 'painelEls.painel',
     titulo: 'Painel não armado · balanço',
-    ref: AULA_122,
+    ref: NBR('Anexo E'),
     figura: 'Fig. 5',
     secoes: comPassos([geometria, tracao, coeficiente, momentos, cisalhamento]),
     avisos,
@@ -399,7 +402,7 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
   const Im = m.g('Im_', 'I_m', 0, 'cm⁴');
 
   // bw: IF(gr_tot="Sim";bm;MIN(bm;n_alm·IF(ISNUMBER(bw_dir);bw_dir;(L − 3hf)/2 + 2hf))); n_alm = s/X furos
-  // grauteados na faixa da barra (graute a cada X, 13/10) — com uma alma só a linha fica a da aula
+  // grauteados na faixa da barra (graute a cada X, 13/10) — com uma alma só a linha fica a de uma alma
   const bwDigitado = m.num('bw_dir') !== null;
   const nAlm = m.num('n_alm') ?? 1;
   const bwUma = bwDigitado
@@ -415,12 +418,12 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
   const secaoFaixa = secao(cheia ? 'Seção da faixa · retangular cheia' : 'Seção da faixa · seção I', [
     tem('bm_els') && m.passo('bm_els', 'b_m', s, { casas: 1, unidade: 'cm' }),
     !cheia && nAlm > 1 && m.passo('n_alm', 'n_{alm}', div(bm, m.ent('Graute', 's_{gr}')), { casas: 0 }),
-    tem('bw_els') && m.passo('bw_els', 'b_w', bwExpr, { casas: 2, unidade: 'cm', ref: AULA_122 }),
+    tem('bw_els') && m.passo('bw_els', 'b_w', bwExpr, { casas: 2, unidade: 'cm', ref: CRITERIO }),
     tem('Im_') && m.passo('Im_', 'I_m', imExpr, { casas: 0, unidade: 'cm⁴' }),
-  ], CURSO_06);
+  ], NBR_ELS);
 
   // ── momento de serviço e de fissuração ──
-  const psi1 = m.num('psi_els') === 1;                       // ψ = 1 (aula): a linha fica Mk·bm, como no caderno
+  const psi1 = m.num('psi_els') === 1;                       // ψ = 1 (carga de serviço inteira): a linha fica Mk·bm
   const psi = m.ent('psi_els', '\\psi_{ELS}');
   const Mk = m.g('Mk_', 'M_k', 2, 'kN·m/m');
   const Ma = m.g('Ma_', 'M_a', 1, 'kN·cm');
@@ -429,12 +432,12 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
   const gpar = m.g('peso_us', 'g_{par}', 2, 'kN/m²');   // o peso usado: calculado ou digitado (cards/pesoProprio.ts)
   const h = m.ent('H_muro', 'h_{muro}');                        // peso da parede: altura do muro
   const tM = m.ent('t_bloco', 't', { fator: 0.01, casas: 2, unidade: 'm' });
-  // ftk e σsg em kN/cm² na leitura: Im em cm⁴ e yt em cm dão Mr direto em kN·cm, como na aula
+  // ftk e σsg em kN/cm² na leitura: Im em cm⁴ e yt em cm dão Mr direto em kN·cm, como na conta de mão
   const ftk = m.g('ftk_nor', 'f_{tk,\\perp}', 3, 'kN/cm²', { fator: 0.1 });
   const sg = m.g('sig_sg', '\\sigma_{sg}', 5, 'kN/cm²', { fator: 0.1 });
   const meiaAltura = mul(cte(0.5, 1), t);                     // yt = h/2 (seção simétrica)
   const fissuracao = secao('Momento de fissuração', [
-    tem('Ma_') && m.passo('Ma_', 'M_a', psi1 ? mul(Mk, bm) : mul(psi, Mk, bm), { casas: 1, unidade: 'kN·cm', ref: AULA_122 }),
+    tem('Ma_') && m.passo('Ma_', 'M_a', psi1 ? mul(Mk, bm) : mul(psi, Mk, bm), { casas: 1, unidade: 'kN·cm', ref: NBR_ELS }),
     comSg && tem('sig_sg') && m.passo('sig_sg', '\\sigma_{sg}', div(mul(cte(0.9, 1), gpar, h), mul(cte(1000, 0), tM)), {
       casas: 4, unidade: 'MPa',
     }),
@@ -480,12 +483,12 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
       casas: 0, unidade: 'MPa', ref: NBR('Tab. 1'),
     }),
     fissurada && tem('n_els') && m.passo('n_els', 'n', div(cte(210000, 0), Em), { casas: 2 }),
-    fissurada && tem('xII') && m.passo('xII', 'x_{II}', xExpr, { casas: 2, unidade: 'cm', ref: CURSO_06 }),
-    fissurada && tem('III_') && m.passo('III_', 'I_{II}', IIIExpr, { casas: 0, unidade: 'cm⁴', ref: CURSO_06 }),
+    fissurada && tem('xII') && m.passo('xII', 'x_{II}', xExpr, { casas: 2, unidade: 'cm', ref: NBR_ELS }),
+    fissurada && tem('III_') && m.passo('III_', 'I_{II}', IIIExpr, { casas: 0, unidade: 'cm⁴', ref: NBR_ELS }),
     tem('Ieq_') && m.passo('Ieq_', 'I_{eq}', fissurada ? [branson, min(Im, branson)] : Im, { casas: 0, unidade: 'cm⁴' }),
-    tem('heq_') && m.passo('heq_', 'h_{eq}', cbrt(div(mul(cte(12, 0), Ieq), bm)), { casas: 2, unidade: 'cm', ref: AULA_122 }),
+    tem('heq_') && m.passo('heq_', 'h_{eq}', cbrt(div(mul(cte(12, 0), Ieq), bm)), { casas: 2, unidade: 'cm', ref: CRITERIO }),
     fissurada && tem('sig_s_els') && m.passo('sig_s_els', '\\sigma_{s,ser}', div(mul(n, Ma, sub(d, x)), III), {
-      casas: 2, unidade: 'kN/cm²', ref: CURSO_06,
+      casas: 2, unidade: 'kN/cm²', ref: NBR_ELS,
     }),
   ], NBR('9.2.3'));
 
@@ -507,24 +510,24 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
   const deslocamento = secao('Deslocamento no topo', [
     tem('sum_d') && passoDaSomaDaFlecha(m),
     tem('delta0') && m.passo('delta0', '\\delta_0', div(psi1 ? mul(dez6, S, bm) : mul(dez6, psi, S, bm), mul(Em, Ieq)), {
-      casas: 2, unidade: 'mm', ref: AULA_122,
+      casas: 2, unidade: 'mm', ref: NBR_ELS,
     }),
     // ρ' = 0 (sem armadura comprimida): a planilha escreve Δξ/(1 + 50·0)
     tem('alfa_f') && m.passo('alfa_f', '\\alpha_f', div(dxi, soma(cte(1, 0), mul(cte(50, 0), cte(0, 0)))), { casas: 2, ref: NBR('9.2.4') }),
-    tem('dadm_') && m.passo('dadm_', '\\delta_{adm}', div(vao2h ? mul(cte(2, 0), hMm) : hMm, nAdm), { casas: 2, unidade: 'mm', ref: AULA_122 }),
+    tem('dadm_') && m.passo('dadm_', '\\delta_{adm}', div(vao2h ? mul(cte(2, 0), hMm) : hMm, nAdm), { casas: 2, unidade: 'mm', ref: CRITERIO }),
     tem('delta_') && m.passo('delta_', '\\delta_\\infty', mul(d0, soma(cte(1, 0), af)), {
       casas: 2, unidade: 'mm', ref: NBR('9.2.4'),
       verif: aplicavel && tem('dadm_') ? {
         chave: 'els.flecha', rotulo: 'Flecha δ∞ ≤ δadm', limite: dadm, relacao: '<=', celula: VEREDITO.flecha,
       } : undefined,
     }),
-  ], AULA_122);
+  ], NBR('9.2.4'));
 
   const desenho = desenhoDaSecaoI(r);
   return {
     id: 'painelEls.els',
     titulo: 'ELS · fissuração e deslocamento · balanço',
-    ref: AULA_122,
+    ref: NBR('9.2'),
     figura: 'Fig. 10',
     // a seção da faixa desenhada e cotada, com os números das mesmas células (Jose, 12/10)
     ...(desenho ? { desenho } : {}),

@@ -212,8 +212,8 @@ describe('o controle de cada entrada', () => {
   it('poucas opções curtas → botões; longas, muitas ou dependentes → lista; sem lista → número', () => {
     expect(campoDe(meta('t_bloco'), 'planilha').controle).toBe('escolha');
     expect(campoDe(meta('fck_fund'), 'planilha').controle).toBe('escolha');
-    expect(campoDe(meta('AsMin_crit'), 'planilha').controle).toBe('escolha');
     expect(campoDe(meta('Tipo_muro'), 'planilha').controle).toBe('lista');
+    expect(campoDe(meta('AsMin_crit'), 'planilha').controle).toBe('lista');   // "Viga (b·d) | Parede (b·t)" não cabe em botões
     expect(campoDe(meta('Classe_G'), 'planilha').controle).toBe('lista');
     expect(campoDe(meta('phi_v'), 'planilha').controle).toBe('lista');
     expect(campoDe(meta('H_muro'), 'planilha').controle).toBe('lista');      // lista que depende do tipo de muro
@@ -245,8 +245,8 @@ describe('o controle de cada entrada', () => {
     const c = campoDe(meta('fpk_ref'), 'planilha');
     expect(c.opcoes.map((o) => o.rotulo)).toEqual(['Líquida', 'Bruta']);
     expect(c.opcoes.map((o) => o.valor)).toEqual(meta('fpk_ref').opcoes);
-    // "Curso | NBR" é o nome do critério, não citação entre parênteses: fica
-    expect(campoDe(meta('AsMin_crit'), 'planilha').opcoes.map((o) => o.rotulo)).toEqual(['Curso', 'NBR']);
+    // "(b·d)" e "(b·t)" dizem o que é o critério, não citam fonte: ficam
+    expect(campoDe(meta('AsMin_crit'), 'planilha').opcoes.map((o) => o.rotulo)).toEqual(['Viga (b·d)', 'Parede (b·t)']);
   });
 });
 

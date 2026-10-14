@@ -54,7 +54,7 @@ export function extrasDoNovo(): Record<string, Valor> {
   0,30, é flexível pela NBR 6118 22.6.1: (1,40 − 0,19)/3 = 0,403, e 0,40 fica 3 mm abaixo (Jose, 14/10: "a gente
   sobe 5 cm na altura" — de 5 em 5 cm, a primeira que passa é 0,45).
 */
-export const TITULO_DO_EXEMPLO = 'Exemplo — aula 12.2';
+export const TITULO_DO_EXEMPLO = 'Exemplo — muro em balanço';
 export function alteracoesDoExemplo(): Alteracoes {
   return { sg_on: 'Não', peso_par: 3.0, h_sap: 0.45 };
 }

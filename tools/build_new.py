@@ -1,4 +1,4 @@
-"""Gerador da planilha "Arrimo Alvenaria — base Carini" (aulas 12.1–12.3 do Prof. Carini + manual ABCP/NBR 16868-1).
+"""Gerador da planilha "Arrimo Alvenaria" (até 14/10 "base Carini") (aulas 12.1–12.3 do Prof. Carini + manual ABCP/NBR 16868-1).
 Uso: python tools/build_new.py saida.xlsx   (ver CLAUDE.md)
 Módulos executados no mesmo namespace: tools/contrafortes.py (aula 12.3), tools/fundacao.py (sapata corrida) e
 (a aba Sapata sobre molas saiu em 14/10: a planilha só classifica a sapata — ver fundacao.py).
@@ -66,10 +66,10 @@ def widths(ws, w):
 # ================= ENTRADAS =================
 E = wb.active; E.title = 'Entradas'
 title(E, 'Muro de arrimo em alvenaria estrutural — Entradas',
-      'Abre com o exemplo da aula 12.2 (bate com o professor com Somar σsg = Não e peso da parede 3,0 kN/m²). Para o seu muro, troque os amarelos — atenção a d, K, As,mín e M2d. Amarelo = entrada; verde = sugestão; azul = resultado. kN, m, kPa, MPa.')
+      'Abre com um muro de exemplo (balanço, h 1,6 m, bloco 19×39). Para o seu muro, troque os amarelos — atenção a d, K, As,mín e M2d. Amarelo = entrada; verde = sugestão; azul = resultado. kN, m, kPa, MPa.')
 E.merge_cells('A3:E3')
 E['A3'] = ('AVISO — Os parâmetros do solo (γ, φ\', c\', Ka, sobrecarga, nível d\'água) e o empuxo são ESCOLHA DO PROJETISTA. '
-           'Recomenda-se obtê-los por ensaio (cisalhamento direto e/ou triaxial). A coesão, mesmo em argila coesiva, a aula recomenda desprezar. '
+           'Recomenda-se obtê-los por ensaio (cisalhamento direto e/ou triaxial). Recomenda-se desprezar a coesão, mesmo em argila coesiva. '
            'Esta planilha só auxilia o cálculo: o engenheiro responsável deve conferir e validar toda a memória de cálculo antes de assinar.')
 E['A3'].font = Font(name=F, bold=True, size=10, color='C00000'); E['A3'].alignment = Alignment(wrap_text=True, vertical='center')
 E['A3'].fill = PatternFill('solid', fgColor='FCE4D6'); E.row_dimensions[3].height = 58
@@ -148,11 +148,11 @@ line(E, r, 'Meio bloco (módulo m)', '=(L_bloco+1)/2', 'cm', '(L + 1 cm de junta
 # grade: o espaçamento das barras (balanço e painel) só pode ser múltiplo de X (lista lst_s). Vale para o balanço e
 # para o painel entre contrafortes; o contraforte é sempre todo grauteado. A mesma grade dá o peso (fração dos
 # furos = m/X), as almas da flexão (100/X furos por metro) e as almas do ELS (s/X por faixa).
-line(E, r, 'Graute a cada', 40, 'cm', '20 = todos os furos (seção cheia, fpk*); 40 = furo sim, furo não; 60 = um sim, dois não; … até 6t. Nos parciais a seção é I: alma = furo grauteado + septos, mesas = paredes do bloco, fpk do bloco vazado. O espaçamento das barras é múltiplo deste (a barra cai num furo grauteado). Balanço e painel entre contrafortes; o contraforte é sempre todo grauteado. Aula 12.2: barras a 40 com graute nos furos delas = 40.', 'inp', '0', 'Graute'); r += 1
+line(E, r, 'Graute a cada', 40, 'cm', '20 = todos os furos (seção cheia, fpk*); 40 = furo sim, furo não; 60 = um sim, dois não; … até 6t. Nos parciais a seção é I: alma = furo grauteado + septos, mesas = paredes do bloco, fpk do bloco vazado. O espaçamento das barras é múltiplo deste (a barra cai num furo grauteado). Balanço e painel entre contrafortes; o contraforte é sempre todo grauteado. Ex.: barras a 40 com graute só nos furos delas = 40.', 'inp', '0', 'Graute'); r += 1
 lista(LST['lst_gr'], f'B{r-1}')
 line(E, r, 'Todos os furos grauteados (seção cheia)?', '=IF(Graute<=m_mod,"Sim","Não")', '', 'Graute a cada m (20 cm) = todos os furos.', 'res', None, 'gr_tot'); r += 1
-line(E, r, 'Largura da alma da seção I — opcional', None, 'cm', 'Em branco = furo grauteado + 2 septos = (L − 3·parede)/2 + 2·parede (19×39 → 21,25 cm, igual ao da aula). Preencha se quiser outro valor.', 'inp', '0.00', 'bw_dir'); r += 1
-line(E, r, 'Tipo de muro', 'Balanço', '', 'Balanço (aula 12.2, aba Muro em balanço) ou Contrafortes (aula 12.3, aba Contrafortes).', 'inp', None, 'Tipo_muro'); r += 1
+line(E, r, 'Largura da alma da seção I — opcional', None, 'cm', 'Em branco = furo grauteado + 2 septos = (L − 3·parede)/2 + 2·parede (19×39 → 21,25 cm). Preencha se quiser outro valor.', 'inp', '0.00', 'bw_dir'); r += 1
+line(E, r, 'Tipo de muro', 'Balanço', '', 'Balanço (aba Muro em balanço) ou Contrafortes (aba Contrafortes).', 'inp', None, 'Tipo_muro'); r += 1
 dv_m = DataValidation(type='list', formula1='"Balanço,Contrafortes"'); E.add_data_validation(dv_m); dv_m.add(f'B{r-1}')
 # Limites do app gratuito (decisão do Jose, 08/10): o app é básico e fechado; fora disso quem quiser faz a própria
 # conta. A planilha calcula assim mesmo — a linha só sinaliza (o app lê lim_H e não calcula fora dele). A lista da
@@ -181,7 +181,7 @@ _conds += [(f'IF({cnd},ISNUMBER(MATCH({n},lst_phi_esp,0)),TRUE)', rot) for n, cn
 line(E, r, 'Entradas nas listas', '=IF(AND(' + ','.join(c for c, _ in _conds) + '),"OK","fora da lista:' +
      '"&' + '&'.join(f'IF({c},""," {rot};")' for c, rot in _conds) + ')', '',
      'Altura, contraforte e espaçamentos dependem do tipo de muro e do bloco; os Ø com espera, da altura da sapata: trocar um deles depois não reconfere os outros.', 'key', None, 'lim_lst'); r += 1
-line(E, r, 'Travamento lateral transversal?', 'Não', '', 'Não = he = 2h (aula 12.2). Sim = usa αv, αh e l abaixo (planilha 02 do curso, aba Altura Efetiva).', 'inp', None, 'Trav_lat'); r += 1
+line(E, r, 'Travamento lateral transversal?', 'Não', '', 'Não = he = 2h (topo livre, base engastada). Sim = he = mín(αv·h; 0,7·√(αv·h·αh·l)) com αv, αh e l abaixo. NBR 16868-1 9.4.1.', 'inp', None, 'Trav_lat'); r += 1
 dv_tl = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validation(dv_tl); dv_tl.add(f'B{r-1}')
 line(E, r, 'αv', 2.5, '', '1,0 se travada no topo e na base; 2,5 se travada só numa extremidade.', 'inp', '0.0', 'alfa_v'); r += 1
 line(E, r, 'αh', 1.0, '', '1,0 se travada dos dois lados; 2,5 se só de um lado.', 'inp', '0.0', 'alfa_h'); r += 1
@@ -199,22 +199,22 @@ line(E, r, 'Classe de solo (Gerscovich, RJ)', 'Não se aplica', '', 'Só para su
 dv_g = DataValidation(type='list', formula1="='Solo e Empuxo'!$A$32:$A$39"); E.add_data_validation(dv_g); dv_g.add(f'B{r-1}')
 line(E, r, 'γ adotado', 19, 'kN/m³', 'Peso específico adotado (ver sugestões na aba Solo e Empuxo).', 'inp', '0.0', 'gama_solo'); r += 1
 line(E, r, "φ' adotado", 25, '°', 'Ângulo de atrito efetivo adotado.', 'inp', '0.0', 'phi_solo'); r += 1
-line(E, r, 'Ka direto (opcional)', 0.4, '', "Se preencher, usa este Ka em vez de calcular por φ' (o exemplo da aula 12.2 dá Ka = 0,4). Em branco = calcula por φ'.", 'inp', '0.000', 'Ka_dir'); r += 1
-line(E, r, "c' adotada", 0, 'kPa', 'Aula 12.1, slide 8: "desconsiderar a coesão". Valor fica a seu critério.', 'inp', '0.0', 'c_solo'); r += 1
+line(E, r, 'Ka direto (opcional)', 0.4, '', "Se preencher, usa este Ka em vez de calcular por φ' (o exemplo usa Ka = 0,4). Em branco = calcula por φ' (Rankine).", 'inp', '0.000', 'Ka_dir'); r += 1
+line(E, r, "c' adotada", 0, 'kPa', 'Critério adotado: desprezar a coesão (a favor da segurança). Valor fica a seu critério.', 'inp', '0.0', 'c_solo'); r += 1
 # Coesão liberada com aviso curto (decisão do Jose, 08/10): sem prosa, só a marca de que o c' é escolha de quem assina.
 # Vazio quando c' = 0 para o app não mostrar nada no caso normal.
 line(E, r, 'Aviso da coesão', '=IF(c_solo>0,"c\' > 0: escolha do projetista","")', '', 'Aparece no app ao lado do campo e no memorial.', 'key', None, 'aviso_coesao'); r += 1
 line(E, r, 'Sobrecarga no terreno (q)', 2, 'kPa', 'Uniforme sobre o terreno contido (entra como Ka·q).', 'inp', '0.0', 'q_sobre'); r += 1
-line(E, r, 'Considerar água?', 'Não', '', 'Sim/Não. A aula soma o empuxo da água (Ew) ao do solo.', 'inp', None, 'Agua'); r += 1
+line(E, r, 'Considerar água?', 'Não', '', 'Sim/Não. Sim = soma o empuxo da água (Ew) ao do solo (tensões efetivas).', 'inp', None, 'Agua'); r += 1
 dv_a = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validation(dv_a); dv_a.add(f'B{r-1}')
 line(E, r, 'Profundidade do NA (a partir do topo do solo)', 1.0, 'm', 'Só usada se "Considerar água?" = Sim.', 'inp', '0.00', 'z_NA'); r += 1
-line(E, r, 'γw', 10, 'kN/m³', 'Aula 12.1, slide 6.', 'inp', '0.0', 'gama_w'); r += 1
+line(E, r, 'γw', 10, 'kN/m³', 'Peso específico da água (NBR 6120: água doce, 10 kN/m³).', 'inp', '0.0', 'gama_w'); r += 1
 r += 1
 section(E, r, 'Alvenaria e aço'); r += 1
-line(E, r, 'fbk', 8, 'MPa', 'Classe A (fbk ≥ 8 MPa) para bloco em contato com o solo — aula 12.1, slide 2.', 'inp', '0.0', 'fbk_'); r += 1
+line(E, r, 'fbk', 8, 'MPa', 'Classe A (fbk ≥ 8 MPa) para bloco em contato com o solo — NBR 6136.', 'inp', '0.0', 'fbk_'); r += 1
 dv_f = DataValidation(type='list', formula1="='Referências'!$H$5:$H$16"); E.add_data_validation(dv_f); dv_f.add(f'B{r-1}')
-line(E, r, 'Área de referência do fpk', 'Líquida (curso)', '', 'Líquida = fpk ÷ (Aliq/Abr), como na aula 12.2: fpk = 6/0,54 = 11,1 MPa na flexão (planilha 04, K = 1) e Em = 800·11,1 = 8889 MPa no ELS. Bruta = fpk da tabela (NBR/ABCP).', 'inp', None, 'fpk_ref'); r += 1
-dv_fr = DataValidation(type='list', formula1='"Líquida (curso),Bruta (NBR)"'); E.add_data_validation(dv_fr); dv_fr.add(f'B{r-1}')
+line(E, r, 'Área de referência do fpk', 'Líquida', '', 'Líquida = fpk ÷ (Aliq/Abr), área líquida do bloco (NBR 16868-1 11.3.5). Ex.: fpk = 6/0,54 = 11,1 MPa → Em = 800·11,1 = 8889 MPa no ELS. Bruta = fpk da tabela (ABCP Tab. 3.2).', 'inp', None, 'fpk_ref'); r += 1
+dv_fr = DataValidation(type='list', formula1='"Líquida,Bruta"'); E.add_data_validation(dv_fr); dv_fr.add(f'B{r-1}')
 # Peso próprio CALCULADO (Jose, 12/10: "dado que a gente não precisa perder tempo fornecendo"). Sai do bloco (t, Aliq/Abr),
 # do graute que o resto das entradas já define (total, ou os furos das barras + as fiadas de canaleta) e do reboco, a
 # única entrada nova. Pesos específicos: 24 graute (NBR 6120, concreto simples), 21 reboco (NBR 6120, argamassa de
@@ -233,20 +233,20 @@ line(E, r, 'Peso do reboco', '=21*reb_esp/100*IF(reb_fac="Nas duas faces",2,IF(r
 line(E, r, 'Peso próprio da parede (usado)', '=IF(ISNUMBER(peso_par),peso_par,g_alv+g_reb)', 'kN/m²', 'Entra no peso do muro na fundação (tombamento, deslizamento, tensões) e no σsg do momento de fissuração.', 'key', '0.00', 'peso_us'); r += 1
 line(E, r, 'Peso com todos os furos grauteados (só no M2d)', '=IF(ISNUMBER(peso_par),peso_par,t_bloco/100*(22*r_liq+24*(1-r_liq))+g_reb)', 'kN/m²', 'O M2d usa o muro todo grauteado: a favor da segurança, e evita a conta circular (o espaçamento automático das barras depende do Md, que depende do M2d). Efeito pequeno (dedução nossa).', 'res', '0.00', 'peso_ch'); r += 1
 line(E, r, 'fyk (CA-50)', 500, 'MPa', '', 'inp', '0', 'fyk_'); r += 1
-line(E, r, 'fgk do graute — opcional', None, 'MPa', 'Em branco = tabela do curso pelo fbk (fbk 8 → 20 MPa). Entra no estribo mínimo do contraforte (ρw de 0,07% a 0,14%).', 'inp', '0.0', 'fgk_dir'); r += 1
+line(E, r, 'fgk do graute — opcional', None, 'MPa', 'Em branco = ABCP Tab. 3.2 pelo fbk (fbk 8 → 20 MPa). Entra no estribo mínimo do contraforte (ρw de 0,07% a 0,14%).', 'inp', '0.0', 'fgk_dir'); r += 1
 line(E, r, 'Ø armadura vertical', 10, 'mm', 'Barra no furo grauteado. A aba Arranjos mostra qual Ø serve para cada espaçamento. Lista: só os Ø cuja dobra da espera cabe na sapata (aba Fundação, seção 10).', 'inp', '0.0', 'phi_v'); r += 1
 lista(LST['lst_phi_esp'], f'B{r-1}')
-line(E, r, 'Espaçamento das barras — opcional', 40, 'cm', 'Em branco = automático: maior múltiplo do meio bloco (m) que atende o As de cálculo, até 6t (NBR 16868-1 11.3.5). Lista: múltiplos de m até 6t (aula 12.2: 40). A aba Muro em balanço avisa se As,ef ficar abaixo do As de cálculo.', 'inp', '0', 's_dir'); r += 1
+line(E, r, 'Espaçamento das barras — opcional', 40, 'cm', 'Em branco = automático: maior múltiplo do graute a cada X que atende o As de cálculo, até 6t (NBR 16868-1 11.3.5). Lista: múltiplos do graute a cada X até 6t. A aba Muro em balanço avisa se As,ef ficar abaixo do As de cálculo.', 'inp', '0', 's_dir'); r += 1
 lista(LST['lst_s'], f'B{r-1}')
-line(E, r, 'd (altura útil) — opcional', 14, 'cm', 'Em branco = t/2 (barra no meio do furo). Aula 12.2: barra a 5 cm da face do solo no bloco de 19 → d = 14 cm (lado do solo = lado tracionado no balanço). Só use d maior que t/2 se garantir a posição da barra na obra (espaçador/gabarito).', 'inp', '0.0', 'd_dir'); r += 1
-line(E, r, 'K (compressão na flexão) — opcional', 1, '', 'Em branco = NBR 16868-1: 1,5 (grauteamento parcial) ou 2,0 (total, flexão fora do plano). A planilha 04 do curso vem com K = 1 (a favor da segurança).', 'inp', '0.00', 'K_dir'); r += 1
-line(E, r, 'Critério de As,mín', 'Curso', '', 'Curso = 0,15%·b·d (planilha 04 e aula 12.2). NBR = 0,10%·b·t, dispensável se MRd ≥ 1,4·MSd (NBR 16868-1).', 'inp', None, 'AsMin_crit'); r += 1
-dv_am = DataValidation(type='list', formula1='"Curso,NBR"'); E.add_data_validation(dv_am); dv_am.add(f'B{r-1}')
-line(E, r, 'Somar M2d (2ª ordem) no Md?', 'Não', '', 'Sim = Md = γf·Mk + M2d (ABCP 3.6.3.2). A aula 12.2 não somou (Md = 1,4·Mk). Efeito pequeno em muro baixo.', 'inp', None, 'M2d_on'); r += 1
+line(E, r, 'd (altura útil) — opcional', 14, 'cm', 'Em branco = t/2 (barra no meio do furo). Ex.: barra a 5 cm da face do solo no bloco de 19 → d = 14 cm (lado do solo = lado tracionado no balanço). Só use d maior que t/2 se garantir a posição da barra na obra (espaçador/gabarito).', 'inp', '0.0', 'd_dir'); r += 1
+line(E, r, 'K (compressão na flexão) — opcional', 1, '', 'Em branco = NBR 16868-1 6.2.2.4: 1,5 (grauteamento parcial) ou 2,0 (total, flexão fora do plano). Padrão K = 1 (critério adotado, a favor da segurança).', 'inp', '0.00', 'K_dir'); r += 1
+line(E, r, 'Critério de As,mín', 'Viga (b·d)', '', 'Viga (b·d) = 0,15%·b·d, mínimo de viga (NBR 16868-1 12.2). Parede (b·t) = 0,10%·b·t, mínimo de parede, dispensável se MRd ≥ 1,4·MSd (NBR 16868-1 12.2).', 'inp', None, 'AsMin_crit'); r += 1
+dv_am = DataValidation(type='list', formula1='"Viga (b·d),Parede (b·t)"'); E.add_data_validation(dv_am); dv_am.add(f'B{r-1}')
+line(E, r, 'Somar M2d (2ª ordem) no Md?', 'Não', '', 'Sim = Md = γf·Mk + M2d (NBR 16868-1 11.5.4; ABCP 3.6.3.2). Não = Md = γf·Mk. Efeito pequeno em muro baixo.', 'inp', None, 'M2d_on'); r += 1
 dv_m2 = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validation(dv_m2); dv_m2.add(f'B{r-1}')
 r += 1
 section(E, r, 'Ancoragem na fundação'); r += 1
-line(E, r, 'Concreto da fundação', 'C25', '', 'C20, C25 ou C30 (tabela da aula 12.2, baseada em Araújo 2014; CA-50).', 'inp', None, 'fck_fund'); r += 1
+line(E, r, 'Concreto da fundação', 'C25', '', 'C20, C25 ou C30 (tabela de ancoragem de Araújo, 2014; CA-50).', 'inp', None, 'fck_fund'); r += 1
 dv_fc = DataValidation(type='list', formula1='"C20,C25,C30"'); E.add_data_validation(dv_fc); dv_fc.add(f'B{r-1}')
 line(E, r, 'Zona de aderência', 'Boa', '', 'Boa ou Má.', 'inp', None, 'zona_ad'); r += 1
 dv_za = DataValidation(type='list', formula1='"Boa,Má"'); E.add_data_validation(dv_za); dv_za.add(f'B{r-1}')
@@ -254,25 +254,25 @@ line(E, r, 'Gancho na ponta da espera?', 'Sim', '', 'Sim = tabela com gancho (0,
 dv_gc = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validation(dv_gc); dv_gc.add(f'B{r-1}')
 r += 1
 section(E, r, 'Painel entre barras (alvenaria não armada)'); r += 1
-line(E, r, 'Espaçamento das canaletas (h do painel)', 0.80, 'm', 'Aula 12.2: canaletas com Ø10 a cada 80 cm. A largura do painel é o espaçamento das barras verticais. Lista: 0,20 a 1,60 m (fiadas inteiras).', 'inp', '0.00', 'h_pan'); r += 1
+line(E, r, 'Espaçamento das canaletas (h do painel)', 0.80, 'm', 'Ex.: canaletas com Ø10 a cada 80 cm. A largura do painel é o espaçamento das barras verticais. Lista: 0,20 a 1,60 m (fiadas inteiras).', 'inp', '0.00', 'h_pan'); r += 1
 lista(LST['lst_hpan'], f'B{r-1}')
-line(E, r, 'Argamassa (resistência média à compressão)', '3,5 a 7,0 MPa', '', 'Define ftk (NBR 16868-1, Tabela 3) e fvk do painel. Aula 12.2: 3,5 a 7,0 MPa.', 'inp', None, 'arg_cls'); r += 1
+line(E, r, 'Argamassa (resistência média à compressão)', '3,5 a 7,0 MPa', '', 'Define ftk (NBR 16868-1, Tabela 3) e fvk (Tabela 4) do painel.', 'inp', None, 'arg_cls'); r += 1
 dv_ar = DataValidation(type='list', formula1="='Referências'!$L$16:$L$18"); E.add_data_validation(dv_ar); dv_ar.add(f'B{r-1}')
-line(E, r, 'Caso de vinculação do painel', 13, '', '13 = 4 bordas apoiadas (painel entre barras e canaletas, aula 12.2); 18 = topo livre; 11 = uma lateral livre. Tabelas da planilha 11_Painéis Fletidos do curso (NBR 16868-1).', 'inp', '0', 'caso_pan'); r += 1
+line(E, r, 'Caso de vinculação do painel', 13, '', '13 = 4 bordas apoiadas (painel entre barras e canaletas); 18 = topo livre; 11 = uma lateral livre (numeração adotada). Coeficientes βf: NBR 16868-1, Anexo E, Tab. E.1.', 'inp', '0', 'caso_pan'); r += 1
 dv_cp = DataValidation(type='list', formula1='"13,18,11"'); E.add_data_validation(dv_cp); dv_cp.add(f'B{r-1}')
 line(E, r, 'βf manual — opcional', None, '', 'Em branco = interpolado na tabela do caso (h/l e μ). Preencha só para forçar outro valor.', 'inp', '0.0000', 'beta_dir'); r += 1
-line(E, r, 'Pré-compressão no painel (cisalhamento)', 0, 'MPa', '0 = a favor da segurança (padrão da planilha 05 do curso).', 'inp', '0.000', 'sig_pan'); r += 1
+line(E, r, 'Pré-compressão no painel (cisalhamento)', 0, 'MPa', '0 = a favor da segurança (padrão).', 'inp', '0.000', 'sig_pan'); r += 1
 r += 1
 section(E, r, 'ELS — fissuração e deslocamento'); r += 1
-line(E, r, 'Ma/Mk (combinação do ELS)', 1.0, '', 'Aula 12.2: carga de serviço inteira, sobrecarga sem redução (0,32 → 5,18 kN/m na faixa de 40 cm). O slide fala em combinação frequente (ψ1 = 0,4 na acidental) — reduzir aqui se quiser.', 'inp', '0.00', 'psi_els'); r += 1
-line(E, r, 'Limite de deslocamento: vão /', 250, '', 'Slide da aula: menor vão/250.', 'inp', '0', 'div_adm'); r += 1
-line(E, r, 'Vão de referência do balanço', '2h', '', 'h = altura do muro (a flecha é a do topo do muro). Aula 12.2: balanço com vão 2L → δadm = 2·1600/250 = 12,8 mm.', 'inp', None, 'vao_ref'); r += 1
+line(E, r, 'Ma/Mk (combinação do ELS)', 1.0, '', 'Padrão 1,0 = carga de serviço inteira, sobrecarga sem redução (critério adotado, a favor da segurança). A NBR 16868-1 9.2.3 usa a combinação quase permanente — reduzir aqui se quiser.', 'inp', '0.00', 'psi_els'); r += 1
+line(E, r, 'Limite de deslocamento: vão /', 250, '', 'Critério adotado: menor vão/250.', 'inp', '0', 'div_adm'); r += 1
+line(E, r, 'Vão de referência do balanço', '2h', '', 'h = altura do muro (a flecha é a do topo do muro). 2h = balanço com vão 2L (critério adotado). Ex.: δadm = 2·1600/250 = 12,8 mm.', 'inp', None, 'vao_ref'); r += 1
 dv_vr = DataValidation(type='list', formula1='"h,2h"'); E.add_data_validation(dv_vr); dv_vr.add(f'B{r-1}')
-line(E, r, 'Δξ (fluência)', 1.0, '', 'Flecha final δ∞ = δ0·(1 + Δξ/(1 + 50ρ\')). Slide da aula (NBR 16868-1): Δξ = 1.', 'inp', '0.00', 'dxi'); r += 1
-line(E, r, 'Somar σsg no momento de fissuração?', 'Sim', '', 'Padrão Sim (Jose, 12/10: o peso do muro existe e ajuda). Aula 12.2: Mr = ftk·Im/yt, sem σsg (para reproduzir a aula, Não). Sim = soma σsg = 0,9·Psg/Ae (roteiro da parede esbelta).', 'inp', None, 'sg_on'); r += 1
+line(E, r, 'Δξ (fluência)', 1.0, '', 'Flecha final δ∞ = δ0·(1 + Δξ/(1 + 50ρ\')). NBR 16868-1 9.2.4: Δξ = 1.', 'inp', '0.00', 'dxi'); r += 1
+line(E, r, 'Somar σsg no momento de fissuração?', 'Sim', '', 'Padrão Sim: o peso do muro existe e ajuda. Sim = Mr = (ftk + σsg)·Im/yt, σsg = 0,9·Psg/Ae (NBR 16868-1 9.2.3; o 0,9 é critério adotado). Não = Mr = ftk·Im/yt.', 'inp', None, 'sg_on'); r += 1
 dv_sg = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validation(dv_sg); dv_sg.add(f'B{r-1}')
 r += 1
-section(E, r, 'Contrafortes (aula 12.3)'); r += 1
+section(E, r, 'Contrafortes'); r += 1
 line(E, r, 'Espaçamento entre contrafortes (eixo a eixo)', 1.60, 'm', 'lenr. Também é o vão l do painel. Lista: os vãos que amarram com o bloco (19×39: t + 1 + n·20; 14×39: só n par), 0,80 a 4,00 m.', 'inp', '0.00', 'l_cf'); r += 1
 lista(LST['lst_lcf'], f'B{r-1}')
 # Eixo a eixo que fecha na grade: t + 1 cm (o contraforte e uma junta) + n meios blocos — 19×39: 0,40/0,60…;
@@ -286,75 +286,75 @@ lista(LST['lst_tenr'], f'B{r-1}')
 # menos do tamanho pedido; d, o δ da esbeltez, o peso e o talão exigido saem todos do adotado.
 line(E, r, 'Comprimento do contraforte adotado', '=t_bloco+MAX(1,ROUNDUP((tenr_-t_bloco)/m_mod,0))*m_mod', 'cm', 't + n·m, para cima. É o que a conta e o desenho usam; com o valor da lista, é o próprio.', 'sug', '0', 'tenr_adot'); r += 1
 # Espessura do contraforte = largura do bloco (montagem fechada, decisão do Jose 09/10): deixou de ser entrada.
-line(E, r, 'Posição do contraforte', 'Enterrado (lado do solo)', '', 'Enterrado: muro comprimido → seção T (aula 12.3). Aparente (lado de fora): muro tracionado → seção retangular só da alma.', 'inp', None, 'pos_cf'); r += 1
+line(E, r, 'Posição do contraforte', 'Enterrado (lado do solo)', '', 'Enterrado: muro comprimido → seção T. Aparente (lado de fora): muro tracionado → seção retangular só da alma.', 'inp', None, 'pos_cf'); r += 1
 dv_pc = DataValidation(type='list', formula1='"Enterrado (lado do solo),Aparente (lado de fora)"'); E.add_data_validation(dv_pc); dv_pc.add(f'B{r-1}')
 line(E, r, 'Contraforte calculado', 'Intermediário', '', 'Intermediário: largura de influência = l. Extremidade: l/2 + balanço do muro além dele.', 'inp', None, 'tipo_cf'); r += 1
 dv_tc = DataValidation(type='list', formula1='"Intermediário,Extremidade"'); E.add_data_validation(dv_tc); dv_tc.add(f'B{r-1}')
 line(E, r, 'Balanço do muro além do contraforte de extremidade', 0, 'm', 'Só para "Extremidade".', 'inp', '0.00', 'bal_cf'); r += 1
-line(E, r, 'Ø da armadura principal do contraforte', 10, 'mm', 'Na ponta do contraforte (furo da ponta). Aula 12.3: 3Ø10. Lista: só os Ø cuja dobra da espera cabe na sapata (aba Fundação, seção 10).', 'inp', '0.0', 'phi_cf'); r += 1
+line(E, r, 'Ø da armadura principal do contraforte', 10, 'mm', 'Na ponta do contraforte (furo da ponta). Lista: só os Ø cuja dobra da espera cabe na sapata (aba Fundação, seção 10).', 'inp', '0.0', 'phi_cf'); r += 1
 lista(LST['lst_phi_esp'], f'B{r-1}')
 line(E, r, 'Nº de barras do contraforte — opcional', None, '', 'Em branco = automático.', 'inp', '0', 'n_cf_dir'); r += 1
 line(E, r, 'Cobrimento ao eixo das barras (da face tracionada) — opcional', None, 'cm', 'Em branco = medido na montagem do Revit (furo onde a barra passa reta): da ponta, 9,5 cm no bloco 14 e 10,0 no 19.', 'inp', '0.0', 'c_cf_dir'); r += 1
-line(E, r, 'K do contraforte — opcional', 1.0, '', 'Em branco = NBR (1,5 sem graute; 2,0 grauteado). Aula 12.3: K = 1.', 'inp', '0.00', 'K_cf'); r += 1
-line(E, r, 'Barras construtivas (lado comprimido): Ø', 10, 'mm', 'Aula 12.3: 2Ø10 construtivas. Lista: só os Ø cuja dobra da espera cabe na sapata (aba Fundação, seção 10).', 'inp', '0.0', 'phi_cc'); r += 1
+line(E, r, 'K do contraforte — opcional', 1.0, '', 'Em branco = NBR 16868-1 6.2.2.4 (1,5 sem graute; 2,0 grauteado). Padrão K = 1 (critério adotado, a favor da segurança).', 'inp', '0.00', 'K_cf'); r += 1
+line(E, r, 'Barras construtivas (lado comprimido): Ø', 10, 'mm', 'Lista: só os Ø cuja dobra da espera cabe na sapata (aba Fundação, seção 10).', 'inp', '0.0', 'phi_cc'); r += 1
 lista(LST['lst_phi_esp'], f'B{r-1}')
 line(E, r, 'Barras construtivas: quantidade', 2, '', '', 'inp', '0', 'n_cc'); r += 1
-line(E, r, 'Estribo: Ø', 6.3, 'mm', 'Vai na junta de assentamento: Ø ≤ 6,3 (lista: 5 ou 6,3). Aula 12.3: Ø6,3.', 'inp', '0.0', 'phi_est'); r += 1
+line(E, r, 'Estribo: Ø', 6.3, 'mm', 'Vai na junta de assentamento: Ø ≤ 6,3 (NBR 16868-1 12.4; lista: 5 ou 6,3).', 'inp', '0.0', 'phi_est'); r += 1
 lista(LST['lst_phi_est'], f'B{r-1}')
 line(E, r, 'Estribo: nº de ramos', 2, '', '', 'inp', '0', 'ramos_est'); r += 1
-line(E, r, 'Estribo: espaçamento', 20, 'cm', 'Múltiplo da altura da fiada (20 cm). Aula 12.3: c/20.', 'inp', '0', 's_est'); r += 1
+line(E, r, 'Estribo: espaçamento', 20, 'cm', 'Múltiplo da altura da fiada (20 cm).', 'inp', '0', 's_est'); r += 1
 r += 1
-section(E, r, 'Painel entre contrafortes (aula 12.3)'); r += 1
-line(E, r, 'Bordas laterais do painel (nos contrafortes)', 'Apoiadas', '', 'Base sempre engastada na sapata corrida; topo livre. Apoiadas = Tipo 21 (aula 12.3); Engastadas = Tipo 22.', 'inp', None, 'lat_pan'); r += 1
+section(E, r, 'Painel entre contrafortes'); r += 1
+line(E, r, 'Bordas laterais do painel (nos contrafortes)', 'Apoiadas', '', 'Base sempre engastada na sapata corrida; topo livre. Apoiadas = Tipo 21; Engastadas = Tipo 22 (tabelas de Libânio).', 'inp', None, 'lat_pan'); r += 1
 dv_lp = DataValidation(type='list', formula1='"Apoiadas,Engastadas"'); E.add_data_validation(dv_lp); dv_lp.add(f'B{r-1}')
-line(E, r, 'Ø vertical do painel', 10, 'mm', 'Aula 12.3: Ø10. Lista: só os Ø cuja dobra da espera cabe na sapata (aba Fundação, seção 10).', 'inp', '0.0', 'phi_pv'); r += 1
+line(E, r, 'Ø vertical do painel', 10, 'mm', 'Lista: só os Ø cuja dobra da espera cabe na sapata (aba Fundação, seção 10).', 'inp', '0.0', 'phi_pv'); r += 1
 lista(LST['lst_phi_esp'], f'B{r-1}')
 line(E, r, 'Espaçamento vertical — opcional', None, 'cm', 'Em branco = automático (múltiplo do espaçamento dos furos). Lista: múltiplos de m até 6t.', 'inp', '0', 's_pv_dir'); r += 1
 lista(LST['lst_s'], f'B{r-1}')
-line(E, r, 'Posição das barras verticais', '2 barras (uma em cada face)', '', 'Aula 12.3: barras excêntricas simétricas a 5 cm das faces (o momento troca de sinal: base traciona o lado do solo, vão traciona o lado de fora).', 'inp', None, 'pos_pv'); r += 1
+line(E, r, 'Posição das barras verticais', '2 barras (uma em cada face)', '', 'Barras excêntricas simétricas junto às faces: o momento troca de sinal (base traciona o lado do solo, vão traciona o lado de fora).', 'inp', None, 'pos_pv'); r += 1
 dv_pv = DataValidation(type='list', formula1='"2 barras (uma em cada face),1 barra centralizada"'); E.add_data_validation(dv_pv); dv_pv.add(f'B{r-1}')
-line(E, r, 'Cobrimento ao eixo das barras do painel', 5, 'cm', 'Distância da face ao eixo da barra. Aula 12.3: 5 → d = 14 − 5 = 9.', 'inp', '0.0', 'c_pv'); r += 1
-line(E, r, 'Ø horizontal do painel (canaletas)', 12.5, 'mm', 'Aula 12.3: Ø12,5 c/80.', 'inp', '0.0', 'phi_ph'); r += 1
+line(E, r, 'Cobrimento ao eixo das barras do painel', 5, 'cm', 'Distância da face ao eixo da barra. Ex.: 5 no bloco 14 → d = 14 − 5 = 9.', 'inp', '0.0', 'c_pv'); r += 1
+line(E, r, 'Ø horizontal do painel (canaletas)', 12.5, 'mm', 'Barra na canaleta grauteada.', 'inp', '0.0', 'phi_ph'); r += 1
 lista(LST_PHI, f'B{r-1}')
-line(E, r, 'Espaçamento das canaletas — opcional', None, 'cm', 'Em branco = automático (20/40/60/80). Lista: 20 a 160 cm (fiadas inteiras). Aula 12.3: 80.', 'inp', '0', 's_ph_dir'); r += 1
+line(E, r, 'Espaçamento das canaletas — opcional', None, 'cm', 'Em branco = automático (20/40/60/80). Lista: 20 a 160 cm (fiadas inteiras).', 'inp', '0', 's_ph_dir'); r += 1
 lista(LST['lst_sph'], f'B{r-1}')
-line(E, r, 'Posição da barra horizontal', 'Centralizada (d = t/2)', '', 'Aula 12.3: Ø12,5 centralizada na canaleta (d = 7).', 'inp', None, 'pos_ph'); r += 1
+line(E, r, 'Posição da barra horizontal', 'Centralizada (d = t/2)', '', 'Centralizada na canaleta: d = t/2 (atende o vão e o engaste lateral).', 'inp', None, 'pos_ph'); r += 1
 dv_ph = DataValidation(type='list', formula1='"Centralizada (d = t/2),Encostada na face externa"'); E.add_data_validation(dv_ph); dv_ph.add(f'B{r-1}')
-line(E, r, 'K na flexão vertical do painel', 1.0, '', 'Aula 12.3: 1,0.', 'inp', '0.00', 'K_pv'); r += 1
-line(E, r, 'K na flexão horizontal do painel — opcional', None, '', 'Em branco = 0,5 (fk horizontal = 0,5·fk se a seção horizontal não for toda grauteada, manual ABCP; aula 12.3: 0,5) ou 1,0 com grauteamento total.', 'inp', '0.00', 'K_ph'); r += 1
+line(E, r, 'K na flexão vertical do painel', 1.0, '', 'Padrão 1,0 (critério adotado, a favor da segurança).', 'inp', '0.00', 'K_pv'); r += 1
+line(E, r, 'K na flexão horizontal do painel — opcional', None, '', 'Em branco = 0,5 (fk horizontal = 0,5·fk se a seção horizontal não for toda grauteada; NBR 16868-1 6.2.2.4 b), ABCP 3.2) ou 1,0 com grauteamento total.', 'inp', '0.00', 'K_ph'); r += 1
 line(E, r, 'ELS vertical: alma da seção I — opcional', None, 'cm', 'Em branco = furo grauteado + 2 septos.', 'inp', '0.00', 'bwv_dir'); r += 1
-line(E, r, 'ELS horizontal: altura da canaleta grauteada (alma)', 20, 'cm', 'Aula 12.3: 20.', 'inp', '0.0', 'bwh_els'); r += 1
+line(E, r, 'ELS horizontal: altura da canaleta grauteada (alma)', 20, 'cm', 'Uma fiada de canaleta: 20 cm.', 'inp', '0.0', 'bwh_els'); r += 1
 r += 1
-section(E, r, 'Fundação — sapata corrida (roteiro do Eng. Gilberto, adaptado)'); r += 1
+section(E, r, 'Fundação — sapata corrida'); r += 1
 line(E, r, 'Largura da sapata (B)', 1.40, 'm', 'Na direção perpendicular ao muro.', 'inp', '0.00', 'B_sap'); r += 1
 line(E, r, 'Altura da sapata', 0.30, 'm', '', 'inp', '0.00', 'h_sap'); r += 1
-line(E, r, 'Distância da borda aterrada ao eixo do muro', 0.95, 'm', 'Define a posição: ≈ t/2 → sapata toda para fora (divisa); ≈ B − t/2 → toda sob o aterro; no meio → mista. O solo sobre o talão sai daqui. Aba do Gilberto: 35 cm em B = 100.', 'inp', '0.00', 'a_ater'); r += 1
+line(E, r, 'Distância da borda aterrada ao eixo do muro', 0.95, 'm', 'Define a posição: ≈ t/2 → sapata toda para fora (divisa); ≈ B − t/2 → toda sob o aterro; no meio → mista. O solo sobre o talão sai daqui.', 'inp', '0.00', 'a_ater'); r += 1
 line(E, r, 'Dente: largura média', 0.25, 'm', '0 = sem dente. Com atrito só (sem adesão), o deslizamento costuma pedir dente.', 'inp', '0.00', 'b_den'); r += 1
 line(E, r, 'Dente: altura', 0.50, 'm', 'Aumenta o passivo (altura da sapata + dente).', 'inp', '0.00', 'h_den'); r += 1
 # Posição do dente (Jose, 13/10: "cabe ao projetista determinar"; "referenciando ao centro da sapata"). Do centro
 # para trás (talão) o passivo do dente vale sempre: "para escavar até a metade da sapata o cara tem que ser um tatu".
 line(E, r, 'Dente: posição do eixo, do centro da sapata (+ para o pé)', 0, 'm', '0 = no centro. Do centro para o talão (≤ 0) o passivo do dente conta sempre — o solo debaixo da sapata não é escavado; para a ponta (> 0) só com o solo da frente garantido. Fica dentro da sapata: |x| ≤ (B − b)/2.', 'inp', '0.00', 'x_den'); r += 1
-line(E, r, 'γ do concreto', 25, 'kN/m³', 'Aba do Gilberto: 24.', 'inp', '0.0', 'gama_c'); r += 1
+line(E, r, 'γ do concreto', 25, 'kN/m³', 'NBR 6120: concreto armado 25; concreto simples 24.', 'inp', '0.0', 'gama_c'); r += 1
 line(E, r, 'γ do contraforte grauteado — opcional', None, 'kN/m³', 'Em branco = calculado logo abaixo (bloco com todos os furos grauteados). Preencha só para forçar outro valor.', 'inp', '0.0', 'gama_cf'); r += 1
 line(E, r, 'γ do contraforte grauteado (usado)', '=IF(ISNUMBER(gama_cf),gama_cf,22*r_liq+24*(1-r_liq))', 'kN/m³', 'γbloco·Aliq/Abr + γgraute·(1 − Aliq/Abr), com 22 e 24 kN/m³ como no peso da parede.', 'key', '0.00', 'gama_cf_us'); r += 1
-line(E, r, 'Carga vertical permanente no topo do muro', 0, 'kN/m', 'Estrutura apoiada no muro. A aba do Gilberto usa 2 m × sobrecarga (mínimo 2 tf/m²).', 'inp', '0.0', 'P_topo'); r += 1
-line(E, r, 'Sobrecarga sobre o talão estabiliza?', 'Sim', '', 'Só a sobrecarga q (o solo sobre o talão pesa sempre). Sim = como a aba do Gilberto (decisão sua). Não = q logo atrás do talão: empurra mas não pesa.', 'inp', None, 'q_est'); r += 1
+line(E, r, 'Carga vertical permanente no topo do muro', 0, 'kN/m', 'Estrutura apoiada no muro.', 'inp', '0.0', 'P_topo'); r += 1
+line(E, r, 'Sobrecarga sobre o talão estabiliza?', 'Sim', '', 'Só a sobrecarga q (o solo sobre o talão pesa sempre). Sim = a sobrecarga sobre o talão pesa e estabiliza (critério adotado; decisão do projetista). Não = q logo atrás do talão: empurra mas não pesa.', 'inp', None, 'q_est'); r += 1
 dv_qe = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validation(dv_qe); dv_qe.add(f'B{r-1}')
 # Obrigatório desde 14/10 (Jose): é o solo natural do laudo, sob a sapata. Padrão 25 = o φ' do exemplo (o mesmo da
 # aula, onde o Gilberto usava o solo de cima).
 line(E, r, "φ' do solo de apoio", 25, '°', "Solo natural sob a sapata (laudo de sondagem): atrito da base (tg δ) e passivo do dente.", 'inp', '0.0', 'phi_base'); r += 1
-line(E, r, "δ/φ' na base", 0.67, '', 'Atrito sapata-solo: tg δ. 2/3 é o usual; 1,0 = aba do Gilberto (areia).', 'inp', '0.00', 'dphi'); r += 1
-line(E, r, 'Adesão na base — opcional', 0, 'kPa', 'ATENÇÃO: resistência de curto prazo. A aba do Gilberto usa 0,5·SPT tf/m² em argila. Coerente com desprezar a coesão no empuxo: deixar 0.', 'inp', '0.0', 'ades_b'); r += 1
+line(E, r, "δ/φ' na base", 0.67, '', "Atrito sapata-solo: tg δ. 2/3 é o usual; 1,0 = atrito pleno (δ = φ').", 'inp', '0.00', 'dphi'); r += 1
+line(E, r, 'Adesão na base — opcional', 0, 'kPa', 'ATENÇÃO: resistência de curto prazo. Coerente com desprezar a coesão no empuxo: deixar 0.', 'inp', '0.0', 'ades_b'); r += 1
 # Aterro sobre a ponta (Jose, 12/10): o projetista embute o muro, compacta terra na frente e garante que ninguém mexe
 # nela — o peso sobre a ponta e o passivo mais alto ajudam. Mesma garantia do passivo: sem ela, o aterro não conta.
 line(E, r, 'Aterro sobre a ponta (altura acima do topo da sapata)', 0.0, 'm', 'Solo compactado do lado de fora, sobre a ponta. Só conta com a garantia abaixo = Sim: peso sobre a ponta (tombamento, deslizamento, tensões, flexão da ponta) e altura do passivo.', 'inp', '0.00', 'h_fr'); r += 1
 line(E, r, 'Solo da frente: há garantia de que jamais será escavado/removido?', 'Não', '', 'Sim = conta o aterro sobre a ponta e o empuxo passivo do solo da frente, Kp·γ·(h aterro + h sapata + dente)²/2, dividido por 2,0 (NBR 6122 7.6.3). Marcar Sim só se nenhuma escavação futura (vala, rede, calçada, jardim, terraplenagem) puder tirar esse solo durante a vida útil. Na dúvida, Não (Bastos: o passivo pode ser desprezado).', 'inp', None, 'pass_on'); r += 1
 dv_po = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validation(dv_po); dv_po.add(f'B{r-1}')
 line(E, r, 'Aviso do passivo', '=IF(pass_on="Sim","Garantir que o solo da frente da sapata jamais seja escavado/removido (NBR 6122 7.6.3)","")', '', 'Aparece no app ao lado do campo e no memorial.', 'key', None, 'aviso_passivo'); r += 1
-line(E, r, 'SPT abaixo da sapata', 10, 'golpes', 'Só para a sugestão de σadm (2·SPT tf/m² = N/5 kgf/cm², regra da aba do Gilberto).', 'inp', '0', 'SPT_b'); r += 1
-line(E, r, 'σadm do solo — opcional', None, 'kPa', 'Em branco = 20·mín(SPT; 20) kPa (regra do Gilberto, vale de 5 a 20 golpes); com SPT < 5, digitar. Preferir valor de ensaio/projeto geotécnico.', 'inp', '0', 'sig_adm_dir'); r += 1
-line(E, r, 'FS mínimo ao tombamento', 2.0, '', 'Pelo que sei, NBR 11682 — conferir. Junto vale e ≤ B/4 (critério do Gilberto); fica o pior.', 'inp', '0.00', 'FS_tomb'); r += 1
-line(E, r, 'FS mínimo ao deslizamento', 1.5, '', 'Aba do Gilberto: resistências ÷ 1,5.', 'inp', '0.00', 'FS_desl'); r += 1
+line(E, r, 'SPT abaixo da sapata', 10, 'golpes', 'Só para a sugestão de σadm (20·SPT kPa = N/5 kgf/cm²; Cintra, Aoki e Albiero, 2011).', 'inp', '0', 'SPT_b'); r += 1
+line(E, r, 'σadm do solo — opcional', None, 'kPa', 'Em branco = 20·mín(SPT; 20) kPa (Cintra, Aoki e Albiero, 2011; vale de 5 a 20 golpes); com SPT < 5, digitar. Preferir valor de ensaio/projeto geotécnico.', 'inp', '0', 'sig_adm_dir'); r += 1
+line(E, r, 'FS mínimo ao tombamento', 2.0, '', 'NBR 11682 (conferir). Junto vale |e| ≤ B/4 (critério adotado); fica o pior.', 'inp', '0.00', 'FS_tomb'); r += 1
+line(E, r, 'FS mínimo ao deslizamento', 1.5, '', 'NBR 11682 (conferir).', 'inp', '0.00', 'FS_desl'); r += 1
 line(E, r, 'Cobrimento da sapata', 4, 'cm', '', 'inp', '0.0', 'cob_sap'); r += 1
 line(E, r, 'Ø principal (transversal)', 10, 'mm', '', 'inp', '0.0', 'phi_sap'); r += 1
 lista(LST['lst_phi_sap'], f'B{r-1}')
@@ -365,52 +365,52 @@ lista(LST['lst_phi_sap2'], f'B{r-1}')
 r += 1
 section(E, r, 'Coeficientes'); r += 1
 line(E, r, 'γf', 1.4, '', 'Majoração das ações.', 'inp', '0.00', 'gama_f'); r += 1
-line(E, r, 'γm', 2.0, '', 'Alvenaria, combinações normais (NBR 16868-1; ABCP 3.1).', 'inp', '0.00', 'gama_m'); r += 1
+line(E, r, 'γm', 2.0, '', 'Alvenaria, combinações normais (NBR 16868-1 6.2.2.2, Tab. 2; ABCP 3.1).', 'inp', '0.00', 'gama_m'); r += 1
 line(E, r, 'γs', 1.15, '', 'Aço.', 'inp', '0.00', 'gama_s'); r += 1
 widths(E, {'A': 36, 'B': 20, 'C': 9, 'D': 70, 'E': 14})
 E.freeze_panes = 'A5'
 
 # ================= REFERÊNCIAS (tabela fpk precisa existir) =================
 R = wb.create_sheet('Referências')
-title(R, 'Referências e tabelas', 'Cada resultado das outras abas aponta para cá. Aula = PDF "Muros de Arrimo, Piscinas e Reservatórios" (Prof. Matheus Carini).')
+title(R, 'Referências e tabelas', 'Cada resultado das outras abas aponta para cá. "Critério adotado" = escolha da planilha, sem norma ou livro por trás.')
 header(R, 3, ['Item', 'Fonte', 'O que diz / como foi usado'])
 refs = [
-    ('Rankine ativo com coesão', 'Aula 12.1, slide 8', "σ'ha = Ka·σ'v − 2c·√Ka; Ka = tg²(45° − φ'/2). Observação no slide: desconsiderar a coesão."),
-    ('Passivo', 'Aula 12.1, slide 8', "σ'hp = Kp·σ'v + 2c·√Kp; Kp = tg²(45° + φ'/2)."),
-    ('Sobrecarga', 'Aula 12.1, slide 8', 'Parcela Ka·q uniforme na altura.'),
-    ('Água e tensões efetivas', 'Aula 12.1, slides 6, 7 e 11', "u = γw·zw; σ'v = σv − u; σh = K·σ'v + u. Empuxo da água somado ao do solo; drenagem obrigatória."),
-    ('γ de areia por NSPT', 'Aula 12.1, slide 10 (Godoy, 1972)', 'Tabela reproduzida na aba Solo e Empuxo.'),
-    ('φ de areia por NSPT', 'Aula 12.1, slide 10 (Alonso, 2010)', 'Tabela reproduzida na aba Solo e Empuxo.'),
-    ('γ de argila por NSPT', 'Aula 12.1, slide 10 (Godoy, 1972)', 'Tabela reproduzida na aba Solo e Empuxo.'),
+    ('Rankine ativo com coesão', 'Rankine', "σ'ha = Ka·σ'v − 2c·√Ka; Ka = tg²(45° − φ'/2). Critério adotado: desprezar a coesão (a favor da segurança)."),
+    ('Passivo', 'Rankine', "σ'hp = Kp·σ'v + 2c·√Kp; Kp = tg²(45° + φ'/2)."),
+    ('Sobrecarga', 'Rankine', 'Parcela Ka·q uniforme na altura.'),
+    ('Água e tensões efetivas', 'Tensões efetivas (Terzaghi); γw: NBR 6120', "u = γw·zw; σ'v = σv − u; σh = K·σ'v + u. Empuxo da água somado ao do solo; drenagem obrigatória."),
+    ('γ de areia por NSPT', 'Godoy (1972)', 'Tabela reproduzida na aba Solo e Empuxo.'),
+    ('φ de areia por NSPT', 'Alonso (2010)', 'Tabela reproduzida na aba Solo e Empuxo.'),
+    ('γ de argila por NSPT', 'Godoy (1972)', 'Tabela reproduzida na aba Solo e Empuxo.'),
     ('σadm da sapata pelo SPT', 'Cintra, Aoki e Albiero, "Fundações diretas" (2011); Mello (1975)',
-     'Regras práticas, só sugestão (aba Fundação, seção 6): σadm = 20·N kPa (N/50 MPa; a mesma da aba do Gilberto), para '
+     'Regras práticas, só sugestão (aba Fundação, seção 6): σadm = 20·N kPa (N/50 MPa), para '
      '5 ≤ N ≤ 20; Mello: σadm = 100·(√N − 1) kPa, para 4 ≤ N ≤ 16. N = SPT médio no bulbo abaixo da base. Livro não '
      'visto aqui; as duas fórmulas e faixas como aparecem nas reproduções. Preferir ensaio/projeto geotécnico.'),
-    ('γ e φ por tipo de solo', 'Aula 12.1, slide 10 (Gerscovich)', 'Solos do Rio de Janeiro — referência regional.'),
-    ('Bloco em contato com o solo', 'Aula 12.1, slide 2', 'Classe A, fbk ≥ 8 MPa.'),
-    ('Modelo do muro em balanço', 'Aula 12.1, slide 12', 'Engastado na base, carga σh,topo → σh,base.'),
-    ('Modelo com contrafortes', 'Aula 12.1, slide 13 / aula 12.3', 'Painel h × l entre contrafortes; contraforte intermediário recebe σh·l. Detalhes da aula 12.3 na tabela da linha 82 em diante.'),
+    ('γ e φ por tipo de solo', 'Gerscovich', 'Solos do Rio de Janeiro — referência regional.'),
+    ('Bloco em contato com o solo', 'NBR 6136', 'Classe A, fbk ≥ 8 MPa.'),
+    ('Modelo do muro em balanço', 'Critério adotado', 'Engastado na base, carga σh,topo → σh,base.'),
+    ('Modelo com contrafortes', 'Critério adotado', 'Painel h × l entre contrafortes; contraforte intermediário recebe σh·l. Detalhes na tabela da linha 82 em diante.'),
     ('fpk e fpk* a partir do fbk', 'Manual ABCP 2ª ed., Tab. 3.2', 'Tabela ao lado (bloco 14×19×39; indicativa — confirmar com ensaio de prisma).'),
     ('fk = 0,7·fpk; γm = 2,0', 'Manual ABCP 3.1 e 3.2', ''),
     ('Compressão na flexão', 'Manual ABCP 3.5', 'Fora do plano: 1,5·fk em região não grauteada; 2,0·fk em região grauteada.'),
     ('Flexão simples no ELU', 'Manual ABCP 3.4', 'Bloco 0,8x com fd; εc ≤ 0,30%; x ≤ 0,45d; z = d − 0,4x ≤ 0,95d; As = Md/(fyd·z).'),
     ('Armadura mínima de parede', 'Manual ABCP 3.6 / 6.2 (NBR 16868-1, 12.2)', '0,10% da seção, dispensável se a armadura disposta der MRd ≥ 1,4·MSd.'),
-    ('Altura efetiva', 'Aula 12.2 (slide Altura efetiva, NBR 16868-1)', 'Sem travamento lateral transversal: he = h (travada no topo e na base) ou he = 2h (livre no topo). Com travamento lateral: he = mín(αv·h; 0,7·√(αv·h·αh·l)) — planilha 02_Compressao_Simples, aba Altura Efetiva.'),
-    ('Esbeltez', 'Aula 12.2 (slide Índice de esbeltez)', 'Parede não armada ≤ 24 (30 em casa térrea com γm = 3,0); armada ≤ 30; muito esbelta sem limite (Anexo C).'),
-    ('Deformação e tensão no aço', 'Planilha 04_Flexão_Simples do curso', 'εc = 0,30% na borda; εs ≤ 1%; σs = 21000·εs (kN/cm²) ≤ fyd. Domínio 2/3 em x = 3/13·d; ductilidade x ≤ 0,45d.'),
-    ('Armadura mínima na planilha do curso', 'Planilha 04_Flexão_Simples / aula 12.2', 'Usa 0,15%·b·d (critério de viga), também no arrimo da aula 12.2. A NBR 16868-1 (item 12.2) pede 0,10% da seção para parede. Escolha nas Entradas.'),
-    ('Arranjos de armadura', 'Aula 12.2', 'Calcula As por faixa bm = 20/40/60/80 cm (um furo armado por faixa), compara com As,mín e escolhe a barra. Exemplo: Ø10 c/40. Reproduzido na aba Arranjos; a coluna da grade marca as faixas que o graute a cada X aceita (13/10).'),
-    ('Altura útil no arrimo', 'Aula 12.2', 'Barra a 5 cm da face do solo no bloco de 19 → d = 14 cm (lado tracionado = lado do solo). ABCP: cobrimento de graute ≥ 15 mm.'),
-    ('Seção para o ELS', 'Aula 12.2 + planilha 06_Vigas_ELS (aba I)', 'Faixa bm com furo grauteado no centro: seção I, mesas = paredes do bloco (hf), alma bw = 21,25 cm no 19×39. Im = bm·h³/12 − (bm − bw)·(h − 2hf)³/12; Mr = ftk·Im/yt; LN na mesa (retangular) ou na alma (T); Ieq de Branson; heq = (12·Ieq/bm)^(1/3) para o Ftool.'),
-    ('Módulo da alvenaria no ELS', 'Aula 12.2', 'fpk,liq = fpk/(Aliq/Abr) = 6/0,54 = 11,1 MPa; Em = 800·fpk,liq = 8889 MPa; n = 210000/8889 = 23,6. Explica o E = 8889 do Ftool.'),
-    ('Flecha', 'Aula 12.2 (slides ELS)', 'Limite menor vão/250; flecha final δ∞ = δ0·(1 + Δξ/(1 + 50ρ\')), Δξ = 1 (NBR 16868-1); ρ\' = As\'/(b·d).'),
-    ('Detalhamento do exemplo', 'Aula 12.2', 'Ø10 c/40 vertical com gancho na fundação (lb,nec); canaletas a cada 80 cm com Ø10.'),
-    ('Ancoragem', 'Aula 12.2 (tabela baseada em Araújo, 2014)', 'lb,nec = lb·As,calc/As,ef. As,calc = As do momento fletor (ou al·Vsd/(d·fyd) em extremidades de viga). lb,mín = máx(0,3·lb; 10Ø; 10 cm) — NBR 6118 9.4.2.5.'),
-    ('Painel não armado entre armaduras', 'Aula 12.2', 'Painel l × h entre barras verticais (l = bm) e canaletas (h = 80 cm). Pior = painel inferior; carga média do trapézio (exemplo: 6,88 → 12,96, média 9,92 kN/m²; pd = 1,4·9,92). Método: aguardando prints.'),
-    ('K na compressão da flexão (curso)', 'Planilha 04_Flexão_Simples (aba T) — aula 12.2', 'Kfd = K·0,7·fpk/2. Na aula 12.2: fpk = 1,111 kN/cm² (11,1 MPa, área líquida) e K = 1,0 → Kfd = 0,389 kN/cm² (print da planilha). Na aba T, x e As1 são achados pelo Solver (ΣFx = 0 e ΣM − Md = 0).'),
-    ('Taxa de grauteamento μ', 'Planilha 01_Materiais do curso', 'μ = (fpk,nec − fpk)/(fpk* − fpk): fração de furos grauteados para atingir o fpk necessário (interpolação entre prisma oco e cheio).'),
-    ('Cisalhamento (curso)', 'Planilha 05_Cisalhamento', 'Não armada: fvk pela classe da argamassa + 0,5σ, τ = Vd/(b·h). Armada: fvk = 0,35 + 17,5ρ (ρ ≤ 2%), τ = Vd/(b·d). Igual ao usado aqui.'),
-    ('Modelos Ftool do professor', 'Arquivos F10/F11 do curso + aula 12.2', 'F10 (balanço): barra de 1,60 m, carga de serviço na faixa de 40 cm (0,32 → 5,18 kN/m = Ka·(q + γz)·0,40 com Ka 0,4, q 2, γ 19). Seção "40 x 9.3" = retângulo com a Ieq de Branson (2687 cm⁴) e E = 8889 MPa = 800·fpk,liq (medido na aula).'),
+    ('Altura efetiva', 'NBR 16868-1 9.4.1', 'Sem travamento lateral transversal: he = h (travada no topo e na base) ou he = 2h (livre no topo). Com travamento lateral: he = mín(αv·h; 0,7·√(αv·h·αh·l)).'),
+    ('Esbeltez', 'NBR 16868-1 10.1.2 (Tab. 9)', 'Parede não armada ≤ 24 (30 em casa térrea com γm = 3,0); armada ≤ 30; muito esbelta sem limite (Anexo C).'),
+    ('Deformação e tensão no aço', 'NBR 16868-1 11.1.2; ABCP 3.4', 'εc = 0,30% na borda; εs ≤ 1%; σs = 21000·εs (kN/cm²) ≤ fyd. Domínio 2/3 em x = 3/13·d; ductilidade x ≤ 0,45d.'),
+    ('Armadura mínima: viga × parede', 'NBR 16868-1 12.2; ABCP 3.4', 'Viga: 0,15%·b·d. Parede: 0,10% da seção, dispensável se MRd ≥ 1,4·MSd. Padrão da planilha: Viga (b·d) (critério adotado). Escolha nas Entradas.'),
+    ('Arranjos de armadura', 'Critério adotado; NBR 16868-1 11.3.5 (faixa ≤ 6t por barra)', 'Calcula As por faixa bm = 20/40/60/80 cm (um furo armado por faixa), compara com As,mín e escolhe a barra. Ex.: Ø10 c/40. Aba Arranjos; a coluna da grade marca as faixas que o graute a cada X aceita.'),
+    ('Altura útil no arrimo', 'NBR 16868-1 12.1; ABCP 6.1', 'Ex.: barra a 5 cm da face do solo no bloco de 19 → d = 14 cm (lado tracionado = lado do solo). Cobrimento de graute ≥ 15 mm.'),
+    ('Seção para o ELS', 'NBR 16868-1 9.2.3; seção I: critério adotado', 'Faixa bm com furo grauteado no centro: seção I, mesas = paredes do bloco (hf), alma bw = 21,25 cm no 19×39. Im = bm·h³/12 − (bm − bw)·(h − 2hf)³/12; Mr = ftk·Im/yt; LN na mesa (retangular) ou na alma (T); Ieq de Branson; heq = (12·Ieq/bm)^(1/3) para o Ftool.'),
+    ('Módulo da alvenaria no ELS', 'NBR 16868-1 6.2.1 (Tab. 1) e 11.3.5', 'Ex.: fpk,liq = fpk/(Aliq/Abr) = 6/0,54 = 11,1 MPa; Em = 800·fpk,liq = 8889 MPa; n = 210000/8889 = 23,6.'),
+    ('Flecha', 'NBR 16868-1 9.2.4; limite: critério adotado', 'Limite menor vão/250 (critério adotado); flecha final δ∞ = δ0·(1 + Δξ/(1 + 50ρ\')), Δξ = 1; ρ\' = As\'/(b·d).'),
+    ('Detalhamento do exemplo', 'Exemplo padrão da planilha', 'Ø10 c/40 vertical com gancho na fundação (lb,nec); canaletas a cada 80 cm com Ø10.'),
+    ('Ancoragem', 'Araújo (2014); NBR 6118 9.4.2', 'lb,nec = lb·As,calc/As,ef. As,calc = As do momento fletor (ou al·Vsd/(d·fyd) em extremidades de viga). lb,mín = máx(0,3·lb; 10Ø; 10 cm) — NBR 6118 9.4.2.5.'),
+    ('Painel não armado entre armaduras', 'NBR 16868-1 Anexo E; carga média: critério adotado', 'Painel l × h entre barras verticais (l = bm) e canaletas (h = 80 cm). Pior = painel inferior; carga média do trapézio (ex.: 6,88 → 12,96, média 9,92 kN/m²; pd = 1,4·9,92).'),
+    ('K na compressão da flexão', 'NBR 16868-1 6.2.2.4; K = 1,0: critério adotado', 'Kfd = K·0,7·fpk/γm. A NBR permite K = 1,5 (não grauteado) ou 2,0 (grauteado). Ex.: fpk = 11,1 MPa (área líquida) e K = 1,0 → Kfd = 0,389 kN/cm².'),
+    ('Taxa de grauteamento μ', 'Critério adotado (interpolação entre fpk e fpk*, ABCP Tab. 3.2)', 'μ = (fpk,nec − fpk)/(fpk* − fpk): fração de furos grauteados para atingir o fpk necessário (interpolação entre prisma oco e cheio).'),
+    ('Cisalhamento', 'NBR 16868-1 6.2.2.6 (Tab. 4) e 11.4', 'Não armada: fvk pela classe da argamassa + 0,5σ, τ = Vd/(b·h). Armada: fvk = 0,35 + 17,5ρ (ρ ≤ 2%), τ = Vd/(b·d).'),
+    ('Conferência no Ftool', 'Critério adotado (retângulo equivalente)', 'Ex. (balanço de 1,60 m, sem σsg): carga de serviço na faixa de 40 cm (0,32 → 5,18 kN/m = Ka·(q + γz)·0,40 com Ka 0,4, q 2, γ 19). Seção "40 x 9.3" = retângulo com a Ieq de Branson (2687 cm⁴) e E = 8889 MPa = 800·fpk,liq.'),
     ('Momento de 2ª ordem', 'Manual ABCP 3.6.3.2', 'M2d = Nd·he²/(3600·t).'),
     ('Cisalhamento', 'Manual ABCP 3.3', 'τvd = Vd/(b·d) (armada); fvk = 0,35 + 17,5ρ ≤ 0,7 MPa com armadura de flexão em furo grauteado; fvd = fvk/γm.'),
 ]
@@ -419,7 +419,7 @@ for i, (a, b, c) in enumerate(refs):
     for col, v in zip('ABC', (a, b, c)):
         cell = R[f'{col}{rr}']; cell.value = v; cell.font = fN; cell.border = BOX
         cell.alignment = Alignment(wrap_text=True, vertical='top')
-R['A40'] = 'βf — painéis não armados (planilha 11_Painéis Fletidos do curso, aba Ábacos NBR). Linhas = μ; colunas = h/l. Laranja = valor suspeito de digitação na planilha do curso (mantido como está).'; R['A40'].font = fB
+R['A40'] = 'βf — painéis não armados (NBR 16868-1, Anexo E, Tab. E.1). Linhas = μ; colunas = h/l. Laranja = valor suspeito de digitação na fonte (mantido como está).'; R['A40'].font = fB
 PAN = {13: [(1, [0.011, 0.02, 0.026, 0.037, 0.045, 0.06, 0.075, 0.091, 0.106, 0.122, 0.123]), (0.9, [0.012, 0.022, 0.028, 0.038, 0.048, 0.064, 0.08, 0.096, 0.113, 0.122, 0.123]), (0.8, [0.014, 0.024, 0.029, 0.04, 0.052, 0.069, 0.086, 0.103, 0.118, 0.122, 0.123]), (0.7, [0.016, 0.025, 0.031, 0.042, 0.057, 0.075, 0.093, 0.112, 0.118, 0.122, 0.123]), (0.6, [0.019, 0.027, 0.033, 0.044, 0.063, 0.082, 0.102, 0.113, 0.118, 0.122, 0.123]), (0.5, [0.022, 0.029, 0.035, 0.049, 0.07, 0.092, 0.104, 0.113, 0.118, 0.122, 0.123]), (0.4, [0.025, 0.032, 0.038, 0.056, 0.08, 0.104, 0.113, 0.113, 0.118, 0.122, 0.123]), (0.35, [0.027, 0.034, 0.04, 0.061, 0.087, 0.113, 0.113, 0.113, 0.118, 0.122, 0.123]), (0.3, [0.029, 0.36, 0.042, 0.067, 0.095, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125])], 18: [(1, [0.031, 0.038, 0.045, 0.075, 0.106, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125]), (0.9, [0.032, 0.04, 0.048, 0.08, 0.113, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125]), (0.8, [0.034, 0.042, 0.052, 0.086, 0.12, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125]), (0.7, [0.035, 0.044, 0.057, 0.093, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125]), (0.6, [0.038, 0.047, 0.063, 0.102, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125]), (0.5, [0.04, 0.053, 0.07, 0.113, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125]), (0.4, [0.043, 0.061, 0.08, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125]), (0.35, [0.046, 0.066, 0.087, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125]), (0.3, [0.051, 0.073, 0.095, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125])], 11: [(1, [0.011, 0.02, 0.031, 0.07, 0.106, 0.127, 0.146, 0.164, 0.18, 0.24, 0.301]), (0.9, [0.013, 0.022, 0.035, 0.078, 0.111, 0.132, 0.152, 0.152, 0.193, 0.256, 0.321]), (0.8, [0.014, 0.025, 0.039, 0.088, 0.116, 0.139, 0.159, 0.159, 0.208, 0.276, 0.344]), (0.7, [0.016, 0.029, 0.045, 0.097, 0.123, 0.156, 0.167, 0.167, 0.227, 0.299, 0.373]), (0.6, [0.019, 0.033, 0.052, 0.103, 0.13, 0.155, 0.176, 0.176, 0.25, 0.329, 0.408]), (0.5, [0.023, 0.04, 0.063, 0.111, 0.14, 0.165, 0.195, 0.195, 0.28, 0.366, 0.454]), (0.4, [0.028, 0.05, 0.078, 0.122, 0.152, 0.179, 0.225, 0.225, 0.321, 0.418, 0.515]), (0.35, [0.032, 0.057, 0.089, 0.128, 0.16, 0.194, 0.244, 0.244, 0.347, 0.451, 0.556]), (0.3, [0.038, 0.067, 0.098, 0.137, 0.169, 0.214, 0.269, 0.269, 0.381, 0.493, 0.606])]}
 HL = [0.3, 0.4, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3]
 from openpyxl.utils import get_column_letter as _gl
@@ -461,7 +461,7 @@ R['H18'] = 'MPa. fpk* = prisma cheio (2 furos grauteados).'; R['H18'].font = fS
 # As eficiências vão DIGITADAS como no curso (0,75; 1,75; 1,6), não fpk/fbk dividido: a divisão dos valores
 # arredondados dá 1,76 onde o curso diz 1,75, e quem confere lado a lado com o Carini veria número diferente.
 # Nenhuma conta lê estas colunas: são consulta (tabela da Fig. 23 no app).
-R['E3'] = 'Planilha 01 do curso'; R['E3'].font = fB
+R['E3'] = 'Tab. 3.2 ABCP (fa e relações)'; R['E3'].font = fB
 for col, h_ in zip('EFG', ['fa', 'fpk/fbk', 'fpk*/fpk']):
     c = R[f'{col}4']; c.value = h_; c.font = fH; c.fill = NAVY; c.alignment = Alignment(horizontal='center')
 TAB01 = [(4, 0.8, 2), (4, 0.8, 2), (6, 0.75, 1.75), (6, 0.75, 1.75), (8, 0.7, 1.75), (8, 0.7, 1.6), (12, 0.7, 1.6),
@@ -471,20 +471,20 @@ for i, row in enumerate(TAB01):
         c = R[f'{col}{5+i}']; c.value = v; c.font = fN; c.border = BOX; c.alignment = Alignment(horizontal='center'); c.number_format = fm
 R['E18'] = 'fa em MPa (resistência da argamassa). Mesmas linhas de fbk da Tab. 3.2.'; R['E18'].font = fS
 R['L3'] = 'Barras CA-50'; R['L3'].font = fB
-R['L14'] = 'Argamassa — NBR 16868-1 (ftk: Tabela 3; fvk: planilha 05 do curso)'; R['L14'].font = fB
+R['L14'] = 'Argamassa — NBR 16868-1 (ftk: Tabela 3; fvk: Tabela 4)'; R['L14'].font = fB
 for j, h_ in enumerate(['Argamassa', 'ftk ⊥ fiada', 'ftk ∥ fiada', 'fvk0', 'fvk máx']):
     c = R.cell(row=15, column=12 + j, value=h_); c.font = fH; c.fill = NAVY; c.alignment = Alignment(horizontal='center', wrap_text=True)
 for i, row_ in enumerate([('1,5 a 3,4 MPa', 0.10, 0.20, 0.10, 1.0), ('3,5 a 7,0 MPa', 0.20, 0.40, 0.15, 1.4), ('acima de 7,0 MPa', 0.25, 0.50, 0.35, 1.7)]):
     for j, v in enumerate(row_):
         c = R.cell(row=16 + i, column=12 + j, value=v); c.font = fN; c.border = BOX; c.alignment = Alignment(horizontal='center')
 R['L19'] = 'MPa. fvk = fvk0 + 0,5·σ ≤ fvk máx (não armada).'; R['L19'].font = fS
-R['L21'] = 'Blocos de concreto — aula (dimensões, Aliq/Abr, graute)'; R['L21'].font = fB
+R['L21'] = 'Blocos de concreto — valores adotados (parede, Aliq/Abr, graute do furo)'; R['L21'].font = fB
 for j, h_ in enumerate(['Bloco', 'parede (cm)', 'Aliq/Abr', 'graute (cm²)']):
     c = R.cell(row=22, column=12 + j, value=h_); c.font = fH; c.fill = NAVY; c.alignment = Alignment(horizontal='center', wrap_text=True)
 for i, row_ in enumerate([('14x39', 2.7, 0.57, 117), ('19x39', 3.5, 0.54, 170)]):
     for j, v in enumerate(row_):
         c = R.cell(row=23 + i, column=12 + j, value=v); c.font = fN; c.border = BOX; c.alignment = Alignment(horizontal='center')
-R['O2'] = 'lb (cm) — aula 12.2, baseado em Araújo (2014). Reta: O–U; com gancho: W–AC.'; R['O2'].font = fB
+R['O2'] = 'lb (cm) — Araújo (2014), pela NBR 6118. Reta: O–U; com gancho: W–AC.'; R['O2'].font = fB
 LB_R = [(6.3, 27.5, 39.3, 23.7, 33.9, 21.0, 30.0), (8, 35.0, 50.0, 30.1, 43.0, 26.7, 38.1), (10, 43.7, 62.4, 37.7, 53.8, 33.4, 47.7),
         (12.5, 54.6, 78.1, 47.1, 67.3, 41.7, 59.6), (16, 69.9, 99.9, 60.3, 86.1, 53.4, 76.2), (20, 87.4, 124.9, 75.3, 107.6, 66.7, 95.3),
         (22, 96.2, 137.4, 82.9, 118.4, 73.4, 104.8), (25, 109.3, 156.1, 94.2, 134.5, 83.4, 119.1)]
@@ -510,7 +510,7 @@ for i, ph in enumerate(PHI_BARRAS):
 # ---- Listas das Entradas (validação de dados; ver LST no começo das Entradas) ----
 # As que dependem de outra entrada são fórmula: a lista muda com o bloco ou com o tipo de muro. Valores como n·20/100
 # (inteiro ÷ 100): dá o mesmo double que o número digitado ("1,6"), e a validação e o CORRESP exato reconhecem.
-R['AJ2'] = 'Listas das Entradas (montagens fechadas, decisão do Jose 09/10). Branco no topo = automático.'; R['AJ2'].font = fB
+R['AJ2'] = 'Listas das Entradas (montagens fechadas). Branco no topo = automático.'; R['AJ2'].font = fB
 _lst_cab = {'AJ': 'Altura (m)', 'AK': 'Eixo a eixo (m)', 'AL': 'Contraforte (cm)', 'AM': 'Barras (cm)',
             'AN': 'Canaletas balanço (m)', 'AO': 'Canaletas contraf. (cm)', 'AP': 'Ø estribo (mm)',
             'AQ': 'Ø sapata (mm)', 'AR': 'Ø sapata secund./torção (mm)', 'AS': 'Ø com espera (mm)',
@@ -611,14 +611,14 @@ ARG_REFS = [   # (item, fonte, o que diz) — vão para a aba Referências, linh
      'referência; o c\' de projeto sai de ensaio (aviso no topo das Entradas).'),
 ]
 S = wb.create_sheet('Solo e Empuxo', 1)
-title(S, 'Solo e empuxo (Rankine) — aula 12.1', 'Sugestões das tabelas da aula (verde) e diagrama de pressões calculado em 40 fatias.')
+title(S, 'Solo e empuxo (Rankine)', 'Sugestões das tabelas de referência (verde) e diagrama de pressões calculado em 40 fatias.')
 header(S, 3, ['Item', 'Valor', 'Unid.', 'Observação', 'Fonte'])
 r = 4
 section(S, r, 'Sugestões das tabelas (você adota na aba Entradas)'); r += 1
 # tables placed lower, referenced here
-line(S, r, 'γ areia (Godoy 1972)', "=INDEX($B$25:$D$29,MATCH(NSPT,$A$25:$A$29,1),MATCH(Umidade,$B$24:$D$24,0))", 'kN/m³', 'Pelo NSPT e pela umidade.', 'sug', '0', None, 'Slide 10'); r += 1
-line(S, r, 'φ areia (Alonso 2010)', '=INDEX($G$25:$G$29,MATCH(NSPT,$F$25:$F$29,1))', '°', 'Faixa pelo NSPT.', 'sug', None, None, 'Slide 10'); r += 1
-line(S, r, 'γ argila (Godoy 1972)', '=INDEX($K$25:$K$29,MATCH(NSPT,$J$25:$J$29,1))', 'kN/m³', 'Pelo NSPT.', 'sug', '0', None, 'Slide 10'); r += 1
+line(S, r, 'γ areia (Godoy 1972)', "=INDEX($B$25:$D$29,MATCH(NSPT,$A$25:$A$29,1),MATCH(Umidade,$B$24:$D$24,0))", 'kN/m³', 'Pelo NSPT e pela umidade.', 'sug', '0', None, 'Godoy (1972)'); r += 1
+line(S, r, 'φ areia (Alonso 2010)', '=INDEX($G$25:$G$29,MATCH(NSPT,$F$25:$F$29,1))', '°', 'Faixa pelo NSPT.', 'sug', None, None, 'Alonso (2010)'); r += 1
+line(S, r, 'γ argila (Godoy 1972)', '=INDEX($K$25:$K$29,MATCH(NSPT,$J$25:$J$29,1))', 'kN/m³', 'Pelo NSPT.', 'sug', '0', None, 'Godoy (1972)'); r += 1
 # Argila por consistência (09/10): a aula só traz γ de argila. c', φ' e su vêm da tabela em N23:S29 (fontes conferidas,
 # coluna S e Referências). É SUGESTÃO, como as de areia: nada vai sozinho para a conta. Os nomes existem para a
 # calculadora da Fig. 22 do app ler o MESMO número da planilha.
@@ -629,17 +629,17 @@ for _lab, _col, _un, _nm in ARG_SUG:
         line(S, r, _lab, '=10*NSPT', _un, 'Curto prazo (não drenada): não é o c\' do empuxo.', 'sug', '0', _nm, ARG_FONTE[_col]); r += 1
 # Gerscovich não tem argila: com Argila a sugestão pela classe é "—" mesmo que a classe digitada seja outra (o Excel
 # não troca a entrada sozinho). "Não se aplica" está na lista com "—" na tabela.
-line(S, r, 'γ pela classe (Gerscovich)', '=IF(Tipo_solo="Argila","—",INDEX($B$32:$B$39,MATCH(Classe_G,$A$32:$A$39,0)))', 'kN/m³', 'Faixa — solos do RJ. Não cobre argila.', 'sug', None, None, 'Slide 10'); r += 1
-line(S, r, 'φ pela classe (Gerscovich)', '=IF(Tipo_solo="Argila","—",INDEX($C$32:$C$39,MATCH(Classe_G,$A$32:$A$39,0)))', '°', 'Faixa — solos do RJ. Não cobre argila.', 'sug', None, None, 'Slide 10'); r += 1
+line(S, r, 'γ pela classe (Gerscovich)', '=IF(Tipo_solo="Argila","—",INDEX($B$32:$B$39,MATCH(Classe_G,$A$32:$A$39,0)))', 'kN/m³', 'Faixa — solos do RJ. Não cobre argila.', 'sug', None, None, 'Gerscovich'); r += 1
+line(S, r, 'φ pela classe (Gerscovich)', '=IF(Tipo_solo="Argila","—",INDEX($C$32:$C$39,MATCH(Classe_G,$A$32:$A$39,0)))', '°', 'Faixa — solos do RJ. Não cobre argila.', 'sug', None, None, 'Gerscovich'); r += 1
 section(S, r, 'Coeficientes e resultados'); r += 1
-line(S, r, 'Ka', '=IF(ISNUMBER(Ka_dir),Ka_dir,TAN(RADIANS(45-phi_solo/2))^2)', '', "tg²(45° − φ'/2), ou o Ka digitado nas Entradas", 'res', '0.000', 'Ka_', 'Slide 8'); r += 1
+line(S, r, 'Ka', '=IF(ISNUMBER(Ka_dir),Ka_dir,TAN(RADIANS(45-phi_solo/2))^2)', '', "tg²(45° − φ'/2), ou o Ka digitado nas Entradas", 'res', '0.000', 'Ka_', 'Rankine'); r += 1
 # Ka digitado = 0 dava 1/0 → #DIV/0! em Kp, que derrubava o passivo e o FS ao deslizamento da Fundação. Com erro,
 # Kp = 0: o passivo sai da conta (a favor da segurança) e o resto da Fundação continua calculando.
-line(S, r, 'Kp', '=IFERROR(IF(ISNUMBER(Ka_dir),1/Ka_dir,TAN(RADIANS(45+phi_solo/2))^2),0)', '', "tg²(45° + φ'/2); com Ka digitado, Kp = 1/Ka (Rankine, terreno horizontal). Ka digitado = 0 → Kp = 0 (passivo desprezado)", 'res', '0.000', 'Kp_', 'Slide 8'); r += 1
+line(S, r, 'Kp', '=IFERROR(IF(ISNUMBER(Ka_dir),1/Ka_dir,TAN(RADIANS(45+phi_solo/2))^2),0)', '', "tg²(45° + φ'/2); com Ka digitado, Kp = 1/Ka (Rankine, terreno horizontal). Ka digitado = 0 → Kp = 0 (passivo desprezado)", 'res', '0.000', 'Kp_', 'Rankine'); r += 1
 line(S, r, 'σh no topo', '=G44', 'kPa', 'Pressão horizontal total no topo.', 'res', '0.00', 'sh_topo'); r += 1
 line(S, r, 'σh na base', '=G84', 'kPa', 'Pressão horizontal total na base.', 'res', '0.00', 'sh_base'); r += 1
-line(S, r, 'Ea (solo)', '=SUM(H44:H83)', 'kN/m', "∫σ'h dz", 'res', '0.00', 'Ea_', 'Slide 8'); r += 1
-line(S, r, 'Ew (água)', '=SUM(I44:I83)', 'kN/m', '∫u dz', 'res', '0.00', 'Ew_', 'Slide 8'); r += 1
+line(S, r, 'Ea (solo)', '=SUM(H44:H83)', 'kN/m', "∫σ'h dz", 'res', '0.00', 'Ea_', 'Rankine'); r += 1
+line(S, r, 'Ew (água)', '=SUM(I44:I83)', 'kN/m', '∫u dz', 'res', '0.00', 'Ew_', 'Tensões efetivas'); r += 1
 line(S, r, 'Vk na base (Ea + Ew)', '=SUM(J44:J83)', 'kN/m', 'Força horizontal total por metro.', 'key', '0.00', 'Vk_'); r += 1
 line(S, r, 'Mk na base', '=SUM(L44:L83)', 'kN·m/m', 'Momento na base do muro.', 'key', '0.00', 'Mk_'); r += 1
 assert r <= 23, r          # a linha 23 é o título das tabelas da aula (coluna A; esta seção acaba na 22)
@@ -725,14 +725,14 @@ widths(S, {'A': 34, 'B': 14, 'C': 10, 'D': 40, 'E': 14, 'F': 9, 'G': 10, 'H': 12
 
 # ================= MURO EM BALANÇO =================
 B = wb.create_sheet('Muro em balanço', 2)
-title(B, 'Muro em balanço — flexão vertical (faixa de 1 m)', 'Modelo da aula 12.1 (slide 12). Dimensionamento: manual ABCP / NBR 16868-1. Aula 12.2 vai conferir/ajustar esta aba.')
+title(B, 'Muro em balanço — flexão vertical (faixa de 1 m)', 'Engastado na base, carga σh,topo → σh,base. Dimensionamento: NBR 16868-1 / ABCP (Parsekian & Medeiros).')
 header(B, 3, ['Item', 'Valor', 'Unid.', 'Observação', 'Fonte'])
 r = 4
 section(B, r, 'Esforços'); r += 1
 line(B, r, 'Mk (empuxo)', '=Mk_', 'kN·m/m', 'Da aba Solo e Empuxo.', 'res', '0.00', None); r += 1
 line(B, r, 'Vk (empuxo)', '=Vk_', 'kN/m', '', 'res', '0.00', None); r += 1
-line(B, r, 'he (altura efetiva)', '=IF(Trav_lat="Sim",MIN(alfa_v*H_muro,0.7*SQRT(alfa_v*H_muro*alfa_h*IF(Tipo_muro="Contrafortes",l_cf_adot,l_trav))),2*H_muro)', 'm', 'h = altura do muro (o balanço é o muro inteiro, não só o trecho com solo). Sem travamento lateral: he = 2h. Com travamento: mín(αv·h; 0,7·√(αv·h·αh·l)); com contrafortes, l = espaçamento adotado dos contrafortes (Jose, 12/10).', 'res', '0.00', 'he_', 'Aula 12.2 / NBR 16868-1'); r += 1
-line(B, r, 'λ = he/t', '=he_/(t_bloco/100)', '', 'Não armada ≤ 24; armada ≤ 30.', 'res', '0.0', 'lambda_', 'Aula 12.2'); r += 1
+line(B, r, 'he (altura efetiva)', '=IF(Trav_lat="Sim",MIN(alfa_v*H_muro,0.7*SQRT(alfa_v*H_muro*alfa_h*IF(Tipo_muro="Contrafortes",l_cf_adot,l_trav))),2*H_muro)', 'm', 'h = altura do muro (o balanço é o muro inteiro, não só o trecho com solo). Sem travamento lateral: he = 2h. Com travamento: mín(αv·h; 0,7·√(αv·h·αh·l)); com contrafortes, l = espaçamento adotado dos contrafortes.', 'res', '0.00', 'he_', 'NBR 16868-1 9.4.1'); r += 1
+line(B, r, 'λ = he/t', '=he_/(t_bloco/100)', '', 'Não armada ≤ 24; armada ≤ 30.', 'res', '0.0', 'lambda_', 'NBR 16868-1 10.1.2'); r += 1
 line(B, r, 'Nd na base', '=gama_f*peso_ch*H_muro', 'kN/m', 'Peso próprio majorado (parede na altura do muro), com todos os furos grauteados (Entradas).', 'res', '0.00', 'Nd_'); r += 1
 line(B, r, 'M2d', '=Nd_*he_^2/(3600*t_bloco/100)', 'kN·m/m', 'Nd·he²/(3600·t). A compressão de N, que ajudaria, é desprezada.', 'res', '0.000', 'M2d_', 'ABCP 3.6.3.2'); r += 1
 line(B, r, 'Md', '=gama_f*Mk_+IF(M2d_on="Não",0,M2d_)', 'kN·m/m', 'γf·Mk + M2d (M2d só se "Somar M2d" = Sim nas Entradas).', 'key', '0.00', 'Md_'); r += 1
@@ -741,20 +741,20 @@ section(B, r, 'Material'); r += 1
 line(B, r, 'fpk do bloco vazado (bruto)', "=VLOOKUP(fbk_,'Referências'!$H$5:$J$16,2,FALSE)", 'MPa', 'Tab. 3.2 pelo fbk.', 'res', '0.0', 'fpk_oco', 'ABCP Tab. 3.2'); r += 1
 line(B, r, 'fpk* (prisma cheio)', "=VLOOKUP(fbk_,'Referências'!$H$5:$J$16,3,FALSE)", 'MPa', '', 'res', '0.0', 'fpk_chei', 'ABCP Tab. 3.2'); r += 1
 line(B, r, 'fpk da tabela (ou fpk*)', '=IF(gr_tot="Sim",fpk_chei,fpk_oco)', 'MPa', 'Área bruta (fpk* se grauteamento total).', 'res', '0.0', 'fpk_tab', 'ABCP Tab. 3.2'); r += 1
-line(B, r, 'Parede do bloco (hf)', '=IF(t_bloco=19,3.5,2.7)', 'cm', '', 'res', '0.0', 'hf_bl', 'Aula (tabela de blocos)'); r += 1
-line(B, r, 'Aliq/Abr', '=IF(t_bloco=19,0.54,0.57)', '', '19×39: 0,54; 14×39: 0,57.', 'res', '0.00', 'r_liq', 'Aula (tabela de blocos)'); r += 1
-line(B, r, 'Em/fpk', 800, '', 'Bloco de concreto.', 'res', '0', 'Em_coef', 'Aula 12.2'); r += 1
-line(B, r, 'fgk do graute', "=IF(ISNUMBER(fgk_dir),fgk_dir,VLOOKUP(fbk_,'Referências'!$H$5:$K$16,4,FALSE))", 'MPa', 'Entradas ou tabela do curso (planilha 01).', 'res', '0.0', 'fgk_', 'Planilha 01'); r += 1
-line(B, r, 'Área de graute do furo', "=IFERROR(INDEX('Referências'!$O$23:$O$24,MATCH(t_bloco&\"x\"&L_bloco,'Referências'!$L$23:$L$24,0)),170)", 'cm²', '', 'res', '0', 'Ag_furo', 'Aula (tabela de blocos)'); r += 1
-line(B, r, 'As,máx (fração do graute)', 0.08, '', '8% da área de graute, contando o traspasse.', 'res', '0.00', 'pAs_max', 'NBR 16868-1'); r += 1
+line(B, r, 'Parede do bloco (hf)', '=IF(t_bloco=19,3.5,2.7)', 'cm', '', 'res', '0.0', 'hf_bl', 'Critério adotado (tabela de blocos)'); r += 1
+line(B, r, 'Aliq/Abr', '=IF(t_bloco=19,0.54,0.57)', '', '19×39: 0,54; 14×39: 0,57.', 'res', '0.00', 'r_liq', 'Critério adotado (tabela de blocos)'); r += 1
+line(B, r, 'Em/fpk', 800, '', 'Bloco de concreto.', 'res', '0', 'Em_coef', 'NBR 16868-1 6.2.1 (Tab. 1)'); r += 1
+line(B, r, 'fgk do graute', "=IF(ISNUMBER(fgk_dir),fgk_dir,VLOOKUP(fbk_,'Referências'!$H$5:$K$16,4,FALSE))", 'MPa', 'Entradas ou tabela pelo fbk.', 'res', '0.0', 'fgk_', 'ABCP Tab. 3.2'); r += 1
+line(B, r, 'Área de graute do furo', "=IFERROR(INDEX('Referências'!$O$23:$O$24,MATCH(t_bloco&\"x\"&L_bloco,'Referências'!$L$23:$L$24,0)),170)", 'cm²', '', 'res', '0', 'Ag_furo', 'Critério adotado (tabela de blocos)'); r += 1
+line(B, r, 'As,máx (fração do graute)', 0.08, '', '8% da área de graute, contando o traspasse.', 'res', '0.00', 'pAs_max', 'NBR 16868-1 12.3'); r += 1
 line(B, r, 'Fator de traspasse na conta do As,máx', 2, '', 'Na região de traspasse o furo tem 2 barras.', 'res', '0', 'f_trasp'); r += 1
-line(B, r, 'fpk,liq', '=IF(gr_tot="Sim",fpk_tab,fpk_tab/r_liq)', 'MPa', 'fpk ÷ Aliq/Abr (com grauteamento total a seção é cheia: fpk*).', 'res', '0.00', 'fpk_liq', 'Aula 12.2'); r += 1
+line(B, r, 'fpk,liq', '=IF(gr_tot="Sim",fpk_tab,fpk_tab/r_liq)', 'MPa', 'fpk ÷ Aliq/Abr (com grauteamento total a seção é cheia: fpk*).', 'res', '0.00', 'fpk_liq', 'NBR 16868-1 11.3.5 (área líquida)'); r += 1
 line(B, r, 'fpk usado', '=IF(LEFT(fpk_ref,4)="Líqu",fpk_liq,fpk_tab)', 'MPa', 'Conforme "Área de referência do fpk" nas Entradas.', 'res', '0.00', 'fpk_', None); r += 1
 line(B, r, 'fk = 0,7·fpk', '=0.7*fpk_', 'MPa', '', 'res', '0.00', 'fk_', 'ABCP 3.2'); r += 1
 line(B, r, 'fd = fk/γm', '=fk_/gama_m', 'MPa', '', 'res', '0.000', 'fd_', 'ABCP 3.1'); r += 1
-line(B, r, 'K (compressão na flexão)', '=IF(ISNUMBER(K_dir),K_dir,IF(gr_tot="Sim",2,1.5))', '', 'Digitado nas Entradas ou, em branco, NBR: 1,5 sem graute; 2,0 grauteado (flexão fora do plano).', 'res', '0.00', 'k_flex', 'ABCP 3.5 / planilha 04'); r += 1
+line(B, r, 'K (compressão na flexão)', '=IF(ISNUMBER(K_dir),K_dir,IF(gr_tot="Sim",2,1.5))', '', 'Digitado nas Entradas ou, em branco, NBR: 1,5 sem graute; 2,0 grauteado (flexão fora do plano).', 'res', '0.00', 'k_flex', 'NBR 16868-1 6.2.2.4 / ABCP 3.5'); r += 1
 line(B, r, 'ffd = k·fd', '=k_flex*fd_', 'MPa', '', 'res', '0.000', 'ffd_'); r += 1
-line(B, r, 'fsd = fyd', '=fyk_/gama_s', 'MPa', 'Bloco de concreto: fsd = fyd para todo Ø.', 'res', '0.0', 'fyd_', 'NBR 16868-1'); r += 1
+line(B, r, 'fsd = fyd', '=fyk_/gama_s', 'MPa', 'Bloco de concreto: fsd = fyd para todo Ø.', 'res', '0.0', 'fyd_', 'NBR 16868-1 11.3.3'); r += 1
 # FLEXÃO PELA GEOMETRIA REAL (Jose, 12/10: "o que eu quero é resistência real do negócio na conta pra faixa de 1
 # metro"). A faixa comprimida fica junto da face externa. Até a profundidade hf ela está na PAREDE do bloco, que é
 # contínua no metro inteiro e é concreto do bloco puro: vale a resistência do prisma vazado levada à área líquida
@@ -762,13 +762,13 @@ line(B, r, 'fsd = fyd', '=fyk_/gama_s', 'MPa', 'Bloco de concreto: fsd = fyd par
 # GRAUTEADOS continuam (as almas): aí vale o prisma cheio (fpk*, ABCP tab. 3.2) na largura das almas que existem
 # no metro. A escolha "área de referência" não entra mais na flexão: quem decide é a geometria. (O ELS continua com
 # o fpk usado, que dá o Em.) DEDUÇÃO nossa: a alma com fpk* e a largura de alma = furo + septos (a da seção I do ELS).
-line(B, r, 'fd da parede do bloco (mesa) = 0,7·fpk/(Aliq/Abr)/γm', '=0.7*fpk_oco/r_liq/gama_m', 'MPa', 'Concreto do bloco: o prisma vazado na área líquida. Vale com graute parcial ou total.', 'res', '0.000', 'fd_m', 'Aula 12.2 / NBR 16868-1 6.2.2'); r += 1
+line(B, r, 'fd da parede do bloco (mesa) = 0,7·fpk/(Aliq/Abr)/γm', '=0.7*fpk_oco/r_liq/gama_m', 'MPa', 'Concreto do bloco: o prisma vazado na área líquida. Vale com graute parcial ou total.', 'res', '0.000', 'fd_m', 'NBR 16868-1 6.2.2 e 11.3.5'); r += 1
 line(B, r, 'K·fd da mesa', '=k_flex*fd_m', 'MPa', '', 'res', '0.000', 'ffd_m'); r += 1
 line(B, r, 'fd do furo grauteado (alma) = 0,7·fpk*/γm', '=0.7*fpk_chei/gama_m', 'MPa', 'Prisma cheio (bloco + graute). Só trabalha se a compressão passar da parede do bloco.', 'res', '0.000', 'fd_g', 'ABCP Tab. 3.2 (dedução)'); r += 1
 line(B, r, 'K·fd da alma', '=k_flex*fd_g', 'MPa', '', 'res', '0.000', 'ffd_g'); r += 1
 r += 1
 section(B, r, 'Flexão (b = 100 cm)'); r += 1
-line(B, r, 'd sugerido (barra do lado do solo)', '=t_bloco-IF(t_bloco=19,3.5,2.7)-1.5-phi_v/20', 'cm', 't − parede do bloco (3,5 no 19; 2,7 no 14) − 1,5 cm de graute − Ø/2. Só informativo; a aula 12.2 adota 14 cm no bloco de 19.', 'res', '0.00', 'd_sug', 'ABCP (cobrimento ≥ 15 mm) / aula 12.2'); r += 1
+line(B, r, 'd sugerido (barra do lado do solo)', '=t_bloco-IF(t_bloco=19,3.5,2.7)-1.5-phi_v/20', 'cm', 't − parede do bloco (3,5 no 19; 2,7 no 14) − 1,5 cm de graute − Ø/2. Só informativo.', 'res', '0.00', 'd_sug', 'NBR 16868-1 12.1 (graute ≥ 15 mm) / ABCP 6.1'); r += 1
 line(B, r, 'd (altura útil)', '=IF(ISNUMBER(d_dir),d_dir,t_bloco/2)', 'cm', 'd digitado nas Entradas ou, em branco, t/2 (barra no meio).', 'res', '0.00', 'd_util'); r += 1
 line(B, r, 'Md/(0,5·b·d²·K·fd da mesa)', '=Md_*100/(0.5*100*d_util^2*ffd_m/10)', '', 'Compressão só na parede do bloco (b = 100). Se > 1, a mesa sozinha não resiste.', 'res', '0.000', 'arg_x'); r += 1
 line(B, r, 'x com a compressão só na mesa', '=IF(arg_x<1,1.25*d_util*(1-SQRT(1-arg_x)),"não resiste")', 'cm', 'x = 1,25·d·[1 − √(1 − Md/(0,5·b·d²·K·fd))]', 'res', '0.00', 'x_r', 'ABCP 3.4'); r += 1
@@ -783,11 +783,11 @@ line(B, r, 'x', '=IF(ln_mesa="Sim",x_r,IF(ISNUMBER(y_alma),(hf_bl+y_alma)/0.8,"n
 line(B, r, 'Força de compressão C', '=IF(ln_mesa="Sim",ffd_m/10*100*0.8*x_r,IF(ISNUMBER(y_alma),ffd_m/10*100*hf_bl+ffd_g/10*bw_m*y_alma,"—"))', 'kN/m', 'Na mesa: K·fd·b·0,8x. Seção T: mesa inteira + almas.', 'res', '0.00', 'C_c'); r += 1
 line(B, r, 'x/d', '=IFERROR(x_ln/d_util,"—")', '', 'Limite 0,45 (ductilidade).', 'key', '0.000', 'x_d', 'ABCP 3.4'); r += 1
 line(B, r, 'z = Md/C ≤ 0,95d', '=IFERROR(MIN(Md_*100/C_c,0.95*d_util),"—")', 'cm', 'Na mesa Md/C = d − 0,4x; na seção T é o braço da resultante (mesa + almas).', 'res', '0.00', 'z_br', 'ABCP 3.4'); r += 1
-line(B, r, 'εs = 0,30%·(d − x)/x ≤ 1%', '=IFERROR(MIN(1,0.3*(d_util-x_ln)/x_ln),"—")', '%', 'Deformação do aço (εc = 0,30% na borda).', 'res', '0.000', 'eps_s', 'Planilha 04 do curso / ABCP 3.4'); r += 1
-line(B, r, 'σs = Es·εs ≤ fyd', '=IFERROR(MIN(210000*eps_s/100,fyd_),"—")', 'MPa', 'Es = 210 GPa. Com x/d ≤ 0,45 o aço escoa (σs = fyd).', 'res', '0.0', 'sig_s', 'Planilha 04 do curso'); r += 1
-line(B, r, 'As,nec = Md/(σs·z)', '=IF(Md_<=0,0,IFERROR(Md_*100/(sig_s/10*z_br),"—"))', 'cm²/m', '', 'key', '0.00', 'As_nec', 'ABCP 3.4 / planilha 04'); r += 1
+line(B, r, 'εs = 0,30%·(d − x)/x ≤ 1%', '=IFERROR(MIN(1,0.3*(d_util-x_ln)/x_ln),"—")', '%', 'Deformação do aço (εc = 0,30% na borda).', 'res', '0.000', 'eps_s', 'NBR 16868-1 11.1.2 / ABCP 3.4'); r += 1
+line(B, r, 'σs = Es·εs ≤ fyd', '=IFERROR(MIN(210000*eps_s/100,fyd_),"—")', 'MPa', 'Es = 210 GPa. Com x/d ≤ 0,45 o aço escoa (σs = fyd).', 'res', '0.0', 'sig_s', 'NBR 16868-1 11.1.2'); r += 1
+line(B, r, 'As,nec = Md/(σs·z)', '=IF(Md_<=0,0,IFERROR(Md_*100/(sig_s/10*z_br),"—"))', 'cm²/m', '', 'key', '0.00', 'As_nec', 'NBR 16868-1 11.3.3 / ABCP 3.4'); r += 1
 line(B, r, 'As para 1,4·Md', '=IFERROR(1.4*Md_*100/(fyd_/10*MIN(d_util-0.4*1.25*d_util*(1-SQRT(1-1.4*arg_x)),0.95*d_util)),0.001*100*t_bloco)', 'cm²/m', 'Critério que dispensa o mínimo.', 'res', '0.00', 'As_14'); r += 1
-line(B, r, 'As,mín', '=IF(LEFT(AsMin_crit,5)="Curso",0.0015*100*d_util,MIN(0.001*100*t_bloco,As_14))', 'cm²/m', 'Pelo critério escolhido: NBR = mín(0,10%·b·t; As p/ 1,4·Md); Curso = 0,15%·b·d.', 'res', '0.00', 'As_min', 'ABCP 6.2 / planilha 04'); r += 1
+line(B, r, 'As,mín', '=IF(LEFT(AsMin_crit,4)="Viga",0.0015*100*d_util,MIN(0.001*100*t_bloco,As_14))', 'cm²/m', 'Pelo critério escolhido: Viga = 0,15%·b·d; Parede = mín(0,10%·b·t; As p/ 1,4·Md).', 'res', '0.00', 'As_min', 'NBR 16868-1 12.2'); r += 1
 line(B, r, 'As de cálculo', '=IF(ISNUMBER(As_nec),MAX(As_nec,As_min),"—")', 'cm²/m', '', 'key', '0.00', 'As_calc'); r += 1
 line(B, r, 'Área da barra', '=PI()*phi_v^2/400', 'cm²', '', 'res', '0.000', 'As_barra'); r += 1
 line(B, r, 'Espaçamento máximo pela conta', '=IFERROR(As_barra/As_calc*100,0)', 'cm', '', 'res', '0.0', 's_calc'); r += 1
@@ -812,14 +812,14 @@ r += 1
 section(B, r, 'Cisalhamento'); r += 1
 line(B, r, 'τvd = γf·Vk/(b·d)', '=gama_f*Vk_/(100*d_util)*10', 'MPa', '', 'res', '0.000', 'tau_vd', 'ABCP 3.3'); r += 1
 line(B, r, 'ρ = As,ef/(b·d)', '=As_ef/(100*d_util)', '', 'Limitado a 2%.', 'res', '0.0000', 'rho_v'); r += 1
-line(B, r, 'fvd = (0,35 + 17,5ρ ≤ 0,7)/γm', '=MIN(0.35+17.5*MIN(rho_v,0.02),0.7)/gama_m', 'MPa', '', 'res', '0.000', 'fvd', 'ABCP 3.3 / planilha 05'); r += 1
+line(B, r, 'fvd = (0,35 + 17,5ρ ≤ 0,7)/γm', '=MIN(0.35+17.5*MIN(rho_v,0.02),0.7)/gama_m', 'MPa', '', 'res', '0.000', 'fvd', 'NBR 16868-1 6.2.2.6 / ABCP 3.3'); r += 1
 line(B, r, 'Vsd = γf·Vk', '=gama_f*Vk_', 'kN/m', '', 'res', '0.00', 'Vsd_'); r += 1
-line(B, r, 'Vrd = Va = fvd·b·d', '=fvd/10*100*d_util', 'kN/m', 'Resistência sem estribo (alvenaria).', 'res', '0.00', 'Va_', 'Planilha 05'); r += 1
-line(B, r, 'Vrd2 (bielas) = Va + 0,4·√fpk/γm·b·d', '=Va_+0.4*SQRT(fpk_tab)/gama_m*100*d_util/10', 'kN/m', 'Na aula ele digitou fpk = 4,8 MPa nessa planilha (Vrd2 = 87,6 kN); aqui usa o fpk da tabela (bruto). Folga enorme nos dois casos.', 'res', '0.00', 'Vrd2_', 'Planilha 05'); r += 1
+line(B, r, 'Vrd = Va = fvd·b·d', '=fvd/10*100*d_util', 'kN/m', 'Resistência sem estribo (alvenaria).', 'res', '0.00', 'Va_', 'NBR 16868-1 11.4.3'); r += 1
+line(B, r, 'Vrd2 (bielas) = Va + 0,4·√fpk/γm·b·d', '=Va_+0.4*SQRT(fpk_tab)/gama_m*100*d_util/10', 'kN/m', 'Usa o fpk da tabela (bruto).', 'res', '0.00', 'Vrd2_', 'NBR 16868-1 11.4.3'); r += 1
 r += 1
 section(B, r, 'Ancoragem na fundação'); r += 1
 _lbidx = '(MATCH(fck_fund,{"C20","C25","C30"},0)-1)*2+IF(zona_ad="Boa",1,2)+1'
-line(B, r, 'lb reta (tabela)', f"=IFERROR(INDEX('Referências'!$O$5:$U$12,MATCH(phi_v,'Referências'!$O$5:$O$12,0),{_lbidx}),\"Ø fora da tabela\")", 'cm', 'Pelo Ø, concreto e zona.', 'res', '0.0', 'lb_reta', 'Aula 12.2 / Araújo 2014'); r += 1
+line(B, r, 'lb reta (tabela)', f"=IFERROR(INDEX('Referências'!$O$5:$U$12,MATCH(phi_v,'Referências'!$O$5:$O$12,0),{_lbidx}),\"Ø fora da tabela\")", 'cm', 'Pelo Ø, concreto e zona.', 'res', '0.0', 'lb_reta', 'Araújo (2014) / NBR 6118 9.4.2'); r += 1
 line(B, r, 'lb da tabela usada', f"=IF(gancho_=\"Sim\",IFERROR(INDEX('Referências'!$W$5:$AC$12,MATCH(phi_v,'Referências'!$W$5:$W$12,0),{_lbidx}),\"—\"),lb_reta)", 'cm', 'Com gancho ou reta, conforme Entradas.', 'res', '0.0', 'lb_tab'); r += 1
 line(B, r, 'As,calc/As,ef', '=IFERROR(MIN(1,As_nec/As_ef),1)', '', 'As,calc = As do momento (não o mínimo). Sem As,ef válido, usa 1.', 'res', '0.000', 'r_anc'); r += 1
 line(B, r, 'lb,nec = lb·As,calc/As,ef', '=IFERROR(lb_tab*r_anc,"—")', 'cm', '', 'res', '0.0', 'lb_nec'); r += 1
@@ -830,7 +830,7 @@ section(B, r, 'Verificações'); r += 1
 checks = [
     ('Posição da barra no projeto', '=IF(d_util>t_bloco/2+0.01,"ATENÇÃO — calculado com a barra ENCOSTADA no lado do solo (d = "&FIXED(d_util,1)&" cm). Indicar no projeto: não centralizar.","Barra centralizada (d = t/2)")', 'Ver Fig. 4'),
     ('Robustez: barra centralizada por erro de obra', '=rob_c', ''),
-    ('Bloco Classe A (fbk ≥ 8 MPa)', '=IF(fbk_>=8,"OK","NÃO OK — trocar bloco")', 'Aula 12.1 slide 2'),
+    ('Bloco Classe A (fbk ≥ 8 MPa)', '=IF(fbk_>=8,"OK","NÃO OK — trocar bloco")', 'NBR 6136 (Classe A)'),
     ('Esbeltez λ ≤ 30', '=IF(lambda_<=30,"OK","NÃO OK")', 'ABCP 3.2'),
     ('Seção resiste (armadura simples)', '=IF(ISNUMBER(x_ln),"OK","NÃO OK — aumentar fbk, grautear ou mudar solução")', 'ABCP 3.4'),
     ('Ductilidade x/d ≤ 0,45', '=IF(ISNUMBER(x_d),IF(x_d<=0.45,"OK","NÃO OK — aumentar fbk ou grautear"),"NÃO OK")', 'ABCP 3.4'),
@@ -839,8 +839,8 @@ checks = [
     ('Seção coerente com o espaçamento', '=IF(OR(s_adot<=0,s_adot/Graute=INT(s_adot/Graute)),"OK","ATENÇÃO — barra fora da grade do graute")', ''),
     ('Armadura cabe (espaçamento ≥ graute a cada)', '=IF(s_adot>=Graute,"OK","NÃO OK — aumentar Ø ou diminuir o graute a cada")', ''),
     ('As,ef ≥ As de cálculo', '=IFERROR(IF(As_ef>=As_calc-0.005,"OK",IF(As_ef>=As_nec,"NÃO OK — abaixo do As,mín (atende o momento)","NÃO OK — abaixo do As do momento")),"—")', ''),
-    ('Cisalhamento τvd ≤ fvd', '=IF(tau_vd<=fvd,"OK — dispensa estribos","NÃO OK")', 'ABCP 3.3 / planilha 05'),
-    ('Bielas Vsd ≤ Vrd2', '=IF(Vsd_<=Vrd2_,"OK","NÃO OK — aumentar seção")', 'Planilha 05'),
+    ('Cisalhamento τvd ≤ fvd', '=IF(tau_vd<=fvd,"OK — dispensa estribos","NÃO OK")', 'NBR 16868-1 11.4 / ABCP 3.3'),
+    ('Bielas Vsd ≤ Vrd2', '=IF(Vsd_<=Vrd2_,"OK","NÃO OK — aumentar seção")', 'NBR 16868-1 11.4.3'),
     ('Painel entre barras', '=res_pan', 'Aba Painel não armado'),
     ('ELS (fissuração/deslocamento)', '=res_els', 'Aba ELS'),
     # no fim da lista de propósito: linhas acima têm endereço lido pelo app (memória de cálculo)
@@ -862,7 +862,7 @@ widths(B, {'A': 36, 'B': 44, 'C': 9, 'D': 60, 'E': 16})
 # ================= ARRANJOS =================
 A_ = wb.create_sheet('Arranjos', 3)
 RM = "'Referências'!$M$5:$M$10"; RL = "'Referências'!$L$5:$L$10"
-title(A_, 'Arranjos de armadura — como na aula 12.2',
+title(A_, 'Arranjos de armadura',
       'Um furo armado a cada bm (múltiplos do meio bloco m). A linha neutra x não depende de bm, então As cresce proporcional a bm. Faixa acima de 6t não vale (NBR 16868-1 11.3.5).')
 hdr = ['bm (cm)', 'Md da faixa (kN·cm)', 'As calc. (cm²)', 'As,mín (cm²)', 'As a adotar (cm²)', 'Ø sugerido (mm)', 'As do Ø (cm²)', 'As/m resultante (cm²/m)', 'Ø das Entradas atende?', 'bm ≤ 6t?', 'Na grade do graute?']
 header(A_, 4, hdr)
@@ -900,10 +900,10 @@ for i, (lab, f, fm) in enumerate(params):
     A_.merge_cells(f'A{rr}:B{rr}')
     if fm: A_[f'C{rr}'].number_format = fm
 notes = [
-    'Conferência com a aula 12.2 (resultado do professor: 0,30 / 0,61 / 0,91 / 1,22 cm² para bm = 20 / 40 / 60 / 80; adotou Ø10 c/40):',
-    'Entradas: h = 1,6 m; t = 19 (19×39); Ka direto = 0,4; γ = 19; q = 2 kPa; c = 0; sem água; fbk = 8; Seção = Parcial (só onde tem barra); fpk líquido (6/0,54 = 11,1); d = 14; K = 1; As,mín = Curso; Somar M2d = Não; Somar σsg = Não; peso da parede 3,0 kN/m².',
-    'Tudo medido nos prints da aula: d = 14 (barra a 5 cm da face do solo), fpk = 11,1 MPa (líquido, 6/0,54) e K = 1,0 na planilha 04 (Kfd = 0,389 kN/cm²). Resultado aqui: 0,304 / 0,608 / 0,913 / 1,217 → 0,30 / 0,61 / 0,91 / 1,22 como no caderno dele.',
-    'Observação: com o critério do curso (0,15%·b·d), Ø10 c/40 dá 0,785 cm² < 0,84 cm² de As,mín da faixa. Pelo critério da NBR (0,10%·b·t = 0,76 cm² na faixa de 40) passa.',
+    'Exemplo (padrão da planilha): As = 0,30 / 0,61 / 0,91 / 1,22 cm² para bm = 20 / 40 / 60 / 80 cm → Ø10 c/40.',
+    'Entradas do exemplo: h = 1,6 m; bloco 19×39; Ka direto = 0,4; γ = 19; q = 2 kPa; c = 0; sem água; fbk = 8; graute a cada 40; d = 14; K = 1; As,mín = Viga (b·d); Somar M2d = Não.',
+    'd = 14 cm: barra a 5 cm da face do solo no bloco de 19 (lado tracionado). fpk = 6/0,54 = 11,1 MPa (área líquida) e K = 1,0 → K·fd = 0,389 kN/cm².',
+    'Observação: com o critério de viga (0,15%·b·d), Ø10 c/40 dá 0,785 cm² < 0,84 cm² de As,mín da faixa. Pelo critério de parede (0,10%·b·t = 0,76 cm² na faixa de 40) passa.',
 ]
 for i, t_ in enumerate(notes):
     c = A_[f'A{22+i}']; c.value = t_; c.font = fB if i == 0 else fS
@@ -911,7 +911,7 @@ widths(A_, {'A': 12, 'B': 14, 'C': 14, 'D': 13, 'E': 14, 'F': 13, 'G': 12, 'H': 
 
 # ================= PAINEL NÃO ARMADO =================
 P = wb.create_sheet('Painel não armado', 4)
-title(P, 'Painel entre barras e canaletas — alvenaria não armada (aula 12.2)', 'Painel l × h entre barras verticais (l = espaçamento adotado) e canaletas (h). Pior caso = painel de baixo, com a carga média do trapézio.')
+title(P, 'Painel entre barras e canaletas — alvenaria não armada', 'Painel l × h entre barras verticais (l = espaçamento adotado) e canaletas (h). Pior caso = painel de baixo, com a carga média do trapézio.')
 header(P, 3, ['Item', 'Valor', 'Unid.', 'Observação', 'Fonte'])
 r = 4
 section(P, r, 'Geometria e carga'); r += 1
@@ -927,13 +927,13 @@ line(P, r, 'z do topo do painel de baixo', '=MAX(0,H_solo-hp_)', 'm', 'Medido a 
 _k = 'INT(z_pan/H_solo*40)'
 line(P, r, 'σh no topo do painel', f"=INDEX('Solo e Empuxo'!$G$44:$G$84,{_k}+1)+(z_pan/H_solo*40-{_k})*(INDEX('Solo e Empuxo'!$G$44:$G$84,MIN({_k}+2,41))-INDEX('Solo e Empuxo'!$G$44:$G$84,{_k}+1))", 'kPa', 'Interpolado no perfil da aba Solo e Empuxo.', 'res', '0.00', 'sp_top'); r += 1
 line(P, r, 'σh na base', '=sh_base', 'kPa', '', 'res', '0.00', 'sp_base'); r += 1
-line(P, r, 'σh médio', '=(sp_top+sp_base)/2', 'kPa', 'Aula: 6,88 → 12,96, média 9,92.', 'res', '0.00', 'sp_med'); r += 1
-line(P, r, 'fd = γf·σh médio', '=gama_f*sp_med', 'kN/m²', 'Aula: 13,89.', 'key', '0.00', 'fd_pan'); r += 1
+line(P, r, 'σh médio', '=(sp_top+sp_base)/2', 'kPa', 'Média do trapézio (critério adotado).', 'res', '0.00', 'sp_med'); r += 1
+line(P, r, 'fd = γf·σh médio', '=gama_f*sp_med', 'kN/m²', '', 'key', '0.00', 'fd_pan'); r += 1
 r += 1
 section(P, r, 'Flexão (tração na flexão)'); r += 1
 line(P, r, 'ftk ⊥ fiada', "=INDEX('Referências'!$M$16:$M$18,MATCH(arg_cls,'Referências'!$L$16:$L$18,0))", 'MPa', 'Tração normal à fiada (fissura horizontal).', 'res', '0.00', 'ftk_nor', 'NBR 16868-1 Tab. 3'); r += 1
 line(P, r, 'ftk ∥ fiada', "=INDEX('Referências'!$N$16:$N$18,MATCH(arg_cls,'Referências'!$L$16:$L$18,0))", 'MPa', 'Tração paralela à fiada (fissura vertical).', 'res', '0.00', 'ftk_par', 'NBR 16868-1 Tab. 3'); r += 1
-line(P, r, 'μ = ftk⊥/ftk∥', '=ftk_nor/ftk_par', '', 'Coeficiente de ortogonalidade (aula: 0,50).', 'res', '0.00', 'mu_pan'); r += 1
+line(P, r, 'μ = ftk⊥/ftk∥', '=ftk_nor/ftk_par', '', 'Coeficiente de ortogonalidade (NBR 16868-1 E.2, sem pré-compressão).', 'res', '0.00', 'mu_pan'); r += 1
 _T = 'CHOOSE(MATCH(caso_pan,{13,18,11},0),tabela_13,tabela_18,tabela_11)'
 line(P, r, 'h/l (limitado a 0,3–3,0)', '=MIN(3,MAX(0.3,hp_/l_pan))', '', 'Faixa da tabela.', 'res', '0.000', 'hl_p'); r += 1
 line(P, r, 'μ (limitado a 0,3–1,0)', '=MIN(1,MAX(0.3,mu_pan))', '', '', 'res', '0.000', 'mu_p'); r += 1
@@ -941,21 +941,21 @@ line(P, r, 'coluna j (h/l inferior)', '=MATCH(hl_p,hl_row,1)', '', '', 'res', '0
 line(P, r, 'linha i (μ superior)', '=MATCH(mu_p,mu_col,-1)', '', 'Tabela em μ decrescente.', 'res', '0', 'ip'); r += 1
 line(P, r, 'tx (interp. em h/l)', '=IF(jp>=11,0,(hl_p-INDEX(hl_row,jp))/(INDEX(hl_row,jp+1)-INDEX(hl_row,jp)))', '', '', 'res', '0.000', 'txp'); r += 1
 line(P, r, 'ty (interp. em μ)', '=IF(ip>=9,0,(INDEX(mu_col,ip)-mu_p)/(INDEX(mu_col,ip)-INDEX(mu_col,ip+1)))', '', '', 'res', '0.000', 'typ'); r += 1
-line(P, r, 'βf da tabela', f'=(1-typ)*((1-txp)*INDEX({_T},ip,jp)+txp*INDEX({_T},ip,MIN(11,jp+1)))+typ*((1-txp)*INDEX({_T},MIN(9,ip+1),jp)+txp*INDEX({_T},MIN(9,ip+1),MIN(11,jp+1)))', '', 'Interpolação linear em h/l e μ (a planilha do curso faz o mesmo). Aula: caso 13, h/l 2, μ 0,5 → 0,118.', 'res', '0.0000', 'beta_tab', 'Planilha 11 (Ábacos NBR)'); r += 1
+line(P, r, 'βf da tabela', f'=(1-typ)*((1-txp)*INDEX({_T},ip,jp)+txp*INDEX({_T},ip,MIN(11,jp+1)))+typ*((1-txp)*INDEX({_T},MIN(9,ip+1),jp)+txp*INDEX({_T},MIN(9,ip+1),MIN(11,jp+1)))', '', 'Interpolação linear em h/l e μ (permitida pela Nota 1 da Tab. E.1). Ex.: caso 13, h/l 2, μ 0,5 → 0,118.', 'res', '0.0000', 'beta_tab', 'NBR 16868-1 E.4.2 (Tab. E.1)'); r += 1
 line(P, r, 'βf usado', '=IF(ISNUMBER(beta_dir),beta_dir,beta_tab)', '', 'Manual (Entradas) ou da tabela.', 'key', '0.0000', 'beta_f'); r += 1
-line(P, r, 'Limite de área (coef. × t²)', '=IF(caso_pan=13,2025,1350)', '', 'Planilha 11: 2025·t² no caso 13; 1350·t² nos outros.', 'res', '0', 'coef_area', 'Planilha 11'); r += 1
-line(P, r, 'Md,par = βf·fd·l²', '=beta_f*fd_pan*l_pan^2', 'kN·m/m', '×100 = kN·cm/m (aula: 26,2 kN·cm/m).', 'res', '0.0000', 'Mpar'); r += 1
-line(P, r, 'Md,nor = μ·Md,par', '=mu_pan*Mpar', 'kN·m/m', 'Aula: 13,1 kN·cm/m.', 'res', '0.0000', 'Mnor'); r += 1
+line(P, r, 'Limite de área (coef. × t²)', '=IF(caso_pan=13,2025,1350)', '', '2025·t² com 4 lados apoiados (caso 13); 1350·t² com 3 lados (os outros).', 'res', '0', 'coef_area', 'NBR 16868-1 E.4.1'); r += 1
+line(P, r, 'Md,par = βf·fd·l²', '=beta_f*fd_pan*l_pan^2', 'kN·m/m', '×100 = kN·cm/m.', 'res', '0.0000', 'Mpar'); r += 1
+line(P, r, 'Md,nor = μ·Md,par', '=mu_pan*Mpar', 'kN·m/m', '', 'res', '0.0000', 'Mnor'); r += 1
 line(P, r, 'W = t²/6 (seção bruta, por metro)', '=t_pan^2/6', 'm³/m', '', 'res', '0.000000', 'W_pan'); r += 1
-line(P, r, 'σtd,par = Md,par/W', '=Mpar/W_pan/1000', 'MPa', 'Aula: 0,004 kN/cm² = 0,04 MPa.', 'res', '0.0000', 'st_par'); r += 1
-line(P, r, 'ftd,par = ftk∥/γm', '=ftk_par/gama_m', 'MPa', 'Aula: 0,02 kN/cm².', 'res', '0.000', 'ftd_par'); r += 1
-line(P, r, 'σtd,nor = Md,nor/W', '=Mnor/W_pan/1000', 'MPa', 'Aula: 0,002 kN/cm².', 'res', '0.0000', 'st_nor'); r += 1
-line(P, r, 'ftd,nor = ftk⊥/γm', '=ftk_nor/gama_m', 'MPa', 'Aula: 0,01 kN/cm².', 'res', '0.000', 'ftd_nor'); r += 1
+line(P, r, 'σtd,par = Md,par/W', '=Mpar/W_pan/1000', 'MPa', '', 'res', '0.0000', 'st_par'); r += 1
+line(P, r, 'ftd,par = ftk∥/γm', '=ftk_par/gama_m', 'MPa', '', 'res', '0.000', 'ftd_par'); r += 1
+line(P, r, 'σtd,nor = Md,nor/W', '=Mnor/W_pan/1000', 'MPa', '', 'res', '0.0000', 'st_nor'); r += 1
+line(P, r, 'ftd,nor = ftk⊥/γm', '=ftk_nor/gama_m', 'MPa', '', 'res', '0.000', 'ftd_nor'); r += 1
 r += 1
 section(P, r, 'Cisalhamento no painel'); r += 1
-line(P, r, 'Vsd = fd·l/2', '=fd_pan*l_pan/2', 'kN/m', 'Hipótese nossa (faixa horizontal biapoiada nas barras). Trocar se o print mostrar outro Vsd.', 'res', '0.000', 'V_pan'); r += 1
-line(P, r, 'τvd = Vsd/(b·t)', '=V_pan/t_pan/1000', 'MPa', 'b = 1 m, seção bruta (planilha 05).', 'res', '0.0000', 'tau_pan', 'Planilha 05'); r += 1
-line(P, r, 'fvd = (fvk0 + 0,5σ ≤ máx)/γm', "=MIN(INDEX('Referências'!$O$16:$O$18,MATCH(arg_cls,'Referências'!$L$16:$L$18,0))+0.5*sig_pan,INDEX('Referências'!$P$16:$P$18,MATCH(arg_cls,'Referências'!$L$16:$L$18,0)))/gama_m", 'MPa', '', 'res', '0.000', 'fvd_pan', 'Planilha 05'); r += 1
+line(P, r, 'Vsd = fd·l/2', '=fd_pan*l_pan/2', 'kN/m', 'Critério adotado (faixa horizontal biapoiada nas barras).', 'res', '0.000', 'V_pan'); r += 1
+line(P, r, 'τvd = Vsd/(b·t)', '=V_pan/t_pan/1000', 'MPa', 'b = 1 m, seção bruta.', 'res', '0.0000', 'tau_pan', 'NBR 16868-1 11.4.1'); r += 1
+line(P, r, 'fvd = (fvk0 + 0,5σ ≤ máx)/γm', "=MIN(INDEX('Referências'!$O$16:$O$18,MATCH(arg_cls,'Referências'!$L$16:$L$18,0))+0.5*sig_pan,INDEX('Referências'!$P$16:$P$18,MATCH(arg_cls,'Referências'!$L$16:$L$18,0)))/gama_m", 'MPa', '', 'res', '0.000', 'fvd_pan', 'NBR 16868-1 6.2.2.6 (Tab. 4)'); r += 1
 r += 1
 section(P, r, 'Verificações'); r += 1
 line(P, r, 'Resumo', '=IF(AND(st_par<=ftd_par,st_nor<=ftd_nor,tau_pan<=fvd_pan,MAX(l_pan,hp_)<=50*t_pan,l_pan*hp_<=coef_area*t_pan^2),"OK","NÃO OK")', '', 'Usado na aba Muro em balanço.', 'key', None, 'res_pan'); r += 1
@@ -966,58 +966,58 @@ for lab, f in [('σtd,par ≤ ftd,par', '=IF(st_par<=ftd_par,"OK ("&TEXT(st_par/
                ('h·l ≤ coef·t²', '=IF(l_pan*hp_<=coef_area*t_pan^2,"OK (máx "&FIXED(coef_area*t_pan^2,1)&" m²)","NÃO OK")')]:
     line(P, r, lab, f, '', '', 'key', None, None); r += 1
 r += 1
-P.cell(row=r, column=1, value='Conferência com a aula 12.2 (mesmas entradas do exemplo): βf 0,118; Md,par 26,2 e Md,nor 13,1 kN·cm/m; σtd,par 0,004 < 0,02 e σtd,nor 0,002 < 0,01 kN/cm² — OK. O βf sai da tabela do caso (planilha 11 do curso), interpolado em h/l e μ.').font = fS
+P.cell(row=r, column=1, value='Exemplo (padrão da planilha): βf 0,118; Md,par 26,2 e Md,nor 13,1 kN·cm/m; σtd,par 0,004 < 0,02 e σtd,nor 0,002 < 0,01 kN/cm² — OK. O βf sai da Tab. E.1 da NBR 16868-1 (Anexo E), interpolado em h/l e μ.').font = fS
 widths(P, {'A': 36, 'B': 22, 'C': 9, 'D': 70, 'E': 16})
 
 # ================= ELS =================
 L_ = wb.create_sheet('ELS', 5)
-title(L_, 'ELS — fissuração e deslocamento do balanço (aula 12.2 + planilha 06_Vigas_ELS, aba I)', 'Por faixa bm (uma barra por faixa), seção I: mesas = paredes do bloco, alma = furo grauteado + septos.')
+title(L_, 'ELS — fissuração e deslocamento do balanço (NBR 16868-1 9.2.3 e 9.2.4)', 'Por faixa bm (uma barra por faixa), seção I: mesas = paredes do bloco, alma = furo grauteado + septos.')
 header(L_, 3, ['Item', 'Valor', 'Unid.', 'Observação', 'Fonte'])
 r = 4
 section(L_, r, 'Seção da faixa'); r += 1
 line(L_, r, 'Tipo de seção', '=IF(gr_tot="Sim","Retangular cheia (bm × h)",IF(n_alm>1,"Seção I ("&n_alm&" almas: furos grauteados da faixa + septos)","Seção I (alma = furo grauteado + septos)"))', '', 'Conforme o graute a cada X nas Entradas.', 'key', None, None); r += 1
 line(L_, r, 'bm (largura da faixa)', '=s_adot', 'cm', 'Espaçamento adotado das barras.', 'res', '0.0', 'bm_els'); r += 1
 line(L_, r, 'Furos grauteados na faixa', '=MAX(1,INT(bm_els/Graute+0.5))', '', 'Faixa de uma barra (bm = s, múltiplo do graute a cada X): s/X furos grauteados, cada um uma alma.', 'res', '0', 'n_alm'); r += 1
-line(L_, r, 'bw (alma)', '=IF(gr_tot="Sim",bm_els,MIN(bm_els,n_alm*IF(ISNUMBER(bw_dir),bw_dir,(L_bloco-3*hf_bl)/2+2*hf_bl)))', 'cm', 'Aula: 21,25 (19×39). Uma alma por furo grauteado da faixa (s/X). Todos os furos → seção cheia.', 'res', '0.00', 'bw_els', 'Aula 12.2'); r += 1
+line(L_, r, 'bw (alma)', '=IF(gr_tot="Sim",bm_els,MIN(bm_els,n_alm*IF(ISNUMBER(bw_dir),bw_dir,(L_bloco-3*hf_bl)/2+2*hf_bl)))', 'cm', '19×39: 21,25 por furo. Uma alma por furo grauteado da faixa (s/X). Todos os furos → seção cheia.', 'res', '0.00', 'bw_els', 'Critério adotado (seção I)'); r += 1
 line(L_, r, 'hf (parede do bloco)', '=hf_bl', 'cm', '', 'res', '0.0', None); r += 1
 line(L_, r, 'h = t', '=t_bloco', 'cm', '', 'res', '0.0', None); r += 1
 line(L_, r, 'd', '=d_util', 'cm', '', 'res', '0.0', None); r += 1
 line(L_, r, 'As1 (uma barra)', '=As_barra', 'cm²', "As2 = 0 (sem armadura comprimida → ρ' = 0).", 'res', '0.000', None); r += 1
 r += 1
 section(L_, r, 'Momentos e módulos'); r += 1
-line(L_, r, 'Ma = (Ma/Mk)·Mk·bm', '=psi_els*Mk_*bm_els', 'kN·cm', 'Momento no engaste na faixa. Aula: 6,22·0,4 = 248,8 kN·cm.', 'key', '0.0', 'Ma_', 'Aula 12.2'); r += 1
-line(L_, r, 'Em = (Em/fpk)·fpk usado', '=Em_coef*fpk_', 'MPa', 'Aula: 800·11,1 = 8889 MPa (fpk líquido).', 'res', '0', 'Em_', 'Aula 12.2'); r += 1
-line(L_, r, 'n = Es/Em', '=210000/Em_', '', 'Aula: 23,62.', 'res', '0.00', 'n_els'); r += 1
+line(L_, r, 'Ma = (Ma/Mk)·Mk·bm', '=psi_els*Mk_*bm_els', 'kN·cm', 'Momento no engaste na faixa.', 'key', '0.0', 'Ma_', 'NBR 16868-1 9.2.3'); r += 1
+line(L_, r, 'Em = (Em/fpk)·fpk usado', '=Em_coef*fpk_', 'MPa', 'Ex.: 800·11,1 = 8889 MPa (fpk líquido).', 'res', '0', 'Em_', 'NBR 16868-1 6.2.1 (Tab. 1)'); r += 1
+line(L_, r, 'n = Es/Em', '=210000/Em_', '', 'Es = 210 GPa.', 'res', '0.00', 'n_els'); r += 1
 line(L_, r, 'ftk ⊥ fiada', '=ftk_nor', 'MPa', 'Fissura horizontal na base.', 'res', '0.00', None, 'NBR 16868-1 Tab. 3'); r += 1
-line(L_, r, 'σsg = 0,9·Psg/Ae', '=IF(sg_on="Sim",0.9*peso_us*H_muro/(t_bloco/100)/1000,0)', 'MPa', 'Só se "Somar σsg" = Sim (padrão; a aula não soma). Peso da parede (usado) na altura do muro.', 'res', '0.0000', 'sig_sg'); r += 1
-line(L_, r, 'Im = bm·h³/12 − (bm − bw)·(h − 2hf)³/12', '=bm_els*t_bloco^3/12-(bm_els-bw_els)*(t_bloco-2*hf_bl)^3/12', 'cm⁴', 'Aula: 20.163 cm⁴.', 'res', '0', 'Im_', 'Planilha 06 (aba I)'); r += 1
-line(L_, r, 'Mr = (ftk + σsg)·Im/yt', '=(ftk_nor+sig_sg)/10*Im_/(t_bloco/2)', 'kN·cm', 'yt = h/2 (seção simétrica). Aula: 42,45 kN·cm.', 'key', '0.0', 'Mr_', 'Slide momento de fissuração'); r += 1
+line(L_, r, 'σsg = 0,9·Psg/Ae', '=IF(sg_on="Sim",0.9*peso_us*H_muro/(t_bloco/100)/1000,0)', 'MPa', 'Só se "Somar σsg" = Sim (padrão). Peso da parede (usado) na altura do muro.', 'res', '0.0000', 'sig_sg'); r += 1
+line(L_, r, 'Im = bm·h³/12 − (bm − bw)·(h − 2hf)³/12', '=bm_els*t_bloco^3/12-(bm_els-bw_els)*(t_bloco-2*hf_bl)^3/12', 'cm⁴', 'Seção bruta.', 'res', '0', 'Im_', 'NBR 16868-1 9.2.3'); r += 1
+line(L_, r, 'Mr = (ftk + σsg)·Im/yt', '=(ftk_nor+sig_sg)/10*Im_/(t_bloco/2)', 'kN·cm', 'yt = h/2 (seção simétrica).', 'key', '0.0', 'Mr_', 'NBR 16868-1 9.2.3'); r += 1
 r += 1
 section(L_, r, 'Estádio II'); r += 1
-line(L_, r, 'x supondo LN na mesa (b = bm)', '=(-n_els*As_barra+SQRT((n_els*As_barra)^2+2*bm_els*n_els*As_barra*d_util))/bm_els', 'cm', 'bm·x²/2 − n·As·(d − x) = 0. Aula: 3,17 cm.', 'res', '0.00', 'x_rect'); r += 1
+line(L_, r, 'x supondo LN na mesa (b = bm)', '=(-n_els*As_barra+SQRT((n_els*As_barra)^2+2*bm_els*n_els*As_barra*d_util))/bm_els', 'cm', 'bm·x²/2 − n·As·(d − x) = 0.', 'res', '0.00', 'x_rect'); r += 1
 line(L_, r, 'x supondo LN na alma (T)', '=(-((bm_els-bw_els)*hf_bl+n_els*As_barra)+SQRT(((bm_els-bw_els)*hf_bl+n_els*As_barra)^2+2*bw_els*((bm_els-bw_els)*hf_bl^2/2+n_els*As_barra*d_util)))/bw_els', 'cm', 'bw·x²/2 + (bm − bw)·hf·(x − hf/2) − n·As·(d − x) = 0.', 'res', '0.00', 'x_T'); r += 1
-line(L_, r, 'x adotado', '=IF(x_rect<=hf_bl,x_rect,x_T)', 'cm', 'Se x ≤ hf vale a hipótese da mesa (caso da aula).', 'key', '0.00', 'xII'); r += 1
-line(L_, r, 'III', '=IF(x_rect<=hf_bl,bm_els*xII^3/3+n_els*As_barra*(d_util-xII)^2,bw_els*xII^3/3+(bm_els-bw_els)*hf_bl^3/12+(bm_els-bw_els)*hf_bl*(xII-hf_bl/2)^2+n_els*As_barra*(d_util-xII)^2)', 'cm⁴', 'Aula: 2.600 cm⁴.', 'res', '0', 'III_', 'Planilha 06 (aba I)'); r += 1
+line(L_, r, 'x adotado', '=IF(x_rect<=hf_bl,x_rect,x_T)', 'cm', 'Se x ≤ hf vale a hipótese da mesa (caso usual).', 'key', '0.00', 'xII'); r += 1
+line(L_, r, 'III', '=IF(x_rect<=hf_bl,bm_els*xII^3/3+n_els*As_barra*(d_util-xII)^2,bw_els*xII^3/3+(bm_els-bw_els)*hf_bl^3/12+(bm_els-bw_els)*hf_bl*(xII-hf_bl/2)^2+n_els*As_barra*(d_util-xII)^2)', 'cm⁴', 'Seção fissurada.', 'res', '0', 'III_', 'NBR 16868-1 9.2.3'); r += 1
 line(L_, r, '(Mr/Ma)³', '=IF(Ma_>0,MIN(1,Mr_/Ma_)^3,1)', '', '', 'res', '0.00000', 'br_3'); r += 1
-line(L_, r, 'Ieq (Branson) ≤ Im', '=IF(Ma_<=Mr_,Im_,MIN(Im_,br_3*Im_+(1-br_3)*III_))', 'cm⁴', 'Aula: 2.687 cm⁴.', 'key', '0', 'Ieq_', 'Branson (1965)'); r += 1
-line(L_, r, 'heq (retângulo bm × heq, para o Ftool)', '=(12*Ieq_/bm_els)^(1/3)', 'cm', 'Aula: 40 × 9,3 com E = 8889 MPa.', 'res', '0.00', 'heq_'); r += 1
-line(L_, r, 'σs = n·Ma·(d − x)/III', '=n_els*Ma_*(d_util-xII)/III_', 'kN/cm²', 'Tensão no aço em serviço. Aula: 24,49 kN/cm².', 'res', '0.00', 'sig_s_els', 'Planilha 06'); r += 1
+line(L_, r, 'Ieq (Branson) ≤ Im', '=IF(Ma_<=Mr_,Im_,MIN(Im_,br_3*Im_+(1-br_3)*III_))', 'cm⁴', '', 'key', '0', 'Ieq_', 'NBR 16868-1 9.2.3 (Branson, 1965)'); r += 1
+line(L_, r, 'heq (retângulo bm × heq, para o Ftool)', '=(12*Ieq_/bm_els)^(1/3)', 'cm', '', 'res', '0.00', 'heq_'); r += 1
+line(L_, r, 'σs = n·Ma·(d − x)/III', '=n_els*Ma_*(d_util-xII)/III_', 'kN/cm²', 'Tensão no aço em serviço.', 'res', '0.00', 'sig_s_els', 'Estádio II'); r += 1
 r += 1
 section(L_, r, 'Deslocamento no topo'); r += 1
 # Flecha no TOPO DO MURO com carga só até o topo do solo (dedução na aba Solo e Empuxo, perfil): flecha no nível do
 # solo (ΣM) + rotação (ΣN) × trecho de muro acima do solo. Com h solo = h muro o 2º termo é zero e fica a soma de antes.
-line(L_, r, 'S = Σ V·a²(3hs − a)/6 + Σ V·a²/2·(hm − hs)', "=SUM('Solo e Empuxo'!M44:M83)+SUM('Solo e Empuxo'!N44:N83)*(H_muro-H_solo)", 'kN·m³/m', 'Carga real do perfil (mesmo resultado do Ftool com 0,32 → 5,18 kN/m). Flecha no nível do solo + rotação × trecho de muro acima do solo.', 'res', '0.0000', 'sum_d'); r += 1
+line(L_, r, 'S = Σ V·a²(3hs − a)/6 + Σ V·a²/2·(hm − hs)', "=SUM('Solo e Empuxo'!M44:M83)+SUM('Solo e Empuxo'!N44:N83)*(H_muro-H_solo)", 'kN·m³/m', 'Carga real do perfil. Flecha no nível do solo + rotação × trecho de muro acima do solo.', 'res', '0.0000', 'sum_d'); r += 1
 line(L_, r, 'δ0 = (Ma/Mk)·Σ·bm/(Em·Ieq)', '=psi_els*sum_d*bm_els/100/(Em_*1000*Ieq_/100000000)*1000', 'mm', 'Flecha imediata no topo.', 'key', '0.00', 'delta0'); r += 1
-line(L_, r, "αf = Δξ/(1 + 50ρ'), ρ' = 0", '=dxi/(1+50*0)', '', 'Sem armadura comprimida.', 'res', '0.00', 'alfa_f', 'Slide flecha final (NBR 16868-1)'); r += 1
+line(L_, r, "αf = Δξ/(1 + 50ρ'), ρ' = 0", '=dxi/(1+50*0)', '', 'Sem armadura comprimida.', 'res', '0.00', 'alfa_f', 'NBR 16868-1 9.2.4'); r += 1
 line(L_, r, 'δ∞ = δ0·(1 + αf)', '=delta0*(1+alfa_f)', 'mm', 'Flecha final.', 'key', '0.00', 'delta_'); r += 1
-line(L_, r, 'δadm = vão/limite', '=IF(vao_ref="2h",2,1)*H_muro*1000/div_adm', 'mm', 'Aula 12.2: 2L/250 no balanço (L = altura do muro: a flecha é a do topo do muro).', 'res', '0.00', 'dadm_'); r += 1
+line(L_, r, 'δadm = vão/limite', '=IF(vao_ref="2h",2,1)*H_muro*1000/div_adm', 'mm', 'Critério adotado: 2L/250 no balanço (L = altura do muro: a flecha é a do topo do muro).', 'res', '0.00', 'dadm_'); r += 1
 r += 1
 section(L_, r, 'Verificações'); r += 1
 line(L_, r, 'Resumo', '=IF(delta_<=dadm_,IF(Ma_<=Mr_,"OK — não fissura","OK — fissura na base, δ ok"),"NÃO OK — δ∞ > δadm")', '', 'Usado na aba Muro em balanço.', 'key', None, 'res_els'); r += 1
 line(L_, r, 'Fissuração na base', '=IF(Ma_<=Mr_,"Estádio I — não fissura","Estádio II — fissura (Ma/Mr = "&FIXED(Ma_/Mr_,1)&")")', '', '', 'key', None, None); r += 1
 line(L_, r, 'δ∞ ≤ δadm', '=IF(delta_<=dadm_,"OK ("&TEXT(delta_/dadm_,"0%")&")","NÃO OK ("&TEXT(delta_/dadm_,"0%")&")")', '', '', 'key', None, None); r += 1
 r += 1
-L_.cell(row=r, column=1, value='Limite confirmado na aula: 2L/250 = 12,8 mm. Pendente: se ele compara o limite com a flecha final (δ∞ = 2·δ0) ou com a imediata.').font = fS
+L_.cell(row=r, column=1, value='Limite (critério adotado): vão/250, com vão 2L no balanço — comparado com a flecha final δ∞ (a favor da segurança).').font = fS
 widths(L_, {'A': 40, 'B': 22, 'C': 9, 'D': 70, 'E': 22})
 
 # ================= CONTRAFORTES (aula 12.3) =================
@@ -1030,12 +1030,12 @@ exec(open(_os_cf.path.join(_os_cf.path.dirname(_os_cf.path.abspath(__file__)), '
 
 # ---- Referências: duas alturas e argila (09/10) — abaixo das tabelas de Libânio (linha 150 é a nota delas) ----
 REF3 = [
-    ('Duas alturas: solo e muro', 'Pedido do Jose (09/10)', 'h solo ≤ h muro. Empuxo, pressões, Mk, Vk, solo do talão e subpressão: h solo. Peso da parede e do contraforte, esbeltez (he), painel, flecha no topo, δadm e limites do app: h muro. Com h solo = h muro tudo dá o número de antes.'),
+    ('Duas alturas: solo e muro', 'Critério adotado','h solo ≤ h muro. Empuxo, pressões, Mk, Vk, solo do talão e subpressão: h solo. Peso da parede e do contraforte, esbeltez (he), painel, flecha no topo, δadm e limites do app: h muro. Com h solo = h muro tudo dá o número de antes.'),
     ('Flecha no topo com solo abaixo do topo', 'Dedução (resistência dos materiais)', 'Balanço com força V a uma altura a ≤ h solo: y(x) = V·a²(3x − a)/(6EI) para x ≥ a, rotação V·a²/(2EI) constante. y(h muro) = y(h solo) + θ·(h muro − h solo) → S = Σ V·a²(3hs − a)/6 + Σ V·a²/2·(hm − hs) (Solo e Empuxo, colunas M e N; aba ELS).'),
     ('Painel (Libânio) com solo abaixo do topo', 'Dedução, a favor da segurança', 'Placa com h = h muro (topo livre no topo do muro); triângulo de 0 no topo do muro a σh,base − σh,topo na base + uniforme σh,topo na altura toda. Em todo ponto ≥ a pressão real (acima do solo a real é zero).'),
     ('Painel não armado com solo abaixo', 'Dedução, a favor da segurança', 'Painel de baixo mais alto que o solo: z = 0 e o trapézio σh,topo → σh,base do solo vale no painel inteiro.'),
 ] + ARG_REFS
-R['A152'] = 'Duas alturas (solo e muro) e argila — 09/10'; R['A152'].font = fB
+R['A152'] = 'Duas alturas (solo e muro) e argila'; R['A152'].font = fB
 header(R, 153, ['Item', 'Fonte', 'O que diz / como foi usado'])
 for i, (a, b, c_) in enumerate(REF3):
     for col, v in zip('ABC', (a, b, c_)):

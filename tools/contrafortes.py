@@ -6,25 +6,25 @@ LIB = _json.load(open(_os2.path.join(_HERE, '..', 'dados', 'lib_tabs.json'), enc
 
 # ---------------- Referências: tabelas novas ----------------
 REF2 = [
-    ('Contraforte: modelo', 'Aula 12.3', 'Contraforte intermediário = balanço engastado na base com carga σh·l (l = espaçamento eixo a eixo). Extremidade: l/2 + balanço do muro.'),
-    ('Espessura efetiva com enrijecedores', 'NBR 16868-1 (slide da aula 12.3)', 'te = δ·t, δ pela tabela lenr/eenr × tenr/t (interpolar). Só para a esbeltez; não vale para a área resistente.'),
-    ('Largura colaborante', 'NBR 16868-1 (slide da aula 12.3)', 'Seção com enrijecedor e flexão no plano: bf ≤ 6t (cada lado), bm ≤ altura/3, hf ≤ 0,5d.'),
-    ('Seção T × retangular', 'Aula 12.3', 'Contraforte enterrado (do lado do solo): o muro fica comprimido → seção T, fpk do bloco vazado. Contraforte aparente (do lado de fora): o muro fica tracionado → seção retangular só da alma grauteada, fpk*.'),
-    ('Tensão na armadura tracionada', 'NBR 16868-1', 'Bloco de concreto: fsd = fyd (todos os Ø).'),
-    ('Armadura máxima', 'NBR 16868-1', 'Bloco de concreto: As ≤ 8% da área de graute do furo, incluindo traspasse.'),
-    ('Cisalhamento com estribos', 'Aula 12.3 + planilha 05', 'Va = fvd·b·d; Vrd2 = Va + 0,4·b·d·√fpk/γm (MPa); Asw/s = (Vsd − Va)/(0,75·fywd·d); Asw,mín = ρ·b, ρ = 0,07% (fgk 15) a 0,14% (fgk 40). Estribos nas juntas de assentamento.'),
-    ('ELS do contraforte', 'Aula 12.3', 'Seção T bruta, Em = 800·fpk (bloco de concreto), ftk ⊥ fiada; Mr = ftk·Ig/yt; Ieq de Branson; heq = (12·Ieq/bm)^(1/3) para o Ftool; δ∞ = δ0·(1 + Δξ); δadm = 2·h/250.'),
-    ('Painel entre contrafortes', 'Aula 12.3 (tabelas de Libânio — Bares/Pinheiro)', 'Base engastada (sapata corrida), topo livre, laterais apoiadas (Tipo 21) ou engastadas (Tipo 22). Carga triangular (Tab. 2.4e) + uniforme (Tab. 2.3e, Tipos 9/10). γ = h/l; m = μ·p·l²/100, l = menor vão. Flechas: Tab. 2.6b / 2.5b. Planilha 11 do curso, aba Libânio.'),
-    ('Correspondência de eixos (curso)', 'Planilha 11, aba Libânio', 'Mdx (horizontal, vão) ← μy; Mdxb (horizontal, borda livre) ← μyb; Mdy (vertical, vão) ← μx; Mdyei (vertical, engaste da base) ← μ\'x; Mdxe (horizontal, engaste lateral) ← μ\'y.'),
-    ('Painel: flexão vertical', 'Aula 12.3', 'Barras excêntricas simétricas a 5 cm das faces (d = t − 5): Mdyei traciona a face do solo na base, Mdy traciona a face externa no vão. K = 1; fpk líquido. Faixas = múltiplos do espaçamento dos furos.'),
-    ('Painel: flexão horizontal', 'Aula 12.3 + manual ABCP', 'K = 0,5: fk,horizontal = 0,5·fk,vertical se a seção horizontal não for toda grauteada (= fk se for). Faixas 20/40/60/80 em canaleta, barra centralizada no detalhamento (d = t/2).'),
-    ('Painel: ELS', 'Aula 12.3 (planilha 06, aba I)', 'Vertical: seção I (bm = espaçamento das barras, alma = furo + septos, mesas = paredes do bloco), ftk⊥. Horizontal: bm = espaçamento das canaletas, alma = canaleta grauteada, ftk∥. Flecha pela tabela com cada heq; vale a direção mais crítica (δ∞ ≤ l/250).'),
-    ('Ábaco simplificado do ELS', 'NBR 16868-1 (slide da aula 12.3)', 'Alvenaria armada: borda engastada considerada apoiada. Borda superior livre: h/t ≤ 80 até l/t = 40; cai a 60; reta até (55; 20); reta até (120; 15). Leitura do gráfico do slide — conferir na norma.'),
-    ('Painel não armado entre armaduras', 'Aula 12.3', 'Subpainel l = espaçamento das verticais × h = espaçamento das canaletas, caso 13; fd = 1,4·σh médio do subpainel de baixo.'),
-    ('Reações por charneiras', 'NBR 6118 14.7.6.1 (critério de reações de laje)', '60° a partir do apoio engastado quando o vizinho é apoiado; 45° entre apoios do mesmo tipo; borda livre não recebe. Usado só para estimar a carga horizontal na sapata corrida (dedução nossa, a aula não detalhou).'),
-    ('Posição da barra principal do contraforte', 'Templates do Revit do Jose (09/10)', 'Centro do trecho comum aos furos das fiadas P e I (onde a barra passa reta). Enterrado, da ponta: 9,5 cm no bloco 14 (contrafortes de 34 e 54) e 10,0 cm no 19 (59 e 79) → d = 24,5 / 44,5 / 49,0 / 69,0. Aparente, da face do solo: 7,0 / 10,0 cm (espelho do template — dedução). Tabela nas colunas AT–BA.'),
+    ('Contraforte: modelo', 'Critério adotado', 'Contraforte intermediário = balanço engastado na base com carga σh·l (l = espaçamento eixo a eixo). Extremidade: l/2 + balanço do muro.'),
+    ('Espessura efetiva com enrijecedores', 'NBR 16868-1 9.4.2 (Tab. 8)', 'te = δ·t, δ pela tabela lenr/eenr × tenr/t (interpolar). Só para a esbeltez; não vale para a área resistente.'),
+    ('Largura colaborante', 'NBR 16868-1 11.3.4 e 10.1.3', 'Seção com enrijecedor e flexão no plano: bf ≤ 6t (cada lado), bm ≤ altura/3, hf ≤ 0,5d.'),
+    ('Seção T × retangular', 'Critério adotado', 'Contraforte enterrado (do lado do solo): o muro fica comprimido → seção T, fpk do bloco vazado. Contraforte aparente (do lado de fora): o muro fica tracionado → seção retangular só da alma grauteada, fpk*.'),
+    ('Tensão na armadura tracionada', 'NBR 16868-1 11.3.3', 'Bloco de concreto: fsd = fyd (todos os Ø).'),
+    ('Armadura máxima', 'NBR 16868-1 12.3', 'Bloco de concreto: As ≤ 8% da área de graute do furo, incluindo traspasse.'),
+    ('Cisalhamento com estribos', 'NBR 16868-1 11.4.3 e 12.2', 'Va = fvd·b·d; Vrd2 = Va + 0,4·b·d·√fpk/γm (MPa); Asw/s = (Vsd − Va)/(0,75·fywd·d); Asw,mín = ρ·b, ρ = 0,07% (fgk 15) a 0,14% (fgk 40). Estribos nas juntas de assentamento.'),
+    ('ELS do contraforte', 'NBR 16868-1 9.2.3 e 9.2.4; δadm: critério adotado', 'Seção T bruta, Em = 800·fpk (bloco de concreto), ftk ⊥ fiada; Mr = ftk·Ig/yt; Ieq de Branson; heq = (12·Ieq/bm)^(1/3) para o Ftool; δ∞ = δ0·(1 + Δξ); δadm = 2·h/250.'),
+    ('Painel entre contrafortes', 'Libânio (Bares/Pinheiro)', 'Base engastada (sapata corrida), topo livre, laterais apoiadas (Tipo 21) ou engastadas (Tipo 22). Carga triangular (Tab. 2.4e) + uniforme (Tab. 2.3e, Tipos 9/10). γ = h/l; m = μ·p·l²/100, l = menor vão. Flechas: Tab. 2.6b / 2.5b.'),
+    ('Correspondência de eixos', 'Critério adotado', 'Mdx (horizontal, vão) ← μy; Mdxb (horizontal, borda livre) ← μyb; Mdy (vertical, vão) ← μx; Mdyei (vertical, engaste da base) ← μ\'x; Mdxe (horizontal, engaste lateral) ← μ\'y.'),
+    ('Painel: flexão vertical', 'NBR 16868-1 11.3.3; posição das barras: critério adotado', 'Barras excêntricas simétricas a c das faces (ex.: c = 5 → d = t − 5): Mdyei traciona a face do solo na base, Mdy traciona a face externa no vão. K = 1; fpk líquido. Faixas = múltiplos do espaçamento dos furos.'),
+    ('Painel: flexão horizontal', 'NBR 16868-1 6.2.2.4 b); ABCP 3.2', 'K = 0,5: fk,horizontal = 0,5·fk,vertical se a seção horizontal não for toda grauteada (= fk se for). Faixas 20/40/60/80 em canaleta, barra centralizada no detalhamento (d = t/2).'),
+    ('Painel: ELS', 'NBR 16868-1 9.2.3; δadm: critério adotado', 'Vertical: seção I (bm = espaçamento das barras, alma = furo + septos, mesas = paredes do bloco), ftk⊥. Horizontal: bm = espaçamento das canaletas, alma = canaleta grauteada, ftk∥. Flecha pela tabela com cada heq; vale a direção mais crítica (δ∞ ≤ l/250).'),
+    ('Ábaco simplificado do ELS', 'NBR 16868-1 E.5.1 (Fig. E.1)', 'Alvenaria armada: borda engastada considerada apoiada. Borda superior livre: h/t ≤ 80 até l/t = 40; cai a 60; reta até (55; 20); reta até (120; 15). Leitura do gráfico da Fig. E.1 (borda superior livre).'),
+    ('Painel não armado entre armaduras', 'NBR 16868-1 Anexo E; carga média: critério adotado', 'Subpainel l = espaçamento das verticais × h = espaçamento das canaletas, caso 13; fd = 1,4·σh médio do subpainel de baixo.'),
+    ('Reações por charneiras', 'NBR 6118 14.7.6.1 (critério de reações de laje)', '60° a partir do apoio engastado quando o vizinho é apoiado; 45° entre apoios do mesmo tipo; borda livre não recebe. Usado só para estimar a carga horizontal na sapata corrida (dedução nossa).'),
+    ('Posição da barra principal do contraforte', 'Montagens modeladas no Revit (medido)', 'Centro do trecho comum aos furos das fiadas P e I (onde a barra passa reta). Enterrado, da ponta: 9,5 cm no bloco 14 (contrafortes de 34 e 54) e 10,0 cm no 19 (59 e 79) → d = 24,5 / 44,5 / 49,0 / 69,0. Aparente, da face do solo: 7,0 / 10,0 cm (espelho do template — dedução). Tabela nas colunas AT–BA.'),
 ]
-R['A82'] = 'Aula 12.3 — muro com contrafortes'; R['A82'].font = fB
+R['A82'] = 'Muro com contrafortes'; R['A82'].font = fB
 header(R, 83, ['Item', 'Fonte', 'O que diz / como foi usado'])
 for i, (a, b, c_) in enumerate(REF2):
     rr = 84 + i
@@ -33,13 +33,13 @@ for i, (a, b, c_) in enumerate(REF2):
         cell.alignment = Alignment(wrap_text=True, vertical='top')
 
 # δ dos enrijecedores (rows 104-109)
-R['A103'] = 'δ — espessura efetiva com enrijecedores (NBR 16868-1; interpolar). Linhas = lenr/eenr; colunas = tenr/t.'; R['A103'].font = fB
+R['A103'] = 'δ — espessura efetiva com enrijecedores (NBR 16868-1 9.4.2, Tab. 8; interpolar). Linhas = lenr/eenr; colunas = tenr/t.'; R['A103'].font = fB
 for j, v in enumerate(['lenr/eenr', 1, 2, 3]):
     c = R.cell(row=104, column=1 + j, value=v); c.font = fH; c.fill = NAVY; c.alignment = Alignment(horizontal='center')
 for i, row_ in enumerate([(6, 1.0, 1.4, 2.0), (8, 1.0, 1.3, 1.7), (10, 1.0, 1.2, 1.4), (15, 1.0, 1.1, 1.2), (20, 1.0, 1.0, 1.0)]):
     for j, v in enumerate(row_):
         c = R.cell(row=105 + i, column=1 + j, value=v); c.font = fN; c.border = BOX; c.alignment = Alignment(horizontal='center')
-R['A110'] = '20 ou mais → 1,0. Fora da tabela, a planilha limita lenr/eenr a 6–20 e tenr/t a 1–3 (a aula usou a coluna 3 com tenr/t = 4,2).'; R['A110'].font = fS
+R['A110'] = '20 ou mais → 1,0. Fora da tabela, a planilha limita lenr/eenr a 6–20 e tenr/t a 1–3.'; R['A110'].font = fS
 wb.defined_names['delta_le'] = DefinedName('delta_le', attr_text="'Referências'!$A$105:$A$109")
 wb.defined_names['delta_tab'] = DefinedName('delta_tab', attr_text="'Referências'!$B$105:$D$109")
 
@@ -61,7 +61,7 @@ MONT_CF = [  # chave, t, tenr, c enterrado (da ponta), c aparente (da face do so
     ('19x79', 19, 79, 10.0, 10.0, 163.29, 150.78, (40, 24, 15, 8, 6, 3), (35, 24, 15, 8, 6, 2)),
 ]
 MONT_PHI = PHI_BARRAS   # Ø de furo (build_new.py); o phi_cf sai da lista dos Ø com espera, que é parte desta
-R['AT2'] = 'Contraforte: furo da barra principal nas montagens do Revit (templates do Jose, 09/10)'; R['AT2'].font = fB
+R['AT2'] = 'Contraforte: furo da barra principal nas montagens do Revit'; R['AT2'].font = fB
 R['AT3'] = ('c = da face tracionada ao eixo das barras (enterrado: da ponta; aparente: da face do solo) = centro do trecho '
             'comum aos furos das fiadas P e I. Aparente = espelho do template (dedução).'); R['AT3'].font = fS
 for j, h_ in enumerate(['Montagem', 't (cm)', 'tenr (cm)', 'c enterrado (cm)', 'c aparente (cm)', 'Furo comum enterrado (cm²)', 'Furo comum aparente (cm²)']):
@@ -87,7 +87,7 @@ for _cc, _w in (('AT', 10), ('AU', 9), ('AV', 9), ('AW', 11), ('AX', 11), ('AY',
     R.column_dimensions[_cc].width = _w
 
 # Libânio (rows 112-149)
-R['A112'] = 'Libânio (Bares 1972, adaptado por L. M. Pinheiro) — copiado da planilha 11 do curso (aba Ábacos Lib). γ = h/l (h = vertical, direção em que a carga varia). m = μ·p·l²/100; flecha a = α/100·p·l⁴/(E·t³). Laranja = suspeita de digitação na fonte (mantido como está).'
+R['A112'] = 'Libânio (Bares 1972, adaptado por L. M. Pinheiro). γ = h/l (h = vertical, direção em que a carga varia). m = μ·p·l²/100; flecha a = α/100·p·l⁴/(E·t³). Laranja = suspeita de digitação na fonte (mantido como está).'
 R['A112'].font = fB
 blocks = [('Triangular — laterais apoiadas (Tipo 21)', 'lib_TA'), ('Triangular — laterais engastadas (Tipo 22)', 'lib_TE'),
           ('Uniforme — laterais apoiadas (Tipo 9)', 'lib_UA'), ('Uniforme — laterais engastadas (Tipo 10)', 'lib_UE')]
@@ -121,7 +121,7 @@ for i, v in enumerate([15, 15, 15, 20, 20, 25, 25, 30, 30, 35, 35, 40]):
 
 # ---------------- Aba Contrafortes ----------------
 C = wb.create_sheet('Contrafortes', 6)
-title(C, 'Muro com contrafortes — contraforte e painel (aula 12.3)',
+title(C, 'Muro com contrafortes — contraforte e painel',
       'Contraforte = balanço engastado na base com a carga da área de influência. Painel = placa com base engastada (sapata corrida), topo livre e laterais nos contrafortes (tabelas de Libânio).')
 header(C, 3, ['Item', 'Valor', 'Unid.', 'Observação', 'Fonte'])
 r = 4
@@ -138,7 +138,7 @@ section(C, r, '1. Carga no contraforte (área de influência)'); r += 1
 # Daqui para baixo tudo lê o eixo a eixo e o comprimento ADOTADOS (na grade do bloco, Entradas): a memória calcula o
 # mesmo contraforte que o 3D desenha (decisão do Jose). Com os valores das listas das Entradas, adotado = digitado.
 Lc('Espaçamento entre contrafortes (eixo a eixo)', '=l_cf_adot', 'm', 'Adotado no módulo do bloco (Entradas).', 'res', '0.00')
-Lc('Largura de influência', '=IF(LEFT(tipo_cf,5)="Inter",l_cf_adot,l_cf_adot/2+bal_cf)', 'm', 'Intermediário = l; extremidade = l/2 + balanço do muro além do contraforte.', 'res', '0.00', 'binf', 'Aula 12.3')
+Lc('Largura de influência', '=IF(LEFT(tipo_cf,5)="Inter",l_cf_adot,l_cf_adot/2+bal_cf)', 'm', 'Intermediário = l; extremidade = l/2 + balanço do muro além do contraforte.', 'res', '0.00', 'binf', 'Critério adotado (área de influência)')
 Lc('Carga na base = σh,base·largura', '=sh_base*binf', 'kN/m', '', 'res', '0.00', 'q_cf')
 Lc('Mk na base do contraforte', '=Mk_*binf', 'kN·m', 'Mk por metro (aba Solo e Empuxo) × largura.', 'res', '0.00', 'Mk_cf')
 Lc('Vk na base do contraforte', '=Vk_*binf', 'kN', '', 'res', '0.00', 'Vk_cf')
@@ -155,13 +155,13 @@ Lc('linha i da tabela', '=MATCH(xl_d,delta_le,1)', '', '', 'res', '0', 'i_dl')
 Lc('coluna j da tabela', '=MIN(3,INT(yl_d))', '', '', 'res', '0', 'j_dl')
 Lc('tx', '=IF(i_dl>=5,0,(xl_d-INDEX(delta_le,i_dl))/(INDEX(delta_le,i_dl+1)-INDEX(delta_le,i_dl)))', '', '', 'res', '0.000', 'tx_dl')
 Lc('ty', '=IF(j_dl>=3,0,yl_d-j_dl)', '', '', 'res', '0.000', 'ty_dl')
-Lc('δ', '=(1-tx_dl)*((1-ty_dl)*INDEX(delta_tab,i_dl,j_dl)+ty_dl*INDEX(delta_tab,i_dl,MIN(3,j_dl+1)))+tx_dl*((1-ty_dl)*INDEX(delta_tab,MIN(5,i_dl+1),j_dl)+ty_dl*INDEX(delta_tab,MIN(5,i_dl+1),MIN(3,j_dl+1)))', '', 'Interpolação bilinear.', 'key', '0.000', 'delta_e', 'NBR 16868-1 (tabela de δ)')
+Lc('δ', '=(1-tx_dl)*((1-ty_dl)*INDEX(delta_tab,i_dl,j_dl)+ty_dl*INDEX(delta_tab,i_dl,MIN(3,j_dl+1)))+tx_dl*((1-ty_dl)*INDEX(delta_tab,MIN(5,i_dl+1),j_dl)+ty_dl*INDEX(delta_tab,MIN(5,i_dl+1),MIN(3,j_dl+1)))', '', 'Interpolação bilinear.', 'key', '0.000', 'delta_e', 'NBR 16868-1 9.4.2 (Tab. 8)')
 Lc('te = δ·t', '=delta_e*t_bloco', 'cm', 'Só para esbeltez.', 'res', '0.00', 'te_cf')
 Lc('he', '=he_', 'm', 'Mesmo critério da aba Muro em balanço (sem travamento: 2h).', 'res', '0.00')
 Lc('λ = he/te', '=he_*100/te_cf', '', 'Armada ≤ 30.', 'key', '0.0', 'lam_cf')
 r += 1
 section(C, r, '3. Seção do contraforte'); r += 1
-Lc('Tipo de seção', '=IF(LEFT(pos_cf,4)="Ente","T — muro comprimido (contraforte do lado do solo)","Retangular — muro tracionado (contraforte do lado de fora)")', '', 'Aula 12.3: enterrado → T; aparente → retangular.', 'key', None, None, 'Aula 12.3')
+Lc('Tipo de seção', '=IF(LEFT(pos_cf,4)="Ente","T — muro comprimido (contraforte do lado do solo)","Retangular — muro tracionado (contraforte do lado de fora)")', '', 'Enterrado → T; aparente → retangular.', 'key', None, None, 'Critério adotado')
 Lc('Seção T? (1 = sim)', '=IF(LEFT(pos_cf,4)="Ente",1,0)', '', '', 'res', '0', 'cf_T')
 Lc('h = tenr (comprimento do contraforte, com o muro)', '=tenr_adot', 'cm', '', 'res', '0.0', 'h_cf')
 Lc('bw = eenr', '=eenr', 'cm', '', 'res', '0.0', 'bw_cf')
@@ -170,21 +170,21 @@ Lc('bw = eenr', '=eenr', 'cm', '', 'res', '0.0', 'bw_cf')
 # (contraforte de 34: 27 × 24,5). Contraforte fora das montagens do Revit (só por valor digitado fora da lista): a 1ª
 # linha do mesmo bloco — com a regra da haste (inteiros a partir do muro, meio na ponta) o furo da ponta é o mesmo.
 Lc('Linha da montagem (Referências, colunas AT–BA)', '=IFERROR(MATCH(t_bloco&"x"&tenr_adot,mont_ch,0),MATCH(t_bloco,mont_t,0))', '', 'Bloco × comprimento do contraforte.', 'res', '0', 'k_mont')
-Lc('c da montagem (face tracionada → eixo das barras)', '=IF(cf_T=1,INDEX(mont_cE,k_mont),INDEX(mont_cA,k_mont))', 'cm', 'Medido no template do Revit: centro do trecho comum aos furos das fiadas P e I. Enterrado: da ponta; aparente: da face do solo (espelho do template — dedução).', 'key', '0.0', 'c_mont', 'Templates do Revit (09/10)')
+Lc('c da montagem (face tracionada → eixo das barras)', '=IF(cf_T=1,INDEX(mont_cE,k_mont),INDEX(mont_cA,k_mont))', 'cm', 'Medido no template do Revit: centro do trecho comum aos furos das fiadas P e I. Enterrado: da ponta; aparente: da face do solo (espelho do template — dedução).', 'key', '0.0', 'c_mont', 'Montagens do Revit (medido)')
 Lc('Cobrimento ao eixo das barras (da face tracionada)', '=IF(ISNUMBER(c_cf_dir),c_cf_dir,c_mont)', 'cm', 'Entradas; em branco = c da montagem.', 'res', '0.0', 'c_cf')
 Lc('d', '=h_cf-c_cf', 'cm', '', 'key', '0.0', 'd_cf')
 Lc('Aba de cada lado bf ≤ 6t', '=MIN(6*t_bloco,(l_cf_adot*100-bw_cf)/2)', 'cm', 'Lado do vão (limitada à metade do vão livre).', 'res', '0.0', 'bf_a')
 Lc('Aba do outro lado', '=IF(LEFT(tipo_cf,5)="Inter",bf_a,MIN(6*t_bloco,bal_cf*100))', 'cm', 'Extremidade: limitada ao balanço do muro.', 'res', '0.0', 'bf_b')
-Lc('bm (largura colaborante)', '=IF(cf_T=1,MIN(bw_cf+bf_a+bf_b,H_muro*100/3),bw_cf)', 'cm', 'bm ≤ bw + 2·6t e ≤ altura do muro/3.', 'key', '0.0', 'bm_cf', 'NBR 16868-1 (largura colaborante)')
+Lc('bm (largura colaborante)', '=IF(cf_T=1,MIN(bw_cf+bf_a+bf_b,H_muro*100/3),bw_cf)', 'cm', 'bm ≤ bw + 2·6t e ≤ altura do muro/3.', 'key', '0.0', 'bm_cf', 'NBR 16868-1 11.3.4 e 10.1.3')
 Lc('hf (mesa = espessura do muro)', '=IF(cf_T=1,t_bloco,0)', 'cm', '', 'res', '0.0', 'hf_cf')
 r += 1
 section(C, r, '4. Materiais'); r += 1
 Lc('fpk do bloco vazado (bruto)', '=fpk_oco', 'MPa', 'Tab. 3.2 pelo fbk.', 'res', '0.00')
 Lc('fpk* (prisma cheio)', '=fpk_chei', 'MPa', '', 'res', '0.00')
-Lc('fpk da flexão do contraforte', '=IF(cf_T=1,fpk_oco,fpk_chei)', 'MPa', 'T: compressão na mesa (muro sem graute) → fpk vazado; retangular: ponta grauteada → fpk*.', 'key', '0.00', 'fpk_cf', 'Aula 12.3')
+Lc('fpk da flexão do contraforte', '=IF(cf_T=1,fpk_oco,fpk_chei)', 'MPa', 'T: compressão na mesa (muro sem graute) → fpk vazado; retangular: ponta grauteada → fpk*.', 'key', '0.00', 'fpk_cf', 'Critério adotado')
 Lc('K', '=IF(ISNUMBER(K_cf),K_cf,IF(cf_T=1,1.5,2))', '', 'Entradas; em branco = NBR (1,5 sem graute; 2,0 grauteado).', 'res', '0.00', 'K_cfu')
 Lc('Kfd = K·0,7·fpk/γm', '=K_cfu*0.7*fpk_cf/gama_m', 'MPa', '', 'res', '0.000', 'Kfd_cf')
-Lc('fsd da barra principal', '=fyk_/gama_s', 'MPa', 'Bloco de concreto: fsd = fyd.', 'res', '0.0', 'fsd_cf', 'NBR 16868-1')
+Lc('fsd da barra principal', '=fyk_/gama_s', 'MPa', 'Bloco de concreto: fsd = fyd.', 'res', '0.0', 'fsd_cf', 'NBR 16868-1 11.3.3')
 r += 1
 section(C, r, '5. Flexão do contraforte'); r += 1
 Lc('Md/(0,5·bm·d²·Kfd)', '=Md_cf*100/(0.5*bm_cf*d_cf^2*Kfd_cf/10)', '', 'Se ≥ 1 a seção não resiste.', 'res', '0.000', 'arg_cf')
@@ -196,18 +196,18 @@ Lc('Caso T além da mesa? (1 = sim)', '=IF(AND(cf_T=1,ISNUMBER(x_cfr)),IF(0.8*x_
 Lc('x adotado', '=IF(cf_TT=1,x_cfw,x_cfr)', 'cm', '', 'key', '0.00', 'x_cf')
 Lc('x/d', '=IFERROR(x_cf/d_cf,"—")', '', 'Limite 0,45. x23 = 3/13·d; xduc = 0,45d.', 'res', '0.000', 'xd_cf')
 Lc('z = d − 0,4x ≤ 0,95d', '=IFERROR(MIN(d_cf-0.4*x_cf,0.95*d_cf),"—")', 'cm', '', 'res', '0.00', 'z_cf')
-Lc('As do momento', '=IF(Md_cf<=0,0,IF(cf_TT=1,(Cf_cf+Kfd_cf/10*bw_cf*0.8*x_cfw)/(fsd_cf/10),Md_cf*100/(fsd_cf/10*z_cf)))', 'cm²', '', 'key', '0.00', 'As_cfn', 'ABCP 3.4 / planilha 04')
-Lc('As,mín', '=IF(LEFT(AsMin_crit,5)="Curso",0.0015*bw_cf*d_cf,0.001*bw_cf*h_cf)', 'cm²', 'Curso: 0,15%·bw·d (planilha 04).', 'res', '0.00', 'As_cfm')
+Lc('As do momento', '=IF(Md_cf<=0,0,IF(cf_TT=1,(Cf_cf+Kfd_cf/10*bw_cf*0.8*x_cfw)/(fsd_cf/10),Md_cf*100/(fsd_cf/10*z_cf)))', 'cm²', '', 'key', '0.00', 'As_cfn', 'NBR 16868-1 11.3.4 / ABCP 3.4')
+Lc('As,mín', '=IF(LEFT(AsMin_crit,4)="Viga",0.0015*bw_cf*d_cf,0.001*bw_cf*h_cf)', 'cm²', 'Viga: 0,15%·bw·d; Parede: 0,10%·bw·h (Entradas).', 'res', '0.00', 'As_cfm', 'NBR 16868-1 12.2')
 Lc('As de cálculo', '=MAX(As_cfn,As_cfm)', 'cm²', '', 'key', '0.00', 'As_cfc')
 Lc('Área de uma barra (Ø das Entradas)', '=PI()*phi_cf^2/400', 'cm²', '', 'res', '0.000', 'a_cf')
 Lc('Nº de barras', '=IF(ISNUMBER(n_cf_dir),n_cf_dir,MAX(2,ROUNDUP(As_cfc/a_cf-0.005,0)))', '', 'Entradas ou automático (mínimo 2).', 'key', '0', 'n_cf')
 Lc('As efetiva', '=n_cf*a_cf', 'cm²', '', 'res', '0.00', 'As_cfe')
-Lc('As,máx no furo da ponta', '=pAs_max*Ag_furo', 'cm²', '8% da área de graute, contando o traspasse.', 'res', '0.00', 'As_cfx', 'Aula 12.3 / NBR 16868-1')
+Lc('As,máx no furo da ponta', '=pAs_max*Ag_furo', 'cm²', '8% da área de graute, contando o traspasse.', 'res', '0.00', 'As_cfx', 'NBR 16868-1 12.3')
 Lc('As no furo para comparar (com traspasse no concreto)', '=As_cfe*f_trasp', 'cm²', '2× (região de traspasse).', 'res', '0.00', 'As_cfx2')
 # O furo REAL onde a barra passa (montagem do Revit): só INFORMA. A régua do As,máx continua a do curso (linha acima,
 # com o Ag da tabela da aula, e a verificação da seção 15) — decisão do Jose (09/10): nenhuma verificação nova.
-Lc('Furo comum da barra (fiadas P e I): área', '=IF(cf_T=1,INDEX(mont_AE,k_mont),INDEX(mont_AA,k_mont))', 'cm²', 'Template do Revit. Só informa.', 'res', '0.00', 'A_fcm', 'Templates do Revit (09/10)')
-Lc('Barras do Ø das Entradas que cabem no furo comum', '=IF(cf_T=1,INDEX(mont_nE,k_mont,MATCH(phi_cf,mont_phi,0)),INDEX(mont_nA,k_mont,MATCH(phi_cf,mont_phi,0)))', '', '15 mm de graute até o bloco, espera ao lado (emenda). Só informa.', 'res', '0', 'nb_cab', 'Curso, item 12.1 (graute 15 mm)')
+Lc('Furo comum da barra (fiadas P e I): área', '=IF(cf_T=1,INDEX(mont_AE,k_mont),INDEX(mont_AA,k_mont))', 'cm²', 'Montagem do Revit. Só informa.', 'res', '0.00', 'A_fcm', 'Montagens do Revit (medido)')
+Lc('Barras do Ø das Entradas que cabem no furo comum', '=IF(cf_T=1,INDEX(mont_nE,k_mont,MATCH(phi_cf,mont_phi,0)),INDEX(mont_nA,k_mont,MATCH(phi_cf,mont_phi,0)))', '', '15 mm de graute até o bloco, espera ao lado (emenda). Só informa.', 'res', '0', 'nb_cab', 'NBR 16868-1 12.1 (graute 15 mm)')
 Lc('Barras do Ø das Entradas pela taxa de 8% do furo comum, com traspasse', '=INT(pAs_max*A_fcm/(f_trasp*a_cf))', '', 'Só informa.', 'res', '0', 'nb_tx')
 r += 1
 _hyp_r = r
@@ -226,15 +226,15 @@ for ph in (10, 12.5, 16, 20):
 r += 1
 section(C, r, '6. Cisalhamento do contraforte'); r += 1
 Lc('ρ = As,ef/(bw·d) ≤ 2%', '=MIN(As_cfe/(bw_cf*d_cf),0.02)', '', '', 'res', '0.000000', 'rho_cf')
-Lc('fvk = 0,35 + 17,5ρ ≤ 0,7', '=MIN(0.35+17.5*rho_cf,0.7)', 'MPa', '', 'res', '0.000', 'fvk_cf', 'Planilha 05')
+Lc('fvk = 0,35 + 17,5ρ ≤ 0,7', '=MIN(0.35+17.5*rho_cf,0.7)', 'MPa', '', 'res', '0.000', 'fvk_cf', 'NBR 16868-1 6.2.2.6')
 Lc('fvd = fvk/γm', '=fvk_cf/gama_m', 'MPa', '', 'res', '0.000', 'fvd_cf')
 Lc('τvd = Vd/(bw·d)', '=Vd_cf/(bw_cf*d_cf)*10', 'MPa', '', 'res', '0.000', 'tau_cf')
 Lc('Va = fvd·bw·d', '=fvd_cf/10*bw_cf*d_cf', 'kN', '', 'res', '0.00', 'Va_cf')
-Lc('Vrd2 = Va + 0,4·bw·d·√fpk*/γm', '=Va_cf+0.4*bw_cf*d_cf*SQRT(fpk_chei)/gama_m/10', 'kN', 'Alma grauteada → fpk*.', 'key', '0.00', 'Vrd2_cf', 'Aula 12.3 / planilha 05')
+Lc('Vrd2 = Va + 0,4·bw·d·√fpk*/γm', '=Va_cf+0.4*bw_cf*d_cf*SQRT(fpk_chei)/gama_m/10', 'kN', 'Alma grauteada → fpk*.', 'key', '0.00', 'Vrd2_cf', 'NBR 16868-1 11.4.3')
 Lc('fywd', '=fyk_/gama_s', 'MPa', '', 'res', '0.0', 'fywd')
 Lc('Asw/s necessário = (Vd − Va)/(0,75·fywd·d)', '=MAX(0,(Vd_cf-Va_cf)/(0.75*fywd/10*d_cf)*100)', 'cm²/m', '', 'res', '0.00', 'Asw_n')
 Lc('fgk do graute', '=fgk_', 'MPa', 'Entradas ou tabela pelo fbk.', 'res', '0.0')
-Lc('ρw,mín (0,07% em fgk 15 a 0,14% em fgk 40)', '=MIN(0.14,MAX(0.07,0.07+(fgk_-15)*0.07/25))', '%', '', 'res', '0.000', 'rhow_cf', 'Planilha 05')
+Lc('ρw,mín (0,07% em fgk 15 a 0,14% em fgk 40)', '=MIN(0.14,MAX(0.07,0.07+(fgk_-15)*0.07/25))', '%', '', 'res', '0.000', 'rhow_cf', 'NBR 16868-1 12.2')
 Lc('Asw,mín = ρw·bw', '=rhow_cf/100*bw_cf*100', 'cm²/m', '', 'res', '0.00', 'Asw_m')
 Lc('Asw/s de cálculo', '=IF(Vd_cf<=Va_cf,0,MAX(Asw_n,Asw_m))', 'cm²/m', 'Zero se Vd ≤ Va (dispensa estribo pela conta).', 'key', '0.00', 'Asw_c')
 Lc('Ø necessário com os ramos e o espaçamento das Entradas', '=SQRT(s_est*4*Asw_c/100/(ramos_est*PI()))*10', 'mm', '', 'res', '0.0', 'phi_wn')
@@ -248,7 +248,7 @@ Lc('Perímetro do estribo (sem ganchos)', '=IF(Asw_c=0,0,2*((eenr-7)+(h_cf-9)))'
 Lc('Nº de estribos na altura', '=IF(Asw_c=0,0,ROUNDUP(H_muro*100/s_est,0))', '', 'Um por junta de assentamento a cada s, na altura do muro; zero sem estribo (dispensa pela conta).', 'res', '0', 'n_est')
 r += 1
 section(C, r, '7. ELS do contraforte'); r += 1
-Lc('Em = (Em/fpk)·fpk', '=Em_coef*fpk_cf', 'MPa', 'T: seção bruta ↔ fpk bruto.', 'res', '0', 'Em_cf', 'Aula 12.3')
+Lc('Em = (Em/fpk)·fpk', '=Em_coef*fpk_cf', 'MPa', 'T: seção bruta ↔ fpk bruto.', 'res', '0', 'Em_cf', 'NBR 16868-1 6.2.1 (Tab. 1)')
 Lc('n = Es/Em', '=210000/Em_cf', '', '', 'res', '0.00', 'n_cfe')
 Lc('ftk ⊥ fiada', '=ftk_nor', 'MPa', '', 'res', '0.00')
 Lc('Área bruta', '=IF(cf_T=1,(bm_cf-bw_cf)*hf_cf+bw_cf*h_cf,bw_cf*h_cf)', 'cm²', '', 'res', '0.0', 'A_cfg')
@@ -260,13 +260,13 @@ Lc('b da compressão no estádio II', '=IF(cf_T=1,bm_cf,bw_cf)', 'cm', '', 'res'
 Lc('x supondo LN na mesa', '=(-n_cfe*As_cfe+SQRT((n_cfe*As_cfe)^2+2*b2_cf*n_cfe*As_cfe*d_cf))/b2_cf', 'cm', '', 'res', '0.00', 'x2r_cf')
 Lc('x supondo LN na alma (T)', '=IF(cf_T=1,(-((bm_cf-bw_cf)*hf_cf+n_cfe*As_cfe)+SQRT(((bm_cf-bw_cf)*hf_cf+n_cfe*As_cfe)^2+2*bw_cf*((bm_cf-bw_cf)*hf_cf^2/2+n_cfe*As_cfe*d_cf)))/bw_cf,x2r_cf)', 'cm', '', 'res', '0.00', 'x2t_cf')
 Lc('x adotado (estádio II)', '=IF(OR(cf_T=0,x2r_cf<=hf_cf),x2r_cf,x2t_cf)', 'cm', '', 'res', '0.00', 'x2_cf')
-Lc('III', '=IF(OR(cf_T=0,x2r_cf<=hf_cf),b2_cf*x2_cf^3/3,bw_cf*x2_cf^3/3+(bm_cf-bw_cf)*hf_cf^3/12+(bm_cf-bw_cf)*hf_cf*(x2_cf-hf_cf/2)^2)+n_cfe*As_cfe*(d_cf-x2_cf)^2', 'cm⁴', 'Armadura comprimida (construtivas) desprezada, como na aula.', 'res', '0', 'III_cf')
+Lc('III', '=IF(OR(cf_T=0,x2r_cf<=hf_cf),b2_cf*x2_cf^3/3,bw_cf*x2_cf^3/3+(bm_cf-bw_cf)*hf_cf^3/12+(bm_cf-bw_cf)*hf_cf*(x2_cf-hf_cf/2)^2)+n_cfe*As_cfe*(d_cf-x2_cf)^2', 'cm⁴', 'Armadura comprimida (construtivas) desprezada (a favor da segurança).', 'res', '0', 'III_cf')
 Lc('Ieq (Branson) ≤ Ig', '=IF(Ma_cf<=Mr_cf,Ig_cf,MIN(Ig_cf,(Mr_cf/Ma_cf)^3*Ig_cf+(1-(Mr_cf/Ma_cf)^3)*III_cf))', 'cm⁴', '', 'key', '0', 'Ieq_cf')
 Lc('heq (retângulo b × heq, para o Ftool)', '=(12*Ieq_cf/b2_cf)^(1/3)', 'cm', '', 'key', '0.00', 'heq_cf')
 Lc('σs = n·Ma·(d − x)/III', '=n_cfe*Ma_cf*(d_cf-x2_cf)/III_cf', 'kN/cm²', '', 'res', '0.00')
 Lc('δ0 = (Ma/Mk)·Σ·largura/(Em·Ieq)', '=psi_els*sum_d*binf/(Em_cf*1000*Ieq_cf/100000000)*1000', 'mm', 'Mesmo perfil de carga da aba Solo e Empuxo (igual ao Ftool).', 'key', '0.00', 'd0_cf')
-Lc('δ∞ = δ0·(1 + Δξ)', '=d0_cf*(1+dxi)', 'mm', "ρ' = 0, como na aula.", 'key', '0.00', 'dinf_cf')
-Lc('δadm', '=dadm_', 'mm', 'Balanço: 2L/250 (Entradas).', 'res', '0.00', 'dadm_cf')
+Lc('δ∞ = δ0·(1 + Δξ)', '=d0_cf*(1+dxi)', 'mm', "ρ' = 0 (a favor da segurança).", 'key', '0.00', 'dinf_cf')
+Lc('δadm', '=dadm_', 'mm', 'Balanço: 2L/250 (Entradas; critério adotado).', 'res', '0.00', 'dadm_cf')
 r += 1
 section(C, r, '8. Painel entre contrafortes — momentos (Libânio)'); r += 1
 Lc('Vinculação', '="Base engastada (sapata corrida), topo livre, laterais "&IF(LEFT(lat_pan,4)="Apoi","apoiadas (Tipo 21 / 9)","engastadas (Tipo 22 / 10)")', '', '', 'key')
@@ -330,7 +330,7 @@ def arr_table(tag, d_nm, kfd_nm, mom_nm, bms, phi_nm, extra_d=None):
         C[f'B{r}'] = f'={mom_nm}*A{r}/100'
         _x = f'1.25*{d_nm}*(1-SQRT(1-B{r}/(0.5*A{r}*{d_nm}^2*{kfd_nm}/10)))'
         C[f'C{r}'] = f'=IFERROR(B{r}/(fyk_/gama_s/10*MIN({d_nm}-0.4*{_x},0.95*{d_nm})),"não resiste")'
-        C[f'D{r}'] = f'=IF(LEFT(AsMin_crit,5)="Curso",0.0015*A{r}*{d_nm},0.001*A{r}*t_bloco)'
+        C[f'D{r}'] = f'=IF(LEFT(AsMin_crit,4)="Viga",0.0015*A{r}*{d_nm},0.001*A{r}*t_bloco)'
         # flags por bitola em colunas ocultas (L..Q)
         for j, ph in enumerate(_LIST):
             cl = _gl(12 + j)
@@ -359,7 +359,7 @@ Lc('x', '=IFERROR(1.25*d_pv*(1-SQRT(1-Md_pvs/(0.5*s_pv*d_pv^2*Kfd_pv/10))),"não
 Lc('fsd da barra vertical', '=fyk_/gama_s', 'MPa', '', 'res', '0.0', 'fsd_pv')
 Lc('As lado do solo', '=IFERROR(Md_pvs/(fsd_pv/10*MIN(d_pv-0.4*x_pv,0.95*d_pv)),"não resiste")', 'cm²', '', 'res', '0.00', 'As_pvs')
 Lc('As lado externo (vão)', '=IFERROR(M_pve*s_pv/100/(fsd_pv/10*MIN(d_pv-0.4*1.25*d_pv*(1-SQRT(1-M_pve*s_pv/100/(0.5*s_pv*d_pv^2*Kfd_pv/10))),0.95*d_pv)),"—")', 'cm²', 'Só com 2 barras por furo.', 'res', '0.00', 'As_pve')
-Lc('As,mín da faixa', '=IF(LEFT(AsMin_crit,5)="Curso",0.0015*s_pv*d_pv,0.001*s_pv*t_bloco)', 'cm²', '', 'res', '0.00', 'As_pvm')
+Lc('As,mín da faixa', '=IF(LEFT(AsMin_crit,4)="Viga",0.0015*s_pv*d_pv,0.001*s_pv*t_bloco)', 'cm²', '', 'res', '0.00', 'As_pvm')
 Lc('Área da barra vertical', '=PI()*phi_pv^2/400', 'cm²', '', 'res', '0.000', 'a_pv')
 Lc('Barras por furo', '=IF(LEFT(pos_pv,1)="2",2,1)', '', '', 'res', '0', 'nb_pv')
 r += 1
@@ -375,7 +375,7 @@ Lc('Md da faixa', '=M_ph*s_ph/100', 'kN·cm', '', 'res', '0.0', 'Md_ph')
 Lc('x', '=IFERROR(1.25*d_ph*(1-SQRT(1-Md_ph/(0.5*s_ph*d_ph^2*Kfd_ph/10))),"não resiste")', 'cm', '', 'res', '0.00', 'x_ph')
 Lc('fsd da barra horizontal', '=fyk_/gama_s', 'MPa', '', 'res', '0.0', 'fsd_ph')
 Lc('As horizontal', '=IFERROR(Md_ph/(fsd_ph/10*MIN(d_ph-0.4*x_ph,0.95*d_ph)),"não resiste")', 'cm²', '', 'res', '0.00', 'As_phc')
-Lc('As,mín da faixa', '=IF(LEFT(AsMin_crit,5)="Curso",0.0015*s_ph*d_ph,0.001*s_ph*t_bloco)', 'cm²', '', 'res', '0.00', 'As_phm')
+Lc('As,mín da faixa', '=IF(LEFT(AsMin_crit,4)="Viga",0.0015*s_ph*d_ph,0.001*s_ph*t_bloco)', 'cm²', '', 'res', '0.00', 'As_phm')
 Lc('Área da barra horizontal', '=PI()*phi_ph^2/400', 'cm²', '', 'res', '0.000', 'a_ph')
 Lc('Precisa de barra do lado do solo junto ao contraforte?', '=IF(AND(LEFT(pos_ph,4)<>"Cent",Mdxe_p>0),"SIM — laterais engastadas com barra encostada na face externa: Mdxe traciona a face do solo. Usar barra centralizada ou 2 barras na canaleta","Não")', '', '', 'res')
 r += 1
@@ -396,7 +396,7 @@ Lc('j', '=MATCH(hl_sp,hl_row,1)', '', '', 'res', '0', 'j_sp')
 Lc('i', '=MATCH(mu_sp,mu_col,-1)', '', '', 'res', '0', 'i_sp')
 Lc('tx', '=IF(j_sp>=11,0,(hl_sp-INDEX(hl_row,j_sp))/(INDEX(hl_row,j_sp+1)-INDEX(hl_row,j_sp)))', '', '', 'res', '0.000', 'tx_sp')
 Lc('ty', '=IF(i_sp>=9,0,(INDEX(mu_col,i_sp)-mu_sp)/(INDEX(mu_col,i_sp)-INDEX(mu_col,i_sp+1)))', '', '', 'res', '0.000', 'ty_sp')
-Lc('βf (caso 13)', '=(1-ty_sp)*((1-tx_sp)*INDEX(tabela_13,i_sp,j_sp)+tx_sp*INDEX(tabela_13,i_sp,MIN(11,j_sp+1)))+ty_sp*((1-tx_sp)*INDEX(tabela_13,MIN(9,i_sp+1),j_sp)+tx_sp*INDEX(tabela_13,MIN(9,i_sp+1),MIN(11,j_sp+1)))', '', '', 'key', '0.0000', 'bf_sp', 'Planilha 11 (Ábacos NBR)')
+Lc('βf (caso 13)', '=(1-ty_sp)*((1-tx_sp)*INDEX(tabela_13,i_sp,j_sp)+tx_sp*INDEX(tabela_13,i_sp,MIN(11,j_sp+1)))+ty_sp*((1-tx_sp)*INDEX(tabela_13,MIN(9,i_sp+1),j_sp)+tx_sp*INDEX(tabela_13,MIN(9,i_sp+1),MIN(11,j_sp+1)))', '', '', 'key', '0.0000', 'bf_sp', 'NBR 16868-1 E.4.2 (Tab. E.1)')
 Lc('Md,par = βf·fd·l²', '=bf_sp*fd_sp*l_sp^2*100', 'kN·cm/m', '', 'res', '0.0', 'Mpar_sp')
 Lc('Md,nor = μ·Md,par', '=mu_pan*Mpar_sp', 'kN·cm/m', '', 'res', '0.0', 'Mnor_sp')
 Lc('σtd,par = Md,par/W', '=Mpar_sp/(100*t_bloco^2/6)*10', 'MPa', '', 'res', '0.000', 'st_psp')
@@ -404,7 +404,7 @@ Lc('ftd,par = ftk∥/γm', '=ftk_par/gama_m', 'MPa', '', 'res', '0.000')
 Lc('σtd,nor = Md,nor/W', '=Mnor_sp/(100*t_bloco^2/6)*10', 'MPa', '', 'res', '0.000', 'st_nsp')
 Lc('ftd,nor = ftk⊥/γm', '=ftk_nor/gama_m', 'MPa', '', 'res', '0.000')
 r += 1
-section(C, r, '12. Painel — ELS nas duas direções (planilha 06, aba I)'); r += 1
+section(C, r, '12. Painel — ELS nas duas direções'); r += 1
 Lc('Em do painel = (Em/fpk)·fpk', '=Em_coef*fpk_pn', 'MPa', 'Seção I ↔ fpk líquido ou bruto; seção cheia ↔ fpk*.', 'res', '0', 'Em_pn')
 Lc('n = Es/Em', '=210000/Em_pn', '', '', 'res', '0.00', 'n_pn')
 # --- vertical
@@ -427,7 +427,7 @@ def els_block(tag, bm, bw, As1, d, As2, dl, Ma, Mr, Im):
     Lc('x com As2 tracionada (n)', f'=IF({xr1}<=hf_bl,{xr1},{xt1})', 'cm', '', 'res', '0.000', f'x1_{tag}')
     xr2 = xq(bm, bw, 'hf_bl', As1, d, As2, dl, 'n_pn', '(n_pn-1)', False); xt2 = xq(bm, bw, 'hf_bl', As1, d, As2, dl, 'n_pn', '(n_pn-1)', True)
     Lc('x adotado', f'=IF(OR({As2}=0,x1_{tag}<={dl}),x1_{tag},IF({xr2}<=hf_bl,{xr2},{xt2}))', 'cm', "Se x < d', a 2ª barra está tracionada (entra com n).", 'key', '0.00', f'x_{tag}')
-    Lc('n da 2ª barra', f'=IF(x_{tag}<={dl},n_pn,n_pn-1)', '', 'A planilha 06 do curso usa sempre n − 1 (diferença pequena).', 'res', '0.00', f'n2_{tag}')
+    Lc('n da 2ª barra', f'=IF(x_{tag}<={dl},n_pn,n_pn-1)', '', '2ª barra tracionada: n; comprimida: n − 1.', 'res', '0.00', f'n2_{tag}')
     Lc('III', f'=IF(x_{tag}<=hf_bl,{bm}*x_{tag}^3/3,{bw}*x_{tag}^3/3+({bm}-{bw})*hf_bl^3/12+({bm}-{bw})*hf_bl*(x_{tag}-hf_bl/2)^2)+n2_{tag}*{As2}*(x_{tag}-{dl})^2+n_pn*{As1}*({d}-x_{tag})^2', 'cm⁴', '', 'res', '0', f'III_{tag}')
     Lc('Ieq (Branson) ≤ Im', f'=IF({Ma}<={Mr},{Im},MIN({Im},({Mr}/{Ma})^3*{Im}+(1-({Mr}/{Ma})^3)*III_{tag}))', 'cm⁴', '', 'res', '0', f'Ieq_{tag}')
     Lc('heq = (12·Ieq/bm)^(1/3)', f'=(12*Ieq_{tag}/{bm})^(1/3)', 'cm', '', 'key', '0.00', f'heq_{tag}')
@@ -449,11 +449,11 @@ Lc('δ0 com heq horizontal', '=ap_c/100*lref_p^4/(Em_pn*1000*(heq_eh/100)^3)*100
 Lc('δb0 com heq horizontal', '=apB_c/100*lref_p^4/(Em_pn*1000*(heq_eh/100)^3)*1000', 'mm', '', 'res', '0.00', 'db0_eh')
 # Alguma direção ficou sem heq (nenhum arranjo de barras válido). O MÁXIMO do Excel IGNORA texto e daria
 # δ∞ = 0 — flecha zero que passa sem dever (achado da memória de cálculo, 09/10). Sem as quatro flechas, não há δ∞.
-Lc('δ∞ = (1 + Δξ)·maior δ', '=IF(AND(ISNUMBER(d0_ev),ISNUMBER(db0_ev),ISNUMBER(d0_eh),ISNUMBER(db0_eh)),(1+dxi)*MAX(d0_ev,db0_ev,d0_eh,db0_eh),"—")', 'mm', 'A placa tem uma flecha só; vale a direção mais crítica (menor heq), a favor da segurança.', 'key', '0.00', 'dinf_p', 'Aula 12.3')
+Lc('δ∞ = (1 + Δξ)·maior δ', '=IF(AND(ISNUMBER(d0_ev),ISNUMBER(db0_ev),ISNUMBER(d0_eh),ISNUMBER(db0_eh)),(1+dxi)*MAX(d0_ev,db0_ev,d0_eh,db0_eh),"—")', 'mm', 'A placa tem uma flecha só; vale a direção mais crítica (menor heq), a favor da segurança.', 'key', '0.00', 'dinf_p', 'NBR 16868-1 9.2.4')
 Lc('δadm = menor vão/limite', '=lref_p*1000/div_adm', 'mm', '', 'res', '0.00', 'dadm_p')
 Lc('Ábaco NBR (borda superior livre): h/t', '=H_muro*100/t_bloco', '', '', 'res', '0.0', 'ht_ab')
 Lc('l/t', '=l_cf_adot*100/t_bloco', '', '', 'res', '0.0', 'lt_ab')
-Lc('h/t limite (leitura do gráfico)', '=IF(lt_ab<=40,80,IF(lt_ab<=55,60-(lt_ab-40)*40/15,IF(lt_ab<=120,20-(lt_ab-55)*5/65,"fora do ábaco")))', '', 'Engaste da base tratado como apoio.', 'res', '0.0', 'htl_ab', 'NBR 16868-1 (slide da aula 12.3)')
+Lc('h/t limite (leitura do gráfico)', '=IF(lt_ab<=40,80,IF(lt_ab<=55,60-(lt_ab-40)*40/15,IF(lt_ab<=120,20-(lt_ab-55)*5/65,"fora do ábaco")))', '', 'Engaste da base tratado como apoio.', 'res', '0.0', 'htl_ab', 'NBR 16868-1 E.5.1 (Fig. E.1)')
 r += 1
 section(C, r, '13. Cargas para a sapata corrida (dimensionamento na aba Fundação)'); r += 1
 Lc('Ângulo das charneiras a partir da base', '=IF(LEFT(lat_pan,4)="Apoi",60,45)', '°', 'Base engastada + laterais apoiadas → 60°; laterais engastadas → 45°.', 'res', '0', 'th_ch', 'NBR 6118 14.7.6.1')

@@ -2,7 +2,7 @@
   CARDS — Fundação — estabilidade: cargas, tombamento, deslizamento e tensões no solo (aba "Fundação", seções 1 a 6).
   O dimensionamento da sapata (flexão, cortante, torção — seções 7 e 8) é do grupo cards/sapata.ts.
 
-  Roteiro da aba "Fundação Sapata Corrida p muro" do Eng. Gilberto, adaptado com as escolhas do Jose: sobrecarga
+  Roteiro de sapata corrida de muro (critério adotado), com as escolhas do Jose: sobrecarga
   sobre o talão estabiliza (seletor q_est), deslizamento só com atrito N·tg δ_b (+ adesão opcional = 0 + passivo
   opcional), tombamento com FS em torno do pé E |e| ≤ B/4 — vale o pior (são duas verificações; o resumo reprova se
   qualquer uma falhar, que é o "vale o pior" da planilha).
@@ -32,9 +32,15 @@ import { desenhoDasDistanciasAoCentro, desenhoDasForcasQueEstabilizam, desenhoDa
 const ABA = 'Fundação';
 const cel = (endereco: string) => `${ABA}!${endereco}`;
 
-const GILBERTO: Ref = { fonte: 'Gilberto' };
+// o roteiro da fundação (parcelas de carga, sobrecarga que estabiliza, atrito na base, e ≤ B/4, σmáx ≤ σadm):
+// convenção de projeto sem norma que a fixe
+const CRITERIO: Ref = { fonte: 'Critério adotado' };
 // FS 2,0 e 1,5 "pelo que sei, NBR 11682 — conferir" (nota das Entradas): a norma ainda não está na biblioteca
 const NBR_11682: Ref = { fonte: 'NBR 11682' };
+// Ka/Kp e o empuxo continuado até a base da sapata
+const RANKINE: Ref = { fonte: 'Rankine' };
+// σadm = 20·N_SPT kPa (0,02·N MPa), de 5 a 20 golpes
+const CINTRA: Ref = { fonte: 'Cintra, Aoki e Albiero' };
 // peso específico da alvenaria grauteada (14 kN/m³ + graute) → γ do contraforte estimado
 const NBR_PESO: Ref = { fonte: 'NBR 16868-1', item: '8.3.1.1' };
 
@@ -79,7 +85,7 @@ export const SIMBOLOS_ESTABILIDADE: Readonly<Record<string, string>> = {
   M_N: 'momento das cargas verticais em relação ao centro da base',
   'M_{cen}': 'momento total em relação ao centro da base (+ para o pé)',
   e: 'excentricidade da resultante na base (+ para o pé)',
-  'e_{lim}': 'excentricidade limite B/4 (critério do Gilberto)',
+  'e_{lim}': 'excentricidade limite da resultante na base (B/4)',
   // braços até o pé (13/10): a mesma legenda do desenho das forças que estabilizam
   'x_{p,muro}': 'braço do peso do muro até o pé',
   'x_{p,cf}': 'braço do peso do contraforte até o pé',
@@ -246,7 +252,7 @@ function cardCargas(r: Resultado): Card {
       casas: 3, unidade: 'm',
       ...(verifPonta ? { verif: pedidoCf('ponta'), limiteTex: texCf } : {}),
     }),
-  ], GILBERTO);
+  ]);
 
   // ── parcelas verticais (características, por módulo) ──
   const almaCf = sub(f.tenr, f.tb);       // trecho do contraforte além da parede: (tenr_adot − t_bloco)/100
@@ -287,7 +293,7 @@ function cardCargas(r: Resultado): Card {
   const verticais = secao('Cargas verticais por módulo', [
     ...passosParcelas,
     m.passo('N_tot', 'N_{tot}', soma(...ps.map(folhaDaParcela)), { casas: 3, unidade: 'kN' }),
-  ], GILBERTO);
+  ], CRITERIO);
 
   // ── empuxo continuado até a base da sapata ──
   // a água só entra no trecho da sapata se o NA estiver acima da base dela: AND(Agua="Sim"; H_solo + h_sap > z_NA)
@@ -298,12 +304,12 @@ function cardCargas(r: Resultado): Card {
       ? soma(f.shBase, mul(f.hs, soma(mul(f.Ka, sub(f.gama, f.gw)), f.gw)))
       : soma(f.shBase, mul(f.hs, mul(f.Ka, f.gama))), { casas: 2, unidade: 'kPa' }),
     m.passo('H_k', 'H_k', mul(soma(f.Vk, mul(div(soma(f.shBase, f.shSap), DOIS), f.hs)), f.L), { casas: 2, unidade: 'kN' }),
-  ], GILBERTO);
+  ], RANKINE);
 
   return {
     id: 'fundacao.cargas',
     titulo: 'Fundação · cargas',
-    ref: GILBERTO,
+    ref: CRITERIO,
     figura: 'Fig. 15',
     secoes: [geometria, peso, verticais, empuxo],
     avisos: [],
@@ -354,13 +360,13 @@ function cardTombamento(r: Resultado): Card {
   const bracos = ps.map((p) => m.passo(cel(`D${p.linha}`), BRACO[p.linha].sim,
     sobreASapata ? BRACO[p.linha].expr : p.x ? sub(f.B, p.x) : meioB, { casas: 3, unidade: 'm' }));
   const mEstPorBraco = soma(...ps.map((p) => mul(folhaDaParcela(p), nome(cel(`D${p.linha}`), BRACO[p.linha].sim, 3, 'm'))));
-  const secBracos = secao('Braços até o pé', bracos, GILBERTO);
+  const secBracos = secao('Braços até o pé', bracos);
 
   // Duas seções, cada uma com o seu desenho (Jose, 13/10: "duas figuras separadas, uma para as forças que tombam e
   // outra para as que estabilizam"): o momento das cargas verticais em torno do pé, e depois o do empuxo e o FS.
   const estab = secao('Momento estabilizante em torno do pé', [
     m.passo('M_est', 'M_{est}', mEstPorBraco, { casas: 3, unidade: 'kN·m' }),
-  ], GILBERTO);
+  ]);
   const desEstab = desenhoDasForcasQueEstabilizam(r);
   if (desEstab) secBracos.desenho = desEstab;
   const fs = secao('Momento de tombamento e fator de segurança', [
@@ -372,7 +378,7 @@ function cardTombamento(r: Resultado): Card {
       ? m.passo('FS_t', 'FS_{tomb}', div(f.Mest, f.Mtb), { casas: 2, ref: NBR_11682, verif: verifFS })
       // sem momento de tombamento a planilha publica 99 (convenção: nada tomba)
       : m.passo('FS_t', 'FS_{tomb}', null, { casas: 2, origem: 'adotado', ref: NBR_11682, verif: verifFS }),
-  ], GILBERTO);
+  ], NBR_11682);
 
   /*
     |e| ≤ B/4 nos dois lados. A Verificacao compara uma grandeza com UM limite: com e ≥ 0 o limite é a célula
@@ -412,7 +418,7 @@ function cardTombamento(r: Resultado): Card {
   const mN = foraDoCentro.length
     ? soma(...foraDoCentro.map((p) => mul(folhaDaParcela(p), nome(cel(`F${p.linha}`), DIST[p.linha], 3, 'm'))))
     : null;
-  const secDist = secao('Distâncias ao centro (+ do lado do pé)', distancias, GILBERTO);
+  const secDist = secao('Distâncias ao centro (+ do lado do pé)', distancias);
   const desCentro = desenhoDasDistanciasAoCentro(r);
   if (desCentro) secDist.desenho = desCentro;
 
@@ -421,12 +427,12 @@ function cardTombamento(r: Resultado): Card {
     m.passo('M_cen', 'M_{cen}', soma(f.Mtb, f.MN), { casas: 3, unidade: 'kN·m' }),
     eNum !== null && m.passo('e_lim', 'e_{lim}', div(f.B, cte(4, 0)), { casas: 3, unidade: 'm' }),
     passoE,
-  ], GILBERTO);
+  ], CRITERIO);
 
   return {
     id: 'fundacao.tombamento',
     titulo: 'Fundação · tombamento',
-    ref: GILBERTO,
+    ref: NBR_11682,
     secoes: [secBracos, estab, fs, ...(distancias.length ? [secDist] : []), exc],
     avisos: [],
     aplicavel: true,
@@ -460,11 +466,11 @@ function cardDeslizamento(r: Resultado): Card {
     temPhiB && m.passo('R_at', 'R_{at}', [mul(f.N, tgDelta), mul(max(cte(0, 0), f.N), tgDelta)], { casas: 2, unidade: 'kN' }),
     comAdesao && m.passo('R_ad', 'R_{ad}', mul(m.ent('ades_b', 'c_a'), f.B, f.L), { casas: 2, unidade: 'kN' }),
     // Kp do solo de apoio (Jose, 14/10): o dente está cravado no solo natural sob a sapata
-    comPassivo && temNumero(m, 'Kp_b') && m.passo('Kp_b', 'K_{p,b}', pot(tan(rad(soma(cte(45, 0), div(phib, DOIS)))), 2), { casas: 3, ref: { fonte: 'Aula 12.1' } }),
+    comPassivo && temNumero(m, 'Kp_b') && m.passo('Kp_b', 'K_{p,b}', pot(tan(rad(soma(cte(45, 0), div(phib, DOIS)))), 2), { casas: 3, ref: RANKINE }),
     comPassivo && m.passo('E_p', 'E_p', mul(div(div(mul(Kpb, f.gama, pot(frenteGarantida ? soma(f.hfr, f.hs, f.hden) : f.hden, 2)), DOIS), DOIS), f.L), {
       casas: 2, unidade: 'kN', ref: NBR_PASSIVO,
     }),
-  ], GILBERTO);
+  ], CRITERIO);
 
   // (R_at + R_ad + E_p)/H_k: parcela zerada pelo seletor fica fora (somar zero não muda o número)
   const resistentes = [Rat, ...(comAdesao ? [Rad] : []), ...(comPassivo ? [Ep] : [])];
@@ -478,12 +484,12 @@ function cardDeslizamento(r: Resultado): Card {
         limite: m.ent('FS_desl', 'FS_{desl,m\\acute{\\imath}n}'), relacao: '>=', celula: 'chk_fs_d',
       },
     }),
-  ], GILBERTO);
+  ], NBR_11682);
 
   return {
     id: 'fundacao.deslizamento',
     titulo: 'Fundação · deslizamento',
-    ref: GILBERTO,
+    ref: NBR_11682,
     figura: 'Fig. 24',
     secoes: fs ? [resistencias, fs] : [resistencias],
     avisos: temPhiB ? [] : ["Digitar o φ' do solo de apoio (sondagem)"],
@@ -508,9 +514,9 @@ function cardTensoes(r: Resultado): Card {
     !temAdm ? null
       : sigAdmDigitado
         ? m.passo('s_adm', '\\sigma_{adm}', null, { casas: 0, unidade: 'kPa', origem: 'entrada' })
-        // regra prática da aba do Gilberto, 2·SPT tf/m² = 20·SPT kPa, só dentro da faixa: SPT acima de 20 conta 20
+        // regra prática 2·SPT tf/m² = 20·SPT kPa (Cintra, Aoki e Albiero), só dentro da faixa: SPT acima de 20 conta 20
         // (Jose, 14/10) — IF(SPT_b>=5; 20·MIN(SPT_b;20); "—")
-        : m.passo('s_adm', '\\sigma_{adm}', mul(cte(20, 0), min(m.ent('SPT_b', 'N_{SPT}'), cte(20, 0))), { casas: 0, unidade: 'kPa', ref: GILBERTO }),
+        : m.passo('s_adm', '\\sigma_{adm}', mul(cte(20, 0), min(m.ent('SPT_b', 'N_{SPT}'), cte(20, 0))), { casas: 0, unidade: 'kPa', ref: CINTRA }),
   ]);
 
   const secoes = admissivel.passos.length ? [admissivel] : [];
@@ -535,7 +541,7 @@ function cardTensoes(r: Resultado): Card {
         ? m.passo('s_lo', '\\sigma_{m\\acute{\\imath}n}', mul(sMed, sub(cte(1, 0), seisEB)), { casas: 1, unidade: 'kPa' })
         // triângulo: parte da base descola (informativo na planilha, não reprova)
         : m.passo('s_lo', '\\sigma_{m\\acute{\\imath}n}', null, { casas: 1, unidade: 'kPa', origem: 'calculado' }),
-    ], GILBERTO);
+    ]);
     const desTensoes = desenhoDasTensoes(r);
     if (desTensoes) diagrama.desenho = desTensoes;
     secoes.push(diagrama);
@@ -544,7 +550,7 @@ function cardTensoes(r: Resultado): Card {
   return {
     id: 'fundacao.tensoes',
     titulo: 'Fundação · tensões no solo',
-    ref: GILBERTO,
+    ref: CRITERIO,
     secoes,
     avisos,
     aplicavel: true,

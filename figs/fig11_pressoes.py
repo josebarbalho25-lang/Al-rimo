@@ -2,7 +2,7 @@ from figlib import SVG, C
 W, H = 1180, 600
 s = SVG(W, H)
 s.text(30, 34, "Fig. 11 — Pressões no muro: sem coesão, com coesão e com água", size=18, anchor='start', weight='bold')
-s.text(30, 56, "Rankine, como na aula 12.1. A planilha calcula o perfil em 40 fatias e integra força e momento.", size=13, anchor='start', color=C['note'])
+s.text(30, 56, "Empuxo ativo de Rankine. A planilha calcula o perfil em 40 fatias e integra força e momento.", size=13, anchor='start', color=C['note'])
 y0, Hp = 130, 360
 def axis(x, title, sub):
     s.text(x + 90, y0 - 30, title, size=15, weight='bold')

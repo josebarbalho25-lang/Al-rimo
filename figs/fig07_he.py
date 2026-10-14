@@ -17,7 +17,7 @@ s.pline(dpts, stroke=C['load'], sw=2, extra='stroke-dasharray="6,4"')
 s.dim_v(x - 30, yb - hpx, yb, 'h', side=-1, ext_from=(x, x), size=13)
 s.text(x + 150, yb - hpx / 2 - 10, 'he = 2·h', size=20, weight='bold', color=C['load'])
 s.text(x + 150, yb - hpx / 2 + 14, 'balanço livre no topo', size=12, color=C['note'])
-s.text(x + 150, yb - hpx / 2 + 30, '(aula 12.2)', size=12, color=C['note'])
+s.text(x + 150, yb - hpx / 2 + 30, '(NBR 16868-1, 9.4.1)', size=12, color=C['note'])
 # (b) com travamento lateral
 x2, w2 = 640, 420
 s.text(x2 + w2 / 2, 110, '(b) Com travamento lateral (paredes transversais / enrijecedores)', size=15, weight='bold')
@@ -33,5 +33,5 @@ s.dim_v(x2 - 40, yb - hpx, yb, 'h', side=-1, ext_from=(x2 - 10, x2 - 10), size=1
 s.text(x2 + w2 / 2, yb - hpx + 50, 'he = mín( αv·h ;  0,7·√(αv·h·αh·l) )', size=17, weight='bold', color=C['load'])
 s.text(x2 + w2 / 2, yb - hpx + 90, 'αv = 1,0 travada no topo e na base;  2,5 só na base', size=13)
 s.text(x2 + w2 / 2, yb - hpx + 112, 'αh = 1,0 travada nos dois lados;  2,5 só de um lado', size=13)
-s.text(x2 + w2 / 2, yb - hpx + 146, 'planilha 02 do curso (aba Altura Efetiva)', size=12, color=C['note'])
+s.text(x2 + w2 / 2, yb - hpx + 146, 'NBR 16868-1, 9.4.1', size=12, color=C['note'])
 s.save('fig07_he.svg'); print('ok')

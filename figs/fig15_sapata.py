@@ -3,7 +3,7 @@ S = 150.0                     # px por metro
 W, H = 1180, 770
 s = SVG(W, H)
 s.text(30, 34, 'Fig. 15 — Sapata corrida: posição, forças, tombamento e deslizamento', size=18, anchor='start', weight='bold')
-s.text(30, 56, 'Corte perpendicular ao muro. x é medido a partir da borda aterrada. Roteiro da aba do Eng. Gilberto, adaptado.', size=13, anchor='start', color=C['note'])
+s.text(30, 56, 'Corte perpendicular ao muro. x é medido a partir da borda aterrada. Estabilidade: NBR 6122 e Bastos (Sapatas de Fundação); concreto armado: NBR 6118.', size=13, anchor='start', color=C['note'])
 # geometria (exemplo): B 1,4; a 0,95; t 0,19; h 0,30; H 1,6; dente 0,25 x 0,5
 B, a, t, hs, Hm, bd, hd = 1.4, 0.95, 0.19, 0.30, 1.6, 0.25, 0.5
 x0, yb = 360, 520                    # x0 = borda aterrada; yb = base da sapata
@@ -61,7 +61,7 @@ s.text(X(B), Y(0) + 203, 'pé (borda externa)', size=11, color=C['note'])
 # texto à direita
 lx = 790
 s.text(lx, 110, 'Verificações (por módulo)', size=15, anchor='start', weight='bold')
-lines = ['Tombamento: FS = ΣN·(B − x) / M tombador ≥ 2,0', '   e também |e| ≤ B/4 (critério do Gilberto) — vale o pior',
+lines = ['Tombamento: FS = ΣN·(B − x) / M tombador ≥ 2,0', '   e também |e| ≤ B/4 (critério adotado) — vale o pior',
          'Deslizamento: (N·tg δ + adesão + passivo)/H ≥ 1,5', '   δ = 2/3·φ por padrão; adesão = 0 (curto prazo)',
          'Tensão: σ máx ≤ σadm (trapézio ou triângulo)', 'Sapata: flexão e cortante da ponta e do talão;', '   com contrafortes, torção ±Md/2 junto a cada um']
 for i, l in enumerate(lines):
@@ -75,7 +75,7 @@ def mini(x, y, aa, lab, lab2):
     s.text(x + 0.7 * sc, y + 1.6 * sc + 16, lab, size=11)
     s.text(x + 0.7 * sc, y + 1.6 * sc + 30, lab2, size=10, color=C['note'])
 mini(820, 320, 0.095, 'toda para fora', 'divisa; contraforte aparente')
-mini(940, 320, 0.7, 'mista', 'aba do Gilberto')
+mini(940, 320, 0.7, 'mista', 'ponta e talão')
 mini(1060, 320, 1.305, 'toda sob o aterro', 'contraforte enterrado')
 s.text(lx, 470, 'Contraforte enterrado precisa de talão ≥ tenr − t;', size=12, anchor='start')
 s.text(lx, 488, 'aparente precisa de ponta ≥ tenr − t (a planilha avisa).', size=12, anchor='start')

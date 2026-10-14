@@ -13,7 +13,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { Alteracoes, Valor } from '@/motor/tipos';
-import { validarValor, type Campo } from './campos';
+import { mesmoValor, validarValor, type Campo } from './campos';
 import { alteracoesDoExemplo, alteracoesDoNovo, extrasDoNovo, TITULO_DO_EXEMPLO } from './novo';
 import { ruim } from './recadoRuim';
 
@@ -92,6 +92,13 @@ export function projetoExemplo(): Projeto {
   return { id: novoIdDeProjeto(), titulo: TITULO_DO_EXEMPLO, alteracoes: alteracoesDoExemplo(), extras: {} };
 }
 
+/*
+  O nome que o exemplo tinha antes (até 14/10). O muro de exemplo que ficou aberto no navegador volta pelo lembrete
+  (store.ts, mesma porta do Abrir) com o nome gravado; aqui ele ganha o de hoje. Arquivo salvo não é afetado: o
+  título dele é o nome do arquivo.
+*/
+const TITULOS_ANTIGOS_DO_EXEMPLO: ReadonlySet<string> = new Set(['Exemplo — aula 12.2']);
+
 export function serializarProjeto(p: Projeto, versaoDaConta: string): string {
   const a: Arquivo = {
     formato: FORMATO,
@@ -131,8 +138,33 @@ export type Aberto =
     · Graute (13/10): era texto ("Parcial (seção I)" / "Total (seção cheia)") e virou a grade "graute a cada X cm".
       Total → 20 (todos os furos). Parcial era o graute só nos furos com barra → a grade das barras que o arquivo
       tinha (s do balanço ou s vertical do painel), e o muro abre com os mesmos números; sem s digitado, 40.
+    · Opções de lista que mudaram de NOME sem mudar de conta (14/10, produto comercial: a opção diz o que é, não de
+      onde veio): ver OPCAO_RENOMEADA.
 */
-function renomeado(nome: string, v: unknown, todas: Record<string, unknown>): unknown {
+
+/*
+  Nome velho → nome novo de cada opção renomeada. A conta é a mesma: a planilha compara só o começo do texto
+  (fpk_ref: "Líqu"/"Brut") ou a opção inteira (AsMin_crit), e o critério de cada uma não mudou — Viga = 0,15 %·b·d,
+  Parede = 0,10 %·b·t.
+
+  A troca só acontece se a lista de HOJE não tiver o valor velho: o app que ainda roda com a planilha anterior abre
+  o arquivo como sempre abriu, e o de depois abre o arquivo antigo na opção nova — nos dois casos, sem "entrada
+  ignorada" e com os mesmos números.
+*/
+const OPCAO_RENOMEADA: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  fpk_ref: { 'líquida (curso)': 'Líquida', 'bruta (nbr)': 'Bruta' },
+  AsMin_crit: { curso: 'Viga (b·d)', nbr: 'Parede (b·t)' },
+};
+
+function opcaoRenomeada(campo: Campo, v: string): string {
+  const mapa = OPCAO_RENOMEADA[campo.meta.nome];
+  if (!mapa || campo.opcoes.some((o) => mesmoValor(o.valor, v))) return v;
+  return mapa[v.trim().toLocaleLowerCase('pt-BR')] ?? v;
+}
+
+function renomeado(campo: Campo, v: unknown, todas: Record<string, unknown>): unknown {
+  const nome = campo.meta.nome;
+  if (typeof v === 'string' && nome in OPCAO_RENOMEADA) return opcaoRenomeada(campo, v);
   if (nome !== 'Graute' || typeof v !== 'string') return v;
   if (v.trim().toLowerCase().startsWith('total')) return 20;
   const contrafortes = todas.Tipo_muro === 'Contrafortes';
@@ -182,7 +214,7 @@ export function desserializarProjeto(
         descartados.push(k);
         continue;
       }
-      const lido = validarValor(c, renomeado(k, v, fonte as Record<string, unknown>));
+      const lido = validarValor(c, renomeado(c, v, fonte as Record<string, unknown>));
       if (lido.ok) saida[k] = lido.valor;
       else recusados.push(k);
     }
@@ -204,11 +236,12 @@ export function desserializarProjeto(
   // Só UUID: um id qualquer escrito à mão ("1", "muro") se repetiria em outro arquivo e voltaria a colisão de
   // GUIDs. O que vem no formato fica como veio, letra por letra — é o texto exato que vira GUID.
   const ganhouId = !(typeof a.id === 'string' && FORMATO_DO_ID.test(a.id));
+  const titulo = typeof a.titulo === 'string' && a.titulo.trim() ? a.titulo : 'Sem título';
   return {
     ok: true,
     projeto: {
       id: ganhouId ? novoIdDeProjeto() : (a.id as string),
-      titulo: typeof a.titulo === 'string' && a.titulo.trim() ? a.titulo : 'Sem título',
+      titulo: TITULOS_ANTIGOS_DO_EXEMPLO.has(titulo) ? TITULO_DO_EXEMPLO : titulo,
       alteracoes,
       extras: filtrar(a.extras, 'modelo'),
     },

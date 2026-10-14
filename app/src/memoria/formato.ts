@@ -93,7 +93,7 @@ export function texTexto(s: string): string {
   return `\\text{${s.replace(/[\\{}$&#^_%~]/g, (c) => '\\' + c)}}`;
 }
 
-/** Como a fonte é desenhada, num lugar só: "NBR 16868-1 · 11.2" / "Aula 12.1 · slide 8". */
+/** Como a fonte é desenhada, num lugar só: "NBR 16868-1 · 11.2" / "Critério adotado" (sem item). */
 export function textoDaRef(ref: { fonte: string; item?: string } | undefined): string {
   if (!ref) return '';
   return ref.item ? `${ref.fonte} · ${ref.item}` : ref.fonte;

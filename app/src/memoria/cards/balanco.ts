@@ -113,10 +113,12 @@ const VER = {
 } as const;
 
 const NBR = (item: string): Ref => ({ fonte: 'NBR 16868-1', item });
-const AULA_122: Ref = { fonte: 'Aula 12.2' };
-const BLOCOS_122: Ref = { fonte: 'Aula 12.2', item: 'tabela de blocos' };
-const CURSO_04: Ref = { fonte: 'Curso', item: 'planilha 04' };
+// convenção de projeto sem outra fonte: tabela de blocos (parede, Aliq/Abr) e alma = furo + 2 septos
+const CRITERIO: Ref = { fonte: 'Critério adotado' };
 const NBR6118_ANC: Ref = { fonte: 'NBR 6118', item: '9.4.2.5' };
+// a tabela do ℓb (por Ø, concreto e zona de aderência) é o comprimento básico da NBR 6118: a NBR 16868-1 12.7.2 manda
+// a barra que nasce no concreto seguir a 6118
+const NBR6118_LB: Ref = { fonte: 'NBR 6118', item: '9.4.2.4' };
 
 // Comparação de texto do Excel: "=" e LEFT() não diferenciam maiúscula de minúscula.
 const comeca = (s: string, prefixo: string) => s.slice(0, prefixo.length).toLowerCase() === prefixo.toLowerCase();
@@ -125,7 +127,7 @@ const so = (secoes: Secao[]) => secoes.filter((s) => s.passos.length > 0);
 
 /**
   As folhas que mais de um card usa — sempre com o mesmo símbolo e as mesmas casas (o teste cobra a régua única).
-  Md e K·fd também em kN·cm e kN/cm² (fator), como a planilha 04 do curso escreve a conta da flexão.
+  Md e K·fd também em kN·cm e kN/cm² (fator), como a conta de mão da flexão é escrita.
 */
 function folhas(m: Memoria) {
   return {
@@ -221,10 +223,11 @@ function secaoResistencia(m: Memoria, f: Folhas, c: Ctx) {
   const num = (id: string) => m.valor(id) !== null;
   const kDigitado = m.num('K_dir') !== null;                      // ISNUMBER(K_dir)
   const daTabela = 'tabela';
-  const refBloco = BLOCOS_122;
+  const refBloco = CRITERIO;
   return secao('Resistência da alvenaria', [
+    // bloco classe A (fbk ≥ 8 MPa): alvenaria em contato com o solo
     m.passo('fbk_', 'f_{bk}', null, {
-      casas: 1, unidade: 'MPa', origem: 'entrada', ref: { fonte: 'Aula 12.1', item: 'slide 2' },
+      casas: 1, unidade: 'MPa', origem: 'entrada', ref: { fonte: 'NBR 6136' },
       verif: { chave: 'balanco.classeA', rotulo: 'Bloco classe A: fbk ≥ 8 MPa', limite: 8, relacao: '>=', celula: VER.classeA, casasLimite: 0 },
     }),
     c.total
@@ -235,9 +238,9 @@ function secaoResistencia(m: Memoria, f: Folhas, c: Ctx) {
     num('fk_') && m.passo('fk_', 'f_k', mul(cte(0.7, 1), fpkUsado(f, c)), { casas: 2, unidade: 'MPa', ref: NBR('6.2.2.3') }),
     m.entrada('gama_m', '\\gamma_m', { ref: NBR('6.2.2.2') }),
     num('fd_') && m.passo('fd_', 'f_d', div(f.fk, f.gm), { casas: 3, unidade: 'MPa', ref: NBR('6.2.2.1') }),
-    // K = IF(ISNUMBER(K_dir); K_dir; IF(Total; 2; 1,5)): digitado (a planilha 04 do curso usa 1) ou o da norma
+    // K = IF(ISNUMBER(K_dir); K_dir; IF(Total; 2; 1,5)): digitado (critério do projetista, ex.: 1,0) ou o da norma
     m.passo('k_flex', 'K', null, { casas: 2, origem: kDigitado ? 'entrada' : 'tabela', ref: kDigitado ? undefined : NBR('6.2.2.4') }),
-    num('ffd_') && m.passo('ffd_', 'K\\,f_d', mul(f.K, f.fd), { casas: 3, unidade: 'MPa', ref: CURSO_04 }),
+    num('ffd_') && m.passo('ffd_', 'K\\,f_d', mul(f.K, f.fd), { casas: 3, unidade: 'MPa', ref: NBR('6.2.2.4') }),
   ]);
 }
 
@@ -253,9 +256,9 @@ function secaoResistenciaDaFlexao(m: Memoria, f: Folhas) {
   const num = (id: string) => m.valor(id) !== null;              // célula com "—"/erro (entrada vazia): a linha não sai
   return secao('Resistência na flexão (parede do bloco e furo grauteado)', [
     m.passo('fpk_oco', 'f_{pk}', null, { casas: 1, unidade: 'MPa', origem: 'tabela', ref: { fonte: 'ABCP', item: 'Tab. 3.2' } }),
-    m.passo('r_liq', 'A_{liq}/A_{br}', null, { casas: 2, origem: 'tabela', ref: BLOCOS_122 }),
+    m.passo('r_liq', 'A_{liq}/A_{br}', null, { casas: 2, origem: 'tabela', ref: CRITERIO }),
     m.entrada('gama_m', '\\gamma_m', { ref: NBR('6.2.2.2') }),
-    num('fd_m') && m.passo('fd_m', 'f_{d,mesa}', div(mul(cte(0.7, 1), div(f.fpkOco, f.rliq)), f.gm), { casas: 3, unidade: 'MPa', ref: AULA_122 }),
+    num('fd_m') && m.passo('fd_m', 'f_{d,mesa}', div(mul(cte(0.7, 1), div(f.fpkOco, f.rliq)), f.gm), { casas: 3, unidade: 'MPa', ref: NBR('11.3.5') }),
     m.passo('k_flex', 'K', null, { casas: 2, origem: kDigitado ? 'entrada' : 'tabela', ref: kDigitado ? undefined : NBR('6.2.2.4') }),
     num('ffd_m') && m.passo('ffd_m', 'K\\,f_{d,mesa}', mul(f.K, fdMesa), { casas: 3, unidade: 'MPa' }),
     m.passo('fpk_chei', 'f_{pk}^{*}', null, { casas: 1, unidade: 'MPa', origem: 'tabela', ref: { fonte: 'ABCP', item: 'Tab. 3.2' } }),
@@ -268,7 +271,7 @@ function cardMateriais(m: Memoria, f: Folhas, c: Ctx): Card {
   const num = (id: string) => m.valor(id) !== null;
   const dDigitado = m.num('d_dir') !== null;                      // ISNUMBER(d_dir)
   const daTabela = 'tabela';
-  const refBloco = BLOCOS_122;
+  const refBloco = CRITERIO;
   const resistencia = secaoResistencia(m, f, c);
 
   // fsd = fyd no bloco de concreto (todo Ø)
@@ -291,14 +294,14 @@ function cardMateriais(m: Memoria, f: Folhas, c: Ctx): Card {
       casas: 2, unidade: 'cm', ref: NBR('12.1'),
     }),
     dDigitado
-      ? m.passo('d_util', 'd', null, { casas: 2, unidade: 'cm', origem: 'entrada', ref: AULA_122 })
+      ? m.passo('d_util', 'd', null, { casas: 2, unidade: 'cm', origem: 'entrada' })
       : m.passo('d_util', 'd', div(f.t, cte(2, 0)), { casas: 2, unidade: 'cm' }),
   ]);
 
   return {
     id: 'balanco.materiais',
     titulo: 'Materiais e seção · muro em balanço',
-    ref: AULA_122,
+    ref: NBR('6.2.2'),
     figura: 'Fig. 3',
     secoes: so([resistencia, aco, secaoI]),
     avisos: [],
@@ -316,7 +319,8 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
   const asCalc = v('As_calc');
   const sAdot = v('s_adot') ?? 0;
   const sDigitado = m.num('s_dir') !== null;                     // ISNUMBER(s_dir)
-  const minCurso = comeca(m.texto('AsMin_crit'), 'Curso');        // LEFT(AsMin_crit,5)="Curso"
+  // critério do As,mín: 'Viga (b·d)' = 0,15%·b·d; 'Parede (b·t)' = 0,10%·b·t, dispensável com 1,4·Md (NBR 16868-1 12.2)
+  const minViga = comeca(m.texto('AsMin_crit'), 'Viga');
 
   // Na mesa (0,8x ≤ hf) só a parede do bloco trabalha; passou disso, seção T: a parede inteira + as almas grauteadas
   // do metro (ln_mesa, planilha). A verificação "seção resiste" é a da célula (mesa ou T).
@@ -349,7 +353,7 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
   ]);
   const secaoT = secao('Seção T (parede do bloco + furos grauteados do metro)', [
     !mesaSo && v('s_web') !== null && m.passo('s_web', 's_{alma}', m.ent('Graute', 's_{gr}'), { casas: 0, unidade: 'cm' }),
-    !mesaSo && !total && v('bw_f') !== null && m.passo('bw_f', 'b_{w,f}', bwF, { casas: 2, unidade: 'cm', ref: AULA_122 }),
+    !mesaSo && !total && v('bw_f') !== null && m.passo('bw_f', 'b_{w,f}', bwF, { casas: 2, unidade: 'cm', ref: CRITERIO }),
     !mesaSo && v('bw_m') !== null && m.passo('bw_m', 'b_{w,m}', total
       ? cte(100, 0)
       : min(cte(100, 0), mul(div(cte(100, 0), m.g('s_web', 's_{alma}', 0, 'cm')), m.g('bw_f', 'b_{w,f}', 2, 'cm'))), { casas: 2, unidade: 'cm/m' }),
@@ -389,11 +393,11 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
     asNec !== null && (Md !== null && Md <= 0
       ? m.passo('As_nec', 'A_{s,nec}', null, { casas: 2, unidade: 'cm²/m', origem: 'calculado' })
       : m.passo('As_nec', 'A_{s,nec}', div(f.Md100, mul(f.sig01, f.z)), { casas: 2, unidade: 'cm²/m', ref: NBR('11.3.3') })),
-    !minCurso && v('As_14') !== null && m.passo('As_14', 'A_{s,1{,}4}', [div(mul(cte(1.4, 1), f.Md100), mul(f.fsd01, zDe14)), minNbr], {
+    !minViga && v('As_14') !== null && m.passo('As_14', 'A_{s,1{,}4}', [div(mul(cte(1.4, 1), f.Md100), mul(f.fsd01, zDe14)), minNbr], {
       casas: 2, unidade: 'cm²/m', ref: NBR('12.2'),
     }),
-    v('As_min') !== null && m.passo('As_min', 'A_{s,min}', minCurso ? mul(cte(0.0015, 4), cte(100, 0), f.d) : min(minNbr, f.As14), {
-      casas: 2, unidade: 'cm²/m', ref: minCurso ? CURSO_04 : NBR('12.2'),
+    v('As_min') !== null && m.passo('As_min', 'A_{s,min}', minViga ? mul(cte(0.0015, 4), cte(100, 0), f.d) : min(minNbr, f.As14), {
+      casas: 2, unidade: 'cm²/m', ref: NBR('12.2'),
     }),
     asCalc !== null && m.passo('As_calc', 'A_{s,calc}', max(f.AsNec, f.AsMin), { casas: 2, unidade: 'cm²/m' }),
   ]);
@@ -437,7 +441,7 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
   return {
     id: 'balanco.flexao',
     titulo: 'Flexão · muro em balanço',
-    ref: AULA_122,
+    ref: NBR('11.3'),
     figura: 'Fig. 4',
     ...(desenho ? { desenho } : {}),
     secoes: so([secaoResistenciaDaFlexao(m, f), paredeDoBloco, ...(mesaSo ? [] : [secaoT]), linhaNeutra, armadura, barras]),
@@ -452,7 +456,7 @@ function cardCisalhamento(m: Memoria, f: Folhas, c: Ctx): Card {
   const v = (id: string) => m.valor(id);
   const fvdOk = v('fvd') !== null;
   // fvk = 0,35 + 17,5ρ ≤ 0,7 com ρ ≤ 2%: como 0,35 + 17,5·0,02 = 0,70, o teto de ρ nunca muda o número e a
-  // forma do curso basta; a da planilha (com o mín de ρ) fica de rede.
+  // forma curta basta; a da planilha (com o mín de ρ) fica de rede.
   const fvk = (rho: Expr) => min(soma(cte(0.35, 2), mul(cte(17.5, 1), rho)), cte(0.7, 1));
 
   const cis = secao('Cisalhamento (b = 100 cm)', [
@@ -480,7 +484,7 @@ function cardCisalhamento(m: Memoria, f: Folhas, c: Ctx): Card {
   return {
     id: 'balanco.cisalhamento',
     titulo: 'Cisalhamento · muro em balanço',
-    ref: { fonte: 'Curso', item: 'planilha 05' },
+    ref: NBR('11.4'),
     figura: 'Fig. 4',
     secoes: so([cis]),
     avisos: [],
@@ -511,7 +515,7 @@ function cardAncoragem(m: Memoria, f: Folhas, c: Ctx): Card {
       ? m.passo('lb_reta', '\\ell_b', null, { casas: 1, unidade: 'cm', origem: 'tabela' })
       : null,
     gancho && v('lb_tab') !== null && m.passo('lb_tab', '\\ell_{b,gancho}', null, { casas: 1, unidade: 'cm', origem: 'tabela' }),
-  ], AULA_122);
+  ], NBR6118_LB);
 
   const adotado = secao('Comprimento adotado', [
     rConta
@@ -643,7 +647,7 @@ function cardArranjos(m: Memoria, f: Folhas, c: Ctx): Card {
   return {
     id: 'balanco.arranjos',
     titulo: 'Arranjos de barras · muro em balanço',
-    ref: AULA_122,
+    ref: NBR('11.3.5'),
     figura: 'Fig. 5',
     secoes: so([largura, ...faixas]),
     avisos: [],

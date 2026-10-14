@@ -69,7 +69,7 @@ describe('dois muros não dividem GUID', () => {
   it('Exemplo → outra identidade → nenhum GUID em comum, mesmo com o mesmo título', async () => {
     const app = await abrirApp(new Map());
     const a = app.useApp.getState();
-    expect(a.titulo).toBe('Exemplo — aula 12.2');
+    expect(a.titulo).toBe('Exemplo — muro em balanço');
     expect(a.idDoProjeto).toMatch(UUID_V4);
     const g1 = app.guidsDoIfc();
     expect(g1.length).toBeGreaterThan(50);
@@ -77,7 +77,7 @@ describe('dois muros não dividem GUID', () => {
 
     app.abrirExemplo();
     const b = app.useApp.getState();
-    expect(b.titulo).toBe('Exemplo — aula 12.2');
+    expect(b.titulo).toBe('Exemplo — muro em balanço');
     expect(b.idDoProjeto).toMatch(UUID_V4);
     expect(b.idDoProjeto).not.toBe(a.idDoProjeto);
     expect(b.sujo).toBe(false);

@@ -9,10 +9,10 @@
   vazado × aparente = retangular com fpk* (cf_T); bloco de compressão dentro da mesa × entrando na alma (cf_TT);
   Vd ≤ Va (dispensa estribo pela conta); Ma ≤ Mr (não fissura). A memória escolhe a conta; o número é da célula.
 
-  UNIDADES: a conta da seção é escrita como o curso escreve (planilha 04 e caderno da aula 12.3): cm, kN, kN·cm e
+  UNIDADES: a conta da seção é escrita como a conta de mão do contraforte: cm, kN, kN·cm e
   kN/cm². Onde a planilha guarda em outra unidade (Md em kN·m, fd em MPa) a FOLHA converte na leitura (`fator`),
   e a linha sai "4921,3/(0,5 × 86,7 × 52,0² × 0,210)" em vez de "49,21 × 100/(… × 2,100/10)". Onde a conversão é
-  da própria fórmula do curso (√fpk em MPa no VRd2, τ em MPa) o fator 10 fica escrito, como no curso.
+  da própria fórmula (√fpk em MPa no VRd2, τ em MPa) o fator 10 fica escrito, como na conta de mão.
 
   Este grupo usa a aba inteira mesmo quando o muro é em balanço (a planilha calcula as duas coisas sempre): os cards
   saem com aplicavel = false e o teste confere a conta deles também — cobertura nos 61 cenários, não só nos de
@@ -123,7 +123,7 @@ export const SIMBOLOS_CONTRAFORTE: Readonly<Record<string, string>> = {
   'x_{IIw,cf}': 'linha neutra no estádio II, na alma da seção T',
   'I_{II,cf}': 'momento de inércia da seção fissurada (estádio II)',
   'I_{eq,cf}': 'momento de inércia equivalente (Branson)',
-  'h_{eq,cf}': 'altura do retângulo equivalente de largura b (para o Ftool)',
+  'h_{eq,cf}': 'altura do retângulo de largura b com a inércia Ieq do contraforte',
   '\\delta_{0,cf}': 'flecha imediata no topo do contraforte',
   '\\delta_{\\infty,cf}': 'flecha final no topo do contraforte',
   '\\delta_{adm,cf}': 'flecha admissível do contraforte',
@@ -132,7 +132,8 @@ export const SIMBOLOS_CONTRAFORTE: Readonly<Record<string, string>> = {
 const ABA = 'Contrafortes';
 const P = dados as unknown as PlanilhaExportada;
 
-const AULA_123: Ref = { fonte: 'Aula 12.3' };
+// convenção de projeto sem outra fonte: largura de influência, fpk vazado (T) × cheio (retangular), δadm = 2L/250
+const CRITERIO: Ref = { fonte: 'Critério adotado' };
 const NBR = (item: string): Ref => ({ fonte: 'NBR 16868-1', item });
 const ABCP_34: Ref = { fonte: 'ABCP', item: '3.4' };
 /** A montagem atual nos templates do Revit do Jose: "14×39 · contraforte de 54". */
@@ -245,7 +246,7 @@ function cardEsforcos(r: Parameters<AutorDeCards>[0]): Card {
 
   const influencia = secao('Largura de influência', [
     ps('binf', 'b_{inf}', intermediario ? lenr : soma(div(lenr, cte(2, 0)), bal), { casas: 2, unidade: 'm' }),
-  ], AULA_123);
+  ], CRITERIO);
 
   const tab7 = NBR('8.8.3, Tab. 7');
   const esforcos = secao('Esforços na base do contraforte', [
@@ -254,12 +255,12 @@ function cardEsforcos(r: Parameters<AutorDeCards>[0]): Card {
     ps('Vk_cf', 'V_{k,cf}', mul(m.g('Vk_', 'V_k', 2, 'kN/m'), binf), { casas: 2, unidade: 'kN' }),
     ps('Md_cf', 'M_{d,cf}', mul(gf, m.g('Mk_cf', 'M_{k,cf}', 2, 'kN·m')), { casas: 2, unidade: 'kN·m', ref: tab7 }),
     ps('Vd_cf', 'V_{d,cf}', mul(gf, m.g('Vk_cf', 'V_{k,cf}', 2, 'kN')), { casas: 2, unidade: 'kN', ref: tab7 }),
-  ], AULA_123);
+  ], CRITERIO);
 
   return {
     id: 'contraforte.esforcos',
     titulo: 'Contraforte · esforços',
-    ref: AULA_123,
+    ref: CRITERIO,
     figura: 'Fig. 12',
     secoes: [dados, influencia, esforcos],
     avisos: [],
@@ -350,12 +351,12 @@ function cardEsbeltez(r: Parameters<AutorDeCards>[0]): Card {
       ref: NBR('10.1.2, Tab. 9'),
       verif: verifica(m, 'esbeltez', { chave: 'contraforte.esbeltez', rotulo: 'Esbeltez λ ≤ 30', limite: 30, relacao: '<=', casasLimite: 0 }),
     }),
-  ], AULA_123);
+  ], NBR('9.4.1 e 10.1.2'));
 
   return {
     id: 'contraforte.esbeltez',
     titulo: 'Contraforte · esbeltez',
-    ref: AULA_123,
+    ref: NBR('9.4'),
     figura: 'Fig. 12',
     secoes: [dados, efetiva, esbeltez],
     avisos: [],
@@ -371,7 +372,8 @@ function cardFlexao(r: Parameters<AutorDeCards>[0]): Card {
   const T = m.num('cf_T') === 1;                // enterrado (lado do solo): seção T
   const TT = m.num('cf_TT') === 1;              // T com o bloco 0,8x passando da mesa
   const intermediario = comeca(m.texto('tipo_cf'), 'Inter');
-  const curso = comeca(m.texto('AsMin_crit'), 'Curso');
+  // critério do As,mín: 'Viga (b·d)' = 0,15%·bw·d; 'Parede (b·t)' = 0,10%·bw·h (NBR 16868-1 12.2)
+  const viga = comeca(m.texto('AsMin_crit'), 'Viga');
 
   const t = m.ent('t_bloco', 't');
   const hCm = m.ent('H_muro', 'h_{muro}', { fator: 100, casas: 0, unidade: 'cm' });
@@ -438,13 +440,13 @@ function cardFlexao(r: Parameters<AutorDeCards>[0]): Card {
         limite: m.g('d_cf', '0{,}5\\,d_{cf}', 1, 'cm', { fator: 0.5 }),
       }),
     }),
-  ], AULA_123);
+  ], NBR('11.3.4'));
 
   // ── materiais ──
   const kDigitado = m.num('K_cf') !== null;    // IF(ISNUMBER(K_cf);K_cf;IF(cf_T=1;1,5;2))
   const fsdConta = div(fyk, gs);                // bloco de concreto: fsd = fyd (todo Ø)
   const materiais = secao('Materiais', [
-    ps('fpk_cf', 'f_{pk,cf}', T ? m.g('fpk_oco', 'f_{pk}', 1, 'MPa') : m.g('fpk_chei', 'f_{pk}^{*}', 1, 'MPa'), { casas: 2, unidade: 'MPa', ref: AULA_123 }),
+    ps('fpk_cf', 'f_{pk,cf}', T ? m.g('fpk_oco', 'f_{pk}', 1, 'MPa') : m.g('fpk_chei', 'f_{pk}^{*}', 1, 'MPa'), { casas: 2, unidade: 'MPa', ref: CRITERIO }),
     kDigitado
       ? ps('K_cfu', 'K_{cf}', null, { casas: 2, origem: 'entrada' })
       : ps('K_cfu', 'K_{cf}', null, { casas: 2, origem: 'tabela', ref: NBR('6.2.2.4') }),
@@ -501,8 +503,8 @@ function cardFlexao(r: Parameters<AutorDeCards>[0]): Card {
       semMomento
         ? ps('As_cfn', 'A_{s,cf}', null, { casas: 2, unidade: 'cm²', origem: 'calculado' })
         : ps('As_cfn', 'A_{s,cf}', TT ? div(soma(Cf, mul(fd, bw, cte(0.8, 1), xw)), fsd) : div(Md, mul(fsd, z)), { casas: 2, unidade: 'cm²' }),
-      ps('As_cfm', 'A_{s,m\\acute{\\imath}n,cf}', curso ? mul(cte(0.0015, 4), bw, d) : mul(cte(0.001, 3), bw, hcf), {
-        casas: 2, unidade: 'cm²', ref: curso ? { fonte: 'Curso', item: 'planilha 04' } : NBR('12.2'),
+      ps('As_cfm', 'A_{s,m\\acute{\\imath}n,cf}', viga ? mul(cte(0.0015, 4), bw, d) : mul(cte(0.001, 3), bw, hcf), {
+        casas: 2, unidade: 'cm²', ref: NBR('12.2'),
       }),
       // MÁXIMO do Excel ignora o texto de célula: As "—" deixa As,calc = As,mín
       ps('As_cfc', 'A_{s,calc,cf}', AsNum ? max(As, Asmin) : Asmin, { casas: 2, unidade: 'cm²' }),
@@ -526,7 +528,7 @@ function cardFlexao(r: Parameters<AutorDeCards>[0]): Card {
         verif: verifica(m, 'Asmax', { chave: 'contraforte.Asmax', rotulo: 'As no furo ≤ As,máx', limite: Asmax, relacao: '<=' }),
       }),
     ], NBR('12.3'));
-    // O furo REAL da barra (montagem do Revit): só informa — a régua do As,máx é a do curso (linha de cima). Decisão do
+    // O furo REAL da barra (montagem do Revit): só informa — a régua do As,máx é a da linha de cima. Decisão do
     // Jose (09/10): nenhuma verificação nova; por isso nenhuma destas linhas leva verif.
     const real = secao('Furo da barra na montagem', [
       ps('A_fcm', 'A_{furo,cf}', null, { casas: 2, unidade: 'cm²', origem: 'tabela' }),
@@ -596,7 +598,7 @@ function cardCisalhamento(r: Parameters<AutorDeCards>[0]): Card {
       ref: NBR('11.4.3'),
       verif: verifica(m, 'bielas', { chave: 'contraforte.bielas', rotulo: 'Bielas VRd2 ≥ Vd', limite: Vd, relacao: '>=' }),
     }),
-  ], AULA_123);
+  ], NBR('11.4'));
 
   // IF(Vd_cf<=Va_cf;0;MÁXIMO(Asw_n;Asw_m)): Vd ≤ Va dispensa o estribo pela conta
   const vd = m.num('Vd_cf');
@@ -622,7 +624,7 @@ function cardCisalhamento(r: Parameters<AutorDeCards>[0]): Card {
         }),
       ], NBR('11.4.3'));
 
-  // Dispensa pela conta = muro SEM estribo (Jose, 13/10; planilha 05 do Carini): Ø, ramos e s das Entradas não
+  // Dispensa pela conta = muro SEM estribo (Jose, 13/10; fvd ≥ τvd): Ø, ramos e s das Entradas não
   // entram (a planilha zera Asw,ef e o nº de estribos), então a seção só registra o nº de estribos = 0.
   const adotado = dispensa
     ? secao('Estribo adotado', [ps('n_est', 'n_{est}', null, { casas: 0, origem: 'calculado' })])
@@ -724,9 +726,9 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
       : div(mul(bw, pot(hcf, 3)), cte(12, 0)), { casas: 0, unidade: 'cm⁴' }),
     ps('Mr_cf', 'M_{r,cf}', div(mul(ftkK, Ig), sub(hcf, y)), { casas: 1, unidade: 'kN·cm', ref: NBR('9.2.3') }),
     ps('Ma_cf', 'M_{a,cf}', mul(psi, MkCm), { casas: 1, unidade: 'kN·cm' }),
-  ], AULA_123);
+  ], NBR('9.2.3'));
 
-  // estádio II: armadura comprimida (construtivas) desprezada, como na aula
+  // estádio II: armadura comprimida (construtivas) desprezada
   const xII = naMesa ? xr : xt;
   const fissurada = secao('Seção fissurada (estádio II)', [
     ps('b2_cf', 'b_{II,cf}', T ? bm : bw, { casas: 1, unidade: 'cm' }),
@@ -743,7 +745,7 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
           mul(abas, hf, pot(sub(xII, div(hf, dois)), 2)),
           mul(nAs, pot(sub(d, xII), 2)),
         ), { casas: 0, unidade: 'cm⁴' }),
-  ], { fonte: 'Curso', item: 'planilha 06' });
+  ], NBR('9.2.3'));
 
   const razao3 = pot(div(Mr, Ma), 3);
   const branson = soma(mul(razao3, Ig), mul(sub(cte(1, 0), razao3), III));
@@ -764,16 +766,16 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
         limite: m.g('dadm_cf', '\\delta_{adm,cf}', 2, 'mm'),
       }),
     }),
-    // δadm = 2L/250 (balanço, L = h) como na aula: a mesma conta de dadm_ (aba ELS), que a célula repete
-    ps('dadm_cf', '\\delta_{adm,cf}', div(vao2h ? mul(dois, hMm) : hMm, nAdm), { casas: 2, unidade: 'mm', ref: AULA_123 }),
-  ], AULA_123);
+    // δadm = 2L/250 (balanço, L = h): critério adotado, a mesma conta de dadm_ (aba ELS), que a célula repete
+    ps('dadm_cf', '\\delta_{adm,cf}', div(vao2h ? mul(dois, hMm) : hMm, nAdm), { casas: 2, unidade: 'mm', ref: CRITERIO }),
+  ], NBR('9.2.4'));
 
-  // a mesma seção cotada da flexão: A, yG e I são desta figura (mesa bm × t + alma bw × tenr, bruta como no curso)
+  // a mesma seção cotada da flexão: A, yG e I são desta figura (mesa bm × t + alma bw × tenr, seção bruta)
   const desenho = desenhoDaSecaoDoContraforte(r);
   return {
     id: 'contraforte.els',
     titulo: 'Contraforte · ELS',
-    ref: AULA_123,
+    ref: NBR('9.2'),
     figura: 'Fig. 21',
     ...(desenho ? { desenho } : {}),
     secoes: [bruta, fissurada, flecha],

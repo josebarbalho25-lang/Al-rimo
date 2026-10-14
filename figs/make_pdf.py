@@ -25,7 +25,7 @@ table{border-collapse:collapse;width:100%;font-size:11pt} td,th{border-bottom:1p
 .idx{page-break-after:always} .warn{color:#c00000;font-weight:bold}"""
 rows = ''.join(f'<tr><td><b>Fig. {n}</b></td><td class="{"warn" if n in (4,14) else ""}">{t}</td><td>{CAMPOS[n]}</td></tr>' for n, f, t in FIGS)
 html = [f'<html><head><meta charset="utf-8"><style>{css}</style></head><body>',
-        f'<div class="idx"><h1>Muro de arrimo em alvenaria estrutural — Índice de ilustrações</h1><div class="sub">Planilha "Arrimo Alvenaria — base Carini". Cada campo da aba Entradas aponta para a figura correspondente (coluna Figura).</div>',
+        f'<div class="idx"><h1>Muro de arrimo em alvenaria estrutural — Índice de ilustrações</h1><div class="sub">Planilha "Arrimo Alvenaria". Cada campo da aba Entradas aponta para a figura correspondente (coluna Figura).</div>',
         f'<table><tr><th>Figura</th><th>Título</th><th>Campos das Entradas</th></tr>{rows}</table></div>']
 for n, f, t in FIGS:
     svg = open(f + '.svg', encoding='utf8').read()

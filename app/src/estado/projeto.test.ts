@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import dados from '@/motor/planilha.gerada.json';
 import type { EntradaMeta } from '@/motor/tipos';
 import { ENTRADAS_DO_MODELO } from '@/modelo/entradasDoModelo';
-import { montarSecoes } from './campos';
+import { campoDe, montarSecoes } from './campos';
+import { TITULO_DO_EXEMPLO } from './novo';
 import {
   desserializarProjeto,
   nomeDeArquivo,
@@ -63,6 +64,52 @@ describe('salvar e abrir — ida e volta', () => {
     // bloco 14: a grade vai até 80 (6t = 84)
     expect(abreCom({ Graute: 'Parcial (seção I)', t_bloco: 14, s_dir: 100 })).toBe(40);
     expect(abreCom({ Graute: 60 })).toBe(60);
+  });
+
+  describe('opção de lista renomeada (14/10): o arquivo antigo abre na opção nova, com a mesma conta', () => {
+    // A lista de hoje da planilha, com os nomes novos — independe de o planilha.gerada.json já ter sido refeito.
+    const NOVAS: Record<string, string[]> = { fpk_ref: ['Líquida', 'Bruta'], AsMin_crit: ['Viga (b·d)', 'Parede (b·t)'] };
+    const comListaNova = new Map(CAMPOS);
+    for (const [nome, opcoes] of Object.entries(NOVAS)) {
+      const c = CAMPOS.get(nome)!;
+      comListaNova.set(nome, campoDe({ ...c.meta, opcoes, padrao: opcoes[0] }, c.origem));
+    }
+    const abreCom = (campos: typeof CAMPOS, alteracoes: Record<string, unknown>) => {
+      const a = desserializarProjeto(serializarProjeto({ ...muro, alteracoes: alteracoes as never }, VERSAO), campos, VERSAO);
+      expect(a.ok).toBe(true);
+      if (!a.ok) return null;
+      expect(a.recusados).toEqual([]);
+      expect(a.descartados).toEqual([]);
+      return a.projeto.alteracoes;
+    };
+
+    it('os quatro valores velhos viram os novos', () => {
+      expect(abreCom(comListaNova, { fpk_ref: 'Líquida (curso)' })).toEqual({ fpk_ref: 'Líquida' });
+      expect(abreCom(comListaNova, { fpk_ref: 'Bruta (NBR)' })).toEqual({ fpk_ref: 'Bruta' });
+      expect(abreCom(comListaNova, { AsMin_crit: 'Curso' })).toEqual({ AsMin_crit: 'Viga (b·d)' });
+      expect(abreCom(comListaNova, { AsMin_crit: 'NBR' })).toEqual({ AsMin_crit: 'Parede (b·t)' });
+      // escrito à mão, outra caixa: a mesma porta do campo
+      expect(abreCom(comListaNova, { AsMin_crit: ' nbr ' })).toEqual({ AsMin_crit: 'Parede (b·t)' });
+    });
+
+    it('o valor novo atravessa salvar e abrir sem mudar', () => {
+      expect(abreCom(comListaNova, { fpk_ref: 'Bruta', AsMin_crit: 'Viga (b·d)' })).toEqual({ fpk_ref: 'Bruta', AsMin_crit: 'Viga (b·d)' });
+    });
+
+    it('com a lista de HOJE (planilha refeita ou não), o arquivo antigo abre sem entrada ignorada', () => {
+      const a = abreCom(CAMPOS, { fpk_ref: 'Bruta (NBR)', AsMin_crit: 'NBR' });
+      expect(CAMPOS.get('fpk_ref')!.opcoes.map((o) => o.valor)).toContain(a?.fpk_ref);
+      expect(CAMPOS.get('AsMin_crit')!.opcoes.map((o) => o.valor)).toContain(a?.AsMin_crit);
+    });
+  });
+
+  it('o exemplo que ficou aberto no navegador com o nome antigo volta com o nome de hoje', () => {
+    const a = abrir(serializarProjeto({ ...muro, titulo: 'Exemplo — aula 12.2' }, VERSAO));
+    expect(a.ok && a.projeto.titulo).toBe(TITULO_DO_EXEMPLO);
+    expect(TITULO_DO_EXEMPLO).not.toMatch(/aula|curso|Carini|Gilberto/i);
+    // outro título qualquer fica como veio
+    const b = abrir(serializarProjeto({ ...muro, titulo: 'Exemplo — aula 12.2 (cópia)' }, VERSAO));
+    expect(b.ok && b.projeto.titulo).toBe('Exemplo — aula 12.2 (cópia)');
   });
 
   it('nome que a conta de hoje não conhece fica de fora e é contado', () => {

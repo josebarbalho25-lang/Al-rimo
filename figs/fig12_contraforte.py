@@ -3,7 +3,7 @@ S = 2.6                      # px por cm
 W, H = 1180, 570
 s = SVG(W, H)
 s.text(30, 34, 'Fig. 12 — Contraforte em planta: enterrado (seção T) ou aparente (seção retangular)', size=18, anchor='start', weight='bold')
-s.text(30, 56, 'A posição do contraforte decide se o muro trabalha comprimido (mesa da seção T) ou tracionado (só a alma resiste). Medidas do exemplo da aula 12.3.', size=13, anchor='start', color=C['note'])
+s.text(30, 56, 'A posição do contraforte decide se o muro trabalha comprimido (mesa da seção T) ou tracionado (só a alma resiste). Medidas de um exemplo.', size=13, anchor='start', color=C['note'])
 
 def case(x0, buried):
     # x0 = eixo do contraforte; muro horizontal; solo embaixo

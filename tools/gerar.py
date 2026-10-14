@@ -8,6 +8,6 @@ tmp = tempfile.mkdtemp(prefix='arrimo_')
 base = os.path.join(tmp, 'base.xlsx')
 subprocess.run([sys.executable, os.path.join(AQUI, 'build_new.py'), base], check=True)
 out = os.path.join(RAIZ, 'planilha'); os.makedirs(out, exist_ok=True)
-nome = 'Arrimo Alvenaria - base Carini.xlsx'
+nome = 'Arrimo Alvenaria.xlsx'
 subprocess.run([sys.executable, os.path.join(AQUI, 'finalize.py'), base, os.path.join(out, nome)], check=True)
 print('ok', nome)

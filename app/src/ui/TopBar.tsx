@@ -22,6 +22,7 @@ import {
   salvarProjeto,
 } from '@/estado/acoesDeArquivo';
 import { useInterface } from '@/estado/interface';
+import { TITULO_DO_EXEMPLO } from '@/estado/novo';
 import { useApp } from '@/estado/store';
 import { definirPreferencia, NOME_DO_TEMA, proximoTema, usePreferencias } from '@/estilo/preferenciasDaInterface';
 import { Configuracoes } from './Configuracoes';
@@ -72,7 +73,7 @@ export function TopBar() {
         <button className="btn-icone" title="Abrir  ·  Ctrl+O" onClick={() => void abrirProjeto()}>
           <IconeAbrir tamanho={16} />
         </button>
-        <button className="btn-icone" title="Exemplo — aula 12.2" onClick={() => abrirExemplo()}>
+        <button className="btn-icone" title={TITULO_DO_EXEMPLO} onClick={() => abrirExemplo()}>
           <IconeExemplo tamanho={16} />
         </button>
         <button

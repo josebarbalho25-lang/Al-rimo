@@ -23,6 +23,7 @@ import { glossarioDe } from './glossario';
 import { AVISO_DO_SOLO, ENTRADAS, VERSAO_DA_CONTA } from './metaDaPlanilha';
 import { casasDoFormato, nbr } from './formato';
 import { avisoDaPlanilha } from '@/estado/avisosDaPlanilha';
+import { semCitacao } from '@/estado/rotulos';
 import { VERSAO_DO_APP } from '@/estado/versaoDoApp';
 import { aceiteVigente, dataDoAceite, rotuloDaVersao, VERSAO_DO_TERMO } from '@/estado/termo';
 
@@ -66,7 +67,8 @@ function valorDaEntrada(v: unknown, formato: string): string {
   if (typeof v === 'number') return nbr(v, casasDoFormato(formato) ?? (Number.isInteger(v) ? 0 : 2));
   if (typeof v === 'boolean') return v ? 'Sim' : 'Não';
   if (typeof v === 'object' && v && 'erro' in v) return String((v as { erro: string }).erro);
-  return String(v);
+  // opção de lista de arquivo antigo com citação de fonte ("Líquida (curso)"): no papel sai só o nome da opção
+  return semCitacao(String(v));
 }
 
 /**
@@ -100,8 +102,10 @@ export function MemorialImpresso({ resultado: r, info = {}, urlDaFigura, cards: 
   for (const e of ENTRADAS) {
     if (!faixaVale(e.secao, r)) continue;
     const f = faixas[faixas.length - 1];
-    if (f && f.secao === e.secao) f.itens.push(e);
-    else faixas.push({ secao: e.secao, itens: [e] });
+    // a faixa da aba Entradas sem a citação de fonte ("Contrafortes (aula 12.3)" → "Contrafortes"): fonte é dos cards
+    const secao = semCitacao(e.secao);
+    if (f && f.secao === secao) f.itens.push(e);
+    else faixas.push({ secao, itens: [e] });
   }
   const linhaRosto = (rot: string, val: string | undefined) => (
     <tr>
@@ -257,7 +261,7 @@ export function MemorialImpresso({ resultado: r, info = {}, urlDaFigura, cards: 
                 </tr>,
                 ...f.itens.map((e) => (
                   <tr key={e.nome}>
-                    <td style={{ ...td, width: '58%' }}>{e.rotulo}</td>
+                    <td style={{ ...td, width: '58%' }}>{semCitacao(e.rotulo)}</td>
                     <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{valorDaEntrada(r.v(e.nome), e.formato)}</td>
                     <td style={{ ...td, color: R.apagado, width: '14%' }}>{e.unidade}</td>
                   </tr>

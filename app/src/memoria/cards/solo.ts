@@ -6,7 +6,7 @@
   memória escolhe qual conta CONTAR, nunca qual número publicar. Quem garante que o espelho está certo é o teste
   (conferencia.test.ts), em todos os cenários do gabarito.
 */
-import type { AutorDeCards, Card, Expr } from '../tipos';
+import type { AutorDeCards, Card, Expr, Ref } from '../tipos';
 import { cte, div, max, min, mul, nome, par, pot, rad, raiz, soma, sub, tan } from '../expr';
 import { memoriaDe, secao } from '../passo';
 import { passoDoPesoCheio } from './pesoProprio';
@@ -17,8 +17,9 @@ const ABA = 'Solo e Empuxo';
 const TOPO = 44, BASE = 84;
 const cel = (col: string, lin: number) => `${ABA}!${col}${lin}`;
 
-const AULA_121 = { fonte: 'Aula 12.1' } as const;
-const SLIDE_8 = { fonte: 'Aula 12.1', item: 'slide 8' } as const;
+// Ka, Kp, pressões e empuxo: teoria de Rankine (terreno horizontal, sem atrito solo-muro)
+const RANKINE: Ref = { fonte: 'Rankine' };
+const NBR = (item: string): Ref => ({ fonte: 'NBR 16868-1', item });
 
 function cardEmpuxo(r: Parameters<AutorDeCards>[0]): Card {
   const m = memoriaDe(r);
@@ -81,7 +82,7 @@ function cardEmpuxo(r: Parameters<AutorDeCards>[0]): Card {
     kaDigitado
       ? m.passo('Kp_', 'K_p', div(cte(1, 0), Ka), { casas: 3 })
       : m.passo('Kp_', 'K_p', pot(tan(angulo('+')), 2), { casas: 3 }),
-  ], SLIDE_8);
+  ], RANKINE);
 
   // ── 3 · Pressões horizontais no topo (z = 0) e na base (z = h) ──
   // Forma fechada primeiro; a da tabela da planilha (σ'h + u nas células) é a rede, para NA acima do terreno.
@@ -102,7 +103,7 @@ function cardEmpuxo(r: Parameters<AutorDeCards>[0]): Card {
         topo,
         m.passo('sh_base', '\\sigma_{h,base}', efetiva(sigmaVBase), { casas: 2, unidade: 'kPa' }),
       ];
-  const secPressoes = secao('Pressões horizontais', pressoes, AULA_121);
+  const secPressoes = secao('Pressões horizontais', pressoes, RANKINE);
 
   // ── 4 · Empuxo e momento na base ──
   const fatia = div(h, cte(40, 0));
@@ -134,12 +135,12 @@ function cardEmpuxo(r: Parameters<AutorDeCards>[0]): Card {
       mul(div(pot(h, 2), cte(6, 0)), par(soma(mul(cte(2, 0), shTopo), shBase))),
       nome(`${ABA}!L${TOPO}:L${BASE - 1}`, '\\sum_{i=1}^{40} M_i', 2, 'kN·m/m'),
     ], { casas: 2, unidade: 'kN·m/m' }),
-  ], SLIDE_8);
+  ], RANKINE);
 
   return {
     id: 'solo.empuxo',
     titulo: 'Empuxo do solo',
-    ref: AULA_121,
+    ref: RANKINE,
     figura: 'Fig. 11',
     secoes: [dados, coef, secPressoes, empuxo],
     // c' > 0 (Jose, 08/10: "coesão liberada, com aviso"): o texto e a condição são os da célula aviso_coesao — a
@@ -185,7 +186,7 @@ function cardEsforcosBalanco(r: Parameters<AutorDeCards>[0]): Card {
       ref: { fonte: 'ABCP', item: '3.2' },
       verif: { chave: 'balanco.esbeltez', rotulo: 'Esbeltez λ ≤ 30', limite: 30, relacao: '<=', celula: 'chk_esb', casasLimite: 0 },
     }),
-  ], { fonte: 'Aula 12.2' });
+  ], NBR('9.4.1 e 10.1.2'));
 
   const momento = secao('Momento de cálculo na base', [
     m.passo('Mk_', 'M_k', null, { casas: 2, unidade: 'kN·m/m', origem: 'calculado' }),
@@ -196,12 +197,12 @@ function cardEsforcosBalanco(r: Parameters<AutorDeCards>[0]): Card {
       casas: 3, unidade: 'kN·m/m', ref: { fonte: 'ABCP', item: '3.6.3.2' },
     }),
     m.passo('Md_', 'M_d', somaM2d ? soma(mul(gf, Mk), M2d) : mul(gf, Mk), { casas: 2, unidade: 'kN·m/m' }),
-  ], { fonte: 'Aula 12.2' });
+  ], NBR('8.8.3, Tab. 7'));
 
   return {
     id: 'balanco.esforcos',
     titulo: 'Esforços · muro em balanço',
-    ref: { fonte: 'Aula 12.2' },
+    ref: { fonte: 'NBR 16868-1' },
     figura: 'Fig. 7',
     secoes: [esbeltez, momento],
     avisos: [],

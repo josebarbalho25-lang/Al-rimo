@@ -1,5 +1,5 @@
 /*
-  CARDS — Painel entre contrafortes (aba "Contrafortes", seções 8 a 12 e as verificações do painel na 15; aula 12.3).
+  CARDS — Painel entre contrafortes (aba "Contrafortes", seções 8 a 12 e as verificações do painel na 15).
 
   Cinco cards: momentos de Libânio, flexão vertical (barras nos furos), flexão horizontal (barras nas canaletas),
   alvenaria não armada entre barras e canaletas (Anexo E, caso 13) e ELS nas duas direções (seção I + flecha).
@@ -172,10 +172,12 @@ function tabela(nomeDefinido: string): number[][] {
   return out;
 }
 
-const AULA: Ref = { fonte: 'Aula 12.3' };
+// convenção de projeto sem outra fonte: momento na faixa da barra, pressão média do subpainel, h_eq, δadm = vão/250
+const CRITERIO: Ref = { fonte: 'Critério adotado' };
 const LIBANIO: Ref = { fonte: 'Libânio' };
-const CURSO_11: Ref = { fonte: 'Curso', item: 'planilha 11' };
 const NBR = (item: string): Ref => ({ fonte: 'NBR 16868-1', item });
+// interpolação linear na Tab. E.1 (Nota 1 da tabela)
+const TAB_E1: Ref = NBR('Tab. E.1');
 
 /** Card fora do muro com contrafortes: segura o lugar, sem passo (nada de "—" na tela). */
 const vazio = (id: string, titulo: string, figura: string): Card => ({ id, titulo, figura, secoes: [], avisos: [], aplicavel: false });
@@ -208,7 +210,7 @@ function maiorFolha(m: Memoria, itens: [string, Expr][]): Expr | null {
   return melhor;
 }
 
-/** x no ELU (curso, planilha 04): x = 1,25 d [1 − √(1 − Md/(0,5 b d² K fd))]. */
+/** x no ELU (ABCP 3.4): x = 1,25 d [1 − √(1 − Md/(0,5 b d² K fd))]. */
 const xElu = (d: Expr, b: Expr, Md: Expr, kfd: Expr): Expr =>
   mul(cte(1.25, 2), d, par(sub(cte(1, 0), raiz(sub(cte(1, 0), div(Md, mul(cte(0.5, 1), b, pot(d, 2), kfd)))))));
 
@@ -222,7 +224,7 @@ function fsdExpr(m: Memoria): Expr {
 }
 
 /*
-  Linha neutra no estádio II da seção I (planilha 06 do curso), raiz da equação do 2º grau já arrumada:
+  Linha neutra no estádio II da seção I (NBR 16868-1 9.2.3), raiz da equação do 2º grau já arrumada:
     retângulo (LN na mesa): x = [−B + √(B² + 2·bm·C)]/bm,  B = n·As1 + n2·As2,  C = n·As1·d + n2·As2·d'
     T (LN na alma):         x = [−B + √(B² + 2·bw·C)]/bw,  B = (bm − bw)·hf + ...,  C = (bm − bw)·hf²/2 + ...
   É a mesma conta da planilha ((−B + √(B² − 4AC))/2A com A = bm/2 ou bw/2): só os sinais e o 4·A/2 arrumados.
@@ -338,14 +340,14 @@ function cardMomentos(m: Memoria): Card {
       casas: 2, unidade: 'kPa', ...(soloAbaixo ? { ref: { fonte: 'Dedução' } as const } : {}),
     }),
     m.passo('p_uni', 'p_{uni}', shT, { casas: 2, unidade: 'kPa', ...(soloAbaixo ? { ref: { fonte: 'Dedução' } as const } : {}) }),
-  ], AULA);
+  ], LIBANIO);
 
   const lin = (rotulo: string, col: 'B' | 'C') => celulaDoRotulo(rotulo, col);
   const coef = (rotulo: string, simbolo: string, k: number, uniforme = false) =>
     passoCoef(m, lin(rotulo, uniforme ? 'C' : 'B'), simbolo, k, uniforme);
   const coeficientes = secao(`Coeficientes · ${tipo}`, [
     i !== null && t !== 0 && m.passo('t_g', 't_\\gamma', div(sub(gUsado, cte(G[i - 1], 2)), sub(cte(G[i], 2), cte(G[i - 1], 2))), {
-      casas: 3, ref: CURSO_11,
+      casas: 3, ref: LIBANIO,
     }),
     coef('μy', '\\mu_y', COEF.my),
     coef('μyb', '\\mu_{yb}', COEF.myb),
@@ -396,14 +398,15 @@ function passoFpk(m: Memoria): Passo {
     : m.passo('fpk_pn', 'f_{pk,p}', fpk, { casas: 2, unidade: 'MPa' });
 }
 
-const cursoAsMin = (m: Memoria) => comeca(m.texto('AsMin_crit'), 'Curso');    // LEFT(AsMin_crit;5)="Curso"
+// critério do As,mín: 'Viga (b·d)' = 0,15%·b·d; 'Parede (b·t)' = 0,10%·b·t (NBR 16868-1 12.2)
+const vigaAsMin = (m: Memoria) => comeca(m.texto('AsMin_crit'), 'Viga');
 
 // ───────────────────────────── 2 · flexão vertical ─────────────────────────────
 
 function cardVertical(m: Memoria): Card {
   const duas = m.texto('pos_pv').startsWith('2');                              // LEFT(pos_pv;1)="2"
   const digitado = m.num('s_pv_dir') !== null;                                 // ISNUMBER(s_pv_dir)
-  const curso = cursoAsMin(m);
+  const viga = vigaAsMin(m);
 
   const t = m.ent('t_bloco', 't');
   const c = m.ent('c_pv', 'c_p');
@@ -416,7 +419,7 @@ function cardVertical(m: Memoria): Card {
   const Mdyei = m.g('Mdyei_p', 'M_{dyei}', 1, 'kN·cm/m');
   const Mdy = m.g('Mdy_p', 'M_{dy}', 1, 'kN·cm/m');
   const Md = m.g('Md_pvs', 'M_{d,v}', 1, 'kN·cm');
-  // na conta de x e As a planilha divide por 10 (MPa → kN/cm²): a folha já lê em kN/cm², como a aula escreve
+  // na conta de x e As a planilha divide por 10 (MPa → kN/cm²): a folha já lê em kN/cm², como a conta de mão
   const kfd = m.g('Kfd_pv', 'K_vf_d', 3, 'kN/cm²', { fator: 0.1 });
   const fsd = m.g('fsd_pv', 'f_{sd,v}', 2, 'kN/cm²', { fator: 0.1 });
   const x = m.g('x_pv', 'x_v', 2, 'cm');
@@ -438,7 +441,7 @@ function cardVertical(m: Memoria): Card {
   const resist = secao('Resistências', [
     passoFpk(m),
     m.passo('Kfd_pv', 'K_vf_d', div(mul(m.ent('K_pv', 'K_v'), cte(0.7, 1), fpkP), m.ent('gama_m', '\\gamma_m')), {
-      casas: 3, unidade: 'MPa', ref: { fonte: 'Curso', item: 'planilha 04' },
+      casas: 3, unidade: 'MPa', ref: NBR('6.2.2.4'),
     }),
     m.passo('fsd_pv', 'f_{sd,v}', fsdExpr(m), { casas: 1, unidade: 'MPa', ref: NBR('11.3.3') }),
   ]);
@@ -457,7 +460,7 @@ function cardVertical(m: Memoria): Card {
       ? m.passo('s_pv', 's_v', mul(arredBaixo(div(m.ent('s_pv_dir', 's_{v,dig}'), sfuro)), sfuro), { casas: 0, unidade: 'cm' })
       : m.passo('s_pv', 's_v', null, { casas: 0, unidade: 'cm', origem: 'adotado' }),
     m.passo('Md_pvs', 'M_{d,v}', div(mul(Mvs, sv), cte(100, 0)), { casas: 1, unidade: 'kN·cm' }),
-  ], AULA);
+  ], CRITERIO);
 
   // "não resiste": a raiz da conta de x fica negativa (ou a faixa é nula) — a planilha escreve o texto, sem conta
   const resiste = m.valor('x_pv') !== null && m.valor('As_pvs') !== null;
@@ -479,8 +482,8 @@ function cardVertical(m: Memoria): Card {
       : m.passo('As_pvs', 'A_{s,solo}', null, { casas: 2, unidade: 'cm²', origem: 'calculado' }),
     // lado externo: a planilha faz x e z dentro da mesma célula — a linha leva a conta inteira
     temExt && m.passo('As_pve', 'A_{s,ext}', asElu(mdExt, fsd, d, xElu(d, sv, mdExt, kfd)), { casas: 2, unidade: 'cm²' }),
-    m.passo('As_pvm', 'A_{s,m\\acute{\\imath}n,v}', curso ? mul(cte(0.0015, 4), sv, d) : mul(cte(0.001, 3), sv, t), {
-      casas: 2, unidade: 'cm²', ref: curso ? { fonte: 'Curso', item: 'planilha 04' } : NBR('12.2'),
+    m.passo('As_pvm', 'A_{s,m\\acute{\\imath}n,v}', viga ? mul(cte(0.0015, 4), sv, d) : mul(cte(0.001, 3), sv, t), {
+      casas: 2, unidade: 'cm²', ref: NBR('12.2'),
     }),
     m.passo('a_pv', 'a_{s,v}', div(mul(pi(), pot(m.ent('phi_pv', '\\phi_v'), 2)), cte(400, 0)), {
       casas: 3, unidade: 'cm²',
@@ -495,7 +498,7 @@ function cardVertical(m: Memoria): Card {
   return limpo({
     id: 'painelCf.flexaoVertical',
     titulo: 'Painel · flexão vertical',
-    ref: AULA,
+    ref: NBR('11.3.3'),
     figura: 'Fig. 14',
     secoes: [dados, resist, esforcos, armadura],
     avisos: [],
@@ -509,7 +512,7 @@ function cardHorizontal(m: Memoria): Card {
   const centralizada = comeca(m.texto('pos_ph'), 'Cent');                      // LEFT(pos_ph;4)="Cent"
   const engastadas = !comeca(m.texto('lat_pan'), 'Apoi');
   const digitado = m.num('s_ph_dir') !== null;
-  const curso = cursoAsMin(m);
+  const viga = vigaAsMin(m);
 
   const t = m.ent('t_bloco', 't');
   const fpkP = m.g('fpk_pn', 'f_{pk,p}', 2, 'MPa');
@@ -553,7 +556,7 @@ function cardHorizontal(m: Memoria): Card {
       ? m.passo('s_ph', 's_h', m.ent('s_ph_dir', 's_{h,dig}'), { casas: 0, unidade: 'cm' })
       : m.passo('s_ph', 's_h', null, { casas: 0, unidade: 'cm', origem: 'adotado' }),
     m.passo('Md_ph', 'M_{d,h}', div(mul(Mh, sh), cte(100, 0)), { casas: 1, unidade: 'kN·cm' }),
-  ], AULA);
+  ], CRITERIO);
 
   const resiste = m.valor('x_ph') !== null && m.valor('As_phc') !== null;
   const gov = resiste ? maiorFolha(m, [['As_phc', asH], ['As_phm', asMin]]) : null;
@@ -565,8 +568,8 @@ function cardHorizontal(m: Memoria): Card {
     resiste
       ? m.passo('As_phc', 'A_{s,h}', asElu(Md, fsd, d, x), { casas: 2, unidade: 'cm²' })
       : m.passo('As_phc', 'A_{s,h}', null, { casas: 2, unidade: 'cm²', origem: 'calculado' }),
-    m.passo('As_phm', 'A_{s,m\\acute{\\imath}n,h}', curso ? mul(cte(0.0015, 4), sh, d) : mul(cte(0.001, 3), sh, t), {
-      casas: 2, unidade: 'cm²', ref: curso ? { fonte: 'Curso', item: 'planilha 04' } : NBR('12.2'),
+    m.passo('As_phm', 'A_{s,m\\acute{\\imath}n,h}', viga ? mul(cte(0.0015, 4), sh, d) : mul(cte(0.001, 3), sh, t), {
+      casas: 2, unidade: 'cm²', ref: NBR('12.2'),
     }),
     m.passo('a_ph', 'a_{s,h}', div(mul(pi(), pot(m.ent('phi_ph', '\\phi_h'), 2)), cte(400, 0)), {
       casas: 3, unidade: 'cm²',
@@ -584,7 +587,7 @@ function cardHorizontal(m: Memoria): Card {
   return limpo({
     id: 'painelCf.flexaoHorizontal',
     titulo: 'Painel · flexão horizontal',
-    ref: AULA,
+    ref: NBR('11.3.3'),
     figura: 'Fig. 14',
     secoes: [dados, resist, esforcos, armadura],
     avisos: aviso ? ['Mdxe traciona a face do solo junto ao contraforte: barra centralizada ou 2 barras na canaleta'] : [],
@@ -650,12 +653,12 @@ function cardNaoArmado(m: Memoria): Card {
     m.passo('z_sp', 'z_{pan}', [sub(h, hp), max(cte(0, 0), sub(h, hp))], {
       casas: 2, unidade: 'm', ...((m.num('H_solo') ?? 0) < (m.num('h_sp') ?? 0) ? { ref: { fonte: 'Dedução' } as const } : {}),
     }),
-    m.passo('sp_t2', '\\sigma_{h,sup}', alternativasSup, { casas: 2, unidade: 'kPa', ref: { fonte: 'Aula 12.1' } }),
-    // a aula usa a pressão média do painel de baixo: (14,4 + 20,8)/2 = 17,6 → 1,4·17,6 = 24,64
+    m.passo('sp_t2', '\\sigma_{h,sup}', alternativasSup, { casas: 2, unidade: 'kPa', ref: { fonte: 'Rankine' } }),
+    // critério adotado: a pressão média do painel de baixo, ex. (14,4 + 20,8)/2 = 17,6 → 1,4·17,6 = 24,64
     m.passo('fd_sp', 'w_d', mul(gf, div(soma(sSup, shB), cte(2, 0))), { casas: 2, unidade: 'kN/m²', ref: NBR('E.3') }),
-  ], AULA);
+  ], CRITERIO);
 
-  // ── βf: interpolado na Tab. E.1 (caso 13) em h/l e μ, como a planilha 11 do curso ──
+  // ── βf: interpolado na Tab. E.1 (caso 13) em h/l e μ (Nota 1 da tabela) ──
   const muLimitado = m.num('mu_sp') !== m.num('mu_pan');
   const muTab = muLimitado ? m.g('mu_sp', '\\mu_{tab}', 3) : mu;
   const j = m.num('j_sp'), i = m.num('i_sp');
@@ -673,8 +676,8 @@ function cardNaoArmado(m: Memoria): Card {
     const tyE = m.g('ty_sp', 't_y', 3);
     const um = cte(1, 0);
     // IF(j>=11;0;...) e IF(i>=9;0;...): fator nulo = ponto da própria tabela, sem conta a mostrar
-    if (tx !== 0) passosBeta.push(m.passo('tx_sp', 't_x', div(sub(hl, cH(j)), sub(cH(j + 1), cH(j))), { casas: 3, ref: CURSO_11 }));
-    if (ty !== 0) passosBeta.push(m.passo('ty_sp', 't_y', div(sub(cM(i), muTab), sub(cM(i), cM(i + 1))), { casas: 3, ref: CURSO_11 }));
+    if (tx !== 0) passosBeta.push(m.passo('tx_sp', 't_x', div(sub(hl, cH(j)), sub(cH(j + 1), cH(j))), { casas: 3, ref: TAB_E1 }));
+    if (ty !== 0) passosBeta.push(m.passo('ty_sp', 't_y', div(sub(cM(i), muTab), sub(cM(i), cM(i + 1))), { casas: 3, ref: TAB_E1 }));
     const j2 = Math.min(11, j + 1), i2 = Math.min(9, i + 1);
     const naLinha = (ii: number) => soma(mul(sub(um, txE), cB(ii, j)), mul(txE, cB(ii, j2)));
     if (tx !== 0 && ty !== 0) betaExpr = soma(mul(sub(um, tyE), naLinha(i)), mul(tyE, naLinha(i2)));
@@ -774,8 +777,8 @@ function secaoDaDirecao(m: Memoria, D: Direcao) {
     m.passo(id('x'), `x_{II,${s}}`, linhaNeutraEscolhida(m, secaoI(tracionada ? n : sub(n, cte(1, 0)))), { casas: 2, unidade: 'cm' }),
     m.passo(id('III'), `I_{II,${s}}`, inerciaII(secaoI(n2III), x, naMesa), { casas: 0, unidade: 'cm⁴' }),
     m.passo(id('Ieq'), `I_{eq,${s}}`, estadioI ? Im : [branson, min(Im, branson)], { casas: 0, unidade: 'cm⁴', ref: NBR('9.2.3') }),
-    m.passo(id('heq'), `h_{eq,${s}}`, cbrt(div(mul(cte(12, 0), Ieq), bm)), { casas: 2, unidade: 'cm', ref: AULA }),
-  ], { fonte: 'Curso', item: 'planilha 06' });
+    m.passo(id('heq'), `h_{eq,${s}}`, cbrt(div(mul(cte(12, 0), Ieq), bm)), { casas: 2, unidade: 'cm', ref: CRITERIO }),
+  ], NBR('9.2.3'));
 }
 
 function cardEls(m: Memoria): Card {
@@ -856,7 +859,7 @@ function cardEls(m: Memoria): Card {
     m.passo('apB_c', 'p_{\\alpha B}', mul(psi, cargaAlfa('αB', '\\alpha_B', '\\alpha_{B,u}')), { casas: 2, unidade: 'kN/m²' }),
     ...comNumero.map(([id, s, e]) => m.passo(id, s, e, { casas: 2, unidade: 'mm' })),
     m.passo('dadm_p', '\\delta_{adm,p}', div(m.g('lref_p', '\\ell_{ref}', 0, 'mm', { fator: 1000 }), m.ent('div_adm', 'n_{adm}')), {
-      casas: 2, unidade: 'mm', ref: AULA,
+      casas: 2, unidade: 'mm', ref: CRITERIO,
     }),
     m.passo('dinf_p', '\\delta_{\\infty,p}', pior.length === 0 ? null : mul(umMaisXi, pior.length === 1 ? pior[0] : max(...pior)), {
       casas: 2, unidade: 'mm', origem: 'calculado', ref: NBR('9.2.4'),
@@ -893,7 +896,7 @@ function cardEls(m: Memoria): Card {
   return limpo({
     id: 'painelCf.els',
     titulo: 'Painel · ELS',
-    ref: AULA,
+    ref: NBR('9.2'),
     figura: 'Fig. 13',
     // as duas seções I desenhadas e cotadas, com os números das mesmas células (Jose, 12/10)
     ...(desenhoDoPainel ? { desenho: desenhoDoPainel } : {}),

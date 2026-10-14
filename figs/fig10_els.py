@@ -17,13 +17,13 @@ for i in range(1, 6):
     y = yb - hp + i * hp / 6
     s.arrow(xw + 24 + 10 + 96 * i / 6, y, xw + 26, y, color=C['load'], sw=1.1)
 s.text(xw + 140, yb - 20, 'carga de serviço', size=12, anchor='start', color=C['load'])
-s.text(xw + 140, yb - 4, '(Ma/Mk = 1 na aula)', size=11, anchor='start', color=C['note'])
+s.text(xw + 140, yb - 4, '(Ma/Mk = 1: carga inteira)', size=11, anchor='start', color=C['note'])
 s.dim_v(xw - 100, yb - hp, yb, 'L = h', side=-1, ext_from=(xw, xw), size=13)
 s.line(xw + 10, yb - 3, xw + 26, yb - 3, stroke=C['steel'], sw=3)
 s.text(xw + 140, yb + 24, 'fissura na base, face do solo (tracionada)', size=11, anchor='start', color=C['steel'])
 # roteiro
 bx, by = 520, 100
-rows = [('Roteiro (aba ELS)', True), ('1. Ma = momento no engaste na faixa bm', False), ('2. Em = 800·fpk (líquido na aula: 8889 MPa); n = Es/Em', False),
+rows = [('Roteiro (aba ELS)', True), ('1. Ma = momento no engaste na faixa bm', False), ('2. Em = 800·fpk (NBR 16868-1, Tab. 1); n = Es/Em', False),
         ('3. Im da seção (I ou cheia); Mr = ftk·Im / yt', False), ('    Ma > Mr → Estádio II (fissura na base)', False),
         ('4. x e III da seção fissurada (LN na mesa ou na alma)', False), ('5. Ieq = (Mr/Ma)³·Im + [1 − (Mr/Ma)³]·III ≤ Im', False),
         ('6. δ0 com a carga real e Em·Ieq (igual ao Ftool com', False), ('    seção bm × heq e E = Em)', False),

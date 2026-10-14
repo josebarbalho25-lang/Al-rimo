@@ -28,14 +28,14 @@ ALVOS = {
     # Ka 0,75 fecha arg_x = 1 na conta exata, e a soma das 40 fatias dá 0,9999999999999998.
     'alvo_compara15_flexao': {
         't_bloco': 19, 'H_muro': 1, 'gama_solo': 18, 'q_sobre': 0, 'c_solo': 0, 'Agua': 'Não', 'Ka_dir': 0.75,
-        'K_dir': 1, 'd_dir': 7.5, 'fbk_': 4, 'fpk_ref': 'Bruta (NBR)', 'Graute': 40, 'M2d_on': 'Não',
+        'K_dir': 1, 'd_dir': 7.5, 'fbk_': 4, 'fpk_ref': 'Bruta', 'Graute': 40, 'M2d_on': 'Não',
     },
     # Fundação!G136 (G129 até a seção 10 da aba entrar, 09/10): E136 > d_s/100 com os dois iguais a menos do último
     # bit — Excel diz FALSO (0); o double cru daria −0,105.
     'alvo_compara15_sapata_a': {
         'H_muro': 2, 't_bloco': 14, 'Trav_lat': 'Sim', 'Ka_dir': 0.33, 'phi_solo': 30, 'c_solo': 10,
         'q_sobre': 0, 'Agua': 'Não', 'z_NA': 0.7, 'fbk_': 12, 'Graute': 20,
-        'fpk_ref': 'Líquida (curso)', 'phi_v': 16, 's_dir': 80, 'd_dir': 14, 'K_dir': 1, 'AsMin_crit': 'NBR',
+        'fpk_ref': 'Líquida', 'phi_v': 16, 's_dir': 80, 'd_dir': 14, 'K_dir': 1, 'AsMin_crit': 'Parede (b·t)',
         'M2d_on': 'Sim', 'fck_fund': 'C30', 'zona_ad': 'Má', 'gancho_': 'Sim', 'h_pan': 0.8,
         'arg_cls': '3,5 a 7,0 MPa', 'caso_pan': 11, 'beta_dir': 0.1, 'sig_pan': 0.1,
         'Tipo_muro': 'Contrafortes', 'l_cf': 1.35, 'tenr_': 54, 'pos_cf': 'Enterrado (lado do solo)',
@@ -53,8 +53,8 @@ ALVOS = {
     # contrafortes em 14x39; a regra dos 15 dígitos na comparação continua provada pelo sapata_a.
     'alvo_compara15_sapata_b': {
         'H_muro': 1, 't_bloco': 14, 'Trav_lat': 'Não', 'Ka_dir': 0.33, 'phi_solo': 30, 'c_solo': 10,
-        'q_sobre': 2, 'Agua': 'Sim', 'z_NA': 0.3, 'fbk_': 6, 'Graute': 80, 'fpk_ref': 'Bruta (NBR)',
-        'phi_v': 16, 's_dir': 80, 'd_dir': 9.5, 'K_dir': 1.5, 'AsMin_crit': 'NBR', 'M2d_on': 'Sim',
+        'q_sobre': 2, 'Agua': 'Sim', 'z_NA': 0.3, 'fbk_': 6, 'Graute': 80, 'fpk_ref': 'Bruta',
+        'phi_v': 16, 's_dir': 80, 'd_dir': 9.5, 'K_dir': 1.5, 'AsMin_crit': 'Parede (b·t)', 'M2d_on': 'Sim',
         'fck_fund': 'C30', 'zona_ad': 'Boa', 'gancho_': 'Não', 'h_pan': 1.6, 'arg_cls': '3,5 a 7,0 MPa', 'caso_pan': 11,
         'beta_dir': 0.1, 'sig_pan': 0.1, 'Tipo_muro': 'Contrafortes', 'l_cf': 3.75, 'tenr_': 54,
         'pos_cf': 'Enterrado (lado do solo)', 'tipo_cf': 'Extremidade', 'bal_cf': 0, 'phi_cf': 10,
@@ -72,7 +72,7 @@ ALVOS = {
     'alvo_arredcima15_estribos': {
         'H_muro': 2.2, 't_bloco': 14, 'Trav_lat': 'Sim', 'Ka_dir': 0.3, 'phi_solo': 35, 'c_solo': 0,
         'q_sobre': 0, 'Agua': 'Não', 'z_NA': 0.3, 'fbk_': 24, 'Graute': 20,
-        'fpk_ref': 'Líquida (curso)', 'phi_v': 16, 's_dir': 80, 'd_dir': None, 'K_dir': 1.5, 'AsMin_crit': 'NBR',
+        'fpk_ref': 'Líquida', 'phi_v': 16, 's_dir': 80, 'd_dir': None, 'K_dir': 1.5, 'AsMin_crit': 'Parede (b·t)',
         'M2d_on': 'Sim', 'fck_fund': 'C30', 'zona_ad': 'Boa', 'gancho_': 'Sim', 'h_pan': 1.2,
         'arg_cls': 'acima de 7,0 MPa', 'caso_pan': 18, 'beta_dir': None, 'sig_pan': 0,
         'Tipo_muro': 'Contrafortes', 'l_cf': 0.95, 'tenr_': 54, 'pos_cf': 'Enterrado (lado do solo)',
@@ -98,14 +98,14 @@ ALVOS_COBERTURA = {
     # T do painel vertical com 2 barras (B221 ramo fundo); s_adot=0 no balanço; x/d>0,45; torção NÃO OK; sugestões de areia
     # (09/10: refeito com valores das listas por busca no motor — o de antes, H 4 / tenr 89, nem chegava à alma)
     'alvo_cob_T_na_alma': {
-        'H_muro': 3.2, 'Tipo_muro': 'Contrafortes', 'q_sobre': 20, 'fbk_': 16, 'fpk_ref': 'Líquida (curso)', 's_dir': None,
+        'H_muro': 3.2, 'Tipo_muro': 'Contrafortes', 'q_sobre': 20, 'fbk_': 16, 'fpk_ref': 'Líquida', 's_dir': None,
         'Ka_dir': 0.5, 'K_cf': 1, 'l_cf': 3.2, 'tenr_': 79, 'phi_pv': 12.5, 's_pv_dir': 80, 'c_pv': 3,
         'Tipo_solo': 'Areia', 'NSPT': 12, 'Umidade': 'Saturada', 'Classe_G': 'Areia densa',
     },
     # nenhum espaçamento do painel atende (s_pv=0 → x_ev "—", B278 NÃO OK, "c/0"); Arranjos "> Ø20";
     # Ø construtiva 12,5 e c_pv 4,5 (DEF.NÚM.DEC com 1 casa); torção NÃO OK. Sapata subdimensionada DE PROPÓSITO.
     'alvo_cob_painel_sem_arranjo': {
-        'H_muro': 3.2, 'Tipo_muro': 'Contrafortes', 'Ka_dir': 0.28, 'q_sobre': 5, 'fbk_': 22, 'fpk_ref': 'Bruta (NBR)',
+        'H_muro': 3.2, 'Tipo_muro': 'Contrafortes', 'Ka_dir': 0.28, 'q_sobre': 5, 'fbk_': 22, 'fpk_ref': 'Bruta',
         's_dir': None, 'K_dir': 1.5, 'l_cf': 4, 'phi_cc': 12.5, 'n_cc': 3, 'c_pv': 4.5, 'B_sap': 0.6, 'a_ater': 0.15,
     },
     # flexão da sapata não resiste (B70/B104), cortante além de d (G113), esbeltez αv·h (B7), NA no topo (flutua: FS<0)
@@ -125,7 +125,7 @@ ALVOS_COBERTURA = {
     'alvo_cob_phi20_solo_outro': {
         't_bloco': 14, 'Graute': 20, 'Ka_dir': 0.5,
         'q_sobre': 20, 'Tipo_muro': 'Contrafortes', 'l_cf': 3.75, 'tenr_': 54, 'phi_cf': 20, 'lat_pan': 'Engastadas', 'phi_pv': 20,
-        'phi_ph': 20, 'K_ph': 1, 'phi_v': 20, 's_dir': None, 'AsMin_crit': 'NBR', 'caso_pan': 11,
+        'phi_ph': 20, 'K_ph': 1, 'phi_v': 20, 's_dir': None, 'AsMin_crit': 'Parede (b·t)', 'caso_pan': 11,
         'Tipo_solo': 'Outro', 'NSPT': 45, 'Umidade': 'Seca', 'Classe_G': 'Pedregulho arenoso',
     },
     # balanço com 0,8x > hf (Muro em balanço!B81, só o sorteio00 passava por aqui)
@@ -133,7 +133,7 @@ ALVOS_COBERTURA = {
     # painel não armado: l e h > 50t e h·l > coef·t² (B46/B47) — só com coesão (s_adot enorme)
     'alvo_cob_painel_area_limite': {
         'H_muro': 1, 't_bloco': 14, 'l_cf': 1.35, 'tenr_': 54, 'gama_solo': 16, 'Ka_dir': None, 'phi_solo': 30, 'c_solo': 5, 'Agua': 'Sim',
-        'z_NA': 2, 's_dir': None, 'AsMin_crit': 'NBR',
+        'z_NA': 2, 's_dir': None, 'AsMin_crit': 'Parede (b·t)',
     },
     # 22 entradas que o gabarito nunca mexe + k = 1,6 − d ≥ 1 (h_sap 0,7)
     'alvo_cob_parametros_nunca_mexidos': {
