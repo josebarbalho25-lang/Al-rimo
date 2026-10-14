@@ -441,7 +441,9 @@ e dizer ao Jose o que mudou e por quê.
   Outras, anotadas pelo Jose:
   6. Entrada por figuras: PADRONIZAR as imagens com as dos memoriais (a figura da entrada e a da memória têm de ser
      a mesma linguagem).
-  7. Vistas de elevação frontal e corte lateral: ele ainda tem ajustes a fazer (vai mandar).
+  7. Vistas de elevação frontal e corte lateral: ele ainda tem ajustes a fazer (vai mandar). Visto no DXF aberto no
+     CADCraft (14/10): no corte, a linha da cota da sapata passa por cima do texto "B = 140" (junto da cota 25 do
+     dente) — acertar junto com os ajustes dele.
   Margens 20/10 mm e carimbo 180 mm da NBR 16752 vieram de apostila/ISO 7200: conferir no texto da norma (ele tem
   acesso pelo CREA).
 - **FILA DO JOSE (14/10, tarde — só anotado; ele confere o IFC da canaleta antes):**
