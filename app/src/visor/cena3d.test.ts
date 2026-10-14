@@ -58,17 +58,21 @@ describe('cena 3D montada (sem WebGL)', () => {
     expect(c.pegar(raioDe(0.0975, 0.5))).toBe('T1.M.f02.p000');
     c.aplicarArmadura(true);
     expect(c.pegar(raioDe(0.0975, 0.5))).toBe('B.V000');
+    // o apagador da profundidade vem logo antes das barras, e as barras depois de tudo, com luz
+    const apagador = c.grupo.children.find((o) => o.name === 'armadura: apaga a profundidade')!;
+    expect(apagador.visible).toBe(true);
     for (const b of c.barras) {
-      const mat = b.malha.material as THREE.Material;
-      expect(mat.depthTest).toBe(false);
-      expect(b.malha.renderOrder).toBeGreaterThan(2);
+      expect(b.malha.renderOrder).toBeGreaterThan(apagador.renderOrder);
+      expect(apagador.renderOrder).toBeGreaterThan(2);
+      expect(b.malha.material).toBeInstanceOf(THREE.MeshLambertMaterial);
     }
     // o bloco NÃO vira vidro (era o que poluía o Raio-X: as arestas de trás de todos os blocos)
     const bloco = c.lotes.find((l) => l.lote.acabamento === 'alvenaria')!;
     expect((bloco.malha.material as THREE.Material).transparent).toBe(false);
     c.aplicarArmadura(false);
     expect(c.pegar(raioDe(0.0975, 0.5))).toBe('T1.M.f02.p000');
-    for (const b of c.barras) expect((b.malha.material as THREE.Material).depthTest).toBe(true);
+    expect(c.grupo.children.find((o) => o.name === 'armadura: apaga a profundidade')!.visible).toBe(false);
+    for (const b of c.barras) expect(b.malha.renderOrder).toBe(0);
   });
 
   it('Armadura: cada Ø na cor da bitola do Jose (Revit, "Iso Escada"); desligada, o aço do estilo', () => {

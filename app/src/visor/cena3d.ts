@@ -24,9 +24,14 @@
 //
 //  ⚠️ ARMADURA (Jose, 14/10 — era o Raio-X): como o "visualizar desobstruído"
 //  do Revit. As peças NÃO mudam (o vidro do Raio-X mostrava as arestas de
-//  trás de todos os blocos: poluído); a barra é desenhada por último, sem
-//  teste de profundidade, em cor chapada da bitola (coresDasBitolas.ts) — por
-//  cima de bloco, graute e sapata, de qualquer ângulo. Fica melhor no Opaco.
+//  trás de todos os blocos: poluído); a barra sai por cima de bloco, graute e
+//  sapata, de qualquer ângulo, na cor da bitola (coresDasBitolas.ts).
+//  COMO: depois de tudo, um objeto vazio APAGA a profundidade (`clearDepth`)
+//  e as barras vêm em seguida, com teste de profundidade só entre elas e com
+//  luz — uma barra esconde a outra direito e o tubo tem volume (Jose: "ficaram
+//  muito chapadas"; sem teste nenhum, a barra de trás pintava por cima da da
+//  frente). Tudo na fila do transparente, para vir também depois do véu do
+//  terreno, que é transparente. Fica melhor no Opaco.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import * as THREE from 'three';
@@ -41,7 +46,7 @@ import { corDaBitola } from './coresDasBitolas';
 
 /** Acabamentos que levam traço. Graute (empilhado por fiada) riscaria o pilar de linhas a cada 20 cm. */
 const COM_ARESTA: ReadonlySet<Acabamento> = new Set(['alvenaria', 'concreto']);
-/** Ordem de desenho da barra na Armadura: depois de tudo (peças 0, traço 2). */
+/** Ordem de desenho na Armadura: o apagador da profundidade (9) e as barras (10), depois de tudo (peças 0, traço 2). */
 const ORDEM_DA_ARMADURA = 10;
 
 export type Pego = { tipo: 'peca'; peca: Peca } | { tipo: 'barra'; barra: Barra };
@@ -187,10 +192,20 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
   };
   const tracoComum = materialDoTraco();
   /*
-    O aço da Armadura: cor chapada (sem sombreado — Jose: "precisa do sombreado não"), e sem teste nem gravação de
-    profundidade — desenhado por último (ORDEM_DA_ARMADURA), passa por cima do que estiver na frente.
+    O aço da Armadura: com luz (o tubo tem volume) e com profundidade ENTRE as barras; o que está na frente delas não
+    conta porque o apagador limpa a profundidade logo antes (ver o cabeçalho). Transparente com opacidade 1 só para
+    entrar na fila do transparente, depois do véu do terreno.
   */
-  const acoDaArmadura = new THREE.MeshBasicMaterial({ color: 0xffffff, vertexColors: true, depthTest: false, depthWrite: false });
+  const acoDaArmadura = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true, transparent: true, opacity: 1 });
+  const apagador = new THREE.Mesh(
+    new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3)),
+    new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, depthTest: false, transparent: true }),
+  );
+  apagador.name = 'armadura: apaga a profundidade';
+  apagador.frustumCulled = false;
+  apagador.renderOrder = ORDEM_DA_ARMADURA - 1;
+  apagador.visible = false;
+  apagador.onBeforeRender = (renderer) => renderer.clearDepth();
 
   // ── Moldes: um por Geometria usada (o sólido e as arestas dele) ──
   const moldes = new Map<string, { geo: THREE.BufferGeometry; arestas: THREE.BufferAttribute }>();
@@ -237,6 +252,7 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
     grupo.add(malha);
     return mb;
   });
+  grupo.add(apagador);
 
   const corDoLote = (l: MalhaDoLote) => corDaPeca(estilo, paletaAtual, l.lote.acabamento, l.classe);
 
@@ -331,6 +347,7 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
 
   const aplicarArmadura = (ligada: boolean) => {
     armadura = ligada;
+    apagador.visible = ligada;
     for (const b of barras) {
       b.malha.material = ligada ? acoDaArmadura : aco(estilo);
       b.malha.renderOrder = ligada ? ORDEM_DA_ARMADURA : 0;
@@ -343,7 +360,7 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
     [...new Set(barras.filter((b) => visivel(b.lote.categorias, o)).map((b) => b.lote.diametro))].sort((a, b) => a - b);
 
   const todosOsMateriais = (): THREE.Material[] => {
-    const ms: THREE.Material[] = [tracoComum, acoDaArmadura, ...acos.values()];
+    const ms: THREE.Material[] = [tracoComum, acoDaArmadura, apagador.material, ...acos.values()];
     for (const doEstilo of materiais.values()) ms.push(...doEstilo.values());
     return ms;
   };
@@ -489,6 +506,7 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
       l.traco?.geometry.dispose();
     }
     for (const b of barras) b.lote.geometria.dispose();
+    apagador.geometry.dispose();
     for (const m of todosOsMateriais()) m.dispose();
   };
 

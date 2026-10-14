@@ -147,9 +147,9 @@ describe('estilo: a cena troca de cara sem se remontar', () => {
     for (const x of c.barras) expect(x.malha.castShadow).toBe(false);
     // Trocar de estilo com a Armadura ligada: a barra continua por cima (o material dela não é o do estilo).
     c.aplicarEstilo('opaco');
-    for (const x of c.barras) expect((x.malha.material as THREE.Material).depthTest).toBe(false);
+    for (const x of c.barras) expect(x.malha.renderOrder).toBeGreaterThan(2);
     c.aplicarArmadura(false);
-    for (const x of c.barras) expect((x.malha.material as THREE.Material).depthTest).toBe(true);
+    for (const x of c.barras) expect(x.malha.renderOrder).toBe(0);
     expect(c.pegar(raioDe(0.1, 0.5))).toBe('T1.M.f02.p000');
   });
 
