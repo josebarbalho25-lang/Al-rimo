@@ -25,6 +25,8 @@ import { legendaDasCores, notasAutomaticas, quadroDeAco } from './quadro';
 import { criarDesenhista } from './desenhista';
 import { logoEmPng, useEscritorio } from './escritorio';
 import { imprimirPranchas } from './pdf';
+import { pacoteDxf } from './dxf';
+import { nomeDeArquivo } from '@/estado/projeto';
 import type { ConteudoDoItem, DadosDaObra, Folha, Formato, ItemDaFolha, Orientacao } from './tipos';
 
 type Selecao = { tipo: 'item'; id: string } | { tipo: 'carimbo' } | { tipo: 'quadro' } | null;
@@ -96,6 +98,7 @@ function Numero({ valor, aoMudar, min = 0 }: { valor: number; aoMudar: (v: numbe
 
 export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; resultado: Resultado | null }) {
   const pranchas = useApp((st) => st.pranchas);
+  const tituloDoMuro = useApp((st) => st.titulo);
   const mudar = useApp((st) => st.mudarPranchas);
   const escritorio = useEscritorio((st) => st.dados);
   const mudarEscritorio = useEscritorio((st) => st.mudar);
@@ -143,6 +146,26 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
     () => (folha ? comporFolha(folha, contexto(numero, pranchas.folhas.length, pranchas.obra)) : null),
     [folha, numero, pranchas.folhas.length, pranchas.obra, contexto],
   );
+
+  /** Todas as folhas compostas, na ordem (PDF e DXF saem do mesmo desenho que está na tela). */
+  const todas = () => pranchas.folhas.map((f, i) => comporFolha(f, contexto(i + 1, pranchas.folhas.length, pranchas.obra)));
+
+  /** DXF: uma prancha por arquivo, num .zip com a pasta das imagens (o 3D e a logo vão vinculados). */
+  const baixarDxf = () => {
+    const compostas = todas();
+    const folhas = compostas.map((c, i) => {
+      const f = pranchas.folhas[i];
+      const nome = `${String(i + 1).padStart(2, '0')}${f.conteudo ? ` - ${f.conteudo}` : ''}`;
+      return { nome, largura: c.largura, altura: c.altura, prims: c.primitivas };
+    });
+    const bytes = pacoteDxf(folhas);
+    const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'application/zip' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nomeDeArquivo(`${tituloDoMuro} - pranchas`, '.zip');
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
 
   const mudarObra = (parcial: Partial<DadosDaObra>) => mudar((p) => ({ ...p, obra: { ...p.obra, ...parcial } }));
   const mudarFolha = (f: (x: Folha) => Folha) => folha && mudar((p) => naFolha(p, folha.id, f));
@@ -393,9 +416,12 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
               type="button"
               style={s.botao}
               disabled={!pranchas.folhas.length}
-              onClick={() => void imprimirPranchas(pranchas.folhas.map((f, i) => comporFolha(f, contexto(i + 1, pranchas.folhas.length, pranchas.obra))))}
+              onClick={() => void imprimirPranchas(todas())}
             >
               PDF
+            </button>
+            <button type="button" style={s.botao} disabled={!pranchas.folhas.length} onClick={baixarDxf}>
+              DXF
             </button>
           </div>
         </div>
