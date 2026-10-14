@@ -14,6 +14,11 @@
   min-height: 0;
   background: var(--surface, #ffffff);
 }
+/* No escuro, o fundo da memória é o tom exato da folha invertida das figuras (.prancheta: invert(0,88) leva o branco
+   a #1f1f1f) — a figura fica sem caixa em volta (Jose, 14/10: "o BO é o escuro"). */
+body[data-theme='dark'] .mem-tela {
+  background: #1f1f1f;
+}
 .mem-indice {
   border-right: 1px solid var(--line, #d9dee4);
   overflow: auto;

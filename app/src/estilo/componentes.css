@@ -761,6 +761,12 @@ select optgroup {
 body[data-theme='dark'] .prancheta {
   filter: invert(0.88) hue-rotate(180deg);
 }
+/* Sem moldura em volta da figura (Jose, 14/10: "no paper tem de arrumar pra não aparecer a borda"). No Paper o papel
+   branco MULTIPLICA o creme da página: o branco some e o desenho fica direto no fundo (as cores escurecem um nada,
+   todas igual, a legenda junto). No escuro, a memória toma o tom da folha invertida (memoria.css). */
+body[data-theme='paper'] .prancheta {
+  mix-blend-mode: multiply;
+}
 /* Exceção: as pranchas dos desenhos do muro (desenhos/Desenhos.tsx) ficam em
    papel branco também no escuro. As peças vão pintadas com as cores do Jose no
    Revit (código de obra, com legenda), e a inversão trocava o amarelo da
