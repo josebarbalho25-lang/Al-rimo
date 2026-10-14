@@ -192,8 +192,9 @@ export function criarEscritor(): Escritor {
       const cab = [
         'ISO-10303-21;',
         'HEADER;',
-        // ReferenceView 1.2: o mesmo que o Revit 2026 grava no IFC4 dele (medido no IFC do José).
-        "FILE_DESCRIPTION(('ViewDefinition [ReferenceView_V1.2]'),'2;1');",
+        // Design Transfer View (14/10): a canaleta recortada vai em CSG (U menos os recortes), que a Reference View
+        // não aceita. Até 14/10 ia ReferenceView_V1.2, o mesmo do Revit 2026 do José.
+        "FILE_DESCRIPTION(('ViewDefinition [DesignTransferView_V1.0]'),'2;1');",
         'FILE_NAME(' + [str(nomeArquivo), str(agora), '(' + str(autor) + ')', '(' + str(organizacao) + ')',
           str((app + ' ' + versao).trim()), str(app), "''"].join(',') + ');',
         "FILE_SCHEMA(('IFC4'));",

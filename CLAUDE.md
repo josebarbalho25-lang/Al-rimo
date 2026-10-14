@@ -256,6 +256,14 @@ e dizer ao Jose o que mudou e por quê.
 - **A FAZER (Jose, 09/10): DRENO DE FUNDO** além dos barbacãs — tubo correndo na longitudinal, no pé do tardoz, envolto
   por bidim (geotêxtil), areia e brita. Entra no 3D, no corte, no quantitativo (m de tubo, m² de bidim, m³ de areia e
   brita), no IFC e nas entradas de Drenagem (Ø do tubo, dimensões do envelope). Fácil; ficou para depois.
+- **Armadura no 3D e canaleta no IFC (Jose, 14/10):** o Raio-X virou o botão **Armadura** — as peças não mudam e as
+  barras saem por cima de tudo (apaga a profundidade antes delas, como o "visualizar desobstruído" do Revit), com luz,
+  na cor da bitola dele (Revit, Casa F., vista "Iso Escada": Ø5 #00ffff, 6,3 #00ff00, 8 #ff8000, 10 #ff0000, 12,5
+  #ff00ff, 16 #8000ff; Ø20 amarelo e Ø25 azul PROVISÓRIOS), legenda de bolinhas (tela e foto). No IFC a canaleta
+  recortada vai como U inteiro menos os recortes (IfcBooleanResult, 'CSG'; Geometria.recortes) — em pedaços o Revit
+  mostrava segmentada; o arquivo se declara DesignTransferView_V1.0 (a Reference View não aceita booleana).
+  Exemplos para ele abrir: `_trabalho/ifc_canaleta_14-10/`. Reta final (Jose): depois da passada dele nos módulos de
+  cálculo, entregável — desenhos, IFC, nó de cachorro da espera (Revit dele), estética.
 - **Cores por tipo de bloco** (como ele faz no Revit para a obra entender): inteiro #787878, meio #004080, canaleta
   #ffff80, bloco 34 #ff8040, bloco 54 #ff0000 (`dados/encaixes_revit/cores_jose.json`) — 3D e vista frontal com legenda.
 - **Ele confere pela MEMÓRIA, não pela planilha.** Parte a caprichar: **inércia e braço de alavanca da seção real** de cada

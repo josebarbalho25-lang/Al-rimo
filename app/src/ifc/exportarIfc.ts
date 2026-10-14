@@ -290,15 +290,27 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
     const posicao = A3(P(ptm(pos.local)), pos.axis ? D(pos.axis) : null, pos.ref ? D(pos.ref) : null);
     return w.add('IFCEXTRUDEDAREASOLID', [perfil, posicao, D([0, 0, 1]), mm(ate - de)]);
   };
-  // Peça em pedaços (Geometria.pedacos — a canaleta com o fundo furado e a parede quebrada, acrescentado pela
-  // modulação em 09/10 noite): um IfcExtrudedAreaSolid por pedaço, todos no MESMO mapa — a peça continua uma só
-  // (um IfcMappedItem), e 'SweptSolid' com vários sólidos é o que a Reference View aceita (booleana não entra nela).
-  const solidosDaGeometria = (geo: Geometria): Ref[] => {
+  /*
+    Peça recortada (a canaleta com o fundo furado e a parede quebrada — Geometria.recortes): o U INTEIRO menos uma
+    caixa por recorte, em IfcBooleanResult(DIFFERENCE) encadeado, representação 'CSG'. Até 14/10 ia em pedaços (um
+    IfcExtrudedAreaSolid por pedaço, 'SweptSolid'), e o Revit desenhava a emenda entre eles — a canaleta aparecia
+    segmentada (Jose). A booleana não entra na Reference View: o arquivo se declara Design Transfer View (step.ts).
+    Sem recortes (ou recorte que não monta), o de antes.
+  */
+  const solidosDaGeometria = (geo: Geometria): { itens: Ref[]; tipo: 'SweptSolid' | 'CSG' } => {
+    if (geo.recortes?.length) {
+      let r: Ref | null = solidoDoPrisma(geo, geo.perfil, 0, geo.extensao);
+      for (const q of geo.recortes) {
+        const corte = r && solidoDoPrisma(geo, { contorno: q.contorno }, q.de, q.ate);
+        r = r && corte ? w.add('IFCBOOLEANRESULT', [E('DIFFERENCE'), r, corte]) : null;
+      }
+      if (r) return { itens: [r], tipo: 'CSG' };
+    }
     if (!geo.pedacos?.length) {
       const s = solidoDoPrisma(geo, geo.perfil, 0, geo.extensao);
-      return s ? [s] : [];
+      return { itens: s ? [s] : [], tipo: 'SweptSolid' };
     }
-    return geo.pedacos.map((q) => solidoDoPrisma(geo, { contorno: q.contorno }, q.de, q.ate)).filter((s): s is Ref => s !== null);
+    return { itens: geo.pedacos.map((q) => solidoDoPrisma(geo, { contorno: q.contorno }, q.de, q.ate)).filter((s): s is Ref => s !== null), tipo: 'SweptSolid' };
   };
 
   // ── tipos: um por (Geometria, classe) com a IfcRepresentationMap ─────────────────────────────────────────────
@@ -317,10 +329,10 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
     const classe = CLASSE[peca.tipo]!;
     const k = geo.chave + '|' + classe;
     if (tiposGeo.has(k)) return tiposGeo.get(k)!;
-    const solidos = solidosDaGeometria(geo);
+    const { itens: solidos, tipo } = solidosDaGeometria(geo);
     if (!solidos.length) { tiposGeo.set(k, null); return null; }
     for (const solido of solidos) w.add('IFCSTYLEDITEM', [solido, [estilo(materialDe(peca.tipo))], $]);
-    const mapa = w.add('IFCREPRESENTATIONMAP', [A3(), w.add('IFCSHAPEREPRESENTATION', [body, 'Body', 'SweptSolid', solidos])]);
+    const mapa = w.add('IFCREPRESENTATIONMAP', [A3(), w.add('IFCSHAPEREPRESENTATION', [body, 'Body', tipo, solidos])]);
     const t: TipoGeo = { k, classe, mapa, ocorrencias: [], geo, tipoPeca: peca.tipo };
     tiposGeo.set(k, t);
     return t;

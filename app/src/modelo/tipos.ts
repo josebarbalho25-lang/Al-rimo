@@ -75,6 +75,14 @@ export interface Geometria {
    * os pedaços. `volume_mm3` é o da UNIÃO (concreto que fica).
    */
   pedacos?: PedacoDePrisma[];
+  /**
+   * O que SAIU do envelope (acrescentado em 14/10, junto com `pedacos`): um prisma por furo do fundo e por quebra de
+   * parede, no mesmo plano (u, v) e na mesma origem do `perfil`, de `de` a `ate`. envelope − recortes = união dos
+   * pedaços. O IFC usa isto (U inteiro menos os recortes, uma peça só no Revit — Jose, 14/10: em pedaços aparecia
+   * segmentada); o 3D continua nos pedaços. As caixas passam um pouco das faces de fora (para a subtração não ficar
+   * com face coincidente) e entram no vazio do U, onde não tiram nada.
+   */
+  recortes?: PedacoDePrisma[];
 }
 
 /** Um pedaço de prisma (ver Geometria.pedacos): contorno anti-horário, extrudado de `de` a `ate`. */

@@ -125,9 +125,22 @@ export function geoCanaletaRecortada(ctx: Ctx, pc: PecaDoCatalogo, rec: Recortes
   const cortes = [...new Set([0, L, ...furos.flatMap((f) => [f.w0, f.w1]), ...quebras.flatMap((q) => [q.w0, q.w1])])]
     .filter((w) => w >= 0 && w <= L).sort((a, b) => a - b);
   const pedacos: PedacoDePrisma[] = [];
-  let anterior: { k: string; de: number; perfis: Vec2[][] } | null = null;
+  const recortes: PedacoDePrisma[] = [];
+  // folga das caixas de recorte além das faces de fora (a subtração do IFC não pode ter face coincidente)
+  const F = 1;
+  const caixa = (u0: number, u1: number, v0: number, v1: number): Vec2[] => [[u0, v0], [u1, v0], [u1, v1], [u0, v1]];
+  let anterior: { k: string; de: number; perfis: Vec2[][]; furo: [number, number] | null; sem: [boolean, boolean] } | null = null;
   const fecha = (ate: number): void => {
-    if (anterior) for (const contorno of anterior.perfis) pedacos.push({ contorno, de: anterior.de, ate });
+    if (!anterior) return;
+    for (const contorno of anterior.perfis) pedacos.push({ contorno, de: anterior.de, ate });
+    const de = anterior.de === 0 ? -F : anterior.de;
+    const fim = ate === L ? L + F : ate;
+    // furo do fundo: a faixa do fundo, de baixo (passando F) até a face de cima do fundo — exatamente, sem passar: acima
+    // dela, na faixa do furo, fica o canto arredondado das paredes, que os pedaços mantêm (passando, o IFC raspava ~1 cm³)
+    if (anterior.furo) recortes.push({ contorno: caixa(anterior.furo[0], anterior.furo[1], -F, s.fundo), de, ate: fim });
+    // parede quebrada até o fundo, com o canto arredondado dela (perfisDaCanaleta, `sem`)
+    if (anterior.sem[0]) recortes.push({ contorno: caixa(-F, s.parede + s.r + F, s.fundo, H_BLOCO + F), de, ate: fim });
+    if (anterior.sem[1]) recortes.push({ contorno: caixa(t - s.parede - s.r - F, t + F, s.fundo, H_BLOCO + F), de, ate: fim });
   };
   for (let i = 0; i + 1 < cortes.length; i++) {
     const [a, b] = [cortes[i], cortes[i + 1]];
@@ -140,13 +153,14 @@ export function geoCanaletaRecortada(ctx: Ctx, pc: PecaDoCatalogo, rec: Recortes
     const k = `${furo ? furo.join('-') : ''}|${sem.join()}`;
     if (anterior && anterior.k === k) continue;
     fecha(a);
-    anterior = { k, de: a, perfis: perfisDaCanaleta(t, H_BLOCO, s.parede, s.fundo, s.r, furo, sem) };
+    anterior = { k, de: a, perfis: perfisDaCanaleta(t, H_BLOCO, s.parede, s.fundo, s.r, furo, sem), furo, sem };
   }
   fecha(L);
   const volume = pedacos.reduce((v, q) => v + Math.abs(areaPoligono(q.contorno)) * (q.ate - q.de), 0);
   const g = prisma(chave, 'X', s.U, L, undefined, pc.nome);
   g.classe = pc.classe;
   g.pedacos = pedacos.map((q) => ({ contorno: q.contorno, de: arred(q.de), ate: arred(q.ate) }));
+  g.recortes = recortes.map((q) => ({ contorno: q.contorno.map(([u, v]) => [arred(u), arred(v)] as Vec2), de: arred(q.de), ate: arred(q.ate) }));
   g.volume_mm3 = arred(volume);
   geos[chave] = g;
   return chave;
