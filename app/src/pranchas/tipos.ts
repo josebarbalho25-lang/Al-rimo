@@ -78,7 +78,7 @@ export type Primitiva =
   | { k: 'circulo'; c: Pt; r: number; e: Traco | null; cheio?: string }
   /** Área preenchida: anéis pela regra par-ímpar (o furo do bloco vazado de verdade). `fundo` = cor do fundo do
    *  padrão (a terra é riscada sobre o bege; o sólido usa só ele). `borda` desenha o contorno junto. */
-  | { k: 'hachura'; aneis: Pt[][]; padrao: PadraoHachura; fundo?: string; risco?: string; camada: string; borda?: Traco }
+  | { k: 'hachura'; aneis: Pt[][]; padrao: PadraoHachura; fundo?: string; risco?: string; camada: string; borda?: Traco; escala?: number }
   /** Texto: `p` = ponto de inserção na linha de base; ângulo em graus, ANTI-horário (cota vertical = 90).
    *  `mascara`: texto escrito em cima de hachura (o halo branco do SVG) — no DXF vai como MTEXT com máscara de
    *  fundo na cor do desenho, que tapa a hachura só atrás da letra. */

@@ -21,7 +21,12 @@ export interface Tabela {
   total?: Celula[];
   /** Só a tela: a figura da peça de cada linha (mesma ordem de `linhas`; null = sem figura). O CSV não lê. */
   figuras?: (FiguraDaPeca | null)[];
+  /** Linhas que detalham a de cima e ficam FORA do total (a canaleta para cortar, dentro das canaletas compradas). */
+  recuadas?: boolean[];
 }
+
+/** O começo do rótulo da linha recuada na tela e no CSV; a prancha desenha o recuo e tira a marca. */
+export const MARCA_DAS_QUAIS = '↳ ';
 
 const num = (n: number, casas: number): Celula => ({ n, casas });
 const bitola = (phi: number): Celula => num(phi, Number.isInteger(phi) ? 0 : 1);
@@ -71,9 +76,10 @@ export function tabelasDoQuantitativo(q: Quantitativo): Tabela[] {
     id: 'blocos',
     titulo: 'Blocos e canaletas',
     cabecalho: ['Peça', 'Catálogo', 'Quantidade (un)'],
-    linhas: compra.map((l) => [l.dasQuais ? `↳ ${l.rotulo}` : l.rotulo, l.catalogo, num(l.quantidade, 0)]),
+    linhas: compra.map((l) => [l.dasQuais ? `${MARCA_DAS_QUAIS}${l.rotulo}` : l.rotulo, l.catalogo, num(l.quantidade, 0)]),
     total: ['Total', null, num(q.totalBlocos, 0)],
     figuras: compra.map((l) => figuraDaPeca(q.muro.familia, l)),
+    recuadas: compra.map((l) => !!l.dasQuais),
   });
 
   t.push({

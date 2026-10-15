@@ -2,15 +2,15 @@
   O QUE ESTÁ EM VOLTA DA ALVENARIA — sapata (com armadura), drenagem (dreno, manta, barbacãs) e terreno (aterro e
   solo da frente, só para o 3D mostrar transparente; fora do IFC e do quantitativo).
 */
-import type { Vec2 } from '@/modelo/tipos';
+import type { Vec2, Vec3 } from '@/modelo/tipos';
 import { H_BLOCO, H_FIADA, JUNTA } from './catalogo';
 import type { Cavidade, MapaDeCavidades } from './cavidades';
 import type { Parametros } from './leitura';
 import { br, type TrechoModulado } from './modular';
 import { arred, circulo, prisma, retangulo, retanguloArredondado } from './perfis';
-import { corrida, distribuir, estribo, reta } from './barras';
+import { corrida, distribuir, estribo, medidasDoEstribo, reta } from './barras';
 import { ESPESSURA_MANTA, SOBRA_TERRENO, fmt, geoPrismaReto, pad, type Ctx } from './contexto';
-import { traspasse } from './armaduras';
+import { avisarMedidasDoEstribo, traspasse } from './armaduras';
 
 export const temDente = (p: Parametros): boolean => p.b_den > 0 && p.h_den > 0;
 
@@ -39,8 +39,8 @@ export function sapata(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number): 
   geoPrismaReto(ctx, chave, 'X', contorno, L);
   ctx.pecas.push({ id: `SAP.T${tr.indice}`, tipo: 'SAPATA', grupo: 'fundacao', geometria: chave, origem: [tr.x0, arred(Ype), arred(zMin)], giro: 0, trecho: tr.indice });
 
-  // armaduras (fundacao.py): transversal Ø phi_sap c/ s_ps na face de baixo (e na de cima quando o talão pede,
-  // "mesma armadura nas duas faces"), longitudinal Ø phi_sap2 c/ s_ss sobre ela
+  // armaduras (fundacao.py): transversal Ø phi_sap c/ s_ps, longitudinal Ø phi_sap2 c/ s_ss — em estribo fechado
+  // (padrão desde 15/10) ou reta, como era antes (entrada do modelo sap_transv)
   const c = p.cob_sap;
   const s1 = p.s_ps && p.s_ps > 0 ? p.s_ps : 200;
   const s2 = p.s_ss && p.s_ss > 0 ? p.s_ss : 200;
@@ -48,10 +48,48 @@ export function sapata(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number): 
     ctx.avisos.push({ codigo: 'SAPATA_ESPACAMENTO', texto: 'Armadura da sapata sem espaçamento na conta — desenhada a cada 20 cm (dedução)' });
   }
   const T = `SAP.T${tr.indice}`;
+  const transversais = p.sapTransv === 'reta' ? sapataReta(ctx, tr, Ype, YbA, s1, s2) : sapataEmEstribos(ctx, tr, Ype, YbA, s1, s2);
+
+  // torção (contrafortes): estribo fechado em volta de B × h no trecho todo (brief Q11, recomendação — DEDUÇÃO),
+  // no espaçamento da aba Fundação ("Ø do estribo de torção: espaçamento", célula sem nome). É outro estribo, à
+  // parte da transversal (a conta dimensiona os dois separados); onde cairia no lugar de uma transversal, encosta nela.
+  if (p.contrafortes && p.T_sd > 0 && p.s_tor !== null && p.s_tor > 0) {
+    const ph = p.phi_tor;
+    const y0 = Ype + c + ph / 2;
+    const y1 = YbA - c - ph / 2;
+    const z0 = -h + c + ph / 2;
+    const z1 = -c - ph / 2;
+    // a volta em espiral ocupa x ± φ: o 1º e o último ficam a c das pontas do trecho
+    const [xa, xb] = [tr.x0 + c + ph, tr.x1 - c - ph];
+    const xs = encostar(distribuir(xa, xb, p.s_tor), transversais.xs, transversais.meia + ph, xa, xb);
+    xs.forEach((x, k) => {
+      // ganchos no canto de cima do lado do pé, como a transversal
+      ctx.barras.push(estribo(`${T}.TOR${pad(k + 1, 4)}`, 'SAP_TORCAO', ph, [[x, y0, z1], [x, y1, z1], [x, y1, z0], [x, y0, z0]], tr.indice));
+    });
+    avisarMedidasDoEstribo(ctx, 'Estribo de torção da sapata', ph, y1 - y0, z1 - z0, 'TORCAO');
+    if (p.s_tor < 50) ctx.avisos.push({ codigo: 'TORCAO_ESPACAMENTO', texto: `Estribo de torção da sapata a cada ${br(p.s_tor / 10, 1)} cm` });
+    if (p.Asl_s > 0) ctx.avisos.push({ codigo: 'TORCAO_LONGITUDINAL', texto: `Armadura longitudinal de torção da sapata (Asl ${br(p.Asl_s)} cm²) não desenhada` });
+  }
+}
+
+/** Onde estão as transversais ao longo do trecho (x do plano de cada uma) e quanto cada uma ocupa para cada lado. */
+interface Transversais { xs: number[]; meia: number }
+
+/**
+ * A transversal RETA, como era até 15/10 (sap_transv = 'Reta'): Ø phi_sap c/ s_ps na face de baixo (e na de cima
+ * quando o talão pede, "mesma armadura nas duas faces"), longitudinal Ø phi_sap2 c/ s_ss sobre ela. Não mexer: a
+ * opção existe para reproduzir o desenho de antes, barra por barra (modulacao.test.ts confere contra o de 15/10).
+ */
+function sapataReta(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number, s1: number, s2: number): Transversais {
+  const { p } = ctx;
+  const h = p.h_sap;
+  const c = p.cob_sap;
+  const T = `SAP.T${tr.indice}`;
+  const xs = distribuir(tr.x0 + c, tr.x1 - c, s1);
   const faces = p.Mk_heel > 0 ? ['I', 'S'] : ['I'];
   for (const face of faces) {
     const zT = face === 'I' ? -h + c + p.phi_sap / 2 : -c - p.phi_sap / 2;
-    distribuir(tr.x0 + c, tr.x1 - c, s1).forEach((x, k) => {
+    xs.forEach((x, k) => {
       ctx.barras.push(reta(`${T}.T${face}${pad(k + 1, 3)}`, 'SAP_TRANSV', p.phi_sap, [x, Ype + c, zT], [x, YbA - c, zT], tr.indice));
     });
     const zL = face === 'I' ? -h + c + p.phi_sap + p.phi_sap2 / 2 : -c - p.phi_sap - p.phi_sap2 / 2;
@@ -60,21 +98,73 @@ export function sapata(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number): 
       ctx.barras.push(...bs);
     });
   }
+  return { xs, meia: p.phi_sap / 2 };
+}
 
-  // torção (contrafortes): estribo fechado em volta de B × h no trecho todo (brief Q11, recomendação — DEDUÇÃO),
-  // no espaçamento da aba Fundação ("Ø do estribo de torção: espaçamento", célula sem nome)
-  if (p.contrafortes && p.T_sd > 0 && p.s_tor !== null && p.s_tor > 0) {
-    const ph = p.phi_tor;
-    const y0 = Ype + c + ph / 2;
-    const y1 = YbA - c - ph / 2;
-    const z0 = -h + c + ph / 2;
-    const z1 = -c - ph / 2;
-    distribuir(tr.x0 + c, tr.x1 - c, p.s_tor).forEach((x, k) => {
-      ctx.barras.push(estribo(`${T}.TOR${pad(k + 1, 4)}`, 'SAP_TORCAO', ph, [[x, y0, z0], [x, y1, z0], [x, y1, z1], [x, y0, z1]], tr.indice));
+/**
+ * A transversal em ESTRIBO FECHADO em volta da seção B × h (sem o dente), Jose 15/10: "do jeito que sai a armação
+ * hoje não se sustenta na obra; se fizer como estribos a armadura ganha estrutura sem gambiarra". Ø phi_sap c/ s_ps,
+ * cobrimento cob_sap até a superfície dos ramos. A forma do estribo é a do Pró-Viga (barras.ts), ganchos no canto de
+ * cima do lado do pé — fora do talão, onde a face de cima pode tracionar.
+ *   · ramo de baixo = a armadura principal da conta, na mesma altura da barra reta de antes;
+ *   · ramo de cima = a armadura de cima quando o talão pede (Mk_heel > 0: mesmo Ø e espaçamento da reta de cima de
+ *     antes, na mesma altura, e agora contínua com os ramos em pé e dobrada nos cantos — ancora melhor que a reta);
+ *     sem Mk_heel ele é construtivo, é o que fecha o estribo;
+ *   · ramos em pé: só montagem — a conta não dá crédito a eles (cortante da sapata sem estribo, VRd1).
+ * Longitudinal Ø phi_sap2 por DENTRO do estribo: embaixo, c/ s_ss, apoiada no ramo de baixo, a dos cantos dentro da
+ * dobra; em cima, a malha c/ s_ss quando o talão pede e, sem ele, só as duas dos cantos (o porta-estribo).
+ */
+function sapataEmEstribos(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number, s1: number, s2: number): Transversais {
+  const { p } = ctx;
+  const h = p.h_sap;
+  const c = p.cob_sap;
+  const phi = p.phi_sap;
+  const phi2 = p.phi_sap2;
+  const T = `SAP.T${tr.indice}`;
+  // eixo dos ramos a c + φ/2 das faces
+  const y0 = Ype + c + phi / 2;
+  const y1 = YbA - c - phi / 2;
+  const zI = -h + c + phi / 2;
+  const zS = -c - phi / 2;
+  // a volta em espiral ocupa x ± φ (±φ/2 do degrau + o raio da barra): o 1º e o último ficam a c das pontas do trecho
+  const xs = distribuir(tr.x0 + c + phi, tr.x1 - c - phi, s1);
+  xs.forEach((x, k) => {
+    ctx.barras.push(estribo(`${T}.T${pad(k + 1, 3)}`, 'SAP_TRANSV', phi, [[x, y0, zS], [x, y1, zS], [x, y1, zI], [x, y0, zI]], tr.indice));
+  });
+  avisarMedidasDoEstribo(ctx, 'Estribo da sapata', phi, y1 - y0, zS - zI, 'SAPATA');
+
+  // longitudinal: a do canto encosta no ramo e na dobra (a barra mais fina que o raio de dentro da dobra fica onde a
+  // dobra começa: dali para o canto, a curva a levantaria do ramo)
+  const { raio } = medidasDoEstribo(phi, y1 - y0, zS - zI);
+  const encosto = phi / 2 + Math.max(raio - phi / 2, phi2 / 2);
+  const [ya, yb] = [y0 + encosto, y1 - encosto];
+  const l0 = traspasse(ctx, phi2, 'concreto');
+  for (const face of ['I', 'S'] as const) {
+    const zL = face === 'I' ? zI + phi / 2 + phi2 / 2 : zS - phi / 2 - phi2 / 2;
+    const ys = face === 'I' || p.Mk_heel > 0 ? distribuir(ya, yb, s2) : [ya, yb];
+    ys.forEach((y, k) => {
+      // a barra emendada deita ao lado da outra, para DENTRO do estribo (a do canto do talão iria para a dobra)
+      const lado: Vec3 = [0, y > (ya + yb) / 2 ? -phi2 : phi2, 0];
+      ctx.barras.push(...corrida(`${T}.L${face}${pad(k + 1, 2)}.`, 'SAP_LONG', phi2, tr.x0 + c, tr.x1 - c, y, zL, l0, lado, tr.indice));
     });
-    if (p.s_tor < 50) ctx.avisos.push({ codigo: 'TORCAO_ESPACAMENTO', texto: `Estribo de torção da sapata a cada ${br(p.s_tor / 10, 1)} cm` });
-    if (p.Asl_s > 0) ctx.avisos.push({ codigo: 'TORCAO_LONGITUDINAL', texto: `Armadura longitudinal de torção da sapata (Asl ${br(p.Asl_s)} cm²) não desenhada` });
   }
+  return { xs, meia: phi };
+}
+
+/**
+ * O estribo de torção que cairia no lugar de uma transversal (centros a menos de `folga`) vai para o lado dela,
+ * encostado — o mais perto de onde estava, dentro de [lo, hi] e sem cair em outra. Sem lugar, fica onde estava.
+ */
+function encostar(xs: number[], ocupados: number[], folga: number, lo: number, hi: number): number[] {
+  const livre = (q: number) => ocupados.every((o) => Math.abs(o - q) >= folga - 1e-6);
+  return xs.map((x) => {
+    if (livre(x)) return x;
+    const cands = ocupados
+      .filter((o) => Math.abs(o - x) < folga)
+      .flatMap((o) => [o - folga, o + folga])
+      .filter((q) => q >= lo - 1e-6 && q <= hi + 1e-6 && livre(q));
+    return cands.length ? cands.reduce((m, q) => (Math.abs(q - x) < Math.abs(m - x) ? q : m)) : x;
+  });
 }
 
 // ── drenagem ─────────────────────────────────────────────────────────────────
@@ -311,7 +401,10 @@ export function terreno(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number):
   const yA = borda.length ? borda[0][0] : t;
   const y1 = Math.max(YbA, yA);
   const yFar = Math.max(y1, p.contrafortes && p.enterrado ? mod.tenr : t) + SOBRA_TERRENO;
-  const aterro = semDuplicados([[yA, 0], [y1, 0], [y1, zb], [yFar, zb], [yFar, H], [t, H], ...borda.slice(0, -1).reverse()]);
+  // do topo do solo DESCE pela face do muro até o topo do pacote e só então contorna o pacote: o último ponto da borda
+  // é esse canto (face do muro, topo do pacote). Sem ele (14/10 a 15/10) o aterro ia em diagonal do topo do solo ao
+  // canto de fora do pacote e deixava um triângulo vazio junto do muro, logo abaixo do topo (Jose, 15/10)
+  const aterro = semDuplicados([[yA, 0], [y1, 0], [y1, zb], [yFar, zb], [yFar, H], [t, H], ...[...borda].reverse()]);
   if (H > 0) {
     const g = geoPrismaReto(ctx, `aterro ${T}`, 'X', aterro, L);
     ctx.pecas.push({ id: `${T}.ATERRO`, tipo: 'ATERRO', grupo: 'terreno', geometria: g, origem: [arred(xa), arred(Math.min(...aterro.map((q) => q[0]))), arred(zb)], giro: 0, trecho: tr.indice });

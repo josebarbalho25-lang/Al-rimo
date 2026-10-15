@@ -70,6 +70,8 @@
     "fck_fund": { "figura": "fig09", "campo": "fck_fund" },
     "zona_ad": { "figura": "fig09", "campo": "zona_ad" },
     "gancho_": { "figura": "fig09", "campo": "gancho_" },
+    "arranque": { "figura": "fig09", "campo": "arranque" },
+    "sap_transv": { "figura": "fig18", "campo": "sap_transv" },
 
     "h_pan": { "figura": "fig05", "campo": "h_pan" },
     "arg_cls": { "figura": "fig08", "campo": "arg_cls" },

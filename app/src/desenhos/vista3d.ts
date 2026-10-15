@@ -48,6 +48,7 @@ import { acabamentoDaPeca, categoriasDaBarra, categoriasDaPeca, visivel, type Ca
 import { corDaPeca, corDoAco, opacidadeDoTerreno, tracoDoEstilo, type EstiloVisual } from '@/visor/estiloVisual';
 import { lerPaleta } from '@/visor/tema3d';
 import { corDaBitola, rotuloDaBitola } from '@/visor/coresDasBitolas';
+import { corDoAcoNoDesenho, hachuraDe } from './graficos';
 import { metros } from './formato';
 import {
   ALVENARIA, CANALETA, GRAUTE, ehCostura, escalar, facesDoSolido, fatiarEmZ, recortarEmX, secao, solidosDoModelo, type Face, type Solido,
@@ -428,7 +429,7 @@ export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {})
 
   // ── terreno: o véu, antes de tudo ───────────────────────────────────────────────────────────────────────────────
   if (c.terreno.length) {
-    const cor = veu(opaco ? corDaPeca('opaco', paleta!, 'terreno') : COR.solo, opacidadeDoTerreno(c.estilo));
+    const cor = veu(opaco ? corDaPeca('opaco', paleta!, 'terreno') : hachuraDe('terra').risco, opacidadeDoTerreno(c.estilo));
     pr.abrir('data-camada="terreno"');
     const faces = c.terreno.flatMap((s) => facesDoSolido(s).filter(frente).map((f) => ({ s, f, prof: fundo(f) })));
     for (const { s, f } of faces.sort((a, b) => a.prof - b.prof)) {
@@ -477,7 +478,7 @@ export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {})
         f.furos.forEach((furo, k) => {
           const cheio = grauteAMostra && gr.has(k);
           const corDoFuro = cheio
-            ? opaco ? corDaPeca('opaco', paleta!, 'graute') : sombrear(COR.grauteFundo, fator)
+            ? opaco ? corDaPeca('opaco', paleta!, 'graute') : sombrear(hachuraDe('graute').fundo, fator)
             : opaco ? '#ffffff' : COR.furoEscuro;
           pr.poligono(furo.map(P), { fill: corDoFuro, stroke: traco, sw: 0.3, camada: cheio ? 'graute' : camada });
         });
@@ -503,8 +504,8 @@ export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {})
         return Math.abs(f.pts[0][fim.e] - fim.lo) < 0.5 || Math.abs(f.pts[0][fim.e] - fim.hi) < 0.5;
       };
       for (const f of facesDoSolido(t).filter((q) => frente(q) && aparece(q)).sort((a, b) => fundo(a) - fundo(b))) {
-        const cor = opaco ? corDaPeca('opaco', paleta!, 'graute') : sombrear(COR.grauteFundo, 0.6 + 0.4 * Math.max(0, escalar(f.normal, luz)));
-        pr.poligono(f.pts.map(P), { fill: cor, stroke: opaco ? traco : COR.graute, sw: 0.3, id: t.peca.id, camada: 'graute' });
+        const cor = opaco ? corDaPeca('opaco', paleta!, 'graute') : sombrear(hachuraDe('graute').fundo, 0.6 + 0.4 * Math.max(0, escalar(f.normal, luz)));
+        pr.poligono(f.pts.map(P), { fill: cor, stroke: opaco ? traco : hachuraDe('graute').risco, sw: 0.3, id: t.peca.id, camada: 'graute' });
       }
     }
   }
@@ -530,7 +531,7 @@ export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {})
       for (const q of r) pr.caminho([q.contorno, ...q.furos].map((a) => a.map(P3)), { ...e, sw: 0.6, id: s.peca.id });
     }
     if (!cam.armadura) {
-      const aco = opaco ? corDoAco('opaco') : COR.aco;
+      const aco = opaco ? corDoAco('opaco') : corDoAcoNoDesenho();
       const br = barrasNoCorte(m, x);
       const ve = (b: Barra) => visivel(categoriasDaBarra(b), c.ocultas);
       for (const l of br.linhas.filter((q) => ve(q.barra))) {
@@ -583,9 +584,9 @@ export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {})
  */
 function corDoCores(s: Solido): string {
   const tp = s.peca.tipo;
-  if (GRAUTE.has(tp)) return COR.grauteFundo;
-  if (tp === 'AREIA') return COR.areiaFundo;
-  if (tp === 'MANTA') return COR.manta;
+  if (GRAUTE.has(tp)) return hachuraDe('graute').fundo;
+  if (tp === 'AREIA') return hachuraDe('areia').fundo;
+  if (tp === 'MANTA') return hachuraDe('manta').fundo;
   if (TUBOS.has(tp)) return '#ffffff';
   return corBase(s);
 }

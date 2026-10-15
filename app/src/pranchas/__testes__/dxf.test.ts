@@ -24,6 +24,12 @@ import {
   type FolhaDxf,
 } from '../dxf';
 import { CAMADAS } from '../camadasDxf';
+import { gerarModelo, padroesDoModelo } from '@/modulacao';
+import { resultadoDoGabarito } from '@/motor/resultadoDoGabarito';
+import { criarDesenhista } from '../desenhista';
+import { itemDaTabela } from '../acoes';
+import { readFileSync } from 'node:fs';
+import { vetorDaPeca } from '../figurasDasPecas';
 import { comporFolha, type ContextoDaFolha } from '../folha';
 import { novaFolha } from '../padrao';
 import { PADRAO_DO_MATERIAL } from '../padroesDxf';
@@ -551,6 +557,72 @@ describe.skipIf(!temEzdxf)('dxf — conferido pelo ezdxf', { timeout: 60_000 }, 
     // o CRC que o Python leu do zip é o que o app calculou
     const fotoB = rel.arquivos.find((f: Rel) => f.nome === 'imagens/foto_3D_2.png');
     expect(fotoB.crc).toBe(crc32(dataUrlParaBytes(png(4, 3, 99))));
+    expect(rel.ok).toBe(true);
+  });
+});
+
+/*
+  A tabela de blocos na folha (Jose, 15/10): a grade e os textos na camada TABELAS e a figura de cada peça em DESENHO
+  (Jose, 15/10: "0 imagem vinculada no DXF") — preenchimento na cor da peça em PECAS-FUNDO, contorno em PECAS.
+*/
+describe('dxf — a tabela de blocos com as figuras das peças', { timeout: 60_000 }, () => {
+  const m = gerarModelo(resultadoDoGabarito('aula123'), { ...padroesDoModelo(), L_total: 6 });
+  // as figuras de verdade, lidas do disco como o app as lê pela rede
+  const pecas = fileURLToPath(new URL('../../../public/pecas/', import.meta.url));
+  const d = criarDesenhista(m, () => {}, async (url) => vetorDaPeca(readFileSync(join(pecas, url.split('/').pop()!), 'utf8'))!);
+  const folha = (nome: string) => {
+    const f = novaFolha(nome);
+    f.itens.push({ ...itemDaTabela(f, 'blocos'), x: 40, y: 40 });
+    f.itens.push({ ...itemDaTabela(f, 'quantidades'), x: 220, y: 40 });
+    return f;
+  };
+  const compor = (nome: string) => {
+    const c = comporFolha(folha(nome), { ...contexto(), desenhar: (item, prefixo, o) => d.desenhar(item, prefixo, o) });
+    return { nome, largura: c.largura, altura: c.altura, prims: c.primitivas };
+  };
+
+  it('nenhuma imagem: a peça é HATCH na cor dela (PECAS-FUNDO) e contorno por camada (PECAS); tabela em TABELAS', async () => {
+    compor('a');
+    await d.esperarFotos();
+    const { dxf, imagens } = gerarDxf(compor('Materiais'));
+    expect(imagens).toEqual([]);
+    const ents = entidades(dxf, 'ENTITIES');
+    expect(ents.filter((e) => e.tipo === 'IMAGE')).toEqual([]);
+    expect(dxf).not.toMatch(/\nIMAGEDEF\n/);
+    const cam = camadas(dxf);
+    expect(cam.TABELAS).toEqual([CAMADAS.TABELAS.aci, espessuraDoCad(CAMADAS.TABELAS.espessura)]);
+    expect(cam.PECAS).toEqual([CAMADAS.PECAS.aci, espessuraDoCad(CAMADAS.PECAS.espessura)]);
+    const fundos = ents.filter((e) => e.tipo === 'HATCH' && val(e, 8) === 'PECAS-FUNDO');
+    // cada peça com as faces e o furo, cada uma com a cor própria (a cor do bloco é informação): a verdadeira (420),
+    // ou só o índice quando a cor É uma do CAD (o vermelho do 54 é o 1)
+    expect(fundos.length).toBeGreaterThan(7 * 3);
+    expect(fundos.every((e) => val(e, 420) !== undefined || val(e, 62) !== undefined)).toBe(true);
+    // o vermelho do bloco 54 e o laranja do 34 (as cores do Jose) estão lá
+    const cores = new Set(fundos.map((e) => (val(e, 420) !== undefined ? `#${Number(val(e, 420)).toString(16).padStart(6, '0')}` : `aci${val(e, 62)}`)));
+    expect(cores.has('#ff0000') || cores.has('aci1')).toBe(true);
+    expect(cores.has('#ff8040')).toBe(true);
+    // contorno por camada: sem cor nem espessura própria (o cinza tracejado da canaleta cortada é a exceção)
+    const contornos = ents.filter((e) => (e.tipo === 'LWPOLYLINE' || e.tipo === 'LINE') && val(e, 8) === 'PECAS');
+    expect(contornos.length).toBeGreaterThan(7 * 3);
+    expect(contornos.filter((e) => val(e, 420) === undefined).length).toBeGreaterThan(7 * 3);
+    expect(ents.some((e) => e.tipo === 'TEXT' && val(e, 8) === 'TABELAS' && val(e, 1) === 'BLOCOS E CANALETAS')).toBe(true);
+  });
+
+  it.skipIf(!temEzdxf)('duas folhas com a tabela: o zip passa no ezdxf estrito e não tem pasta de imagens', async () => {
+    compor('a');
+    await d.esperarFotos();
+    const zip = pacoteDxf([compor('Folha 01'), compor('Folha 02')], new Date(2026, 9, 15, 13, 0, 0));
+    const rel = validar(zip, 'zip');
+    expect(rel.erros).toEqual([]);
+    for (const x of rel.dxf) {
+      expect(x.erros).toEqual([]);
+      expect(x.consertos).toEqual([]);
+      expect(x.avisos).toEqual([]);
+      expect(x.imagens).toEqual([]);
+      expect(x.entidades.IMAGE).toBeUndefined();
+      expect(x.textos).toEqual(expect.arrayContaining(['BLOCOS E CANALETAS', 'MATERIAIS', 'das quais, para cortar', 'm³']));
+    }
+    expect(rel.nomes).toEqual(['Folha_01.dxf', 'Folha_02.dxf']);
     expect(rel.ok).toBe(true);
   });
 });

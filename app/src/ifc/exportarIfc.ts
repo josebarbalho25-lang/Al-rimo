@@ -596,7 +596,7 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
     const d = mm(mod.diametro);
     const area = (Math.PI * d * d) / 4;
     const comp = mm(mod.comprimento);
-    const enumTipo = mod.papel === 'SAP_TORCAO' && mod.fechada ? 'SHEAR' : TIPO_BARRA[mod.papel];
+    const enumTipo = mod.papel === 'SAP_TORCAO' && (mod.estribo || mod.fechada) ? 'SHEAR' : TIPO_BARRA[mod.papel];
     const nomeTipo = `${posicao} Ø${fmt(mod.diametro)} C=${Math.round(mod.comprimento / 10)}`;
     const kgm = massaLinear(mod.diametro);
     const psTipo = pset('pset/tipo/barra/' + posicao, 'Pset_ReinforcingBarCommon', [

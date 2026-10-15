@@ -47,13 +47,17 @@ def desenhar():
     with s.campo('phi_tor'):
         s.rect(X(C_S), Y(C_S), (B - 2 * C_S) * K, (HS - 2 * C_S) * K, stroke=C['steel'], sw=2.4,
                extra='rx="6" stroke-dasharray="10,5"')
-    # principal transversal: face de baixo e face de cima, com as pernas dobradas
+    # principal transversal em ESTRIBO FECHADO (Jose, 15/10: "se fizer como estribos a armadura ganha estrutura sem
+    # precisar de gambiarras"): a perna de baixo é a armadura da flexão, a de cima a do talão; os dois ganchos de 135°
+    # fecham no canto de cima do lado da ponta, virados para dentro
     yi = Y(HS - C_S - FT - FP / 2)
     ys = Y(C_S + FT + FP / 2)
     xi0, xi1 = X(C_S + FT) + 6, X(B - C_S - FT) - 6
-    with s.campo('phi_sap'):
-        s.pline([(xi0, ys + 26), (xi0, yi), (xi1, yi), (xi1, ys + 26)], stroke=C['steel'], sw=3.4)
-        s.pline([(xi0 + 6, yi - 26), (xi0 + 6, ys), (xi1 - 6, ys), (xi1 - 6, yi - 26)], stroke=C['steel'], sw=3.4)
+    with s.campo('phi_sap', 'sap_transv'):
+        s.rect(xi0, ys, xi1 - xi0, yi - ys, stroke=C['steel'], sw=3.4, extra='rx="5"')
+        g = 18
+        s.line(xi0 + 2, ys + 2, xi0 + 2 + g, ys + 2 + g, stroke=C['steel'], sw=3.4)
+        s.line(xi0 + 8, ys - 1, xi0 + 8 + g, ys - 1 + g, stroke=C['steel'], sw=3.4)
     # secundária longitudinal (pontos), apoiada na principal
     n = 9
     xsec = [X(C_S + FT) + 30 + k * ((B - 2 * C_S - 2 * FT) * K - 60) / (n - 1) for k in range(n)]

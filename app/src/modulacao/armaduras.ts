@@ -5,11 +5,15 @@
   (d) e o furo não deixa (graute < 15 mm, ou a barra sai do furo), o desenho mostra onde ela cabe e avisa. O
   desenho não esconde o que a conta não viu — mas também não desenha barra dentro do bloco.
 */
+import type { Aviso } from '@/modelo/tipos';
 import { H_FIADA, JUNTA, pecaDoCatalogo, secaoDaPecaCanaleta } from './catalogo';
 import type { MapaDeCavidades } from './cavidades';
 import { br, type TrechoModulado } from './modular';
 import { COB_GRAUTE, COB_PONTA, RECUO_ESTRIBO, RECUO_ESTRIBO_LATERAL, pad, zTopoBarra, type Ctx } from './contexto';
-import { corrida, emL, espera, estribo, pontaGancho90, raioDoEixo, reta, type BarraNova } from './barras';
+import {
+  corrida, emL, espera, esperaNoDeCachorro, estribo, ganchoEstribo, medidasDoEstribo, medidasDoNo, pontaDoNo, pontaGancho90, raioDoEixo,
+  raioDoEstribo, reta, type BarraNova, type SapataDoNo,
+} from './barras';
 import type { FiadaMontada } from './fiadas';
 import { arred } from './perfis';
 import { arrumarGrupo, type Arranjo } from './arranjo';
@@ -255,7 +259,9 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
     }
 
     // estribos fechados na junta de assentamento, um a cada s_est, a partir da junta sobre a sapata — só quando a
-    // conta pede (leitura.ts, `estribos`): estribo sem necessidade não é usual em alvenaria (Jose, 13/10)
+    // conta pede (leitura.ts, `estribos`): estribo sem necessidade não é usual em alvenaria (Jose, 13/10).
+    // Os ganchos ficam no canto do lado do MURO (ya): é a ponta comprimida do contraforte, a das construtivas — o
+    // gancho fora da zona tracionada, como na viga do Pró-Viga (ganchos em cima)
     const meia = t / 2 - RECUO_ESTRIBO_LATERAL;
     const ya = yDe(RECUO_ESTRIBO);
     const yb = yDe(mod.tenr - RECUO_ESTRIBO);
@@ -263,13 +269,41 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
     for (let i = 0; p.estribos && i < mod.n_fiadas; i += passoJ) {
       const z = i * H_FIADA + JUNTA / 2;
       ctx.barras.push(estribo(`${base}.E${pad(i, 2)}`, 'CF_ESTRIBO', p.phi_est,
-        [[no.xc - meia, ya, z], [no.xc + meia, ya, z], [no.xc + meia, yb, z], [no.xc - meia, yb, z]], tr.indice, no.cf));
+        [[no.xc - meia, ya, z], [no.xc + meia, ya, z], [no.xc + meia, yb, z], [no.xc - meia, yb, z]], tr.indice, no.cf, passoNaJunta(p.phi_est)));
     }
   }
   if (!p.estribos) return;
   if (p.phi_est > 6.3) ctx.avisos.push({ codigo: 'ESTRIBO_NA_JUNTA', texto: `Estribo Ø${br(p.phi_est, 1)} na junta de 10 mm` });
+  avisarMedidasDoEstribo(ctx, 'Estribo do contraforte', p.phi_est, 2 * (t / 2 - RECUO_ESTRIBO_LATERAL), mod.tenr - 2 * RECUO_ESTRIBO, 'ESTRIBO');
   // na largura do bloco só cabe um estribo fechado (2 ramos); mais ramos não têm desenho simples — DEDUÇÃO
   if (p.ramos_est !== 2) ctx.avisos.push({ codigo: 'ESTRIBO_RAMOS', texto: `Estribo do contraforte com ${p.ramos_est} ramos: desenhado fechado, 2 ramos` });
+}
+
+/**
+ * O degrau da volta do estribo do contraforte, que mora na junta de 10 mm: uma bitola (Pró-Viga) enquanto a volta
+ * cabe na junta — o Ø5 cabe inteiro (2φ = 10 mm) —; acima disso, o que sobra da junta. No Ø6,3 a barra passa duas
+ * vezes no canto dos ganchos (12,6 mm): desenhada com o degrau de 3,7 mm, as duas passadas ficam 2,6 mm uma dentro
+ * da outra no desenho, mas nenhuma entra no bloco.
+ */
+function passoNaJunta(phi: number): number {
+  return Math.max(0, Math.min(phi, JUNTA - phi));
+}
+
+/**
+ * O estribo que a seção não comporta (barras.ts, medidasDoEstribo): dobra mais apertada que o pino da NBR, ou
+ * ponta do gancho de 135° abaixo da NBR (5φ ≥ 5 cm).
+ */
+export function avisarMedidasDoEstribo(ctx: Ctx, quem: string, phi: number, a: number, b: number, prefixo: 'ESTRIBO' | 'SAPATA' | 'TORCAO'): void {
+  const m = medidasDoEstribo(phi, a, b);
+  const avisos: Aviso[] = [];
+  if (m.dobraApertada) {
+    avisos.push({ codigo: `${prefixo}_DOBRA`, texto: `${quem} Ø${br(phi, 1)}: dobra com raio ${br(m.raio / 10, 1)} cm no eixo (o pino da NBR pede ${br(raioDoEstribo(phi) / 10, 1)} cm)` });
+  }
+  if (m.pontaCurta) {
+    avisos.push({ codigo: `${prefixo}_GANCHO`, texto: `${quem} Ø${br(phi, 1)}: ponta do gancho de ${br(m.ponta / 10, 1)} cm (a NBR pede ${br(ganchoEstribo(phi) / 10, 1)} cm)` });
+  }
+  // a mesma seção em todos os trechos: um aviso para o muro todo
+  for (const av of avisos) if (!ctx.avisos.some((x) => x.codigo === av.codigo && x.texto === av.texto)) ctx.avisos.push(av);
 }
 
 // ── esperas ──────────────────────────────────────────────────────────────────
@@ -324,6 +358,10 @@ export function esperas(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidades, vs:
   }
   let n = 0;
   const fora: string[] = [];
+  // o arranque escolhido (Jose, 15/10): a espera de sempre ou o nó de cachorro (barras.ts, a forma do Revit dele)
+  const no = p.arranque === 'no';
+  const sap: SapataDoNo = { h: p.h_sap, c: p.cob_sap, yFrente: Ype, yTalao: YbA };
+  const nosX: number[] = [];
   for (const v of vs) {
     const l0 = traspasse(ctx, v.phi, emendaDaEspera(ctx, v));
     let pos: [number, number] | null = v.esperaEm ?? null;
@@ -351,10 +389,68 @@ export function esperas(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidades, vs:
     const alcance = R + pontaGancho90(v.phi) + v.phi / 2;
     const sentido: 1 | -1 = pos[1] + alcance <= YbA - p.cob_sap ? 1 : pos[1] - alcance >= Ype + p.cob_sap ? -1 : 1;
     const id = v.barra.contraforte !== undefined ? `${v.barra.id}.E` : `T${tr.indice}.E.${pad(++n, 3)}`;
-    ctx.barras.push(espera(id, v.phi, arred(pos[0]), arred(pos[1]), zPeBase + v.phi / 2, l0, p.gancho, sentido, tr.indice, v.barra.contraforte));
+    if (no) {
+      const x = arred(pos[0]);
+      // dois nós no mesmo plano (o painel com duas barras por furo, o feixe do contraforte): as pernas deitadas
+      // correriam uma em cima da outra — o 2º anda a subida para o outro lado
+      const lado: 1 | -1 = nosX.filter((q) => Math.abs(q - x) < 2 * v.phi + 1).length % 2 ? -1 : 1;
+      const b = esperaNoDeCachorro(id, v.phi, x, arred(pos[1]), l0, sap, tr.indice, v.barra.contraforte, lado);
+      if (!b) {
+        // a barra não existe com essa dobra nessa sapata: não desenha, e o aviso diz por quê
+        avisarNoQueNaoCabe(ctx, v.phi, id);
+        continue;
+      }
+      nosX.push(x);
+      ctx.barras.push(b);
+    } else {
+      ctx.barras.push(espera(id, v.phi, arred(pos[0]), arred(pos[1]), zPeBase + v.phi / 2, l0, p.gancho, sentido, tr.indice, v.barra.contraforte));
+    }
     mapa.marcar(pos[0], pos[1], 0, l0);
   }
   if (fora.length) ctx.avisos.push({ codigo: 'ESPERA_FORA_DO_FURO', texto: 'Espera sem lugar no furo ao lado da barra', ids: fora });
+  if (no) avisarPontaDoNo(ctx, vs, Ype);
+}
+
+/** O aviso que se repete por trecho junta os ids num só. */
+function avisarJuntando(ctx: Ctx, a: Aviso): void {
+  const ja = ctx.avisos.find((x) => x.codigo === a.codigo && x.texto === a.texto);
+  if (!ja) ctx.avisos.push(a);
+  else if (a.ids) ja.ids = [...(ja.ids ?? []), ...a.ids];
+}
+
+/** Por que o nó não coube: a altura da sapata para a dobra (Jose: "a dobra nó de cachorro tem limites pela curvatura
+ *  do aço" — h ≥ 2c + pino + 2φ) ou a largura (o U sai pela frente da sapata, sem pé para ele). */
+function avisarNoQueNaoCabe(ctx: Ctx, phi: number, id: string): void {
+  const { p } = ctx;
+  const { subida } = medidasDoNo(phi, p.h_sap, p.cob_sap);
+  if (subida < -1e-6) {
+    avisarJuntando(ctx, {
+      codigo: 'NO_DE_CACHORRO_DOBRA',
+      texto: `Nó de cachorro Ø${br(phi, 1)}: a dobra pede sapata de ${br((p.h_sap - subida) / 10, 1)} cm (tem ${br(p.h_sap / 10, 1)}) — espera não desenhada`,
+      ids: [id],
+    });
+  } else {
+    avisarJuntando(ctx, { codigo: 'NO_DE_CACHORRO_FORA', texto: `Nó de cachorro Ø${br(phi, 1)}: o U sai da sapata pela frente — espera não desenhada`, ids: [id] });
+  }
+}
+
+/** A ponta da sapata (o pé, na frente da face do muro) contra a tabela do Jose para o bloco (barras.ts, PONTA_DO_NO). */
+function avisarPontaDoNo(ctx: Ctx, vs: Vertical[], Ype: number): void {
+  const familia = ctx.mod.cat.nome;
+  const ponta = -Ype;
+  for (const phi of [...new Set(vs.map((v) => v.phi))].sort((a, b) => a - b)) {
+    const r = pontaDoNo(familia, phi);
+    if (!r) continue;
+    const bloco = familia === '14x39' ? 'bloco 14' : 'bloco 19';
+    if (r.ponta === null) {
+      avisarJuntando(ctx, { codigo: 'NO_DE_CACHORRO_PONTA', texto: `Nó de cachorro Ø${br(phi, 1)} não cabe no ${bloco} (a emenda passa de 8 % do furo)` });
+    } else if (ponta < r.ponta - 0.5) {
+      avisarJuntando(ctx, {
+        codigo: 'NO_DE_CACHORRO_PONTA',
+        texto: `Nó de cachorro Ø${br(phi, 1)}: ponta da sapata de ${br(ponta / 10, 1)} cm, o ${bloco} pede ${br(r.ponta / 10, 0)} cm${r.aConfirmar ? ' (a confirmar)' : ''}`,
+      });
+    }
+  }
 }
 
 // ── horizontais nas canaletas ────────────────────────────────────────────────

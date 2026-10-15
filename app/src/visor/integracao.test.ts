@@ -159,5 +159,5 @@ describe('desempenho com o muro de verdade', () => {
     for (let k = 0; k < 10; k++) c.pegar(raioDeFrente(5 + k * 11, 1));
     console.info(`[visor] raio de seleção no muro de 120 m: ${((performance.now() - t2) / 10).toFixed(1)} ms por clique`);
     c.dispose();
-  });
+  }, 30_000);   // muro de 120 m com todos os estribos e ganchos (15/10): passa de 5 s com a suíte inteira rodando junto
 });

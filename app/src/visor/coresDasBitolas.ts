@@ -9,21 +9,17 @@
 //  PROVISÓRIOS até ele dizer.
 // ═══════════════════════════════════════════════════════════════════════════
 
-export const CORES_DAS_BITOLAS: ReadonlyArray<readonly [number, string]> = [
-  [5, '#00ffff'],
-  [6.3, '#00ff00'],
-  [8, '#ff8000'],
-  [10, '#ff0000'],
-  [12.5, '#ff00ff'],
-  [16, '#8000ff'],
-  [20, '#ffff00'],
-  [25, '#0080ff'],
-];
+//  Desde 15/10 a cor de cada Ø sai da tabela de gráficos (o Jose troca na tela);
+//  estas são as de fábrica, e moram lá (desenhos/graficos.ts).
+import { GRAFICOS_DE_FABRICA, graficos } from '@/desenhos/graficos';
 
-/** A cor do Ø (mm): a da bitola comercial mais próxima. */
+export const CORES_DAS_BITOLAS: ReadonlyArray<readonly [number, string]> = GRAFICOS_DE_FABRICA.bitolas;
+
+/** A cor do Ø (mm): a da bitola comercial mais próxima, na tabela em uso. */
 export function corDaBitola(phi: number): string {
-  let melhor = CORES_DAS_BITOLAS[0];
-  for (const c of CORES_DAS_BITOLAS) if (Math.abs(c[0] - phi) < Math.abs(melhor[0] - phi)) melhor = c;
+  const tabela = graficos().bitolas;
+  let melhor = tabela[0];
+  for (const c of tabela) if (Math.abs(c[0] - phi) < Math.abs(melhor[0] - phi)) melhor = c;
   return melhor[1];
 }
 

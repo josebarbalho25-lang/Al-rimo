@@ -28,6 +28,7 @@ import {
   usePreferencias,
 } from '@/estilo/preferenciasDaInterface';
 import { IconeFechar } from './icones';
+import { TabelaDeGraficos } from './TabelaDeGraficos';
 
 export function Configuracoes({ aoFechar }: { aoFechar: () => void }) {
   const pref = usePreferencias();
@@ -114,6 +115,10 @@ export function Configuracoes({ aoFechar }: { aoFechar: () => void }) {
               Restaurar cores do tema
             </button>
           </div>
+
+          {/* Cores e hachuras dos desenhos e do 3D (Jose, 15/10): guardadas no app, valem para todo muro */}
+          <h4>Desenhos e 3D</h4>
+          <TabelaDeGraficos />
         </div>
       </div>
     </div>,

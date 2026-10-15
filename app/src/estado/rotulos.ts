@@ -63,6 +63,7 @@ export const ROTULO_CURTO: Record<string, string> = {
   fck_fund: 'Concreto',
   zona_ad: 'Zona de aderência',
   gancho_: 'Gancho na espera',
+  arranque: 'Arranque',
 
   // ── Painel não armado
   h_pan: 'Entre canaletas h',
@@ -129,6 +130,7 @@ export const ROTULO_CURTO: Record<string, string> = {
   FS_tomb: 'FS tombamento',
   FS_desl: 'FS deslizamento',
   cob_sap: 'Cobrimento',
+  sap_transv: 'Transversal',
   phi_sap: 'Ø transversal',
   phi_sap2: 'Ø longitudinal',
   phi_tor: 'Ø estribo de torção',

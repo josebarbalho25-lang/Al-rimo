@@ -12,7 +12,7 @@
 //  Painel = rótulo + valor + controle, sem texto explicativo (regra do Jose).
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as PE } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as PE } from 'react';
 import type { Modelo } from '@/modelo/tipos';
 import type { Resultado } from '@/motor/tipos';
 import { useApp } from '@/estado/store';
@@ -21,8 +21,10 @@ import { nomeDeArquivo } from '@/estado/projeto';
 import { comporFolha, type ContextoDaFolha, type FolhaComposta } from './folha';
 import { CARIMBO_MIN, ESCALAS, ORDEM_DOS_FORMATOS, quadroLateralPadrao, rotuloDaEscala, tamanhoDaFolha } from './formatos';
 import { novaFolha } from './padrao';
-import { dentroDaFolha, folhaAtiva, itemDaVista, naFolha, noItem, NOMES_DO_CONTEUDO, porNaFolha } from './acoes';
+import { dentroDaFolha, folhaAtiva, itemDaTabela, itemDaVista, naFolha, noItem, NOMES_DO_CONTEUDO, porNaFolha } from './acoes';
+import type { IdDaTabela } from './tabelaDaFolha';
 import { usePranchasUi } from './ui';
+import { useGraficos } from '@/desenhos/useGraficos';
 import { legendaDasCores, listaDeFerrosDaFolha, notasAutomaticas, quadroDeAco } from './quadro';
 import { criarDesenhista, type Desenhista } from './desenhista';
 import { logoEmPng, useEscritorio } from './escritorio';
@@ -69,6 +71,10 @@ const s = {
   mesa: { flex: 1, minHeight: 0, overflow: 'auto', background: '#8f949a', padding: 24, outline: 'none' } as CSSProperties,
   botao: { flex: 'none', padding: '0 10px' } as CSSProperties,
 };
+
+/** Zoom da mesa: 1 = a folha inteira cabe; 12 dá para ler a cota de uma A0 de perto. */
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 12;
 
 function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
   return (
@@ -124,6 +130,7 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
   const mudar = useApp((st) => st.mudarPranchas);
   const dizer = useApp((st) => st.dizer);
   const veredito = useApp((st) => st.veredito);
+  const graficosEmUso = useGraficos((st) => st.dados);
   const escritorio = useEscritorio((st) => st.dados);
   const mudarEscritorio = useEscritorio((st) => st.mudar);
   const ativa = usePranchasUi((st) => st.ativa);
@@ -133,6 +140,7 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
   const [arrasto, setArrasto] = useState<Arrasto | null>(null);
   const [exportando, setExportando] = useState(false);
   const mesaRef = useRef<HTMLDivElement>(null);
+  const papelRef = useRef<HTMLDivElement>(null);
   const [mesa, setMesa] = useState<[number, number]>([900, 600]);
 
   const folha = folhaAtiva(pranchas, ativa);
@@ -150,6 +158,62 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // ── zoom pela rodinha e arrasto pelo botão do meio, como no CAD (Jose, 15/10) ─────────────────────────────────
+  // A rodinha amplia em torno do ponto do mouse: o pedaço da folha que está embaixo do cursor fica embaixo dele.
+  // O "onde estava" é guardado como fração da folha e reposto depois que o React redesenha no tamanho novo (antes
+  // da pintura, sem piscar). Ouvinte nativo e não o onWheel do React: o do React é passivo e não impede a mesa de
+  // rolar junto.
+  const ancoraDoZoom = useRef<{ fx: number; fy: number; cx: number; cy: number } | null>(null);
+  useEffect(() => {
+    const el = mesaRef.current;
+    if (!el) return;
+    const aoRolar = (e: WheelEvent) => {
+      const papel = papelRef.current;
+      if (!papel || e.ctrlKey) return;   // Ctrl+rodinha fica com o zoom do navegador (a letra da tela toda)
+      e.preventDefault();
+      const r = papel.getBoundingClientRect();
+      ancoraDoZoom.current = { fx: (e.clientX - r.left) / r.width, fy: (e.clientY - r.top) / r.height, cx: e.clientX, cy: e.clientY };
+      // um dente da rodinha = 15 %; o touchpad manda passos pequenos e amplia aos poucos
+      const passo = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * 800 : e.deltaY;
+      const fator = Math.min(2, Math.max(0.5, Math.exp(-passo * 0.0014)));
+      setZoom((z) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z * fator)));
+    };
+    el.addEventListener('wheel', aoRolar, { passive: false });
+    return () => el.removeEventListener('wheel', aoRolar);
+  }, []);
+  useLayoutEffect(() => {
+    const a = ancoraDoZoom.current;
+    const el = mesaRef.current;
+    const papel = papelRef.current;
+    ancoraDoZoom.current = null;
+    if (!a || !el || !papel) return;
+    const r = papel.getBoundingClientRect();
+    el.scrollLeft += r.left + a.fx * r.width - a.cx;
+    el.scrollTop += r.top + a.fy * r.height - a.cy;
+  }, [zoom]);
+  // botão do meio arrastado: a folha anda junto com o mouse (o pan do CAD); pego na captura, antes de qualquer
+  // desenho, quadro ou carimbo — com o botão do meio nada é selecionado nem movido
+  const panear = (e: PE) => {
+    if (e.button !== 1) return;
+    const el = mesaRef.current;
+    if (!el) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const [x0, y0, sl, st] = [e.clientX, e.clientY, el.scrollLeft, el.scrollTop];
+    const mover = (m: PointerEvent) => {
+      el.scrollLeft = sl - (m.clientX - x0);
+      el.scrollTop = st - (m.clientY - y0);
+    };
+    const parar = () => {
+      window.removeEventListener('pointermove', mover);
+      window.removeEventListener('pointerup', parar);
+      window.removeEventListener('pointercancel', parar);
+    };
+    window.addEventListener('pointermove', mover);
+    window.addEventListener('pointerup', parar);
+    window.addEventListener('pointercancel', parar);
+  };
 
   // O desenhista nasce e morre DENTRO do efeito: no modo de desenvolvimento o React monta, desmonta e monta de novo
   // — criado num useMemo e descartado na limpeza, o desenhista guardado ficava morto e a foto do Realista nunca
@@ -173,7 +237,9 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
       // muro desenhado sem "Passa" na conta (não passa, ou a conta não deu veredito): tarja na folha
       naoVerificado: !!muro && !veredito?.passa,
     }),
-    [escritorio, resultado, muro, veredito],
+    // a tabela de gráficos entra: trocou cor, hachura ou o que aparece, a folha se recompõe (legenda inclusive)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [escritorio, resultado, muro, veredito, graficosEmUso],
   );
   const contexto = useCallback(
     (n: number, total: number, obra: DadosDaObra, saida = false): ContextoDaFolha => ({
@@ -252,6 +318,12 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
   const adicionarVista = (tipo: 'frontal' | 'corte' | 'planta' | 'iso') => {
     const pedido = tipo === 'planta' ? { tipo, fiada: 0 } : tipo === 'iso' ? { tipo, vista: 'frente-direita' as const, corteX: null } : { tipo };
     const r = porNaFolha(pranchas, folha?.id ?? null, (f) => itemDaVista(f, pedido));
+    mudar(() => r.pranchas);
+    setAtiva(r.folha);
+    setSel({ tipo: 'item', id: r.item.id });
+  };
+  const adicionarTabela = (id: IdDaTabela) => {
+    const r = porNaFolha(pranchas, folha?.id ?? null, (f) => itemDaTabela(f, id));
     mudar(() => r.pranchas);
     setAtiva(r.folha);
     setSel({ tipo: 'item', id: r.item.id });
@@ -391,7 +463,7 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
             <Linha rotulo="Título">
               <Texto valor={itemSel.titulo} sugestao={desenhista?.tituloAutomatico(itemSel)} aoMudar={(v) => mudarItem((i) => ({ ...i, titulo: v }))} />
             </Linha>
-            {itemSel.escala !== null ? (
+            {itemSel.conteudo.tipo === 'tabela' ? null : itemSel.escala !== null ? (
               <Linha rotulo="Escala">
                 <select className="campo" value={String(itemSel.escala)} onChange={(e) => mudarItem((i) => ({ ...i, escala: Number(e.target.value) }))}>
                   {ESCALAS.map((x) => <option key={x} value={x}>{rotuloDaEscala(x)}</option>)}
@@ -499,19 +571,33 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
         <div style={s.barra}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 'none' }}>
             <span style={{ ...s.rotulo, overflow: 'visible' }}>Adicionar</span>
-            <select className="campo" value="" onChange={(e) => e.target.value && adicionarVista(e.target.value as 'frontal')} disabled={!modelo}>
+            <select
+              className="campo"
+              value=""
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v.startsWith('tabela:')) adicionarTabela(v.slice(7) as IdDaTabela);
+                else if (v) adicionarVista(v as 'frontal');
+              }}
+              disabled={!modelo}
+            >
               <option value="">—</option>
               <option value="frontal">Vista frontal</option>
               <option value="corte">Corte</option>
               <option value="planta">Planta</option>
               <option value="iso">Isométrico</option>
+              <optgroup label="Tabela">
+                <option value="tabela:blocos">Blocos e canaletas</option>
+                <option value="tabela:quantidades">Materiais</option>
+                <option value="tabela:drenagem">Drenagem</option>
+              </optgroup>
             </select>
           </label>
           <span style={{ flex: 1 }} />
           <div className="cad-escolha">
-            <button type="button" style={s.botao} onClick={() => setZoom((z) => Math.max(0.5, z / 1.25))} title="Diminuir" aria-label="Diminuir">−</button>
+            <button type="button" style={s.botao} onClick={() => setZoom((z) => Math.max(ZOOM_MIN, z / 1.25))} title="Diminuir" aria-label="Diminuir">−</button>
             <button type="button" style={s.botao} onClick={() => setZoom(1)}>Ajustar</button>
-            <button type="button" style={s.botao} onClick={() => setZoom((z) => Math.min(6, z * 1.25))} title="Aumentar" aria-label="Aumentar">+</button>
+            <button type="button" style={s.botao} onClick={() => setZoom((z) => Math.min(ZOOM_MAX, z * 1.25))} title="Aumentar" aria-label="Aumentar">+</button>
           </div>
           <div className="cad-escolha">
             <button type="button" style={s.botao} disabled={!pranchas.folhas.length || exportando} onClick={() => void exportar((c) => imprimirPranchas(c))}>
@@ -523,9 +609,9 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
           </div>
         </div>
 
-        <div ref={mesaRef} style={s.mesa} tabIndex={0} onPointerDown={() => { setSel(null); mesaRef.current?.focus({ preventScroll: true }); }}>
+        <div ref={mesaRef} style={s.mesa} tabIndex={0} onPointerDownCapture={panear} onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }} onPointerDown={() => { setSel(null); mesaRef.current?.focus({ preventScroll: true }); }}>
           {composta && folha ? (
-            <div style={{ position: 'relative', width: larguraPx, height: (larguraPx * H) / W, margin: '0 auto', boxShadow: '0 2px 10px rgba(0,0,0,0.35)' }}>
+            <div ref={papelRef} style={{ position: 'relative', width: larguraPx, height: (larguraPx * H) / W, margin: '0 auto', boxShadow: '0 2px 10px rgba(0,0,0,0.35)' }}>
               <div style={{ position: 'absolute', inset: 0, lineHeight: 0 }} dangerouslySetInnerHTML={{ __html: composta.svg.replace(/width="[\d.]+mm" height="[\d.]+mm"/, 'width="100%" height="100%"') }} />
               <svg
                 ref={capaRef}
@@ -610,7 +696,8 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
                         }}
                       />
                       {pendenteRotulo(it.pendente, x + dx, y + dy, ww, hh, NOMES_DO_CONTEUDO[item.conteudo.tipo])}
-                      {ligado && item.escala === null && (
+                      {/* a tabela não tem alça: o tamanho dela é o da letra da folha */}
+                      {ligado && item.escala === null && item.conteudo.tipo !== 'tabela' && (
                         <rect
                           x={x + ww - 2.5} y={y + hh - 2.5} width={5} height={5} fill={AZUL}
                           style={{ cursor: 'nwse-resize' }}

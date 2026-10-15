@@ -15,8 +15,8 @@
   TEXTO 7, referência/eixo 8. O que o Pró-Viga não tem segue a cor do desenho do app no índice básico mais
   próximo (graute azul, terra marrom; a drenagem no cinza das hachuras de brita e areia) — a tela do CAD lembra o PDF, e a plotagem é pela pena.
 
-  Espessuras (mm, as da série do CAD): moldura 0,50; título e aço 0,35; concreto 0,25; contorno, texto, cota e
-  quadro 0,18; o resto 0,13 — a menor que a plotadora marca.
+  Espessuras (mm, as da série do CAD): moldura 0,50; título e aço 0,35; concreto 0,25; contorno, texto, cota,
+  quadro e tabela 0,18; o resto 0,13 — a menor que a plotadora marca.
 
   FUNDOS: todo sólido de preenchimento vai para a camada do material com o sufixo -FUNDO (ALVENARIA-FUNDO,
   TERRENO-FUNDO…), e as faces do 3D Cores para 3D-FACES. Plotado em monocromático, sólido colorido sai PRETO e
@@ -54,6 +54,8 @@ export const CAMADAS: Readonly<Record<string, CamadaDoCad>> = {
   TERRENO: { aci: 33, espessura: 0.18, conteudo: 'terra (hachura EARTH) e linha do terreno' },
   DRENAGEM: { aci: 8, espessura: 0.13, conteudo: 'brita, areia, manta, tubo do dreno e barbacã' },
   IMAGENS: { aci: 7, espessura: 0.13, conteudo: 'foto do 3D Realista (imagem vinculada)' },
+  TABELAS: { aci: 7, espessura: 0.18, conteudo: 'tabelas de materiais (blocos e canaletas, materiais, drenagem): grade e textos' },
+  PECAS: { aci: 7, espessura: 0.13, conteudo: 'figura de cada peça na tabela de blocos: contorno (o colorido vai em PECAS-FUNDO)' },
   GERAL: { aci: 7, espessura: 0.18, conteudo: 'o que o desenho não classificou' },
   '3D-FACES': { aci: 8, espessura: 0.13, conteudo: 'faces coloridas do 3D Cores, na cor verdadeira' },
   AVISO: { aci: 1, espessura: 0.5, conteudo: 'tarja NÃO VERIFICADO (muro que não passa na conta)' },

@@ -6,6 +6,7 @@
 import { quadroUtil } from './formatos';
 import { novaFolha, novoId } from './padrao';
 import type { Camera3d, ConteudoDoItem, Folha, ItemDaFolha, PedidoDeVista, PranchasDoProjeto } from './tipos';
+import type { IdDaTabela } from './tabelaDaFolha';
 
 export function naFolha(p: PranchasDoProjeto, id: string, f: (x: Folha) => Folha): PranchasDoProjeto {
   return { ...p, folhas: p.folhas.map((x) => (x.id === id ? f(x) : x)) };
@@ -74,6 +75,15 @@ export function itemDaVista(folha: Folha, pedido: PedidoDeVista): ItemDaFolha {
   const [x, y] = lugarNovo(folha);
   if (pedido.tipo === 'iso') return { id: novoId('i'), conteudo: pedido, escala: null, x, y, largura: 160, altura: 110, titulo: '' };
   return { id: novoId('i'), conteudo: pedido, escala: ESCALA_INICIAL[pedido.tipo], x, y, titulo: '' };
+}
+
+/**
+ * Item de uma tabela de materiais (blocos, materiais, drenagem): sem escala e sem tamanho próprio — a tabela tem o
+ * tamanho que a letra da folha dá (tabelaDaFolha.ts); título em branco = o automático.
+ */
+export function itemDaTabela(folha: Folha, id: IdDaTabela): ItemDaFolha {
+  const [x, y] = lugarNovo(folha);
+  return { id: novoId('i'), conteudo: { tipo: 'tabela', id }, escala: null, x, y, titulo: '' };
 }
 
 /** Item do 3D: sem escala, com ~1/3 da largura útil da folha (até 180 mm) e a proporção da foto. */

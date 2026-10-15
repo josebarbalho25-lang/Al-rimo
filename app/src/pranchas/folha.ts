@@ -17,10 +17,14 @@ import type { FormaDaBarra } from './formaDaBarra';
 import { dataUrlParaBytes } from './zip';
 import { pixelsDaImagem } from './dxf';
 
-/** O que a folha recebe de fora para um item: um desenho vetorial (em px de desenho) ou uma imagem. */
+/**
+ * O que a folha recebe de fora para um item: um desenho vetorial (em px de desenho), uma imagem, ou um desenho já
+ * em MILÍMETROS DE PAPEL (a tabela de materiais: tamanho fixo, a letra é a da folha, o título vem dentro dele).
+ */
 export type ItemDesenhado =
   | { tipo: 'vetor'; vista: VistaParaPrancha }
-  | { tipo: 'imagem'; dataUrl: string; arquivo: string; proporcao: number };
+  | { tipo: 'imagem'; dataUrl: string; arquivo: string; proporcao: number }
+  | { tipo: 'papel'; vista: VistaParaPrancha };
 
 export interface ContextoDaFolha {
   numero: number;
@@ -167,6 +171,7 @@ function encaixe(item: ItemDaFolha, d: ItemDesenhado): { k: number; w: number; h
     return { k: 1, w: ww, h: ww / d.proporcao };
   }
   const [, , cw, ch] = d.vista.caixa;
+  if (d.tipo === 'papel') return { k: 1, w: cw, h: ch };
   if (item.escala !== null) return { k: 1 / PX_POR_MM, w: cw / PX_POR_MM, h: ch / PX_POR_MM };
   // sem escala (3D em vetor, isométrico): manda a LARGURA pedida, e a altura sai da proporção do desenho — o campo
   // "Largura (mm)" do painel é a largura que sai no papel (com a proporção da foto, o 3D de um muro comprido saía
@@ -226,9 +231,9 @@ function carimbar(p: Papel, folha: Folha, ctx: ContextoDaFolha, x: number, y: nu
     guardar({ k: 'linha', a, b, e });
   }
   // uma escala só na folha toda: ela; mais de uma, ou escala e desenho sem escala juntos: "Indicadas" (cada desenho
-  // tem a sua embaixo dele)
+  // tem a sua embaixo dele). A tabela não é desenho: não tem escala nem conta como "sem escala"
   const escalas = [...new Set(folha.itens.filter((i) => i.escala !== null).map((i) => i.escala as number))];
-  const semEscala = folha.itens.some((i) => i.escala === null);
+  const semEscala = folha.itens.some((i) => i.escala === null && i.conteudo.tipo !== 'tabela');
   const textoEscala = escalas.length === 0 ? 'Sem escala' : escalas.length === 1 && !semEscala ? rotuloDaEscala(escalas[0]) : 'Indicadas';
   // Cada dado é um ATRIBUTO próprio do bloco (obra, endereço e proprietário separados; responsável, CREA e ART
   // separados): o cadista que troca o carimbo pelo dele mapeia campo a campo. Na folha eles saem lado a lado na
@@ -547,7 +552,8 @@ export function comporFolha(folha: Folha, ctx: ContextoDaFolha): FolhaComposta {
       p.svg.push(`<g transform="matrix(${n(escala)} 0 0 ${n(escala)} ${n(dx)} ${n(dy)})">${d.vista.corpo}</g>`);
       p.prims.push(...transformarPrimitivas(d.vista.primitivas, escala, dx, dy));
     }
-    const t = titular(p, item, item.titulo.trim() || (ctx.tituloAutomatico?.(item) ?? ''), item.x, item.y + h);
+    // a tabela traz o título dela em cima (como as do quadro lateral); o desenho, embaixo com a escala
+    const t = d.tipo === 'papel' ? null : titular(p, item, item.titulo.trim() || (ctx.tituloAutomatico?.(item) ?? ''), item.x, item.y + h);
     itens.push({ id: item.id, caixa: [item.x, item.y, w, h], titulo: t, pendente: false, invade: false });
   });
 

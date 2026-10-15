@@ -69,6 +69,8 @@ export interface Parametros {
   pl: { m_mod: number | null; l_cf_adot: number | null; tenr_adot: number | null; H_muro_des: number | null; n_fiadas: number | null };
   // entradas do modelo
   L_total: number; junta_cada: number; cinta: boolean; phi_cinta: number; traspasse: number | null;
+  sapTransv: 'estribo' | 'reta';       // transversal da sapata: estribo fechado (padrão, 15/10) ou a barra reta de antes
+  arranque: 'padrao' | 'no';           // espera: a de sempre ou o nó de cachorro (forma a confirmar no Revit)
   barbaca: boolean; barbaca_phi: number; barbaca_s: number;
   dreno: boolean; dreno_esp: number; dreno_folga: number;
   drenof: boolean; drenof_phi: number; drenof_env: number; areia_esp: number;
@@ -179,6 +181,8 @@ export function lerParametros(r: Resultado, extrasIn: Record<string, Valor>, avi
     cinta: sim('cinta_topo'),
     phi_cinta: xn('phi_cinta', 10),
     traspasse: comoNumero(extras.traspasse_dir) === null ? null : (comoNumero(extras.traspasse_dir) as number) * 10,
+    sapTransv: comoTexto(extras.sap_transv).trim().toLowerCase().startsWith('r') ? 'reta' : 'estribo',
+    arranque: comoTexto(extras.arranque).trim().toLowerCase().startsWith('n') ? 'no' : 'padrao',
     barbaca: sim('barbaca_on'),
     barbaca_phi: xn('barbaca_phi', 50),
     barbaca_s: xn('barbaca_s', 1.5) * 1000,

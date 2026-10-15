@@ -11,7 +11,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { ClassePeca } from '@/modelo/tipos';
-import { COR_DA_CLASSE, ORDEM_DAS_CLASSES, ROTULO_DA_CLASSE } from './estiloVisual';
+import { ORDEM_DAS_CLASSES, ROTULO_DA_CLASSE, corDaClasse } from './estiloVisual';
 import type { PaletaVisor } from './tema3d';
 
 /** As classes presentes, na ordem da legenda. */
@@ -26,7 +26,7 @@ export function LegendaDasCores({ classes }: { classes: ReadonlySet<ClassePeca> 
     <div className="v3-legenda" data-legenda="cores">
       {itens.map((c) => (
         <div key={c} className="v3-legenda-linha">
-          <span className="v3-legenda-cor" style={{ background: COR_DA_CLASSE[c] }} />
+          <span className="v3-legenda-cor" style={{ background: corDaClasse(c) }} />
           <span>{ROTULO_DA_CLASSE[c]}</span>
         </div>
       ))}
@@ -64,7 +64,7 @@ export function desenharLegenda(g: CanvasRenderingContext2D, largura: number, cl
   g.strokeRect(x0 + e / 2, y0 + e / 2, w - e, h - e);
   itens.forEach((c, i) => {
     const cy = y0 + folga + lado / 2 + i * linha;
-    g.fillStyle = COR_DA_CLASSE[c];
+    g.fillStyle = corDaClasse(c);
     g.fillRect(x0 + folga, cy - lado / 2, lado, lado);
     g.strokeStyle = 'rgba(0,0,0,0.35)';
     g.strokeRect(x0 + folga + e / 2, cy - lado / 2 + e / 2, lado - e, lado - e);

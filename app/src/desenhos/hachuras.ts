@@ -4,6 +4,9 @@
   ficou em pedras de quina viva (escolha do Jose entre três opções, 14/10: "opção A" — brita é pedra britada; o
   círculo é a convenção de seixo rolado). Terra no trançado do EARTH. Tamanhos calibrados por ele na régua (ESCALA).
 
+  Desde 15/10 o desenho, as cores e a escala de cada material saem da tabela de gráficos (graficos.ts, controlada
+  pelo Jose na tela); HACHURA e ESCALA abaixo são o padrão de fábrica. `escala` 1 = o tamanho que ele calibrou.
+
   Os pontos "aleatórios" saem de um sorteio com semente fixa: o mesmo desenho a cada vez (teste e exportação
   estáveis). Cada pedra perto da borda do ladrilho é desenhada também do outro lado, para o ladrilho emendar sem
   costura.
@@ -14,15 +17,19 @@
   tem como sair com outra hachura que a da tela.
 */
 
+import { GRAFICOS_DE_FABRICA, hachuraDe, type Hachura } from './graficos';
+
+/** As cores de fábrica de cada hachura (as do Revit do Jose, em graficos.ts — um lugar só). */
+const FAB = GRAFICOS_DE_FABRICA.materiais;
 export const HACHURA = {
-  terra: '#a67857',        // RGB 166-120-087
-  terraFundo: '#dbc9bb',   // RGB 219-201-187
-  areia: '#5d5d5d',        // RGB 093-093-093
-  areiaFundo: '#ffffb7',   // RGB 255-255-183
-  concreto: '#5d5d5d',
-  concretoFundo: '#d4d4d4', // RGB 212-212-212
-  brita: '#4a4a4a',
-  britaFundo: '#c3bfb5',
+  terra: FAB.terra.hachura!.risco,          // RGB 166-120-087
+  terraFundo: FAB.terra.hachura!.fundo,     // RGB 219-201-187
+  areia: FAB.areia.hachura!.risco,          // RGB 093-093-093
+  areiaFundo: FAB.areia.hachura!.fundo,     // RGB 255-255-183
+  concreto: FAB.concreto.hachura!.risco,
+  concretoFundo: FAB.concreto.hachura!.fundo, // RGB 212-212-212
+  brita: FAB.brita.hachura!.risco,
+  britaFundo: FAB.brita.hachura!.fundo,
 } as const;
 
 function sorteio(semente: number): () => number {
@@ -73,8 +80,8 @@ function padrao(id: string, l: Ladrilho): string {
  * entrelaçado (Jose, 14/10: "os traçados meio que se entrelaçam, isso que eu gosto dela"; os quadrados soltos da
  * 1ª tentativa não davam).
  */
-function terra(): Ladrilho {
-  const c = ESCALA.terra;
+function terra(h: Hachura): Ladrilho {
+  const c = ESCALA.terra * h.escala;
   const T = 2 * c;
   const seg: [number, number, number, number][] = [];
   for (const k of [0, 0.375, 0.75]) {
@@ -90,38 +97,38 @@ function terra(): Ladrilho {
     for (const dx of [-T, 0, T]) {
       for (const dy of [-T, 0, T]) {
         if (Math.max(x1, x2) + dx < 0 || Math.min(x1, x2) + dx > T || Math.max(y1, y2) + dy < 0 || Math.min(y1, y2) + dy > T) continue;
-        s += `<line x1="${f1(x1 + dx)}" y1="${f1(y1 + dy)}" x2="${f1(x2 + dx)}" y2="${f1(y2 + dy)}" stroke="${HACHURA.terra}" stroke-width="0.8"/>`;
+        s += `<line x1="${f1(x1 + dx)}" y1="${f1(y1 + dy)}" x2="${f1(x2 + dx)}" y2="${f1(y2 + dy)}" stroke="${h.risco}" stroke-width="0.8"/>`;
       }
     }
   }
-  return ladrilho(T, HACHURA.terraFundo, s);
+  return ladrilho(T, h.fundo, s);
 }
 
-function areia(): Ladrilho {
+function areia(h: Hachura): Ladrilho {
   const r = sorteio(11);
   let s = '';
-  const E = ESCALA.areia;
-  for (let i = 0; i < 70; i++) s += risco(E, r() * 60, r() * 60, r() * 6.28, 0.6 + r() * 0.9, HACHURA.areia);
-  return ladrilho(60 * E, HACHURA.areiaFundo, s);
+  const E = ESCALA.areia * h.escala;
+  for (let i = 0; i < 70; i++) s += risco(E, r() * 60, r() * 60, r() * 6.28, 0.6 + r() * 0.9, h.risco);
+  return ladrilho(60 * E, h.fundo, s);
 }
 
-function concreto(): Ladrilho {
+function concreto(h: Hachura): Ladrilho {
   const r = sorteio(23);
-  const E = ESCALA.concreto;
+  const E = ESCALA.concreto * h.escala;
   let s = '';
   for (let i = 0; i < 22; i++) {
     const x = 6 + r() * 68, y = 6 + r() * 68, raio = 1.4 + r() * 1.6, a0 = r() * 6.28;
     const p = [0, 1, 2].map((v) => `${f1(E * (x + raio * Math.cos(a0 + v * 2.094)))},${f1(E * (y + raio * Math.sin(a0 + v * 2.094)))}`);
-    s += `<polygon points="${p.join(' ')}" fill="none" stroke="${HACHURA.concreto}" stroke-width="0.6"/>`;
+    s += `<polygon points="${p.join(' ')}" fill="none" stroke="${h.risco}" stroke-width="0.6"/>`;
   }
-  for (let i = 0; i < 45; i++) s += risco(E, r() * 80, r() * 80, r() * 6.28, 0.5 + r() * 1.2, HACHURA.concreto);
-  return ladrilho(80 * E, HACHURA.concretoFundo, s);
+  for (let i = 0; i < 45; i++) s += risco(E, r() * 80, r() * 80, r() * 6.28, 0.5 + r() * 1.2, h.risco);
+  return ladrilho(80 * E, h.fundo, s);
 }
 
 /** Brita: pedras de 5 a 7 lados, de quina viva, uma por casa de uma grade 8 × 8 com o centro sacudido. */
-function brita(): Ladrilho {
+function brita(h: Hachura): Ladrilho {
   const r = sorteio(7);
-  const T = 72, n = 8, passo = T / n, E = ESCALA.brita;
+  const T = 72, n = 8, passo = T / n, E = ESCALA.brita * h.escala;
   let s = '';
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
@@ -138,30 +145,54 @@ function brita(): Ladrilho {
         for (const dy of [-T, 0, T]) {
           const fora = Math.min(...xs) + dx > T || Math.max(...xs) + dx < 0 || Math.min(...ys) + dy > T || Math.max(...ys) + dy < 0;
           if (fora) continue;
-          s += `<polygon points="${p.map(([x, y]) => `${f1(E * (x + dx))},${f1(E * (y + dy))}`).join(' ')}" fill="none" stroke="${HACHURA.brita}" stroke-width="0.7"/>`;
+          s += `<polygon points="${p.map(([x, y]) => `${f1(E * (x + dx))},${f1(E * (y + dy))}`).join(' ')}" fill="none" stroke="${h.risco}" stroke-width="0.7"/>`;
         }
       }
     }
   }
-  return ladrilho(T * E, HACHURA.britaFundo, s);
+  return ladrilho(T * E, h.fundo, s);
 }
 
-let ladrilhos: Record<MaterialComLadrilho, Ladrilho> | null = null;
-
-/** O ladrilho de cada material (sorteado uma vez: a semente é fixa, o resultado também). */
-export function ladrilhoDeMaterial(nome: MaterialComLadrilho): Ladrilho {
-  ladrilhos ??= { solo: terra(), conc: concreto(), areia: areia(), brita: brita() };
-  return ladrilhos[nome];
+/**
+ * O riscado a 45° como ladrilho sem giro: a diagonal de canto a canto e as duas pontas que a emendam. Só para quem
+ * pede ladrilho de um riscado (a prancha desenha o riscado dela girando a grade — prancha.ts, RISCADO).
+ */
+function riscado(h: Hachura): Ladrilho {
+  const L = 6 * Math.SQRT2 * h.escala;
+  const l = (x1: number, y1: number, x2: number, y2: number) =>
+    `<line x1="${f1(x1)}" y1="${f1(y1)}" x2="${f1(x2)}" y2="${f1(y2)}" stroke="${h.risco}" stroke-width="0.9"/>`;
+  return ladrilho(L, h.fundo, l(0, L, L, 0) + l(-1, 1, 1, -1) + l(L - 1, L + 1, L + 1, L - 1));
 }
 
-const cache = new Map<string, string>();
+const cache = new Map<string, Ladrilho>();
 
-/** Os quatro <pattern> da tela, com o prefixo da prancha (`des-solo`, `des-conc`, `des-areia`, `des-brita`). */
-export function hachurasDeMaterial(prefixo: string): string {
-  let s = cache.get(prefixo);
-  if (!s) {
-    s = (['solo', 'conc', 'areia', 'brita'] as const).map((k) => padrao(`${prefixo}-${k}`, ladrilhoDeMaterial(k))).join('');
-    cache.set(prefixo, s);
+/** O ladrilho de uma hachura (sorteado uma vez por desenho, cores e escala: a semente é fixa, o resultado também). */
+export function ladrilhoDe(h: Hachura): Ladrilho {
+  const chave = `${h.desenho}|${h.risco}|${h.fundo}|${h.escala}`;
+  let l = cache.get(chave);
+  if (!l) {
+    switch (h.desenho) {
+      case 'terra': l = terra(h); break;
+      case 'concreto': l = concreto(h); break;
+      case 'areia': l = areia(h); break;
+      case 'brita': l = brita(h); break;
+      case 'riscado': l = riscado(h); break;
+      case 'solido': l = ladrilho(10, h.fundo, ''); break;
+      default: l = ladrilho(10, 'none', '');
+    }
+    cache.set(chave, l);
   }
-  return s;
+  return l;
+}
+
+const MATERIAL_DO_LADRILHO = { solo: 'terra', conc: 'concreto', areia: 'areia', brita: 'brita' } as const;
+
+/** O ladrilho de cada material, pela tabela em uso (`des-solo`, `des-conc`…). */
+export function ladrilhoDeMaterial(nome: MaterialComLadrilho): Ladrilho {
+  return ladrilhoDe(hachuraDe(MATERIAL_DO_LADRILHO[nome]));
+}
+
+/** O <pattern> da tela de um ladrilho, com o id pedido. */
+export function padraoDoLadrilho(id: string, l: Ladrilho): string {
+  return padrao(id, l);
 }

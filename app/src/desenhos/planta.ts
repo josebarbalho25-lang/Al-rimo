@@ -18,6 +18,7 @@ import { estiloDaSecao } from './corteLateral';
 import { desenharLegenda, estiloPintado, itensDasTintas, tintaDaPeca, tintasPresentes } from './cores';
 import { cadeia } from './vistaFrontal';
 import { COR, Prancha, escalaPara, type OpcoesDaVista, type Pt } from './prancha';
+import { aparece as apareceNa, corDoAcoNoDesenho, pecaAparece } from './graficos';
 
 /** `fiada` conta de 0 (0 = 1ª fiada). `o`: escala fixa, sem título e prefixo dos ids — o pedido do modo prancha. */
 export function desenharPlanta(m: Modelo, fiada = 0, o: OpcoesDaVista = {}): Prancha {
@@ -38,10 +39,12 @@ export function desenharPlanta(m: Modelo, fiada = 0, o: OpcoesDaVista = {}): Pra
   const Y = (y: number) => -y * S;
   const tela = (p: Vec2): Pt => [X(p[0]), Y(p[1])];
   const aneis = (r: Regiao): Pt[][] => [r.contorno, ...r.furos].map((a) => a.map(tela));
+  // o que o Jose desligou na planta (Visibilidade, graficos.ts — 15/10)
+  const aparece = (i: Parameters<typeof apareceNa>[1]) => apareceNa('planta', i);
 
   // ── sapata (abaixo): contorno e dente tracejados ──────────────────────────────────────────────────────────────
   pr.abrir('data-camada="sapata"');
-  for (const s of sol.filter((q) => q.peca.tipo === 'SAPATA')) {
+  for (const s of aparece('sapata') ? sol.filter((q) => q.peca.tipo === 'SAPATA') : []) {
     pr.rect(X(s.min[0]), Y(s.max[1]), (s.max[0] - s.min[0]) * S, (s.max[1] - s.min[1]) * S, { stroke: COR.linha, sw: 1, dash: '8,4', id: s.peca.id });
     // dente: as arestas do perfil no nível mais baixo
     const zMin = s.min[2];
@@ -55,7 +58,7 @@ export function desenharPlanta(m: Modelo, fiada = 0, o: OpcoesDaVista = {}): Pra
   // ── seção na fiada ────────────────────────────────────────────────────────────────────────────────────────────
   const cortados = sol
     .map((s) => ({ s, r: secao(s, 'Z', zc) }))
-    .filter((q) => q.r.length)
+    .filter((q) => q.r.length && pecaAparece('planta', q.s.peca.tipo))
     .sort((a, b) => ordem(a.s.peca.tipo) - ordem(b.s.peca.tipo));
   pr.abrir('data-camada="secao"');
   for (const { s, r } of cortados) {
@@ -68,14 +71,14 @@ export function desenharPlanta(m: Modelo, fiada = 0, o: OpcoesDaVista = {}): Pra
 
   // ── armadura ──────────────────────────────────────────────────────────────────────────────────────────────────
   pr.abrir('data-camada="barras"');
-  for (const b of m.barras) {
+  for (const b of aparece('armadura') ? m.barras : []) {
     const pts = b.fechada ? [...b.eixo, b.eixo[0]] : b.eixo;
     // trechos deitados dentro da fiada, abaixo do plano
     for (let k = 0; k + 1 < pts.length; k++) {
       const [p, q] = [pts[k], pts[k + 1]];
       const dentro = (z: number) => z >= zBaixo - 1 && z <= zc;
       if (dentro(p[2]) && dentro(q[2]) && Math.hypot(q[0] - p[0], q[1] - p[1]) > 1) {
-        pr.linha(X(p[0]), Y(p[1]), X(q[0]), Y(q[1]), { stroke: COR.aco, sw: Math.max(0.9, b.diametro * S), id: b.id });
+        pr.linha(X(p[0]), Y(p[1]), X(q[0]), Y(q[1]), { stroke: corDoAcoNoDesenho(), sw: Math.max(0.9, b.diametro * S), id: b.id });
       }
     }
     for (const p of cruzamentos(b.eixo, 'Z', zc)) {
@@ -89,6 +92,7 @@ export function desenharPlanta(m: Modelo, fiada = 0, o: OpcoesDaVista = {}): Pra
   const yTopo = Y(yMax);
   const yBase = Y(yMin);
   pr.abrir('data-camada="cotas"');
+  pr.silenciar(!aparece('eixos'));
   for (const c of cfs) {
     pr.linha(X(c.x), yBase + 10, X(c.x), yTopo - 34, { stroke: COR.cota, sw: 0.6, dash: '14,3,2,3', camada: 'eixos' });
     pr.texto(X(c.x), yTopo - 38, `C${c.numero}`, { tam: 11, cor: COR.cota, negrito: true });
@@ -98,6 +102,7 @@ export function desenharPlanta(m: Modelo, fiada = 0, o: OpcoesDaVista = {}): Pra
     pr.linha(X(xj), Y(-60), X(xj), Y(t + 60), { stroke: COR.linha, sw: 1.8, camada: 'eixos' });
     pr.texto(X(xj), yBase + 22, 'JC', { tam: 11, negrito: true });
   }
+  pr.silenciar(!aparece('cotas'));
   // eixo a eixo dos contrafortes, por cima (lado do solo)
   for (const r of trechos) {
     const xs = cfs.filter((c) => c.x >= r.x0 && c.x <= r.x1).map((c) => c.x);
@@ -120,6 +125,7 @@ export function desenharPlanta(m: Modelo, fiada = 0, o: OpcoesDaVista = {}): Pra
     const xCota = Math.min(X(cf.min[0]), X(xIni)) - 50;
     pr.cotaV(xCota, Y(ya), Y(yb), `contraforte ${cm(yb - ya)}`, { de: [X(cf.min[0]), X(cf.min[0])] });
   }
+  pr.silenciar(false);
   pr.fechar();
 
   // na prancha o título é dela (embaixo do desenho, com a escala); o PROVISÓRIO fica, é aviso e não título
@@ -130,7 +136,7 @@ export function desenharPlanta(m: Modelo, fiada = 0, o: OpcoesDaVista = {}): Pra
   }
   if (m.familia.provisoria && cfs.length) pr.texto(X(xIni) + (o.semTitulo ? 0 : 190), yTit, 'PROVISÓRIO', { tam: 13, ancora: 'start', negrito: true, cor: COR.especial });
   // legenda só com os tipos que aparecem NESTA fiada (a 1ª não tem canaleta; a do topo é só canaleta)
-  if (!o.semLegendaDeCores) desenharLegenda(pr, X(xIni), linhaLegenda, itensDasTintas(tintasPresentes(cortados.map((q) => q.s))), Math.max(320, X(xFim) - X(xIni)));
+  if (!o.semLegendaDeCores && aparece('legenda')) desenharLegenda(pr, X(xIni), linhaLegenda, itensDasTintas(tintasPresentes(cortados.map((q) => q.s))), Math.max(320, X(xFim) - X(xIni)));
   return pr;
 }
 

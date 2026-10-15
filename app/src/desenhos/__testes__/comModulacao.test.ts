@@ -14,6 +14,7 @@ import type { Modelo } from '@/modelo/tipos';
 import { cenariosDoGabarito, resultadoDoGabarito } from '@/motor/resultadoDoGabarito';
 import type { Resultado } from '@/motor/tipos';
 import { corteLateral, cortesPadrao, isometrico, planta, vistaFrontal } from '../index';
+import { barrasNoCorte } from '../corteLateral';
 import { camera, ordemDePintura, pecasDoIsometrico, quemNaFrente, sentido, type VistaIso } from '../isometrico';
 import { escalar, solidosDoModelo } from '../geometria';
 import { cm } from '../formato';
@@ -166,6 +167,29 @@ describe.skipIf(!casos.length)('isométrico com o muro de verdade: nenhuma peça
     }
     const x = cortesPadrao(m)[0].x;
     expect(violacoesDoPintor(m, 'frente-direita', x).slice(0, 5), 'cortado').toEqual([]);
+  });
+});
+
+describe.skipIf(!casos.length)('traspasse no corte: uma cota por altura de espera, com o N quando há mais de uma', () => {
+  it.each(casos.map((c) => [c.cenario, c] as const))('%s', (_, { m }) => {
+    for (const c of cortesPadrao(m)) {
+      const alturas = [...new Set(
+        barrasNoCorte(m, c.x).linhas
+          .filter((l) => l.barra.papel === 'ESPERA')
+          .map((l) => Math.round(Math.max(...l.pts.map((p) => p[1]))))
+          .filter((z) => z > 1),
+      )].sort((a, b) => a - b);
+      const cotas = rotulos(corteLateral(m, c.x)).filter((t) => t.startsWith('traspasse'));
+      expect(cotas.map((t) => t.split(' ').pop()), c.rotulo).toEqual(alturas.map(cm));
+      if (alturas.length > 1) for (const t of cotas) expect(t, c.rotulo).toMatch(/^traspasse N\d+(, N\d+)* \d/);
+      else for (const t of cotas) expect(t, c.rotulo).toMatch(/^traspasse \d/);
+    }
+  });
+
+  it.skipIf(!casos.some((c) => c.cenario === 'aula123'))('no contraforte da aula 12.3 as esperas têm alturas diferentes: mais de uma cota', () => {
+    const { m } = casos.find((c) => c.cenario === 'aula123')!;
+    const cf = cortesPadrao(m).find((c) => c.rotulo.startsWith('Contraforte'))!;
+    expect(rotulos(corteLateral(m, cf.x)).filter((t) => t.startsWith('traspasse')).length).toBeGreaterThan(1);
   });
 });
 

@@ -18,6 +18,7 @@ import {
 } from './geometria';
 import { COR, Prancha, escalaPara, type Estilo, type OpcoesDaVista, type Pt } from './prancha';
 import { ancoraNaBarra, desenharChamadas, elementoDaBarra, type Chamada } from './chamadas';
+import { aparece, corDoAcoNoDesenho, hachuraDe, pecaAparece } from './graficos';
 
 export interface CortePadrao {
   rotulo: string;
@@ -67,7 +68,9 @@ export function barrasNoCorte(m: Modelo, x0: number): BarrasNoCorte {
       if (xa <= x0 && x0 <= xb) linhas.push({ barra: b, pts: projetarPontos(b.eixo, 'X'), fechada: !!b.fechada });
       continue;
     }
-    if (barraNoPlanoX(b.eixo)) {
+    // o estribo com os ganchos de 135° e o nó de cachorro (modulacao/barras.ts) saem até um φ do plano onde a barra
+    // cruza a si mesma: ainda são barras do plano
+    if (barraNoPlanoX(b.eixo, b.diametro + 0.5)) {
       // por elemento E posição: o mesmo N pode estar no painel e no contraforte (barra igual, mesmo N)
       const k = `${b.papel}|${b.posicao || b.diametro}`;
       planas.set(k, [...(planas.get(k) ?? []), b]);
@@ -109,12 +112,13 @@ function trechoNoPlano(eixo: Barra['eixo'], x0: number): Barra['eixo'] {
  *  tubo do dreno são brancos como o fundo do bloco). */
 export function estiloDaSecao(s: Solido, pr: Prancha): Estilo | null {
   const tp = s.peca.tipo;
-  if (ALVENARIA.has(tp)) return { fill: pr.padrao('alv'), stroke: COR.bloco, sw: 0.9, camada: 'alvenaria' };
-  if (tp === 'GRAUTE_FURO' || tp === 'GRAUTE_CANALETA') return { fill: COR.grauteFundo, stroke: COR.graute, sw: 0.6, camada: 'graute' };
+  // fundo e risco da tabela de gráficos (15/10); o contorno de cada peça no risco da hachura dela
+  if (ALVENARIA.has(tp)) return { fill: pr.padrao('alv'), stroke: hachuraDe('alvenaria').risco, sw: 0.9, camada: 'alvenaria' };
+  if (tp === 'GRAUTE_FURO' || tp === 'GRAUTE_CANALETA') return { fill: pr.padrao('grc'), stroke: hachuraDe('graute').risco, sw: 0.6, camada: 'graute' };
   if (tp === 'SAPATA') return { fill: pr.padrao('conc'), stroke: COR.linha, sw: 1.6, camada: 'concreto' };
-  if (tp === 'DRENO') return { fill: pr.padrao('brita'), stroke: COR.brita, sw: 0.8, camada: 'drenagem' };
-  if (tp === 'AREIA') return { fill: pr.padrao('areia'), stroke: COR.areia, sw: 0.6, camada: 'drenagem' };
-  if (tp === 'MANTA') return { fill: COR.manta, stroke: COR.manta, sw: 0.6, camada: 'drenagem' };
+  if (tp === 'DRENO') return { fill: pr.padrao('brita'), stroke: hachuraDe('brita').risco, sw: 0.8, camada: 'drenagem' };
+  if (tp === 'AREIA') return { fill: pr.padrao('areia'), stroke: hachuraDe('areia').risco, sw: 0.6, camada: 'drenagem' };
+  if (tp === 'MANTA') return { fill: pr.padrao('mnt'), stroke: hachuraDe('manta').risco, sw: 0.6, camada: 'drenagem' };
   if (tp === 'BARBACA' || tp === 'TUBO_DRENO') return { fill: '#ffffff', stroke: COR.linha, sw: 0.8, camada: 'drenagem' };
   return null;
 }
@@ -161,21 +165,25 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
   // pintada por cima já tapava, mas no DXF as duas hachuras ficavam uma em cima da outra (EARTH sob AR-CONC).
   // Entra como furo só o CONTORNO de fora de cada peça que está dentro da terra — o graute do furo mora dentro do
   // bloco, e o furo do tubo dentro da brita: contá-los de novo inverteria a regra e a terra voltaria lá dentro.
-  pr.abrir('data-camada="terreno"');
+  const terra = aparece('corte', 'terreno');
+  if (terra) pr.abrir('data-camada="terreno"');
   const contornoDaTerra: Vec2[] = [[yPerto, zFundo], [yLonge, zFundo], [yLonge, H_solo], [t, H_solo], [t, 0], [0, 0], [0, zFrente], [yPerto, zFrente]];
   const FURA_A_TERRA = new Set<string>(['SAPATA', 'DRENO', 'AREIA', 'MANTA', 'GRAUTE_CANALETA']);
   const furosDaTerra = cortados
     .filter(({ s }) => FURA_A_TERRA.has(s.peca.tipo) || ALVENARIA.has(s.peca.tipo))
     .flatMap(({ r }) => r.map((q) => q.contorno))
     .filter((c) => c.length >= 3 && dentroDoPoligono(centroDoAnel(c), contornoDaTerra));
-  pr.caminho([contornoDaTerra, ...furosDaTerra].map((a) => a.map(tela)), { fill: pr.padrao('solo'), stroke: 'none' });
-  pr.linha(U(yPerto), V(zFrente), U(zFrente > 0 ? 0 : Math.min(0, yMin)), V(zFrente), { stroke: COR.solo, sw: 1.8 });
-  pr.linha(U(t), V(H_solo), U(yLonge), V(H_solo), { stroke: COR.solo, sw: 1.8 });
-  pr.texto(U(yLonge) + 8, V(H_solo) + 16, 'aterro', { tam: 11, ancora: 'start', cor: COR.solo, negrito: true, halo: true });
-  pr.fechar();
+  if (terra) {
+    const corDaTerra = hachuraDe('terra').risco;
+    pr.caminho([contornoDaTerra, ...furosDaTerra].map((a) => a.map(tela)), { fill: pr.padrao('solo'), stroke: 'none' });
+    pr.linha(U(yPerto), V(zFrente), U(zFrente > 0 ? 0 : Math.min(0, yMin)), V(zFrente), { stroke: corDaTerra, sw: 1.8 });
+    pr.linha(U(t), V(H_solo), U(yLonge), V(H_solo), { stroke: corDaTerra, sw: 1.8 });
+    pr.texto(U(yLonge) + 8, V(H_solo) + 16, 'aterro', { tam: 11, ancora: 'start', cor: corDaTerra, negrito: true, halo: true });
+    pr.fechar();
+  }
 
   // ── contraforte além do corte (escondido no aterro) ──────────────────────────────────────────────────────────
-  if (!cfCortado) {
+  if (!cfCortado && aparece('corte', 'blocos')) {
     const alem = cfs.filter((c) => c.x > x0).sort((a, b) => a.x - b.x)[0];
     if (alem) {
       pr.rect(U(alem.min[1]), V(alem.max[2]), (alem.min[1] - alem.max[1]) * S, (alem.max[2] - Math.max(alem.min[2], 0)) * S,
@@ -186,6 +194,7 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
   // ── seções ─────────────────────────────────────────────────────────────────────────────────────────────────────
   pr.abrir('data-camada="secao"');
   for (const { s, r } of cortados) {
+    if (!pecaAparece('corte', s.peca.tipo)) continue;
     const e = estiloDaSecao(s, pr);
     if (!e) continue;
     if (ALVENARIA.has(s.peca.tipo)) {
@@ -198,7 +207,7 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
   }
   // barbacã fora do plano: o tubo mais próximo, tracejado (o corte típico do painel mostra a drenagem; no
   // corte do contraforte o tubo não existe — fica fora do contraforte — e confundiria com furo da haste)
-  if (!cfCortado && !cortados.some((q) => q.s.peca.tipo === 'BARBACA')) {
+  if (!cfCortado && aparece('corte', 'drenagem') && !cortados.some((q) => q.s.peca.tipo === 'BARBACA')) {
     const bb = sol.filter((s) => s.peca.tipo === 'BARBACA').sort((a, b) => Math.abs(a.min[0] - x0) - Math.abs(b.min[0] - x0))[0];
     if (bb) pr.caminho(aneis(projecao(bb, 'X')), { stroke: COR.linha, sw: 0.8, dash: '4,2', id: bb.peca.id, camada: 'drenagem' });
   }
@@ -208,8 +217,9 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
   const br = barrasNoCorte(m, x0);
   const ySecoes = br.linhas.filter((l) => l.barra.papel !== 'ESPERA').map((l) => l.pts[0][0]);
   const chamadas: Chamada[] = [];
+  const armadura = aparece('corte', 'armadura');
   pr.abrir('data-camada="barras"');
-  for (const l of br.linhas) {
+  for (const l of armadura ? br.linhas : []) {
     let pts = l.pts;
     // espera e barra no mesmo Y se confundem no corte: a espera é afastada um diâmetro e meio para o miolo do
     // furo, só no desenho, para o traspasse aparecer como duas linhas lado a lado
@@ -222,12 +232,12 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
       }
     }
     const tp = pts.map(tela);
-    pr.polilinha(l.fechada ? [...tp, tp[0]] : tp, { stroke: COR.aco, sw: Math.max(1, l.barra.diametro * S), id: l.barra.id });
+    pr.polilinha(l.fechada ? [...tp, tp[0]] : tp, { stroke: corDoAcoNoDesenho(), sw: Math.max(1, l.barra.diametro * S), id: l.barra.id });
     chamadas.push({ posicao: l.barra.posicao, elemento: elementoDaBarra(l.barra), ancora: ancoraNaBarra(tp) });
   }
   // barra cortada (ponto): a chamada vai ao ponto mais perto da coluna das chamadas (à direita), o de cima no empate
   const pontoDaChamada = new Map<string, Chamada>();
-  for (const p of br.pontos) {
+  for (const p of armadura ? br.pontos : []) {
     const [u, v] = tela(p.p);
     pr.circulo(u, v, Math.max(1.6, (p.barra.diametro / 2) * S), { id: p.barra.id });
     const el = elementoDaBarra(p.barra);
@@ -239,10 +249,11 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
   pr.fechar();
 
   // ── cotas ──────────────────────────────────────────────────────────────────────────────────────────────────────
+  const cotas = aparece('corte', 'cotas');
   pr.abrir('data-camada="cotas"');
   const topo = V(H_muro);
   // t e d no alto do muro
-  pr.cotaH(U(0), U(t), topo - 16, `t = ${cm(t)}`, { de: [topo, topo] });
+  if (cotas) pr.cotaH(U(0), U(t), topo - 16, `t = ${cm(t)}`, { de: [topo, topo] });
   let yd: number | null = null;
   let faceComprimida = 0;
   if (cfCortado) {
@@ -254,48 +265,64 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
     if (ys.length) yd = Math.max(...ys);
   }
   // d: as chamadas param acima do rótulo do t (a face já está marcada pela cota do t; a barra não chega ao topo)
-  if (yd !== null) pr.cotaH(U(faceComprimida), U(yd), topo - 40, `d = ${cm(Math.abs(yd - faceComprimida))}`, { de: [topo - 30, topo - 30] });
-  if (cfCortado) {
+  if (cotas && yd !== null) pr.cotaH(U(faceComprimida), U(yd), topo - 40, `d = ${cm(Math.abs(yd - faceComprimida))}`, { de: [topo - 30, topo - 30] });
+  if (cotas && cfCortado) {
     const [ya, yb] = cfCortado.aparente ? [cfCortado.min[1], t] : [0, cfCortado.max[1]];
     pr.cotaH(U(ya), U(yb), topo - 64, `contraforte ${cm(yb - ya)}`, { de: [topo, V(cfCortado.max[2])] });
   }
   // alturas: muro (lado da frente) e solo (lado do aterro)
   const uFace = U(Math.min(0, cfCortado?.aparente ? cfCortado.min[1] : 0));
-  // traspasse: quanto a espera sobe acima da sapata (é o que o pedreiro mede antes de descer a barra do muro)
-  const esperas = br.linhas.filter((l) => l.barra.papel === 'ESPERA');
-  const zTraspasse = esperas.length ? Math.max(...esperas.flatMap((l) => l.pts.map((p) => p[1]))) : 0;
-  const comTraspasse = zTraspasse > 1 && H_muro > 0;
-  if (comTraspasse) pr.cotaV(uFace + 22, V(0), V(zTraspasse), `traspasse ${cm(zTraspasse)}`, { lado: 1, de: [uFace, uFace] });
-  const uFrente = uFace + (comTraspasse ? 50 : 26);
-  pr.cotaV(uFrente, V(0), V(H_muro), `muro ${cm(H_muro)}`, { lado: 1, de: [uFace, uFace] });
-  pr.cotaV(U(yLonge) - 22, V(0), V(H_solo), `solo ${cm(H_solo)}`, { lado: -1 });
+  // traspasse: quanto a espera sobe acima da sapata (é o que o pedreiro mede antes de descer a barra do muro). Uma
+  // cota por altura: no contraforte cada espera tem o traspasse dela (a principal, a do painel, a construtiva —
+  // ℓ0t próprio na conta), e a cota só da maior deixava o pedreiro sem a medida das outras. Com mais de uma, o
+  // rótulo diz de quais posições é (o N da chamada); posições da mesma altura dividem a cota.
+  const alturas = new Map<number, string[]>();
+  for (const l of br.linhas) {
+    if (l.barra.papel !== 'ESPERA') continue;
+    const z = Math.round(Math.max(...l.pts.map((p) => p[1])));
+    if (z <= 1) continue;
+    const ns = alturas.get(z) ?? [];
+    if (!ns.includes(l.barra.posicao)) ns.push(l.barra.posicao);
+    alturas.set(z, ns);
+  }
+  const traspasses = H_muro > 0 ? [...alturas.entries()].sort((a, b) => a[0] - b[0]) : [];
+  const ordemDoN = (a: string, b: string) => a.localeCompare(b, 'pt-BR', { numeric: true });
+  traspasses.forEach(([z, ns], i) => {
+    const rotulo = traspasses.length > 1 ? `traspasse ${ns.sort(ordemDoN).join(', ')} ${cm(z)}` : `traspasse ${cm(z)}`;
+    pr.cotaV(uFace + 22 + 28 * i, V(0), V(z), rotulo, { lado: 1, de: [uFace, uFace] });
+  });
+  const uFrente = uFace + (traspasses.length ? 22 + 28 * traspasses.length : 26);
+  if (cotas) {
+    pr.cotaV(uFrente, V(0), V(H_muro), `muro ${cm(H_muro)}`, { lado: 1, de: [uFace, uFace] });
+    pr.cotaV(U(yLonge) - 22, V(0), V(H_solo), `solo ${cm(H_solo)}`, { lado: -1 });
+  }
   // sapata: medidas tiradas do perfil cortado (o que está desenhado), não das entradas
   const sap = cortados.find((q) => q.s.peca.tipo === 'SAPATA');
-  if (sap) {
+  if (sap && (cotas || aparece('corte', 'eixos'))) {
     const ps = sap.r.flatMap((q) => q.contorno);
     const y0 = Math.min(...ps.map((p) => p[0])), y1 = Math.max(...ps.map((p) => p[0]));
     const z0 = Math.min(...ps.map((p) => p[1])), zTopo = Math.max(...ps.map((p) => p[1]));
     const zPe = Math.min(...ps.filter((p) => Math.abs(p[0] - y0) < 1).map((p) => p[1]));
     const fundo = ps.filter((p) => Math.abs(p[1] - z0) < 1).map((p) => p[0]);
     const temDente = z0 < zPe - 1 && fundo.length >= 2;
-    pr.cotaV(U(y0) + 22, V(zPe), V(zTopo), cm(zTopo - zPe), { lado: 1, de: [U(y0), U(y0)] });
+    if (cotas) pr.cotaV(U(y0) + 22, V(zPe), V(zTopo), cm(zTopo - zPe), { lado: 1, de: [U(y0), U(y0)] });
     let linha = V(z0) + 22;
-    if (temDente) {
+    if (cotas && temDente) {
       const d0 = Math.min(...fundo), d1 = Math.max(...fundo);
       // altura do dente do lado do talão: do lado do pé passa o eixo do muro (cota do a)
       pr.cotaV(U(d1) - 18, V(z0), V(zPe), cm(zPe - z0), { lado: -1, de: [U(d1), U(d1)] });
       pr.cotaH(U(d0), U(d1), linha, cm(d1 - d0), { de: [V(z0), V(z0)] });
       linha += 24;
     }
-    pr.cotaH(U(y0), U(y1), linha, `B = ${cm(y1 - y0)}`, { de: [V(zPe), V(zPe)] });
+    if (cotas) pr.cotaH(U(y0), U(y1), linha, `B = ${cm(y1 - y0)}`, { de: [V(zPe), V(zPe)] });
     // distância da borda aterrada ao eixo do muro (a_ater)
-    pr.linha(U(t / 2), V(H_muro) + 6, U(t / 2), linha + 30, { stroke: COR.cota, sw: 0.6, dash: '14,3,2,3', camada: 'eixos' });
-    pr.cotaH(U(t / 2), U(y1), linha + 24, cm(y1 - t / 2), { de: [linha + 24, V(zPe)] });
+    if (aparece('corte', 'eixos')) pr.linha(U(t / 2), V(H_muro) + 6, U(t / 2), linha + 30, { stroke: COR.cota, sw: 0.6, dash: '14,3,2,3', camada: 'eixos' });
+    if (cotas) pr.cotaH(U(t / 2), U(y1), linha + 24, cm(y1 - t / 2), { de: [linha + 24, V(zPe)] });
   }
   pr.fechar();
 
   // ── chamadas das barras: à direita, além do solo da frente ─────────────────────────────────────────────────────
-  if (o.chamadas) desenharChamadas(pr, m, chamadas, U(yPerto) + 24);
+  if (o.chamadas && aparece('corte', 'chamadas')) desenharChamadas(pr, m, chamadas, U(yPerto) + 24);
 
   // ── título ─────────────────────────────────────────────────────────────────────────────────────────────────────
   // na prancha o título é dela (embaixo do desenho, com a escala); o PROVISÓRIO fica, é aviso e não título

@@ -4,8 +4,8 @@
   laranja, 54 vermelho). Vale para a vista frontal, a planta e o isométrico; o corte fica com a hachura, que é
   convenção de desenho e não código de obra.
 
-  A cor mora num lugar só (modulacao/catalogo.ts, CORES_DO_JOSE, tirada de dados/encaixes_revit/cores_jose.json):
-  o 3D pinta com a mesma tabela. Se o Jose trocar uma cor no Revit, troca-se lá e a prancha acompanha.
+  A cor sai da tabela de gráficos (graficos.ts): de fábrica, a do Revit do Jose (modulacao/catalogo.ts,
+  CORES_DO_JOSE); desde 15/10 ele troca na tela, e a vista, a prancha e o 3D Cores acompanham.
 
   De onde sai o tipo: `Geometria.classe`, que a modulação grava. Modelo sem classe (o de exemplo dos testes, ou
   um modelo salvo antes de 09/10) cai na leitura pelo `tipo` da peça — inteiro, meio e as três canaletas não têm
@@ -13,7 +13,7 @@
   que já era o destaque delas antes das cores.
 */
 import type { ClassePeca, TipoPeca } from '@/modelo/tipos';
-import { CORES_DO_JOSE } from '@/modulacao/catalogo';
+import { corDoAcoNoDesenho, graficos } from './graficos';
 import { ALVENARIA, type Solido } from './geometria';
 import { COR, Prancha, type Estilo } from './prancha';
 
@@ -49,7 +49,8 @@ function classePeloTipo(tp: TipoPeca): ClassePeca | undefined {
 export function tintaDaPeca(s: Solido): Tinta | null {
   if (!ALVENARIA.has(s.peca.tipo)) return null;
   const classe = s.geo.classe ?? classePeloTipo(s.peca.tipo);
-  const cor = classe && CORES_DO_JOSE[classe];
+  // a cor da tabela de gráficos (de fábrica, a do Revit do Jose; ele troca na tela — 15/10)
+  const cor = classe && graficos().materiais[classe]?.cor;
   if (classe && cor) return { chave: classe, nome: NOME[classe], cor };
   // o bloco cortado: sem cor no Revit do Jose
   return { chave: classe ?? 'especial', nome: classe ? NOME[classe] : 'Peça especial', cor: COR.especialFundo };
@@ -94,10 +95,10 @@ export function desenharLegenda(pr: Prancha, x: number, y: number, itens: [strin
       cy += 18;
     }
     if (e === 'barra' || e === 'espera') {
-      pr.linha(cx, cy - 4, cx + 18, cy - 4, { stroke: COR.aco, sw: 2, dash: e === 'espera' ? '5,3' : undefined, camada: 'legenda' });
+      pr.linha(cx, cy - 4, cx + 18, cy - 4, { stroke: corDoAcoNoDesenho(), sw: 2, dash: e === 'espera' ? '5,3' : undefined, camada: 'legenda' });
     } else if (e === 'graute') {
       // a hachura do graute por cima do cinza do inteiro: é assim que ela aparece na vista
-      pr.rect(cx, cy - 9, 18, 10, { fill: CORES_DO_JOSE.inteiro ?? COR.blocoFundo, stroke: TRACO_DA_PECA, sw: 0.7, camada: 'legenda' });
+      pr.rect(cx, cy - 9, 18, 10, { fill: graficos().materiais.inteiro?.cor ?? COR.blocoFundo, stroke: TRACO_DA_PECA, sw: 0.7, camada: 'legenda' });
       pr.rect(cx, cy - 9, 18, 10, { fill: pr.padrao('graute'), stroke: 'none', camada: 'legenda' });
     } else {
       pr.rect(cx, cy - 9, 18, 10, { ...e, camada: 'legenda' });

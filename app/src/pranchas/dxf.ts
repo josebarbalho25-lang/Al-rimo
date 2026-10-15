@@ -491,7 +491,10 @@ class Gravador {
     } else {
       // o fundo vem antes (por baixo), o padrão por cima, na camada do material: a terra é risco sobre o bege
       if (q.fundo) fundo(q.fundo);
-      if (!quaseBranco(q.risco ?? riscoPadrao(q.padrao))) this.preencher(alvo, q.aneis, PADRAO_DO_MATERIAL[q.padrao], this.porCamada(q.camada));
+      // a escala da tabela de gráficos (o Jose engrossa ou afina a hachura na tela) vai por cima da calibrada
+      const base = PADRAO_DO_MATERIAL[q.padrao];
+      const padrao = q.escala && q.escala !== 1 ? { ...base, escala: base.escala * q.escala } : base;
+      if (!quaseBranco(q.risco ?? riscoPadrao(q.padrao))) this.preencher(alvo, q.aneis, padrao, this.porCamada(q.camada));
     }
     if (q.borda) for (const anel of q.aneis) this.polilinha(alvo, anel, true, q.borda);
   }

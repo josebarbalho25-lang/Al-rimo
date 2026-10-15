@@ -46,4 +46,17 @@ describe('enviar para a prancha', () => {
     expect(fa.itens.map((i) => [i.conteudo.tipo, i.escala])).toEqual([['corte', 25]]);
     expect(fb.itens).toHaveLength(0);
   });
+
+  it('a tabela do quantitativo cai na folha ativa, sem escala e com o título automático', () => {
+    const a = novaFolha('A');
+    useApp.setState({ pranchas: { ...SEM_PRANCHAS, folhas: [a] } });
+    usePranchasUi.setState({ ativa: a.id });
+    desligar = ligarEnvioParaPrancha();
+    expect(enviarParaPrancha({ tipo: 'tabela', id: 'blocos' })).toBe(1);
+    const [item] = useApp.getState().pranchas.folhas[0].itens;
+    expect(item.conteudo).toEqual({ tipo: 'tabela', id: 'blocos' });
+    expect(item.escala).toBeNull();
+    expect(item.titulo).toBe('');
+    expect(useApp.getState().recado).toBe('Enviado para a folha 01');
+  });
 });

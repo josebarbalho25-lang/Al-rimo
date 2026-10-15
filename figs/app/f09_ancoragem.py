@@ -54,7 +54,8 @@ def desenhar():
     interrupcao(s, xw - 14, xs + 14, ycut)
     with s.campo('traspasse_dir'):
         s.dim_v(xs + 46, ylap, ypb, 'traspasse', side=1, ext_from=(xe + 2, xe + 2), halo=True)
-    with s.campo('gancho_'):
+    # o arranque (padrão de hoje ou nó de cachorro — Jose, 15/10) é a forma da espera dentro da sapata
+    with s.campo('gancho_', 'arranque'):
         # rótulo na ponta do gancho (a parede() dobra a espera 20 cm para o lado do solo)
         s.text(xe + 0.2 * K + 12, yb + LB * K + 6, 'gancho', size=T_TXT, anchor='start', halo=True)
     with s.campo('zona_ad', 'fck_fund', 'gancho_'):

@@ -33,9 +33,6 @@ export interface PaletaVisor {
   tinta: string;
   enfase: string;
   arestaDoCubo: string;
-  eixoX: string;
-  eixoY: string;
-  eixoZ: string;
   /** O que JÁ foi pego (o mesmo azul do A-PORT: "um azul só, para tudo"). */
   selecionado: string;
   /** Traço das peças (bloco, sapata). Escuro: a massa delas é clara nos três temas. */
@@ -75,10 +72,6 @@ export function lerPaleta(): PaletaVisor {
     // ⚠️ --grid foi autorado para prancheta CLARA e some no escuro; o token de
     // CONTROLE tem contraste nos três temas (mesma escolha do A-PORT).
     arestaDoCubo: themeColor('--control-stroke-2', '#5a5a6c'),
-    // Eixos com as cores de DADOS: é o único lugar em que cor é informação.
-    eixoX: themeColor('--err', '#e0685a'),
-    eixoY: themeColor('--ok', '#55b87d'),
-    eixoZ: themeColor('--accent-3', '#3d8bfd'),
     selecionado: themeColor('--accent-3', '#3d8bfd'),
     aresta: themeColor('--aresta', '#1b1d22'),
     bloco: themeColor('--peca-bloco', '#d9d9d9'),

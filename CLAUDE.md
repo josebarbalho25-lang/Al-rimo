@@ -301,6 +301,40 @@ e dizer ao Jose o que mudou e por quê.
   #c3bfb5). Tamanhos CALIBRADOS por ele na régua (`_trabalho/calibrar_hachuras.html`): terra ×0,40, concreto ×0,85,
   areia ×0,25, brita ×0,55 sobre a 1ª proposta (constante ESCALA). Um gerador por lado: `app/src/desenhos/hachuras.ts`
   (desenhos do app) e `figs/app/hachuras.py` (figuras), mesma semente e mesma ESCALA — mudou um, muda o outro.
+- **Armação: estribo real, sapata em estribo, arranque (Jose, 15/10; feito por agente sob revisão):**
+  ESTRIBO com a forma de verdade (`modulacao/barras.ts`, fonte Pró-Viga `app/viewer3d.js` buildStirrupPoints e o
+  estribo 338366 do Revit dele, projeto "Al-rimo Templates"): ganchos de 135° os dois no mesmo canto, ponta reta
+  max(5φ, 5 cm) — NBR 6118 9.4.6.1 ("Ok" dele; o Pró-Viga usa 10φ ≥ 7 cm, que é a regra do gancho de 90°, e o
+  Revit 40 mm, abaixo da norma) —, pino 3φ até Ø10, volta em espiral ±φ/2; polilinha aberta com `Barra.estribo`
+  (não mais `fechada`); na lista de ferros, o retângulo do eixo. SAPATA: entrada `sap_transv` 'Estribo' (padrão) /
+  'Reta' (a de antes, barra a barra): estribo fechado na seção B × h com cobrimento, perna de baixo = flexão, de
+  cima = talão (construtiva com Mk_heel = 0), ganchos no canto de cima do lado da ponta; torção continua à parte; o
+  aço sobe (aula 12.2 93 → 105 kg). ARRANQUE: entrada `arranque` 'Padrão' / 'Nó de cachorro' — forma lida das
+  barras 337807/337808/337806 do Revit dele: desce ao cobrimento de baixo, U de 180° para a PONTA (pino 5φ/8φ, sem
+  reta entre os arcos), sobe ao cobrimento de cima, corre por cima até a face do lado do talão e desce até embaixo;
+  avisos NO_DE_CACHORRO_DOBRA (h_sap < 2c + pino + 2φ, barra não sai), _FORA e _PONTA (tabela dele, `PONTA_DO_NO`:
+  bloco 14 Ø≤8 → 0, Ø10–12,5 → 4 cm, Ø16–20 → 7 cm, Ø25 não cabe — 8,4 % do furo de 117 cm² com traspasse; bloco 19
+  Ø≤12,5 → 0, Ø16–20 → 2 cm, Ø25 → 7 cm DEDUZIDO, a confirmar). A "ponta" da tabela dele é a PONTA DA SAPATA à frente
+  do muro. O `h_dob()` da planilha ficou (a regra do Padrão, com a malha, é mais exigente: a lista de bitolas segue
+  segura para o nó). Figs. 9 e 18 marcam as entradas; a 18 desenha o estribo. Observação dele, sem verificação: a
+  espera Padrão pode dar "empuxo no vazio" em sapata baixa; a partir de ~30 cm não. A CONFIRMAR com ele: canto dos
+  ganchos (sapata: em cima, lado da ponta; contraforte: lado do muro); Ø25 no bloco 19; o ramo do nó que sobe anda
+  um φ de lado; o nó ignora `gancho_`; ESTRIBO_NA_JUNTA avisar também Ø6,3?
+- **Cores, hachuras e o que aparece (Jose, 15/10 — o Visibilidade/Gráficos do Revit):** tabela de gráficos
+  (`desenhos/graficos.ts`: materiais com cor do 3D Cores, cor do Opaco, cor do traço 2D do aço e hachura de corte
+  — desenho terra/concreto/areia/brita/riscado/sólido/vazio, risco, fundo, escala; cor por Ø; itens desligados por
+  tipo de vista). Decisões dele: GUARDADA NO APP (localStorage `alrimo.graficos.v1`, `desenhos/useGraficos.ts`,
+  "Restaurar padrão"); liga/desliga POR TIPO DE VISTA (botão "Mostrar" em cada aba 2D: blocos, graute, armadura,
+  sapata, drenagem, terreno, cotas, eixos, fiadas, chamadas, legenda — vale na tela e na prancha); no 3D a tabela
+  vale no CORES e no OPACO, o Realista não. A tabela fica nas Configurações ("Desenhos e 3D"). Os desenhos leem
+  `graficos()` na hora (variável do módulo; `versaoDosGraficos()` nos caches da vista, da folha e da foto do 3D);
+  sem a tela, vale o de fábrica = as cores de antes (HACHURA de `hachuras.ts` sai de lá). `Prancha.silenciar()`
+  desliga um bloco de traços sem perder as contas de posição. No DXF o fundo vai na cor da tabela e o padrão na
+  escala dela; o risco do padrão segue a cor da CAMADA (o cadista manda pela camada).
+- **3D e prancha, comandos (Jose, 15/10):** SEM o terno de eixos X/Y/Z no 3D ("não são necessários nesse software";
+  o muro se lê pelo cubo de vistas). Na aba Pranchas, rodinha = zoom no ponto do mouse e botão do meio arrastado =
+  pan, como no 3D (Ctrl+rodinha fica com o navegador). Aterro do 3D desce pela face do muro até o topo do pacote do
+  dreno (a refatoração de 14/10 perdeu esse vértice e deixava um triângulo vazio junto do topo).
 - **Armadura no 3D e canaleta no IFC (Jose, 14/10):** o Raio-X virou o botão **Armadura** — as peças não mudam e as
   barras saem por cima de tudo (apaga a profundidade antes delas, como o "visualizar desobstruído" do Revit), com luz,
   na cor da bitola dele (Revit, Casa F., vista "Iso Escada": Ø5 #00ffff, 6,3 #00ff00, 8 #ff8000, 10 #ff0000, 12,5
@@ -441,7 +475,9 @@ e dizer ao Jose o que mudou e por quê.
      comprimento) = mesmo N em qualquer elemento (`modulacao/barras.ts` numerarPosicoes, sem o papel na chave; a
      lista de ferros escreve "Vertical do muro + Contraforte · construtiva"). LISTA DE FERROS no quadro lateral (N, Ø,
      quant., C unit., C total, forma da barra cotada — `pranchas/formaDaBarra.ts`, medida de vértice a vértice no eixo,
-     fora de escala; interruptor "Lista de ferros"). Falta: a cota de traspasse por posição no corte do contraforte.
+     fora de escala; interruptor "Lista de ferros"). Cota de traspasse POR POSIÇÃO no corte (FEITO 15/10,
+     `desenhos/corteLateral.ts`): uma cota por altura de espera; com mais de uma, o rótulo diz o N ("traspasse N4 68";
+     posições da mesma altura dividem a cota) — no contraforte da aula 12.3 saem três (N3 54, N4 68, N5 88).
   2. FEITO: muro que não passa (ou sem veredito) sai com a tarja vermelha "NÃO VERIFICADO" na diagonal da área de
      desenho, vazada no PDF, camada AVISO no DXF; não trava.
   3. FEITO: "Massa + 10 % (kg)" no resumo, calculada da massa impressa (como o TQS).
@@ -468,9 +504,30 @@ e dizer ao Jose o que mudou e por quê.
   7. Vistas de elevação frontal e corte lateral: ele ainda tem ajustes a fazer (vai mandar). Visto no DXF aberto no
      CADCraft (14/10): no corte, a linha da cota da sapata passa por cima do texto "B = 140" (junto da cota 25 do
      dente) — acertar junto com os ajustes dele.
-  8. (Jose, 15/10) Tabela de MATERIAIS na prancha: os blocos com as imagens das peças e as quantidades (a tabela
-     "Blocos e canaletas" do quantitativo, com as figuras de `quantitativo/pecas.ts`) ainda não vai para a folha. O
-     contrato já tem o item `tabela` (ids 'blocos', 'quantidades', 'drenagem' em `pranchas/tipos.ts`), sem desenho.
+  8. FEITO 15/10 — tabelas de MATERIAIS na prancha (Jose: "a tabela de materiais com as imagens e quantidades dos
+     blocos hoje não tá indo pra prancha"). Três: "Blocos e canaletas" (a figura de cada peça e a quantidade de
+     compra; a cortada somada na canaleta e a linha "das quais, para cortar" recuada com o gancho DESENHADO — o "↳"
+     não existe na fonte do CAD), "Materiais" (graute, argamassa e sapata numa tabela, uma faixa para cada, com os
+     totais) e "Drenagem". Os números SÃO os do quantitativo (`tabelasDoQuantitativo`; `Tabela.recuadas` +
+     `MARCA_DAS_QUAIS`). Como entra: seletor "Prancha" no Quantitativo (canal `envio.ts`, como o 3D e as vistas) e
+     "Adicionar › Tabela" na aba Pranchas. Tamanho FIXO em mm (letra 2,5 mm de maiúscula, sem alça nem escala;
+     `ItemDesenhado` 'papel'), título EM CIMA como as tabelas do quadro lateral, editável no painel; a tabela não
+     conta como "sem escala" no carimbo. Código: `pranchas/tabelaDaFolha.ts` (dados + desenho) e
+     `pranchas/figurasDasPecas.ts` (grade e textos na camada TABELAS). FIGURA DA PEÇA EM DESENHO, NUNCA IMAGEM
+     (Jose, 15/10: "eu queria 0 imagem vinculada no DXF"): o arquivo do public/pecas (o mesmo do quantitativo) é
+     lido e convertido em primitivas (`vetorDaPeca`) — faces e faixas do furo em preenchimento sólido (PECAS-FUNDO,
+     cor verdadeira) e contorno 0,13 "por camada" (PECAS); a mesma conversão desenha a tela, o PDF e o DXF. O que o
+     DXF 2004 não tem, feito na conta: o recorte das faixas pela boca do furo (convexa; Sutherland–Hodgman), o
+     degradê de profundidade virando escurecimento médio (o furo 19 %, a parede da canaleta 19 % × 0,45), o traço
+     da cor do preenchimento (tapa fresta) fora; o cinza tracejado da canaleta cortada com cor própria. Plotado em
+     preto e branco com o -FUNDO congelado, cada peça vira desenho de linha limpo. A figura é buscada uma vez por
+     arquivo e guardada (o desenhista renasce a cada muro e não pisca). Gerador das figuras mudou de jeito (outro
+     elemento que não polígono/linha, recorte não convexo) → o teste `tabelas.test.ts` acusa. Exemplos para abrir no
+     CAD: `_trabalho/tabela_vetor_15-10/` (DXF do muro de contraforte e do balanço, e as conferências em cores e em
+     preto e branco). Conferido: o .zip do DXF sai só com os .dxf e passa no `validar_dxf.py --estrito`. Imagem que
+     ainda vai no DXF, por decisão: a foto do 3D Realista e a logomarca do carimbo. Para o Jose olhar: a posição de
+     partida em cascata faz tabela cair sobre tabela (borda vermelha até arrastar); o "Prancha" do Quantitativo é
+     um seletor, não um botão por tabela.
   Margens 20/10 mm e carimbo 180 mm da NBR 16752 vieram de apostila/ISO 7200: conferir no texto da norma (ele tem
   acesso pelo CREA).
 - **FILA DO JOSE (14/10, tarde — só anotado; ele confere o IFC da canaleta antes):**

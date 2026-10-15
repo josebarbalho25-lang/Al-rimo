@@ -129,7 +129,14 @@ export interface Barra {
   papel: PapelBarra;
   diametro: number;              // mm
   eixo: Vec3[];                  // polilinha do eixo da barra, mm (dobras já discretizadas com o raio do pino)
-  fechada?: boolean;             // estribo
+  fechada?: boolean;             // a polilinha volta ao 1º ponto (quem desenha fecha a volta)
+  /**
+   * Estribo fechado com os dois ganchos de 135° (acrescentado pela modulação, 15/10 — a forma do Pró-Viga, ver
+   * modulacao/barras.ts): o `eixo` vai da ponta de um gancho à do outro, com as dobras e a volta em espiral (anda
+   * uma bitola na normal). É polilinha ABERTA — `fechada` fica ausente, senão quem desenha ligaria as duas pontas.
+   * Quem precisa saber que a barra é estribo (lista de ferros, tipo SHEAR no IFC) lê este campo, não `fechada`.
+   */
+  estribo?: boolean;
   comprimento: number;           // desenvolvido, mm
   trecho: number;
   contraforte?: number;

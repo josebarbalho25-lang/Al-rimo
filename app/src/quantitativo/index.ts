@@ -17,7 +17,7 @@ import { ALVENARIA, medirArgamassa } from './argamassa';
 import { listaDeFerros, resumoDoAco, type PosicaoDeFerro, type ResumoPorBitola } from './aco';
 
 export { MASSA_NOMINAL_NBR7480, massaLinear, ROTULO_DO_PAPEL, rotuloDaBarra, type PosicaoDeFerro, type ResumoPorBitola } from './aco';
-export { tabelasDoQuantitativo, csvDoQuantitativo, formatarNaTela, formatarNoCsv, type Tabela, type Celula } from './tabelas';
+export { tabelasDoQuantitativo, csvDoQuantitativo, formatarNaTela, formatarNoCsv, MARCA_DAS_QUAIS, type Tabela, type Celula } from './tabelas';
 export { figuraDaPeca, arquivoDaPeca, FIGURAS_DAS_PECAS, type FiguraDaPeca } from './pecas';
 
 export interface LinhaDeBloco {

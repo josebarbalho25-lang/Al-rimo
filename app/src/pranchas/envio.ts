@@ -9,14 +9,16 @@
   O que chega:
     · 3d    — a foto já tirada (PNG), o ponto de vista com que ela é refeita quando o muro muda (prancha viva) e a
               proporção da foto (largura ÷ altura). Quem refaz é `visor/fotoRefeita.ts` (refazerFoto).
-    · vista — o pedido de uma vista 2D (frontal, corte, planta, isométrico), que a prancha desenha na escala dela.
+    · vista — o pedido de uma vista 2D (frontal, corte, planta, isométrico), que a prancha desenha na escala dela;
+    · tabela — uma tabela de materiais do quantitativo (blocos, materiais, drenagem), que a prancha tira do muro.
 */
 
-import type { Camera3d, PedidoDeVista } from './tipos';
+import type { Camera3d, ConteudoDoItem, PedidoDeVista } from './tipos';
 
 export type PedidoParaPrancha =
   | { tipo: '3d'; dataUrl: string; camera: Camera3d; proporcao: number }
-  | { tipo: 'vista'; pedido: PedidoDeVista };
+  | { tipo: 'vista'; pedido: PedidoDeVista }
+  | { tipo: 'tabela'; id: Extract<ConteudoDoItem, { tipo: 'tabela' }>['id'] };
 
 export type OuvinteDaPrancha = (pedido: PedidoParaPrancha) => void;
 

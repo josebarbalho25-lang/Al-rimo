@@ -794,6 +794,21 @@ describe('canaleta como a obra deixa: fundo furado onde sobe a barra, T de graut
     }, 60_000);
   }
 
+  // estribo com a forma do Pró-Viga (ganchos de 135° e volta em espiral, 15/10) no contraforte e na sapata: Ø16 em
+  // sapata de 20 e 30 cm com torção (sorteio01; sorteio31, torção a cada 5 cm), torção a cada 3 cm (sorteio14); e o
+  // desenho de antes (Reta) com o arranque em nó de cachorro (o nó desenhado no balanço e no contraforte das aulas)
+  it('estribos de gancho, sapata em estribos e nó de cachorro: nenhuma barra atravessa peça sólida', () => {
+    for (const c of ['aula122', 'aula123', 'sorteio01', 'sorteio14', 'sorteio31']) {
+      const r = resultadoDoGabarito(c);
+      for (const [no, extras] of [[false, padroesDoModelo()], [true, { ...padroesDoModelo(), sap_transv: 'Reta', arranque: 'Nó de cachorro' }]] as const) {
+        const m = gerarModelo(r, extras);
+        if (!no) expect(m.barras.some((b) => b.estribo), c).toBe(true);
+        if (no && c.startsWith('aula')) expect(m.barras.filter((b) => b.papel === 'ESPERA').length, c).toBe(m.barras.filter((b) => VERTICAIS.has(b.papel) && b.papel !== 'ESPERA').length);
+        expect(barrasEmPecaSolida(m), c).toEqual([]);
+      }
+    }
+  }, 120_000);
+
   it('as conferências têm dente: com as canaletas inteiras, a barra vertical fura o fundo e a barra em L a parede do muro', () => {
     const m = gerarModelo(resultadoDoGabarito('aula123'), padroesDoModelo());
     const achados = barrasEmPecaSolida(semRecortes(m));
@@ -942,6 +957,33 @@ describe('canaleta como a obra deixa: fundo furado onde sobe a barra, T de graut
     const total = gerarModelo(trocar(resultadoDoGabarito('aula122'), { Graute: 20, gr_tot: 'Sim' }), padroesDoModelo());
     expect(total.pecas.filter((p) => p.tipo === 'BARBACA').length).toBeGreaterThan(0);
     expect(barrasEmPecaSolida(total)).toEqual([]);
+  });
+});
+
+describe('aterro encostado no muro acima do dreno (Jose, 15/10: "triângulo perto do topo")', () => {
+  it('entre o topo do pacote do dreno e o topo do solo, a terra vai até a face do muro — sem vão', () => {
+    const dentro = ([x, y]: [number, number], poli: [number, number][]) => {
+      let d = false;
+      for (let i = 0, j = poli.length - 1; i < poli.length; j = i++) {
+        const [xi, yi] = poli[i], [xj, yj] = poli[j];
+        if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) d = !d;
+      }
+      return d;
+    };
+    for (const c of ['aula122', 'aula123', 'sorteio17']) {
+      const m = gerarModelo(resultadoDoGabarito(c), padroesDoModelo());
+      const t = m.familia.t;
+      const topoDoPacote = Math.max(...m.pecas.filter((p) => p.tipo === 'MANTA').map((p) => caixa(m, p).max[2]));
+      for (const a of m.pecas.filter((p) => p.tipo === 'ATERRO')) {
+        const g = m.geometrias[a.geometria];
+        const poli = g.perfil.contorno.map(([u, v]) => [u + a.origem[1], v + a.origem[2]] as [number, number]);
+        // logo acima do pacote, encostado no muro, e a meio caminho até o topo do solo
+        for (const z of [topoDoPacote + 5, (topoDoPacote + m.dims.H_solo) / 2]) {
+          if (z >= m.dims.H_solo) continue;
+          expect(dentro([t + 5, z], poli), `${c} ${a.id} z=${z}`).toBe(true);
+        }
+      }
+    }
   });
 });
 

@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 //  Molde: a prévia de carga do A-PORT (`ui/PreviaDaCarga.tsx`) — câmera
 //  ortográfica, `frameloop="demand"` (só desenha quando algo muda: parado, o
-//  visor não gasta nada), o mesmo cubo de vistas, eixos com letra. O mouse é o
+//  visor não gasta nada), o mesmo cubo de vistas (sem o terno de eixos X/Y/Z — Jose, 15/10). O mouse é o
 //  do palco do A-PORT (ver `camera.tsx`).
 //
 //  Recebe o Modelo pronto (quem fabrica é a modulação) e devolve a seleção por
@@ -32,7 +32,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import * as THREE from 'three';
 import type { Modelo, Vec3 } from '@/modelo/tipos';
 import { enviarParaPrancha } from '@/pranchas/envio';
-import { Fundo, Luzes, Terno } from './ambiente';
+import { Fundo, Luzes } from './ambiente';
 import { BarraDoVisor } from './BarraDoVisor';
 import { OrbitaNoShift, VooDaCamera, DURACAO_VOO, type Voo } from './camera';
 import { baixar, capturar, ESCALA_DA_FOTO } from './captura';
@@ -48,6 +48,7 @@ import { PainelDaPeca } from './PainelDaPeca';
 import { palcoDoTema } from './palco3d';
 import { lerPontoDeVista, proporcaoDaCamera } from './pontoDeVista';
 import { lerPaleta, observarTema, type PaletaVisor } from './tema3d';
+import { useGraficos } from '@/desenhos/useGraficos';
 import './visor.css';
 
 /** Clique × arraste: só é clique se o ponteiro andou menos que isto entre descer e subir (o LIMIAR_CAIXA_PX do A-PORT). */
@@ -156,7 +157,7 @@ export function Visor3D({ modelo, selecionado, onSelecionar }: PropsDoVisor3D) {
   };
   const estiloAtual = useRef(estilo);
   estiloAtual.current = estilo;
-  // O Opaco é papel nos dois temas: fundo, letra dos eixos e contorno do corte saem desta paleta, não da do tema.
+  // O Opaco é papel nos dois temas: fundo e contorno do corte saem desta paleta, não da do tema.
   const palco = useMemo(() => palcoDoTema(paleta, estilo), [paleta, estilo]);
 
   // A cena só se remonta quando o MODELO muda; tema, estilo, ocultar, Raio-X, corte e seleção se aplicam por cima.
@@ -204,10 +205,12 @@ export function Visor3D({ modelo, selecionado, onSelecionar }: PropsDoVisor3D) {
 
   // Antes do quadro (layout), não depois: com a cena nova (o modelo mudou), o primeiro quadro já sai com o
   // que estava oculto, o Raio-X, o corte e a seleção — sem piscar o muro inteiro aceso por um quadro.
+  // a tabela de gráficos (cores do Cores e do Opaco, bitolas — Jose, 15/10) repinta como a troca de tema
+  const graficosEmUso = useGraficos((st) => st.dados);
   useLayoutEffect(() => {
     cena.aplicarPaleta(paleta);
     invalidar();
-  }, [cena, paleta]);
+  }, [cena, paleta, graficosEmUso]);
   useLayoutEffect(() => {
     cena.aplicarEstilo(estilo);
     invalidar();
@@ -304,7 +307,6 @@ export function Visor3D({ modelo, selecionado, onSelecionar }: PropsDoVisor3D) {
   const moverCorte = useCallback((x: number) => setCorte((c) => ({ ...c, x })), []);
 
   const pego = sel ? cena.achar(sel) : null;
-  const diagonal = Math.hypot(caixaTotal.max[0] - caixaTotal.min[0], caixaTotal.max[1] - caixaTotal.min[1], caixaTotal.max[2] - caixaTotal.min[2]);
 
   return (
     <div
@@ -333,7 +335,6 @@ export function Visor3D({ modelo, selecionado, onSelecionar }: PropsDoVisor3D) {
         <Fundo paleta={palco} liso={estilo === 'opaco'} />
         <Luzes estilo={estilo} caixa={caixaDaSombra} versao={versaoDaSombra} />
         <primitive object={cena.grupo} />
-        <Terno haste={Math.min(2, Math.max(0.3, diagonal * 0.08))} paleta={palco} />
         {corte.ligado && <CorteNoPalco x={xCorte} caixa={caixaTotal} paleta={palco} aoMover={moverCorte} />}
         <OrbitControls
           makeDefault

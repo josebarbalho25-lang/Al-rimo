@@ -51,7 +51,8 @@
 */
 import { CORPO_DA_COTA, type PadraoHachura, type Primitiva, type Traco } from '@/pranchas/tipos';
 import { esc, n } from './formato';
-import { HACHURA, hachurasDeMaterial, ladrilhoDeMaterial, type MaterialComLadrilho } from './hachuras';
+import { HACHURA, ladrilhoDe, padraoDoLadrilho, type Ladrilho } from './hachuras';
+import { corDoAcoNoDesenho, hachuraDe, type Hachura, type Material } from './graficos';
 
 /** Cores das figuras (figlib.C) + as que os desenhos de obra pedem a mais (peça especial, brita). */
 export const COR = {
@@ -138,39 +139,74 @@ export interface OpcoesDaVista {
 
 export type Pt = [number, number];
 
-type NomeDoPadrao = 'solo' | 'conc' | 'alv' | 'brita' | 'areia' | 'graute';
+/** Os preenchimentos de material da prancha: o nome vira o id do padrão (`des-solo`, `des-conc`…). */
+export type NomeDoPadrao = 'solo' | 'conc' | 'alv' | 'brita' | 'areia' | 'graute' | 'grc' | 'mnt';
+const NOMES_DOS_PADROES: readonly NomeDoPadrao[] = ['solo', 'conc', 'alv', 'brita', 'areia', 'graute', 'grc', 'mnt'];
 
 /**
- * Padrão de preenchimento do SVG → hachura do DXF: o padrão do CAD, o fundo e o risco (as mesmas cores do
- * ladrilho do SVG) e a camada do material. O graute visto não tem fundo — a cor do bloco aparece entre os riscos.
+ * O material da tabela de gráficos (graficos.ts) por trás de cada padrão, e a camada do DXF dele. `graute` é o
+ * graute VISTO atrás da face do bloco (vista frontal); `grc`, o graute cortado; `mnt`, a manta.
  */
-const HACHURA_DO_PADRAO: Record<NomeDoPadrao, { padrao: PadraoHachura; fundo?: string; risco: string; camada: string }> = {
-  solo: { padrao: 'terra', fundo: HACHURA.terraFundo, risco: HACHURA.terra, camada: 'terreno' },
-  conc: { padrao: 'concreto', fundo: HACHURA.concretoFundo, risco: HACHURA.concreto, camada: 'concreto' },
-  alv: { padrao: 'alvenaria', fundo: COR.blocoFundo, risco: COR.bloco, camada: 'alvenaria' },
-  brita: { padrao: 'brita', fundo: HACHURA.britaFundo, risco: HACHURA.brita, camada: 'drenagem' },
-  areia: { padrao: 'areia', fundo: HACHURA.areiaFundo, risco: HACHURA.areia, camada: 'drenagem' },
-  graute: { padrao: 'graute', risco: COR.grauteFundo, camada: 'graute' },
+const DO_PADRAO: Record<NomeDoPadrao, { material: Material; camada: string }> = {
+  solo: { material: 'terra', camada: 'terreno' },
+  conc: { material: 'concreto', camada: 'concreto' },
+  alv: { material: 'alvenaria', camada: 'alvenaria' },
+  brita: { material: 'brita', camada: 'drenagem' },
+  areia: { material: 'areia', camada: 'drenagem' },
+  graute: { material: 'graute', camada: 'graute' },
+  grc: { material: 'graute', camada: 'graute' },
+  mnt: { material: 'manta', camada: 'drenagem' },
 };
 
 /**
- * Os riscados de linha só: um risco vertical em x = 0 de cada ladrilho `passo` × `passo`, a grade girada de `giro`
- * graus. Daqui saem o <pattern> da tela e o traço do PDF — o mesmo desenho nos dois.
+ * A hachura de um padrão na tabela em uso (o Jose controla desenho, cores e escala — 15/10). O graute visto é sempre
+ * riscado, na cor do fundo do graute e SEM fundo próprio: a cor do tipo de bloco (o código de cor da obra)
+ * continua aparecendo entre os riscos — um tom chapado por cima tingia o cinza do inteiro de azul e ele passava
+ * por meio bloco.
  */
-const RISCADO: Record<'alv' | 'graute', { passo: number; giro: number; fundo?: string; risco: string; sw: number }> = {
-  alv: { passo: 6, giro: 45, fundo: COR.blocoFundo, risco: COR.bloco, sw: 0.9 },
-  // graute visto atrás da face do bloco (vista frontal): só riscos, SEM fundo — a cor do tipo de bloco (o código
-  // de cor da obra) continua aparecendo entre eles. Um tom chapado por cima, como antes, tingia o cinza do
-  // inteiro de azul e ele passava por meio bloco
-  graute: { passo: 5, giro: 45, risco: COR.grauteFundo, sw: 1.6 },
-};
+export function hachuraDoPadrao(nome: NomeDoPadrao): Hachura {
+  const h = hachuraDe(DO_PADRAO[nome].material);
+  if (nome === 'graute') return { desenho: 'riscado', risco: h.fundo, fundo: 'none', escala: h.escala };
+  return h;
+}
 
-function padraoRiscado(id: string, r: (typeof RISCADO)['alv']): string {
+/**
+ * O riscado de linha só: um risco vertical em x = 0 de cada ladrilho `passo` × `passo`, a grade girada de `giro`
+ * graus. Daqui saem o <pattern> da tela e o traço do PDF — o mesmo desenho nos dois. Passo de 6 px (o da
+ * alvenaria) e de 5 px mais grosso no graute visto.
+ */
+function riscadoDe(nome: NomeDoPadrao, h: Hachura): { passo: number; giro: number; fundo?: string; risco: string; sw: number } {
+  const graute = nome === 'graute';
+  return { passo: (graute ? 5 : 6) * h.escala, giro: 45, fundo: h.fundo === 'none' ? undefined : h.fundo, risco: h.risco, sw: graute ? 1.6 : 0.9 };
+}
+type Riscado = ReturnType<typeof riscadoDe>;
+
+function padraoRiscado(id: string, r: Riscado): string {
   const fundo = r.fundo ? `<rect width="${r.passo}" height="${r.passo}" fill="${r.fundo}"/>` : '';
   return (
     `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${r.passo}" height="${r.passo}" patternTransform="rotate(${r.giro})">` +
     `${fundo}<line x1="0" y1="0" x2="0" y2="${r.passo}" stroke="${r.risco}" stroke-width="${r.sw}"/></pattern>`
   );
+}
+
+/**
+ * Padrão do SVG → hachura do DXF: o padrão do CAD, o fundo e o risco (as cores da tabela), a escala sobre a calibrada
+ * e a camada do material. null = 'vazio' (sai só o contorno).
+ */
+function hachuraDxf(nome: NomeDoPadrao): { padrao: PadraoHachura; fundo?: string; risco: string; camada: string; escala: number } | null {
+  const h = hachuraDoPadrao(nome);
+  const camada = DO_PADRAO[nome].camada;
+  const fundo = h.fundo === 'none' ? undefined : h.fundo;
+  switch (h.desenho) {
+    case 'vazio':
+      return null;
+    case 'solido':
+      return { padrao: 'solido', fundo: h.fundo, risco: h.risco, camada, escala: 1 };
+    case 'riscado':
+      return { padrao: nome === 'graute' ? 'graute' : 'alvenaria', fundo, risco: h.risco, camada, escala: h.escala };
+    default:
+      return { padrao: h.desenho, fundo, risco: h.risco, camada, escala: h.escala };
+  }
 }
 
 /** Número das posições da hachura em vetor: três casas (a grade não pode andar o 0,1 px do `n` a cada ladrilho). */
@@ -179,13 +215,14 @@ function n3(v: number): string {
   return Object.is(r, -0) ? '0' : String(r);
 }
 
-/** Tintas que, sozinhas, já dizem o material (passo 3 do cabeçalho). As outras cores repetem entre materiais. */
-const CAMADA_DA_COR: Record<string, string> = {
-  [COR.aco]: 'aco',
-  [COR.solo]: 'terreno',
-  [COR.graute]: 'graute',
-  [COR.grauteFundo]: 'graute',
-};
+/** Tintas que, sozinhas, já dizem o material (passo 3 do cabeçalho), pela tabela em uso. */
+function camadaDaCor(cor: string): string | undefined {
+  if (cor === corDoAcoNoDesenho()) return 'aco';
+  if (cor === hachuraDe('terra').risco) return 'terreno';
+  const g = hachuraDe('graute');
+  if (cor === g.risco || cor === g.fundo) return 'graute';
+  return undefined;
+}
 
 /** Grupo do SVG (data-camada) → camada do DXF (passo 4 do cabeçalho). */
 const CAMADA_DO_GRUPO: Record<string, string> = {
@@ -221,7 +258,15 @@ export class Prancha {
   private grupos: string[] = [];
   /** Hachura em vetor: os recortes (<clipPath>) de cada área e os ladrilhos que alguma área usou. */
   private recortes: string[] = [];
-  private ladrilhosUsados = new Set<MaterialComLadrilho>();
+  private ladrilhosUsados = new Map<NomeDoPadrao, Ladrilho>();
+
+  /** Item desligado na vista (Visibilidade, graficos.ts): o que se pede enquanto mudo não entra no desenho nem na
+   *  caixa. Assim a vista desliga um bloco de cotas inteiro sem perder as contas de posição que vêm depois. */
+  private mudo = false;
+
+  silenciar(mudo: boolean): void {
+    this.mudo = mudo;
+  }
 
   /** `hachuraVetorial`: o SVG do PDF, sem <pattern> (cabeçalho, "HACHURA EM VETOR"). */
   constructor(readonly prefixo = 'des', readonly hachuraVetorial = false) {}
@@ -246,13 +291,7 @@ export class Prancha {
     const m = fill?.match(/^url\(#(.+)\)$/);
     if (!m || !m[1].startsWith(`${this.prefixo}-`)) return null;
     const nome = m[1].slice(this.prefixo.length + 1);
-    return nome in HACHURA_DO_PADRAO ? (nome as NomeDoPadrao) : null;
-  }
-
-  /** O padrão do SVG por trás de um `fill="url(#…)"` desta prancha (null para cor chapada ou 'none'). */
-  private padraoDoFill(fill: string | undefined): (typeof HACHURA_DO_PADRAO)[NomeDoPadrao] | null {
-    const nome = this.nomeDoPadrao(fill);
-    return nome ? HACHURA_DO_PADRAO[nome] : null;
+    return nome in DO_PADRAO ? (nome as NomeDoPadrao) : null;
   }
 
   /**
@@ -279,14 +318,17 @@ export class Prancha {
 
     let fundo: string | undefined;
     let riscos = '';
-    if (nome === 'alv' || nome === 'graute') {
-      const r = RISCADO[nome];
+    const h = hachuraDoPadrao(nome);
+    if (h.desenho === 'riscado') {
+      const r = riscadoDe(nome, h);
       fundo = r.fundo;
       riscos = this.riscadoEmVetor(r, x0, y0, x1, y1);
-    } else {
-      const l = ladrilhoDeMaterial(nome);
+    } else if (h.desenho === 'solido') {
+      fundo = h.fundo;
+    } else if (h.desenho !== 'vazio') {
+      const l = ladrilhoDe(h);
       fundo = l.fundo;
-      this.ladrilhosUsados.add(nome);
+      this.ladrilhosUsados.set(nome, l);
       // as casas da grade do <pattern> (origem 0,0) que a caixa da área toca; o recorte tira o que sobra
       const L = l.lado;
       for (let i = Math.floor(x0 / L); i * L < x1; i++) {
@@ -315,7 +357,7 @@ export class Prancha {
    * <pattern> o risco em x = 0 é cortado pela borda do próprio ladrilho — só a metade de dentro aparece, de 0 a
    * sw/2 —, então o traço do PDF sai com sw/2 de largura, centrado em sw/4: a mesma faixa pintada da tela.
    */
-  private riscadoEmVetor(r: (typeof RISCADO)['alv'], x0: number, y0: number, x1: number, y1: number): string {
+  private riscadoEmVetor(r: Riscado, x0: number, y0: number, x1: number, y1: number): string {
     const a = (r.giro * Math.PI) / 180;
     const [c, s] = [Math.cos(a), Math.sin(a)];
     // a caixa da área levada para o sistema da grade (o inverso do rotate do patternTransform)
@@ -333,9 +375,9 @@ export class Prancha {
   /** A camada do DXF de um traço (ordem no cabeçalho). */
   private camadaDe(e: Estilo, fill: string, stroke: string): string {
     if (e.camada) return e.camada;
-    const p = this.padraoDoFill(fill);
-    if (p) return p.camada;
-    const porCor = CAMADA_DA_COR[fill] ?? CAMADA_DA_COR[stroke];
+    const nome = this.nomeDoPadrao(fill);
+    if (nome) return DO_PADRAO[nome].camada;
+    const porCor = camadaDaCor(fill) ?? camadaDaCor(stroke);
     if (porCor) return porCor;
     const grupo = this.grupos[this.grupos.length - 1];
     return (grupo && CAMADA_DO_GRUPO[grupo]) || 'geral';
@@ -359,12 +401,15 @@ export class Prancha {
     const camada = this.camadaDe(e, fill, stroke);
     const borda = stroke !== 'none' ? this.traco(stroke, e, camada) : undefined;
     const fechados = aneis.filter((a) => a.length >= 3).map((a) => a.map(([x, y]): Pt => [x, y]));
-    if (fill !== 'none' && fechados.length) {
-      const p = this.padraoDoFill(fill);
+    const nome = this.nomeDoPadrao(fill);
+    const p = nome ? hachuraDxf(nome) : null;
+    // padrão 'vazio' da tabela: só o contorno, como área sem preenchimento
+    if (fill !== 'none' && fechados.length && (p || !nome)) {
       const h: Extract<Primitiva, { k: 'hachura' }> = p
         ? { k: 'hachura', aneis: fechados, padrao: p.padrao, risco: p.risco, camada }
         : { k: 'hachura', aneis: fechados, padrao: 'solido', fundo: fill, camada };
       if (p?.fundo) h.fundo = p.fundo;
+      if (p && p.escala !== 1) h.escala = p.escala;
       if (borda) h.borda = borda;
       this.prims.push(h);
       return;
@@ -414,6 +459,7 @@ export class Prancha {
   }
 
   rect(x: number, y: number, w: number, h: number, e: Estilo = {}): void {
+    if (this.mudo) return;
     const xa = Math.min(x, x + w), ya = Math.min(y, y + h);
     const ww = Math.abs(w), hh = Math.abs(h);
     if (!(ww > 0 && hh > 0)) return;
@@ -424,6 +470,7 @@ export class Prancha {
   }
 
   linha(xa: number, ya: number, xb: number, yb: number, e: Estilo = {}): void {
+    if (this.mudo) return;
     this.corpo.push(`<line x1="${n(xa)}" y1="${n(ya)}" x2="${n(xb)}" y2="${n(yb)}" ${this.atributos(e)}/>`);
     this.estender(xa, ya, xb, yb);
     const stroke = e.stroke ?? COR.linha;
@@ -433,6 +480,7 @@ export class Prancha {
   }
 
   poligono(pts: Pt[], e: Estilo = {}): void {
+    if (this.mudo) return;
     if (pts.length < 2) return;
     if (!this.areaEmVetor([pts], e)) {
       const p = pts.map(([x, y]) => `${n(x)},${n(y)}`).join(' ');
@@ -444,6 +492,7 @@ export class Prancha {
 
   /** Polilinha aberta (o preenchimento, se alguém passar, não vai para o DXF: nenhum desenho usa). */
   polilinha(pts: Pt[], e: Estilo = {}): void {
+    if (this.mudo) return;
     if (pts.length < 2) return;
     const p = pts.map(([x, y]) => `${n(x)},${n(y)}`).join(' ');
     this.corpo.push(`<polyline points="${p}" ${this.atributos(e)} stroke-linejoin="round" stroke-linecap="round"/>`);
@@ -459,6 +508,7 @@ export class Prancha {
 
   /** Contorno com furos num caminho só (regra par-ímpar): o furo do bloco fica vazado de verdade. */
   caminho(aneis: Pt[][], e: Estilo = {}): void {
+    if (this.mudo) return;
     const d = aneis
       .filter((a) => a.length >= 3)
       .map((a) => 'M' + a.map(([x, y]) => `${n(x)},${n(y)}`).join('L') + 'Z')
@@ -470,10 +520,12 @@ export class Prancha {
   }
 
   circulo(cx: number, cy: number, r: number, e: Estilo = {}): void {
-    this.corpo.push(`<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}" ${this.atributos(e, COR.aco, 'none')}/>`);
+    if (this.mudo) return;
+    const aco = corDoAcoNoDesenho();
+    this.corpo.push(`<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}" ${this.atributos(e, aco, 'none')}/>`);
     this.estender(cx - r, cy - r, cx + r, cy + r);
     if (e.soTela) return;
-    const fill = e.fill ?? COR.aco;
+    const fill = e.fill ?? aco;
     const stroke = e.stroke ?? 'none';
     const camada = this.camadaDe(e, fill, stroke);
     // o ponto da barra cortada é cheio e sem contorno; o contrato só guarda a camada no traço, então ele leva um
@@ -498,6 +550,7 @@ export class Prancha {
   }
 
   texto(x: number, y: number, t: string, o: OpcoesTexto = {}): void {
+    if (this.mudo) return;
     const tam = o.tam ?? 12;
     const anc = o.ancora ?? 'middle';
     const cor = o.cor ?? COR.linha;
@@ -534,6 +587,7 @@ export class Prancha {
 
   private linhaDeCotaH(xa: number, xb: number, y: number, de?: [number, number]): [number, number] {
     const [x1, x2] = xa <= xb ? [xa, xb] : [xb, xa];
+    if (this.mudo) return [x1, x2];
     if (de) {
       for (const [x, y0] of [[x1, de[0]], [x2, de[1]]] as Pt[]) {
         const s = y > y0 ? 1 : -1;
@@ -579,6 +633,7 @@ export class Prancha {
 
   /** Cota vertical (figlib.dim_v). `lado` −1 escreve à esquerda da linha, +1 à direita. */
   cotaV(x: number, ya: number, yb: number, rotulo: string, o: { de?: [number, number]; lado?: -1 | 1; tam?: number } = {}): void {
+    if (this.mudo) return;
     const tam = o.tam ?? CORPO_DA_COTA;
     const lado = o.lado ?? -1;
     const [y1, y2] = ya <= yb ? [ya, yb] : [yb, ya];
@@ -621,14 +676,17 @@ export class Prancha {
       `<path d="M${M.de[0]},${M.de[1]} L${M.ate[0]},${M.ate[1]}" stroke="${COR.cota}" stroke-width="${M.sw}"/></marker>`;
     if (this.hachuraVetorial) {
       // só os ladrilhos que alguma área usou; overflow hidden: cada cópia recortada no quadrado dela, como no <pattern>
-      const ladrilhos = [...this.ladrilhosUsados].map((k) => {
-        const l = ladrilhoDeMaterial(k);
+      const ladrilhos = [...this.ladrilhosUsados].map(([k, l]) => {
         return `<symbol id="${p}-lad-${k}" viewBox="0 0 ${n3(l.lado)} ${n3(l.lado)}" overflow="hidden">${l.miolo}</symbol>`;
       });
       return marca + ladrilhos.join('') + this.recortes.join('');
     }
-    // terra, concreto, areia e brita: as hachuras do Revit do Jose (hachuras.ts); alvenaria e graute: RISCADO
-    return marca + hachurasDeMaterial(p) + padraoRiscado(`${p}-alv`, RISCADO.alv) + padraoRiscado(`${p}-graute`, RISCADO.graute);
+    // cada material com a hachura da tabela em uso: ladrilho (terra, concreto, areia, brita, sólido, vazio) ou riscado
+    const padroes = NOMES_DOS_PADROES.map((nome) => {
+      const h = hachuraDoPadrao(nome);
+      return h.desenho === 'riscado' ? padraoRiscado(`${p}-${nome}`, riscadoDe(nome, h)) : padraoDoLadrilho(`${p}-${nome}`, ladrilhoDe(h));
+    });
+    return marca + padroes.join('');
   }
 
   /** Pedaços do desenho para quem quer controlar o viewBox (zoom/arrasto do componente). */

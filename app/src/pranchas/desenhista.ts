@@ -12,15 +12,22 @@
     · vista 2D (frontal, corte, planta, isométrico) → vetor, na escala pedida (desenhos/paraPrancha.ts);
     · 3D em Cores ou Opaco → VETOR também ("o 3D gerado a partir das vistas opaco e cores eu quero DXF"), o pintor
       do isométrico com a câmera do visor;
-    · 3D no Realista → foto (textura não vira linha).
+    · 3D no Realista → foto (textura não vira linha);
+    · tabela de materiais (Jose, 15/10) → em mm de papel, do quantitativo do muro (tabelaDaFolha.ts). A figura de
+      cada peça vem do arquivo do app (figurasDasPecas.ts), uma vez por desenhista: como a foto, chega depois — a
+      tabela sai com o lugar da figura vazio e se recompõe quando ela chega; o PDF e o DXF esperam por ela.
 */
+import { versaoDosGraficos } from '@/desenhos/graficos';
 import type { Modelo } from '@/modelo/tipos';
 import { refazerFoto } from '@/visor/fotoRefeita';
 import { vista3dParaPrancha, vistaParaPrancha } from '@/desenhos/paraPrancha';
 import { cortesPadrao } from '@/desenhos/corteLateral';
 import { metros } from '@/desenhos/formato';
+import { quantificar, type Quantitativo } from '@/quantitativo';
 import type { ItemDesenhado } from './folha';
 import type { ItemDaFolha } from './tipos';
+import { carregarFigura, type CarregarFigura, type FiguraPronta } from './figurasDasPecas';
+import { TITULO_DA_TABELA, desenharTabela, tabelaParaFolha } from './tabelaDaFolha';
 
 export interface Desenhista {
   desenhar: (item: ItemDaFolha, prefixo: string, opcoes?: { legendaDeCores: boolean; vetorial?: boolean }) => ItemDesenhado | null;
@@ -28,9 +35,10 @@ export interface Desenhista {
   tituloAutomatico: (item: ItemDaFolha) => string;
   /** Solta o que ficou guardado (troca de muro). */
   descartar: () => void;
-  /** Espera as fotos pedidas chegarem (PDF e DXF não podem sair com o lugar tracejado no meio da folha). */
+  /** Espera as fotos (e as figuras das peças) pedidas chegarem (PDF e DXF não podem sair com o lugar vazio). */
   esperarFotos: () => Promise<void>;
 }
+
 
 /** Resolução da foto no papel: 250 pontos por polegada (nítida no PDF de prancha), até 4000 px no lado maior. */
 const PONTOS_POR_MM = 250 / 25.4;
@@ -45,7 +53,7 @@ export function tamanhoDaFoto(larguraMm: number, proporcao: number): [number, nu
   return [w, h];
 }
 
-export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () => {}): Desenhista {
+export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () => {}, carregar: CarregarFigura = carregarFigura): Desenhista {
   const fotos = new Map<string, { dataUrl: string; proporcao: number } | 'pedida' | 'falhou'>();
   // a última foto pronta de cada ponto de vista: ao redimensionar, a folha mostra a anterior enquanto a nova sai
   const ultima = new Map<string, { dataUrl: string; proporcao: number }>();
@@ -59,7 +67,8 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
     // a foto não muda com a posição nem com o tamanho na folha até a resolução pedir outra
     const [w, h] = tamanhoDaFoto(item.largura ?? 160, proporcao);
     const ponto = JSON.stringify(camera);
-    const chave = `${ponto}|${w}x${h}`;
+    // a versão da tabela de gráficos entra: o 3D Cores e o Opaco mudam de cor com ela (15/10)
+    const chave = `${versaoDosGraficos()}|${ponto}|${w}x${h}`;
     const tem = fotos.get(chave);
     const imagem = (f: { dataUrl: string; proporcao: number }): ItemDesenhado => ({ tipo: 'imagem', dataUrl: f.dataUrl, arquivo: `foto-${item.id}.png`, proporcao: f.proporcao });
     if (tem && tem !== 'pedida' && tem !== 'falhou') return imagem(tem);
@@ -85,9 +94,53 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
     return anterior ? imagem(anterior) : null;
   };
 
+  // o quantitativo do muro, uma vez (o muro deste desenhista não muda); e as figuras das peças, por endereço
+  let quant: Quantitativo | null | undefined;
+  const quantitativo = (): Quantitativo | null => {
+    if (quant === undefined) {
+      try {
+        quant = modelo ? quantificar(modelo) : null;
+      } catch {
+        quant = null;
+      }
+    }
+    return quant;
+  };
+  const figuras = new Map<string, FiguraPronta | 'pedida' | 'falhou'>();
+  const figura = (url: string): FiguraPronta | null => {
+    const tem = figuras.get(url);
+    if (tem === undefined) {
+      // a que já chegou para o muro de antes vale para este: a tabela não pisca sem as peças a cada tecla
+      const ja = carregar.pronta?.(url);
+      if (ja) {
+        figuras.set(url, ja);
+        return ja;
+      }
+      figuras.set(url, 'pedida');
+      const pedido = carregar(url);
+      aCaminho.add(pedido);
+      void pedido.finally(() => aCaminho.delete(pedido)).catch(() => undefined);
+      pedido.then(
+        (f) => {
+          if (!vivo) return;
+          figuras.set(url, f);
+          aoMudar();
+        },
+        () => {
+          // sem a figura a tabela sai igual, com o lugar dela vazio
+          if (vivo) figuras.set(url, 'falhou');
+        },
+      );
+      return null;
+    }
+    return typeof tem === 'object' ? tem : null;
+  };
+
   // vetor guardado por pedido + escala + prefixo (o prefixo entra: os ids dos padrões vão no desenho)
   const vetores = new Map<string, ItemDesenhado | null>();
-  const vetor = (chave: string, fazer: () => ItemDesenhado | null): ItemDesenhado | null => {
+  const vetor = (pedido: string, fazer: () => ItemDesenhado | null): ItemDesenhado | null => {
+    // a tabela de gráficos (cores, hachuras, o que aparece) também: trocou na tela, a folha redesenha
+    const chave = `${versaoDosGraficos()}|${pedido}`;
     if (!vetores.has(chave)) {
       let d: ItemDesenhado | null = null;
       try {
@@ -119,6 +172,12 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
         const escala = item.escala ?? 50;
         return vetor(`${JSON.stringify(c)}|${escala}|${prefixo}|${leg}|${vet}`, () => ({ tipo: 'vetor', vista: vistaParaPrancha(modelo, c, escala, prefixo, { legendaDeCores: leg, hachuraVetorial: vet }) }));
       }
+      if (c.tipo === 'tabela') {
+        // sem guardar: a tabela é pouca linha, e a figura que chega muda o desenho
+        const q = quantitativo();
+        if (!q) return null;
+        return { tipo: 'papel', vista: desenharTabela(tabelaParaFolha(q, c.id), item.titulo.trim() || TITULO_DA_TABELA[c.id], figura) };
+      }
       return null;
     },
     tituloAutomatico: (item) => {
@@ -140,6 +199,8 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
           return 'Isométrico';
         case '3d':
           return 'Perspectiva';
+        case 'tabela':
+          return TITULO_DA_TABELA[c.id];
         default:
           return '';
       }
@@ -152,6 +213,7 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
       fotos.clear();
       ultima.clear();
       vetores.clear();
+      figuras.clear();
     },
   };
 }

@@ -24,6 +24,7 @@ import {
 import { barrasNoCorte, estiloDaSecao } from './corteLateral';
 import { desenharLegenda, itensDasTintas, tintaDaPeca, tintasPresentes } from './cores';
 import { COR, Prancha, type OpcoesDaVista, type Pt } from './prancha';
+import { aparece, corDoAcoNoDesenho, hachuraDe, pecaAparece } from './graficos';
 
 export type VistaIso = 'frente-direita' | 'frente-esquerda' | 'fundo-direita' | 'fundo-esquerda';
 
@@ -149,8 +150,9 @@ export function corBase(s: Solido): string {
   const tinta = tintaDaPeca(s);
   if (tinta) return tinta.cor;
   if (ESPECIAL.has(s.peca.tipo)) return COR.especialFundo;
-  if (s.peca.tipo === 'SAPATA') return '#e4e4e4';
-  if (s.peca.tipo === 'DRENO') return COR.britaFundo;
+  // sapata e dreno no fundo da hachura deles (tabela de gráficos — 15/10)
+  if (s.peca.tipo === 'SAPATA') return hachuraDe('concreto').fundo;
+  if (s.peca.tipo === 'DRENO') return hachuraDe('brita').fundo;
   return COR.blocoFundo;
 }
 
@@ -164,7 +166,7 @@ export function sombrear(hex: string, f: number): string {
  * dreno fatiado por fiada (ver fatiarEmZ). Exportada para o teste conferir a ordem com o modelo de verdade.
  */
 export function pecasDoIsometrico(todos: Solido[], corte: number | null, manterMenor: boolean): Solido[] {
-  let pecas = todos.filter((s) => TIPOS_ISO.has(s.peca.tipo));
+  let pecas = todos.filter((s) => TIPOS_ISO.has(s.peca.tipo) && pecaAparece('iso', s.peca.tipo));
   if (corte !== null) pecas = pecas.map((s) => recortarEmX(s, corte, manterMenor)).filter((s): s is Solido => !!s);
   return pecas.flatMap((s) => (s.peca.tipo === 'DRENO' ? fatiarEmZ(s, 200) : [s]));
 }
@@ -195,12 +197,15 @@ export function desenharIsometrico(m: Modelo, o: OpcoesIso = {}): Prancha {
     return [a * S, b * S];
   };
 
-  const grauteCanaleta = todos.filter((s) => s.peca.tipo === 'GRAUTE_CANALETA');
+  const comGraute = aparece('iso', 'graute');
+  const grauteCanaleta = comGraute ? todos.filter((s) => s.peca.tipo === 'GRAUTE_CANALETA') : [];
+  const gFundo = hachuraDe('graute').fundo;
+  const gRisco = hachuraDe('graute').risco;
   const ordem = ordemDePintura(pecas, v, P);
 
   // cada barbacã vai com o bloco da parede em que está (o centro do tubo dentro da caixa do bloco)
   const tubos = new Map<Solido, Solido[]>();
-  for (const b of todos.filter((q) => q.peca.tipo === 'BARBACA' && q.eixo === 'Y')) {
+  for (const b of aparece('iso', 'drenagem') ? todos.filter((q) => q.peca.tipo === 'BARBACA' && q.eixo === 'Y') : []) {
     const c: Vec3 = [(b.min[0] + b.max[0]) / 2, (b.min[1] + b.max[1]) / 2, (b.min[2] + b.max[2]) / 2];
     const bloco = ordem.find((s) => ALVENARIA.has(s.peca.tipo) && [0, 1, 2].every((k) => s.min[k] < c[k] && c[k] < s.max[k]));
     if (bloco) tubos.set(bloco, [...(tubos.get(bloco) ?? []), b]);
@@ -238,9 +243,9 @@ export function desenharIsometrico(m: Modelo, o: OpcoesIso = {}): Prancha {
       }
       // furo visto na tampa: azul de graute se a peça diz que o furo é grauteado; escuro se é vazio
       if (f.tampa && f.furos.length) {
-        const gr = new Set(s.peca.furosGrauteados ?? []);
+        const gr = new Set(comGraute ? (s.peca.furosGrauteados ?? []) : []);
         f.furos.forEach((furo, k) => {
-          pr.poligono(furo.map(P), { fill: gr.has(k) ? sombrear(COR.grauteFundo, fator) : COR.furoEscuro, stroke: traco, sw: 0.3, camada: gr.has(k) ? 'graute' : camada });
+          pr.poligono(furo.map(P), { fill: gr.has(k) ? sombrear(gFundo, fator) : COR.furoEscuro, stroke: traco, sw: 0.3, camada: gr.has(k) ? 'graute' : camada });
         });
       }
     }
@@ -251,12 +256,12 @@ export function desenharIsometrico(m: Modelo, o: OpcoesIso = {}): Prancha {
         if (xb - xa < 1 || g.min[2] < s.min[2] - 1 || g.max[2] > s.max[2] + 1 || g.min[1] < s.min[1] - 1 || g.max[1] > s.max[1] + 1) continue;
         const z = g.max[2];
         const quad: Vec3[] = [[xa, g.min[1], z], [xb, g.min[1], z], [xb, g.max[1], z], [xa, g.max[1], z]];
-        pr.poligono(quad.map(P), { fill: sombrear(COR.grauteFundo, 0.6 + 0.4 * luz[2]), stroke: COR.graute, sw: 0.3, camada: 'graute' });
+        pr.poligono(quad.map(P), { fill: sombrear(gFundo, 0.6 + 0.4 * luz[2]), stroke: gRisco, sw: 0.3, camada: 'graute' });
         // na ponta da corrida (ponta do trecho ou corte) o graute aparece de topo, enchendo o U da canaleta
         const xf = ax > 0 ? s.max[0] : s.min[0];
         if (Math.abs((ax > 0 ? xb : xa) - xf) < 1) {
           const tampa: Vec3[] = [[xf, g.min[1], g.min[2]], [xf, g.max[1], g.min[2]], [xf, g.max[1], z], [xf, g.min[1], z]];
-          pr.poligono(tampa.map(P), { fill: sombrear(COR.grauteFundo, 0.6 + 0.4 * Math.abs(luz[0])), stroke: COR.graute, sw: 0.3, camada: 'graute' });
+          pr.poligono(tampa.map(P), { fill: sombrear(gFundo, 0.6 + 0.4 * Math.abs(luz[0])), stroke: gRisco, sw: 0.3, camada: 'graute' });
         }
       }
     }
@@ -276,15 +281,15 @@ export function desenharIsometrico(m: Modelo, o: OpcoesIso = {}): Prancha {
     const P3 = (yz: [number, number]): Pt => P([corte, yz[0], yz[1]]);
     const cortados = todos
       .map((s) => ({ s, r: secao(s, 'X', corte) }))
-      .filter((q) => q.r.length && q.s.peca.tipo !== 'BARBACA')
+      .filter((q) => q.r.length && q.s.peca.tipo !== 'BARBACA' && pecaAparece('iso', q.s.peca.tipo))
       .sort((a, b) => (GRAUTE_DEPOIS(a.s) ? 1 : 0) - (GRAUTE_DEPOIS(b.s) ? 1 : 0));
     for (const { s, r } of cortados) {
       const e = estiloDaSecao(s, pr);
       if (!e) continue;
       for (const q of r) pr.caminho([q.contorno, ...q.furos].map((a) => a.map(P3)), { ...e, sw: 0.6, id: s.peca.id });
     }
-    const br = barrasNoCorte(m, corte);
-    for (const l of br.linhas) pr.polilinha((l.fechada ? [...l.pts, l.pts[0]] : l.pts).map(P3), { stroke: COR.aco, sw: Math.max(0.8, l.barra.diametro * S), id: l.barra.id });
+    const br = aparece('iso', 'armadura') ? barrasNoCorte(m, corte) : { linhas: [], pontos: [] };
+    for (const l of br.linhas) pr.polilinha((l.fechada ? [...l.pts, l.pts[0]] : l.pts).map(P3), { stroke: corDoAcoNoDesenho(), sw: Math.max(0.8, l.barra.diametro * S), id: l.barra.id });
     for (const p of br.pontos) {
       const [a, b] = P3(p.p);
       pr.circulo(a, b, Math.max(1.2, (p.barra.diametro / 2) * S), { id: p.barra.id });
@@ -294,7 +299,7 @@ export function desenharIsometrico(m: Modelo, o: OpcoesIso = {}): Prancha {
 
   // título acima e legenda abaixo de tudo o que foi desenhado
   const { viewBox } = pr.partes(0);
-  if (!o.semLegendaDeCores) desenharLegenda(pr, viewBox[0], viewBox[1] + viewBox[3] + 28, itensDasTintas(tintasPresentes(pecas)), Math.max(320, viewBox[2]));
+  if (!o.semLegendaDeCores && aparece('iso', 'legenda')) desenharLegenda(pr, viewBox[0], viewBox[1] + viewBox[3] + 28, itensDasTintas(tintasPresentes(pecas)), Math.max(320, viewBox[2]));
   // na prancha o título é dela (embaixo do desenho); o PROVISÓRIO fica, é aviso e não título
   const titulo = corte !== null ? `Isométrico — corte em x = ${metros(corte)} m` : 'Isométrico';
   if (!o.semTitulo) pr.texto(viewBox[0], viewBox[1] - 14, titulo, { tam: 15, ancora: 'start', negrito: true });

@@ -12,8 +12,9 @@
   user-select: text;          /* aqui o engenheiro copia número para a planilha dele */
 }
 
-.qtd-barra { display: flex; justify-content: flex-end; }
+.qtd-barra { display: flex; justify-content: flex-end; gap: var(--gap-2); }
 
+.qtd-barra select,
 .qtd-barra button {
   height: var(--row);
   padding: 0 var(--pad);
@@ -24,6 +25,7 @@
   font: inherit;
   cursor: pointer;
 }
+.qtd-barra select:hover,
 .qtd-barra button:hover { border-color: var(--control-stroke-2); }
 
 .qtd-avisos {

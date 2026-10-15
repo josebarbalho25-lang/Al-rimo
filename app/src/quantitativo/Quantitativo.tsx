@@ -6,10 +6,14 @@
 
   Na tabela de blocos cada linha leva a figura da peça (pecas.ts); o clique abre a figura grande no MESMO modal das
   figuras das entradas (ui/ModalDaFigura) — um modal só no app, com o mesmo Esc, o mesmo ✕ e o mesmo clique fora.
+
+  "Prancha" manda uma tabela para a folha ativa da aba Pranchas (o mesmo canal do 3D e das vistas 2D): os blocos
+  com as figuras, os materiais (graute, argamassa e sapata numa tabela só) ou a drenagem.
 */
 import { useCallback, useMemo, useState } from 'react';
 import type { Modelo } from '@/modelo/tipos';
 import { ModalDaFigura } from '@/ui/ModalDaFigura';
+import { enviarParaPrancha } from '@/pranchas/envio';
 import {
   quantificar, tabelasDoQuantitativo, csvDoQuantitativo, formatarNaTela, type Celula, type FiguraDaPeca, type Tabela,
 } from '@/quantitativo';
@@ -85,6 +89,20 @@ export function Quantitativo({ modelo }: { modelo: Modelo }) {
   return (
     <section className="qtd">
       <div className="qtd-barra">
+        <select
+          value=""
+          title="Enviar para a prancha"
+          aria-label="Enviar para a prancha"
+          onChange={(e) => {
+            const id = e.target.value;
+            if (id === 'blocos' || id === 'quantidades' || id === 'drenagem') enviarParaPrancha({ tipo: 'tabela', id });
+          }}
+        >
+          <option value="">Prancha</option>
+          <option value="blocos">Blocos e canaletas</option>
+          <option value="quantidades">Materiais</option>
+          <option value="drenagem">Drenagem</option>
+        </select>
         <button type="button" onClick={() => baixarCsv(csvDoQuantitativo(q), 'quantitativo.csv')}>Exportar CSV</button>
       </div>
       {q.avisos.length > 0 && (

@@ -152,10 +152,11 @@ describe('corte para a prancha', () => {
     expect(eixo.e.tracejado).toEqual([14, 3, 2, 3]);
   });
 
-  it('corte no contraforte: o estribo fechado vira polilinha fechada', () => {
+  it('corte no contraforte: o estribo sai inteiro (fechado, ou a polilinha com os ganchos de 135°)', () => {
     const c = vistaParaPrancha(m, { tipo: 'corte', x: m.dims.contrafortes[1].x }, 25, 'c');
-    if (!m.barras.some((b) => b.papel === 'CF_ESTRIBO' && b.fechada)) return;
-    expect(c.primitivas.some((q) => q.k === 'polilinha' && q.fechada && q.e.camada === 'aco')).toBe(true);
+    const est = m.barras.filter((b) => b.papel === 'CF_ESTRIBO');
+    expect(est.length).toBeGreaterThan(0);
+    expect(c.primitivas.some((q) => q.k === 'polilinha' && q.e.camada === 'aco' && (q.fechada || q.pts.length >= 6))).toBe(true);
   });
 });
 

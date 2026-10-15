@@ -36,6 +36,8 @@ import { desenharPlanta } from './planta';
 import { desenharIsometrico, type VistaIso } from './isometrico';
 import type { Prancha } from './prancha';
 import { enviarParaPrancha } from '@/pranchas/envio';
+import { useGraficos } from './useGraficos';
+import { MenuMostrar } from './MenuMostrar';
 import type { PedidoDeVista } from '@/pranchas/tipos';
 
 export type AbaDesenho = 'frontal' | 'corte' | 'planta' | 'iso';
@@ -146,6 +148,8 @@ export function Desenhos({ modelo, vista, selecionado = null, onSelecionar }: Pr
     enviarParaPrancha({ tipo: 'vista', pedido });
   };
 
+  // a tabela de gráficos (cores, hachuras e o que aparece em cada vista — 15/10) refaz o desenho quando muda
+  const graficosEmUso = useGraficos((st) => st.dados);
   const prancha: Prancha = useMemo(() => {
     switch (aba) {
       case 'corte': return desenharCorteLateral(modelo, xC);
@@ -153,7 +157,7 @@ export function Desenhos({ modelo, vista, selecionado = null, onSelecionar }: Pr
       case 'iso': return desenharIsometrico(modelo, { vista: vistaIso, corteX: isoCortado ? xI : null });
       default: return desenharVistaFrontal(modelo);
     }
-  }, [aba, modelo, xC, fiadaOk, vistaIso, isoCortado, xI]);
+  }, [aba, modelo, xC, fiadaOk, vistaIso, isoCortado, xI, graficosEmUso]);
   const partes = useMemo(() => prancha.partes(), [prancha]);
 
   // ── enquadramento, zoom e arrasto ─────────────────────────────────────────────────────────────────────────────
@@ -299,6 +303,7 @@ export function Desenhos({ modelo, vista, selecionado = null, onSelecionar }: Pr
 
         <span style={{ flex: 1 }} />
         <div className="cad-escolha">
+          <MenuMostrar vista={aba} estiloDoBotao={s.botao} />
           <button type="button" style={s.botao} onClick={enquadrar}>Enquadrar</button>
           <button type="button" style={s.botao} onClick={baixarSvg}>SVG</button>
           <button type="button" style={s.botao} onClick={baixarPng}>PNG</button>

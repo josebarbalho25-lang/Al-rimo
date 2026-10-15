@@ -22,6 +22,7 @@ import type { ClassePeca } from '@/modelo/tipos';
 import { CORES_DO_JOSE } from '@/modulacao/catalogo';
 import type { Acabamento } from './lotes';
 import type { PaletaVisor } from './tema3d';
+import { graficos, type Material } from '@/desenhos/graficos';
 
 export type EstiloVisual = 'cores' | 'realista' | 'opaco';
 
@@ -64,6 +65,16 @@ const COR_SEM_REVIT = '#3a9a5c';
 export const ORDEM_DAS_CLASSES: readonly ClassePeca[] = ['inteiro', 'meio', 'canaleta', 'bloco34', 'bloco54'];
 
 export const COR_DA_CLASSE = Object.fromEntries(ORDEM_DAS_CLASSES.map((c) => [c, CORES_DO_JOSE[c] ?? COR_SEM_REVIT])) as Readonly<Record<ClassePeca, string>>;
+
+/** A cor da classe na tabela de gráficos em uso (o Jose troca na tela — 15/10); a de fábrica é COR_DA_CLASSE. */
+export function corDaClasse(c: ClassePeca): string {
+  return graficos().materiais[c]?.cor ?? COR_DA_CLASSE[c];
+}
+
+/** O material da tabela de gráficos de cada acabamento do 3D. */
+const MATERIAL_DO_ACABAMENTO: Record<Acabamento, Material> = {
+  alvenaria: 'alvenaria', graute: 'graute', concreto: 'concreto', brita: 'brita', areia: 'areia', manta: 'manta', tubo: 'tubo', terreno: 'terra',
+};
 
 /** O nome curto da legenda. Rótulo, não frase. */
 export const ROTULO_DA_CLASSE: Readonly<Record<ClassePeca, string>> = {
@@ -127,14 +138,21 @@ const OPACO: Record<Acabamento, string> = {
 };
 const ACO_OPACO = '#4a4a4a';
 
-/** A cor de uma peça neste estilo. `classe` só vale para alvenaria. */
+/**
+ * A cor de uma peça neste estilo. `classe` só vale para alvenaria. Cores e Opaco seguem a tabela de gráficos (o Jose
+ * controla na tela — 15/10: "Cores e Opaco, realista não"); no Cores, o material sem cor escolhida (null) fica com
+ * a do tema, que muda entre o claro e o escuro. O Realista é foto e não lê a tabela.
+ */
 export function corDaPeca(estilo: EstiloVisual, p: PaletaVisor, a: Acabamento, classe?: ClassePeca): string {
   if (estilo === 'realista') return REALISTA[a];
-  if (estilo === 'opaco') return OPACO[a];
+  const g = graficos().materiais;
+  if (estilo === 'opaco') return g[MATERIAL_DO_ACABAMENTO[a]]?.opaco ?? OPACO[a];
+  const escolhida = a === 'alvenaria' ? undefined : g[MATERIAL_DO_ACABAMENTO[a]]?.cor;
+  if (escolhida) return escolhida;
   switch (a) {
     case 'alvenaria':
       // Sem classe (modelo antigo, ou de teste): o bloco neutro do tema.
-      return classe ? COR_DA_CLASSE[classe] : p.bloco;
+      return classe ? corDaClasse(classe) : p.bloco;
     case 'graute':
       return NEUTRO_DAS_CORES.graute;
     case 'concreto':
@@ -153,7 +171,9 @@ export function corDaPeca(estilo: EstiloVisual, p: PaletaVisor, a: Acabamento, c
 }
 
 export function corDoAco(estilo: EstiloVisual): string {
-  return estilo === 'realista' ? ACO_REALISTA : estilo === 'opaco' ? ACO_OPACO : NEUTRO_DAS_CORES.aco;
+  if (estilo === 'realista') return ACO_REALISTA;
+  const g = graficos().materiais.aco;
+  return estilo === 'opaco' ? (g?.opaco ?? ACO_OPACO) : (g?.cor ?? NEUTRO_DAS_CORES.aco);
 }
 
 /** Quanto o terreno aparece. É referência e nunca tapa o muro; no Realista pesa um pouco mais, para ler como chão. */
@@ -182,7 +202,7 @@ export function tracoDoEstilo(estilo: EstiloVisual, p: PaletaVisor): { cor: stri
 export const recebeLuz = (estilo: EstiloVisual): boolean => estilo !== 'opaco';
 
 /**
- * A paleta do PALCO (fundo, letra dos eixos, contorno do corte). O tema manda,
+ * A paleta do PALCO (fundo, contorno do corte). O tema manda,
  * exceto no Opaco, que é sempre papel: a imagem vai para a prancha, e prancha
  * não tem fundo escuro. A barra e o cubo continuam no tema — são a moldura da
  * tela, não a imagem.
