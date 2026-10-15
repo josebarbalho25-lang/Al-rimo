@@ -7,7 +7,7 @@
   ISO 7200, base da norma — DEDUÇÃO, a conferir no texto da NBR (o Jose tem acesso pelo CREA). Tudo aqui é número
   de partida: o carimbo e o quadro lateral se regulam na tela.
 */
-import type { Formato, Orientacao } from './tipos';
+import { LETRA_MINIMA, corpoDaLetra, type Formato, type Orientacao } from './tipos';
 
 /** Série ISO-A, mm: [lado maior, lado menor]. */
 export const FORMATOS: Readonly<Record<Formato, readonly [number, number]>> = {
@@ -35,11 +35,16 @@ export function quadroUtil(f: Formato, o: Orientacao): [number, number, number, 
   return [MARGEM.esquerda, MARGEM.cima, w - MARGEM.direita, h - MARGEM.baixo];
 }
 
-/** Carimbo de partida: 180 mm (ISO 7200; no A4 em pé é a largura útil inteira) × 50 mm (quatro faixas). */
-export const CARIMBO_PADRAO = { largura: 180, altura: 50 } as const;
+/**
+ * Carimbo de partida: 180 mm (ISO 7200; no A4 em pé é a largura útil inteira) × 65 mm — cinco faixas de 13 mm, com
+ * rótulo e valor na letra mínima de 2,5 mm. Era 180 × 50 com quatro faixas até 15/10, quando entraram o número do
+ * desenho, o desenhista e a verificação (CARIMBO_ANTIGO: o arquivo com o de partida antigo abre com o novo).
+ */
+export const CARIMBO_PADRAO = { largura: 180, altura: 65 } as const;
+export const CARIMBO_ANTIGO = { largura: 180, altura: 50 } as const;
 
 /** Limites do redimensionamento do carimbo, mm. */
-export const CARIMBO_MIN = { largura: 120, altura: 35 } as const;
+export const CARIMBO_MIN = { largura: 120, altura: 45 } as const;
 
 /** As escalas das vistas 2D (Jose, 14/10); `null` = sem escala (3D e imagem). */
 export const ESCALAS: readonly number[] = [10, 20, 25, 50, 75, 100];
@@ -56,5 +61,8 @@ export function quadroLateralPadrao(f: Formato, o: Orientacao, carimbo: { largur
   return { largura: carimbo.largura, altura: grande ? Math.max(0, y1 - y0 - carimbo.altura) : 0 };
 }
 
-/** Altura dos textos da prancha, mm (NBR: 2,5 a 3,5 para texto corrente; 5 para títulos grandes). */
-export const LETRA = { nota: 2.5, rotulo: 2, titulo: 3.5, tituloGrande: 5 } as const;
+/**
+ * Corpo dos textos da folha, mm de papel, pela altura da MAIÚSCULA (NBR 8402): 2,5 no texto corrente e nos rótulos
+ * do carimbo, 3,5 nos títulos, 5 no título grande. Até 15/10 os números eram o corpo, e a maiúscula saía 30 % menor.
+ */
+export const LETRA = { nota: corpoDaLetra(LETRA_MINIMA), titulo: corpoDaLetra(3.5), tituloGrande: corpoDaLetra(5) } as const;

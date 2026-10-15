@@ -9,7 +9,12 @@ Objetivo final: app gratuito (3D, quantitativo, vista frontal, corte lateral, is
 auditável citando item de norma e fórmula) para atrair público para o Pró-Viga 3D. **Fica separado do A-PORT.**
 **Intenção nova (Jose, 13/10):** comercializar — produto físico instalável, licença perpétua, "ver se consigo vender
 por 100 reais". Muda: termo de uso (hoje licença gratuita), empacotar o app como programa instalável, controle de
-licença, e rever os limites do "app gratuito" (alturas 3,0/4,0). Ainda não decidido o como; anotar e esperar ele.
+licença, e rever os limites do "app gratuito" (alturas 3,0/4,0). **Decidido 15/10:** os limites 3,0/4,0 FICAM no
+pago (4,0: a tabela de δ satura; 3,0: balanço acima disso pede contraforte) — a linha `lim_H` virou "Limite de
+altura · Faixa da ferramenta"; o TERMO pago (licença perpétua, base no EULA v2.3 do Pró-Viga, mesmos dados, foro
+Uberaba) se escreve JUNTO com o empacotamento e a ativação — a cláusula de ativação/LGPD descreve o programa, então
+só depois que ele existir (lição do Pró-Viga: "conferido no código antes de escrever"). Até lá, TERMO_DE_USO.md é o
+gratuito.
 
 ## Como trabalhar com o Jose
 
@@ -278,9 +283,10 @@ e dizer ao Jose o que mudou e por quê.
   canaleta do muro **dobrada em L**; canaleta cortada de 19 é **peça própria** (fundo 3,91); comprimento do muro em
   múltiplos do bloco ("o calculista se vira com o corte"); termo: mesmos dados do Pró-Viga, foro Uberaba/MG.
 - **Detalhes típicos det01–det05 prontos** (`figs/app/detalhes/`, `app/public/detalhes/`; ainda não entram na prancha).
-  Pontos para o Jose: cor da espera (Fig. 9 × Fig. 18 invertidas — seguiu a 9); impermeabilização até a altura de
-  solo (quantitativo) × topo do muro (Fig. 17); barra vertical subindo até 3 cm do topo atravessa o fundo da canaleta
-  da cinta (furar o fundo? o detalhe não mostra); junta: o app interrompe toda a barra da cinta (ABCP fala em "parte").
+  Respondidos (15/10): cor da espera — já igual na Fig. 9, Fig. 18 e det03 (a 18 foi acertada na régua de 12/10);
+  impermeabilização ATÉ A ALTURA DE SOLO (Fig. 17 corrigida, quantitativo já era); junta corta a cinta TODA (como
+  está — dedução: o "parte" do ABCP é da cinta que amarra laje). Em aberto: barra vertical subindo até 3 cm do topo
+  atravessa o fundo da canaleta da cinta (furar o fundo? o detalhe não mostra).
 - **Drenagem no 3D (Jose, 14/10, FEITO):** brita em degrau = camada do tardoz (`dreno_esp`, agora espessura SÓ da
   brita) ∪ envoltória quadrada do dreno de fundo (`drenof_env` 0,30) com o tubo perfurado (`drenof_phi` Ø100) no meio;
   AREIA de filtro entre a brita e o solo (`areia_esp` 0,10; 0 = sem); manta por fora; `dreno_folga` vai do topo do
@@ -390,14 +396,16 @@ e dizer ao Jose o que mudou e por quê.
   mudam quantidade no CSV, argamassa sob canaleta, rótulo da barra em L. Achados a fazer: GUID do IFC sai do TÍTULO
   (dois "Sem título" colidem num federado → UUID do projeto no .alrimo); no 3D/IFC a barra vertical atravessa o fundo
   da canaleta (furar o fundo onde há barra) e a barra em L atravessa a parede do U (T de graute não modelado); graute da
-  canaleta da haste não cobre as juntas de 10 mm; barbacã some sem aviso em muro todo em canaleta. Para o Jose:
-  canaleta cortada na lista de compras (converter cortes em inteiras?); barras iguais em elementos diferentes com N
-  diferentes (painel × contraforte) — é o que ele quer na lista de ferros?; GUID do IFC agora sai do id do projeto (UUID
-  no .alrimo) — "Salvar como" e cópia do arquivo MANTÊM o id (como o Revit): manter ou o "Salvar como" criar muro novo?
+  canaleta da haste não cobre as juntas de 10 mm; barbacã some sem aviso em muro todo em canaleta. Respondidos e
+  FEITOS 15/10: canaleta cortada vira INTEIRA na compra (tabela "Blocos e canaletas": a linha da canaleta soma as
+  cortadas e "↳ das quais, para cortar" vem embaixo, fora do total — `blocosParaCompra`); barra igual = mesmo N em
+  qualquer elemento; "Salvar como" de muro que já tem arquivo = MURO NOVO (identidade nova, IFC sem GUID em comum;
+  o 1º "Salvar como" de um muro nunca salvo é o mesmo muro; copiar pelo Explorer continua levando o id).
   Achados da revisão FEITOS (09/10 noite): fundo da canaleta furado onde passa barra (Geometria.pedacos), T de graute
   no encontro das canaletas, graute da haste contínuo nas juntas, aviso BARBACA_SEM_CELULA; validador do IFC com
-  --furos/--barras (tem dente). Graute total sobe ~4–5%. Para o Jose: barbacã em muro todo em canaleta — furar a
-  canaleta?; IFC: cada canaleta furada diferente vira um tipo com o mesmo nome — abrir no Revit para conferir.
+  --furos/--barras (tem dente). Graute total sobe ~4–5%. Barbacã em muro todo em canaleta: FURA A CANALETA (Jose,
+  15/10) — o tubo passa pelas duas paredes do U, 2 cm abaixo da borda e ≥ 1 cm acima da barra mais alta, longe das
+  verticais (`modulacao/entorno.ts` naCanaleta), e a prancha ganha a nota "passar o tubo antes de grautear"; IFC: cada canaleta furada diferente vira um tipo com o mesmo nome — abrir no Revit para conferir.
   Faltam (dreno de fundo e dente já feitos): nó de cachorro (Revit dele); detalhes na prancha final; T de graute no 3D
   (parede quebrada da canaleta); "→ 5,99" aparece mesmo com comprimento modular (comparar com o modular?); revisores de
   IFC/quantitativo com o muro real; Ag da conta pelo bloco desenhado (decidir).
@@ -426,22 +434,43 @@ e dizer ao Jose o que mudou e por quê.
   aba, cada um com os nomes de que precisa. Prova: spec_planilha.json e golden idênticos antes/depois. SÓ DEPOIS da
   junção da sessão "sapata sobre molas" (branch sapata-molas), que mexe no gerador.
 - **PENDÊNCIAS ANOTADAS (Jose, 14/10, noite: "deixa anotado, depois a gente vem corrigindo"):**
-  Modo prancha — decisões dele, em aberto:
-  1. Chamadas das barras nos desenhos (N1 – 15 Ø10 c/40 C=210) e a LISTA DE FERROS como item da folha (o tipo
-     `tabela` já existe no contrato `pranchas/tipos.ts`; hoje a prancha é de formas + resumo do aço e o armador não
-     executa só com ela). Também do revisor: no corte do contraforte, uma cota de traspasse por posição (hoje uma só,
-     a maior das esperas do corte — `desenhos/corteLateral.ts`).
-  2. Muro que NÃO PASSA: a prancha sai igual. Aviso "NÃO VERIFICADO" só na tela, ou bloquear PDF/DXF?
-  3. Resumo do aço: coluna "massa + 10%" (perda)?
-  4. Carimbo: número do desenho e desenhista/verificação (ISO 7200, base da NBR 16752)?
-  5. Letra das cotas: maiúscula hoje 1,8 mm (corpo 2,5; PX_POR_MM = 4,4 em `pranchas/tipos.ts`); NBR 8402 (de memória)
-     pede maiúscula ≥ 2,5 mm → subir ~40 % toda anotação? Ele compara com o TQS.
+  Modo prancha — DECIDIDO E FEITO em 15/10 (Jose: "pode seguir com as suas recomendações"):
+  1. FEITO: chamadas "N1 – 15 Ø10 c/40 C=210" no corte e na vista frontal da prancha (`desenhos/chamadas.ts`,
+     `OpcoesDaVista.chamadas`, só na prancha — a tela 2D não mostra), numa coluna à direita do desenho, camada DXF
+     CHAMADAS; a quantidade e o c/ são do ELEMENTO desenhado (papel), o N é da barra. Barra igual (Ø, dobra,
+     comprimento) = mesmo N em qualquer elemento (`modulacao/barras.ts` numerarPosicoes, sem o papel na chave; a
+     lista de ferros escreve "Vertical do muro + Contraforte · construtiva"). LISTA DE FERROS no quadro lateral (N, Ø,
+     quant., C unit., C total, forma da barra cotada — `pranchas/formaDaBarra.ts`, medida de vértice a vértice no eixo,
+     fora de escala; interruptor "Lista de ferros"). Falta: a cota de traspasse por posição no corte do contraforte.
+  2. FEITO: muro que não passa (ou sem veredito) sai com a tarja vermelha "NÃO VERIFICADO" na diagonal da área de
+     desenho, vazada no PDF, camada AVISO no DXF; não trava.
+  3. FEITO: "Massa + 10 % (kg)" no resumo, calculada da massa impressa (como o TQS).
+  4. FEITO: carimbo de cinco faixas (180 × 65; o 180 × 50 antigo abre como o novo): Desenho nº = código da obra +
+     folha (ARR → ARR-01), Desenhista, Verificação — nos dados da obra (.alrimo).
+  5. FEITO: maiúscula de 2,5 mm na cota (NBR 8402 de memória): PX_POR_MM sai da letra (≈ 3,15; era 4,4) e TODA a
+     anotação cresce junto, traço e ladrilho de hachura inclusive (como o fator de escala de cota do CAD). Textos da
+     folha (LETRA) pela maiúscula; número das fiadas na prancha com a letra mínima, de 2 em 2 em 1:75/1:100. Ele
+     compara a impressão com o TQS.
+  Revisão adversarial de 15/10 (3 revisores) — corrigido: chamada por ELEMENTO (muro/contraforte/sapata, não papel:
+  sem chamada repetida, espera do contraforte separada da do painel); c/ junta as barras a menos de 2φ (a emenda
+  deslocada dava "c/1" na longitudinal da sapata em muro > 12 m); coluna das chamadas à direita de tudo o que já está
+  desenhado (`Prancha.direita()`; em 1:75/1:100 entrava na cota); hachura AR-CONC/AR-SAND/GRAVEL do DXF acompanha o
+  PX_POR_MM; tarja acima do carimbo quando ele toma a largura (A4 em pé perdia o "NÃO"); desenho sobre desenho acende
+  a borda vermelha (vistas montadas antes de 15/10 engordaram); lista de ferros inteira ou nada (cortada parecia
+  completa) e o resumo do aço tem a vez; cabeçalho da lista e rótulo do carimbo encolhem em quadro/carimbo estreito;
+  barbacã nunca acima do aterro (pela canaleta e pela 1ª fiada); IFC: "Papel" do N compartilhado lista todos; "Salvar
+  como" decide pelo DESTINO (por cima do próprio arquivo = mesmo muro; Ctrl+S depois do F5 para outro nome = muro
+  novo). Ficou: bloco do carimbo segue "CARIMBO" (o de 4 faixas de 14/10 e o de 5 têm o mesmo nome — juntar DXF das
+  duas versões num desenho fica com a 1ª definição); carimbo no mínimo (45 mm) põe o rótulo abaixo de 2,5 mm.
   Outras, anotadas pelo Jose:
   6. Entrada por figuras: PADRONIZAR as imagens com as dos memoriais (a figura da entrada e a da memória têm de ser
      a mesma linguagem).
   7. Vistas de elevação frontal e corte lateral: ele ainda tem ajustes a fazer (vai mandar). Visto no DXF aberto no
      CADCraft (14/10): no corte, a linha da cota da sapata passa por cima do texto "B = 140" (junto da cota 25 do
      dente) — acertar junto com os ajustes dele.
+  8. (Jose, 15/10) Tabela de MATERIAIS na prancha: os blocos com as imagens das peças e as quantidades (a tabela
+     "Blocos e canaletas" do quantitativo, com as figuras de `quantitativo/pecas.ts`) ainda não vai para a folha. O
+     contrato já tem o item `tabela` (ids 'blocos', 'quantidades', 'drenagem' em `pranchas/tipos.ts`), sem desenho.
   Margens 20/10 mm e carimbo 180 mm da NBR 16752 vieram de apostila/ISO 7200: conferir no texto da norma (ele tem
   acesso pelo CREA).
 - **FILA DO JOSE (14/10, tarde — só anotado; ele confere o IFC da canaleta antes):**

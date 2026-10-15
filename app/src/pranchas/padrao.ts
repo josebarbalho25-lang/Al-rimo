@@ -9,10 +9,10 @@
   A leitura do arquivo é TOLERANTE: campo estranho cai, item quebrado sai da folha, e o resto abre. Uma folha mal
   escrita à mão não pode impedir de abrir o muro.
 */
-import { CARIMBO_MIN, CARIMBO_PADRAO, ESCALAS, ORDEM_DOS_FORMATOS, quadroLateralPadrao } from './formatos';
+import { CARIMBO_ANTIGO, CARIMBO_MIN, CARIMBO_PADRAO, ESCALAS, ORDEM_DOS_FORMATOS, quadroLateralPadrao } from './formatos';
 import type { Camera3d, ConteudoDoItem, DadosDaObra, Folha, Formato, ItemDaFolha, Orientacao, PranchasDoProjeto } from './tipos';
 
-export const OBRA_EM_BRANCO: DadosDaObra = { obra: '', endereco: '', proprietario: '', art: '', data: '', revisao: 'R00' };
+export const OBRA_EM_BRANCO: DadosDaObra = { obra: '', endereco: '', proprietario: '', art: '', data: '', revisao: 'R00', codigo: '', desenhista: '', verificacao: '' };
 
 export const SEM_PRANCHAS: PranchasDoProjeto = { folhas: [], obra: OBRA_EM_BRANCO };
 
@@ -34,7 +34,7 @@ export function novaFolha(conteudo = '', formato: Formato = 'A1', orientacao: Or
     orientacao,
     itens: [],
     carimbo,
-    quadro: { largura: q.largura, altura: q.altura, notas: null, legenda: true, quadroDeAco: true },
+    quadro: { largura: q.largura, altura: q.altura, notas: null, legenda: true, quadroDeAco: true, listaDeFerros: true },
   };
 }
 
@@ -115,20 +115,25 @@ function lerFolha(v: unknown): Folha | null {
   const base = novaFolha(txt(f.conteudo), formato, orientacao);
   const car = obj(f.carimbo);
   const qd = obj(f.quadro);
+  // o carimbo de partida antigo (quatro faixas) abre com o de partida de hoje; o que o projetista regulou fica
+  const antigo = num(car?.largura, 0) === CARIMBO_ANTIGO.largura && num(car?.altura, 0) === CARIMBO_ANTIGO.altura;
+  const quadroAntigo = antigo && num(qd?.altura, -1) === quadroLateralPadrao(formato, orientacao, CARIMBO_ANTIGO).altura;
   return {
     ...base,
     id: txt(f.id) || base.id,
     itens: Array.isArray(f.itens) ? f.itens.map(lerItem).filter((x): x is ItemDaFolha => !!x) : [],
-    carimbo: {
+    carimbo: antigo ? base.carimbo : {
       largura: Math.max(CARIMBO_MIN.largura, num(car?.largura, base.carimbo.largura)),
       altura: Math.max(CARIMBO_MIN.altura, num(car?.altura, base.carimbo.altura)),
     },
     quadro: {
       largura: Math.max(0, num(qd?.largura, base.quadro.largura)),
-      altura: Math.max(0, num(qd?.altura, base.quadro.altura)),
+      // o quadro que descia até o carimbo antigo desce até o novo (senão os dois se encavalam)
+      altura: quadroAntigo ? base.quadro.altura : Math.max(0, num(qd?.altura, base.quadro.altura)),
       notas: Array.isArray(qd?.notas) ? (qd.notas as unknown[]).filter((x): x is string => typeof x === 'string') : null,
       legenda: qd?.legenda !== false,
       quadroDeAco: qd?.quadroDeAco !== false,
+      listaDeFerros: qd?.listaDeFerros !== false,
     },
   };
 }
@@ -147,6 +152,9 @@ export function lerPranchas(v: unknown): PranchasDoProjeto {
       art: txt(o?.art),
       data: txt(o?.data),
       revisao: txt(o?.revisao, 'R00'),
+      codigo: txt(o?.codigo),
+      desenhista: txt(o?.desenhista),
+      verificacao: txt(o?.verificacao),
     },
   };
 }

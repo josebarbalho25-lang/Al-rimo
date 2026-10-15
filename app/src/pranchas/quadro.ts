@@ -13,6 +13,7 @@ import type { Resultado } from '@/motor/tipos';
 import { solidosDoModelo } from '@/desenhos/geometria';
 import { tintasPresentes } from '@/desenhos/cores';
 import { listaDeFerros, resumoDoAco } from '@/quantitativo/aco';
+import { formaDaBarra, type FormaDaBarra } from './formaDaBarra';
 
 function leitor(r: Resultado | null) {
   const num = (nome: string): number | null => {
@@ -120,6 +121,10 @@ export function notasAutomaticas(r: Resultado | null, m: Modelo | null): string[
           ? `Barbacãs Ø${br(phiB)} mm, no máximo a ${br(bb.maior / 1000, 2)} m um do outro (posições na vista frontal).`
           : `Barbacã Ø${br(phiB)} mm (posição na vista frontal).`,
       );
+      // muro todo em canaleta: o barbacã atravessa o U (modulacao/entorno.ts) — a obra precisa saber a ordem
+      const canaleta = new Set(['CANALETA', 'MEIA_CANALETA', 'CANALETA_CORTADA']);
+      const naCanaleta = m.pecas.some((b) => b.tipo === 'BARBACA' && m.pecas.some((c) => canaleta.has(c.tipo) && c.grupo === 'muro' && c.trecho === b.trecho && c.fiada === b.fiada));
+      if (naCanaleta) notas.push('Barbacã na canaleta: furar as duas paredes do U e passar o tubo acima da barra, antes de grautear.');
     }
     const temAreia = m.pecas.some((p) => p.tipo === 'AREIA');
     const filtro = temAreia ? 'areia e manta geotêxtil' : 'manta geotêxtil';
@@ -143,6 +148,12 @@ export function legendaDasCores(m: Modelo | null): ItemDaLegenda[] {
 export interface LinhaDoAco { bitola: string; comprimento: number; massa: number }
 
 /**
+ * A massa com 10 % de perda (corte, ponta, emenda), a coluna que o TQS põe no resumo (Jose, 15/10). Sai da massa JÁ
+ * arredondada que a prancha imprime: quem confere com a calculadora na obra chega ao mesmo número da folha.
+ */
+export const comPerda = (kg: number): number => Math.round(kg * 1.1 * 10) / 10;
+
+/**
  * Resumo do aço por bitola (m e kg), o mesmo do quantitativo, com a categoria de cada bitola: Ø5,0 é fio CA-60
  * (a barra CA-50 começa no 6,3); com fyk 600 na conta, tudo CA-60. A massa vai arredondada a 0,1 kg e o total é a
  * soma das linhas JÁ arredondadas — total que não fecha com as linhas impressas vira desconfiança na obra.
@@ -160,4 +171,26 @@ export function quadroDeAco(m: Modelo | null, r: Resultado | null = null): { lin
     };
   });
   return { linhas, total: Math.round(linhas.reduce((s, l) => s + l.massa, 0) * 10) / 10 };
+}
+
+export interface LinhaDeFerroDaFolha {
+  posicao: string;
+  diametro: number;         // mm
+  quantidade: number;
+  comprimentoUnit: number;  // cm
+  comprimentoTotal: number; // m
+  forma: FormaDaBarra;
+}
+
+/**
+ * A lista de ferros da folha (Jose, 15/10): as mesmas linhas do quantitativo (quantitativo/aco.ts — quem confere a
+ * tabela da prancha com o CSV acha os mesmos números) e a forma de uma barra de cada linha, para o desenho cotado.
+ */
+export function listaDeFerrosDaFolha(m: Modelo | null): LinhaDeFerroDaFolha[] {
+  if (!m) return [];
+  return listaDeFerros(m.barras).linhas.map((l) => {
+    const b = m.barras.find((x) => x.posicao === l.posicao && Math.abs(x.diametro - l.diametro) < 0.01 && Math.round(x.comprimento / 10) === l.comprimentoUnit)
+      ?? m.barras.find((x) => x.posicao === l.posicao)!;
+    return { posicao: l.posicao, diametro: l.diametro, quantidade: l.quantidade, comprimentoUnit: l.comprimentoUnit, comprimentoTotal: l.comprimentoTotal, forma: formaDaBarra(b) };
+  });
 }

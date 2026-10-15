@@ -83,6 +83,9 @@ export function sapata(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number): 
  *  à face, o tubo ficava escondido dentro do bloco). */
 export const SALIENCIA_BARBACA = 50;
 
+/** Barbacã atravessando a canaleta: o tubo fica 2 cm abaixo da borda do U (mm). */
+const FOLGA_DA_BORDA_DO_U = 20;
+
 /**
  * O PACOTE DO DRENO no corte, em coordenadas da face do tardoz (u = 0, cresce para o solo) e do topo da sapata
  * (v = 0): a brita é a união de dois retângulos encostados no muro e no talão — a camada do tardoz (dreno_esp de
@@ -182,8 +185,10 @@ export function drenagem(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidades): v
   // furo de um bloco do muro, fora do contraforte: numa célula sem graute; com graute total, numa grauteada (o tubo
   // vai antes do graute). Nunca numa célula com barra (o tubo atravessaria a barra) nem na canaleta (o tubo furaria as
   // paredes do U e passaria na altura da barra da canaleta): fiada assim, o barbacã sobe para a de cima, até o topo do
-  // solo. Sem célula nenhuma — o muro todo em canaleta, por exemplo —, o barbacã não é desenhado e o aviso diz (antes
-  // sumia calado, 09/10 noite).
+  // solo. Sem célula nenhuma até o topo do solo — o muro todo em canaleta, por exemplo —, o barbacã ATRAVESSA a
+  // canaleta da 1ª fiada acima do solo da frente (Jose, 15/10: muro sem barbacã é pior que canaleta furada): o tubo
+  // passa pelas duas paredes do U no alto, acima da barra, posto antes do graute, e longe das barras verticais que
+  // sobem pela canaleta. Só quando nem assim cabe o barbacã não é desenhado, e o aviso diz.
   if (p.barbaca && p.barbaca_phi > 0 && p.barbaca_s > 0 && mod.n_fiadas > 0) {
     const d = p.barbaca_phi;
     const foraDosNos = (x: number): boolean => !tr.nos.some((no) => x > no.xs - JUNTA - d / 2 && x < no.xe + d / 2);
@@ -207,14 +212,45 @@ export function drenagem(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidades): v
       if (!cand.length) cand = daParede.map((c) => c.cx);
       return { cand, emCanaleta: daFiada.some((c) => c.tipo === 'canaleta' && Math.abs(c.cy - t / 2) < 1e-6) };
     };
+    /** O furo na canaleta da fiada `f`: o tubo no alto do U (2 cm abaixo da borda), 1 cm acima da barra mais alta da
+     *  canaleta, e x a cada 5 cm onde não passa barra vertical nem contraforte. null = não cabe. */
+    const naCanaleta = (f: number): { zc: number; cand: number[] } | null => {
+      const base = f * H_FIADA;
+      const zc = base + JUNTA + H_BLOCO - FOLGA_DA_BORDA_DO_U - d / 2;
+      let topoDaBarra = base + JUNTA;
+      const verticais: { x: number; r: number }[] = [];
+      for (const b of ctx.barras) {
+        if (b.trecho !== tr.indice) continue;
+        for (let k = 0; k + 1 < b.eixo.length; k++) {
+          const [a, c] = [b.eixo[k], b.eixo[k + 1]];
+          const deitado = Math.abs(a[2] - c[2]) < 1e-6;
+          if (deitado && a[2] >= base && a[2] <= base + H_FIADA) topoDaBarra = Math.max(topoDaBarra, a[2] + b.diametro / 2);
+          const empe = Math.abs(a[0] - c[0]) < 1e-6 && Math.abs(a[1] - c[1]) < 1e-6;
+          if (empe && Math.min(a[2], c[2]) < zc + d / 2 && Math.max(a[2], c[2]) > zc - d / 2) verticais.push({ x: a[0], r: b.diametro / 2 });
+        }
+      }
+      // acima do aterro não há o que drenar (o tubo sairia por cima do dreno)
+      if (zc - d / 2 < topoDaBarra + 10 || zc + d / 2 > p.H_solo) return null;
+      const folga = (x: number) => verticais.every((v) => Math.abs(x - v.x) > d / 2 + v.r + 10);
+      const cand: number[] = [];
+      for (let x = tr.x0 + d; x <= tr.x1 - d; x += 50) if (foraDosNos(x) && folga(x)) cand.push(x);
+      return cand.length ? { zc, cand } : null;
+    };
     let fiada = 0;
     while (zDaFiada(fiada) - d / 2 < p.h_fr - 1e-6) fiada++;
-    const primeira = fiada < mod.n_fiadas ? celulas(fiada) : { cand: [], emCanaleta: false };
+    const fiadaAcimaDaFrente = fiada;
+    const abaixoDoAterro = fiada < mod.n_fiadas && zDaFiada(fiada) + d / 2 <= p.H_solo;
+    const primeira = abaixoDoAterro ? celulas(fiada) : { cand: [], emCanaleta: false };
     let { cand } = primeira;
     while (!cand.length && fiada + 1 < mod.n_fiadas && zDaFiada(fiada + 1) + d / 2 <= p.H_solo) cand = celulas(++fiada).cand;
-    const zc = zDaFiada(fiada);
+    let zc = zDaFiada(fiada);
+    if (!cand.length && primeira.emCanaleta) {
+      const furo = naCanaleta(fiadaAcimaDaFrente);
+      if (furo) [fiada, zc, cand] = [fiadaAcimaDaFrente, furo.zc, furo.cand];
+    }
     const conta = ctx.barbacas ?? (ctx.barbacas = { pedidos: 0, desenhados: 0, emCanaleta: false });
     if (primeira.emCanaleta) conta.emCanaleta = true;
+    if (!abaixoDoAterro) conta.acimaDoAterro = true;
     // Com contraforte enterrado o dreno é um por vão e o contraforte não é furado (Jose, 14/10: "cada contraforte com
     // seu dreno, vamos furar eles não"): cada vão precisa da sua saída, então os barbacãs se distribuem VÃO A VÃO, no
     // mínimo um em cada. Sem isso, vão de 1,35 com barbacã a cada 1,50 deixava vão com o dreno sem saída.
@@ -328,7 +364,7 @@ export function conferenciasGerais(ctx: Ctx, Ype: number, YbA: number): void {
   // barbacã pedido e não desenhado (drenagem.ts conta por trecho; o aviso é um só, do muro todo)
   const bb = ctx.barbacas;
   if (bb && bb.desenhados < bb.pedidos) {
-    const onde = bb.emCanaleta ? '1ª fiada em canaleta' : '1ª fiada sem célula livre';
+    const onde = bb.acimaDoAterro ? 'sem fiada entre o solo da frente e o topo do aterro' : bb.emCanaleta ? 'canaleta sem lugar para o tubo' : '1ª fiada sem célula livre';
     ctx.avisos.push({
       codigo: 'BARBACA_SEM_CELULA',
       texto: bb.desenhados === 0 ? `Barbacã não desenhado: ${onde}` : `Barbacã: ${bb.desenhados} de ${bb.pedidos} desenhados (${onde})`,

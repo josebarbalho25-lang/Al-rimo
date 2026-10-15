@@ -915,10 +915,26 @@ describe('canaleta como a obra deixa: fundo furado onde sobe a barra, T de graut
     }
   }, 120_000);
 
-  it('barbacã: muro todo em canaleta avisa em vez de sumir; nunca numa célula com barra', () => {
+  it('barbacã: muro todo em canaleta fura a canaleta, no alto do U e acima da barra; nunca numa célula com barra', () => {
+    // Jose, 15/10: "muro sem barbacã é pior que canaleta furada" — antes não desenhava e avisava
     const m23 = gerarModelo(resultadoDoGabarito('sorteio23'), padroesDoModelo());
-    expect(m23.pecas.filter((p) => p.tipo === 'BARBACA')).toEqual([]);
-    expect(m23.avisos.find((a) => a.codigo === 'BARBACA_SEM_CELULA')?.texto).toBe('Barbacã não desenhado: 1ª fiada em canaleta');
+    const bbs = m23.pecas.filter((p) => p.tipo === 'BARBACA');
+    expect(bbs.length).toBeGreaterThan(0);
+    expect(m23.avisos.map((a) => a.codigo)).not.toContain('BARBACA_SEM_CELULA');
+    expect(barrasEmPecaSolida(m23)).toEqual([]);
+    for (const b of bbs) {
+      const k = caixa(m23, b);
+      const base = b.fiada! * 200;
+      // dentro da altura da canaleta (junta de 10 + bloco de 190), 2 cm abaixo da borda
+      expect(k.max[2]).toBeCloseTo(base + 10 + 190 - 20, 6);
+      // acima de toda barra deitada da fiada
+      for (const br of m23.barras.filter((x) => x.trecho === b.trecho)) {
+        for (let i = 0; i + 1 < br.eixo.length; i++) {
+          const [a, c] = [br.eixo[i], br.eixo[i + 1]];
+          if (Math.abs(a[2] - c[2]) < 1e-6 && a[2] >= base && a[2] <= base + 200) expect(k.min[2]).toBeGreaterThan(a[2] + br.diametro / 2);
+        }
+      }
+    }
     const m22 = gerarModelo(resultadoDoGabarito('aula122'), padroesDoModelo());
     expect(m22.pecas.filter((p) => p.tipo === 'BARBACA').length).toBeGreaterThan(0);
     expect(m22.avisos.map((a) => a.codigo)).not.toContain('BARBACA_SEM_CELULA');
@@ -926,6 +942,16 @@ describe('canaleta como a obra deixa: fundo furado onde sobe a barra, T de graut
     const total = gerarModelo(trocar(resultadoDoGabarito('aula122'), { Graute: 20, gr_tot: 'Sim' }), padroesDoModelo());
     expect(total.pecas.filter((p) => p.tipo === 'BARBACA').length).toBeGreaterThan(0);
     expect(barrasEmPecaSolida(total)).toEqual([]);
+  });
+});
+
+describe('barbacã nunca acima do aterro', () => {
+  it('nem pela canaleta nem pela 1ª fiada acima do solo da frente: o tubo inteiro fica abaixo da altura de solo', () => {
+    // os cenários em que o solo da frente fica alto perto do topo do aterro (revisão de 15/10)
+    for (const c of ['sorteio07', 'sorteio10', 'sorteio11', 'sorteio18', 'sorteio28', 'sorteio34', 'sorteio23', 'aula122']) {
+      const m = gerarModelo(resultadoDoGabarito(c), padroesDoModelo());
+      for (const b of m.pecas.filter((p) => p.tipo === 'BARBACA')) expect(caixa(m, b).max[2], `${c} ${b.id}`).toBeLessThanOrEqual(m.dims.H_solo + 1e-6);
+    }
   });
 });
 

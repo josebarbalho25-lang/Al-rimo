@@ -130,6 +130,32 @@ function contarBlocos(m: Modelo): LinhaDeBloco[] {
     ORDEM_DA_PECA.indexOf(a.tipo) - ORDEM_DA_PECA.indexOf(b.tipo) || a.catalogo.localeCompare(b.catalogo, 'pt-BR', { numeric: true }));
 }
 
+/** Linha da tabela de compra: a peça, ou ("dasQuais") a parte dela que vai ser cortada na obra. */
+export interface LinhaDeCompra extends LinhaDeBloco {
+  dasQuais?: boolean;
+}
+
+/**
+ * Blocos para COMPRAR (Jose, 15/10): a canaleta cortada não existe na loja — cada uma gasta uma canaleta inteira
+ * (sem contar aproveitamento de sobra: a favor). Ela soma na linha da canaleta inteira e aparece logo abaixo como
+ * "das quais, para cortar", com a medida, para a montagem. O total não muda: as peças são as mesmas.
+ */
+export function blocosParaCompra(blocos: LinhaDeBloco[]): LinhaDeCompra[] {
+  const cortadas = blocos.filter((l) => l.tipo === 'CANALETA_CORTADA');
+  if (!cortadas.length) return blocos.map((l) => ({ ...l }));
+  const out: LinhaDeCompra[] = blocos.filter((l) => l.tipo !== 'CANALETA_CORTADA').map((l) => ({ ...l }));
+  let inteira = out.find((l) => l.tipo === 'CANALETA');
+  if (!inteira) {
+    // muro sem nenhuma canaleta inteira (não acontece hoje): a linha nasce do nome da cortada
+    inteira = { tipo: 'CANALETA', rotulo: ROTULO_DA_PECA.CANALETA ?? 'Canaleta', catalogo: cortadas[0].catalogo.replace(/ cortada em .*$/, ''), quantidade: 0, classe: 'canaleta' };
+    const k = out.findIndex((l) => ORDEM_DA_PECA.indexOf(l.tipo) > ORDEM_DA_PECA.indexOf('CANALETA'));
+    out.splice(k < 0 ? out.length : k, 0, inteira);
+  }
+  for (const c of cortadas) inteira.quantidade += c.quantidade;
+  out.splice(out.indexOf(inteira) + 1, 0, ...cortadas.map((c) => ({ ...c, rotulo: 'das quais, para cortar', dasQuais: true })));
+  return out;
+}
+
 /**
  * Graute dos furos. O normal é a modulação entregar as peças GRAUTE_FURO; se ela só marcar `furosGrauteados`
  * nos blocos (sem peça de graute nenhuma), mede-se pelos furos marcados × altura da fiada (bloco + junta,

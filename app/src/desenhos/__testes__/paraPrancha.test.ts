@@ -8,7 +8,7 @@
 */
 import { describe, expect, it } from 'vitest';
 import type { Modelo } from '@/modelo/tipos';
-import { PX_POR_MM, type PedidoDeVista, type Primitiva, type Traco } from '@/pranchas/tipos';
+import { MAIUSCULA_DA_ARIAL, PX_POR_MM, type PedidoDeVista, type Primitiva, type Traco } from '@/pranchas/tipos';
 import { cortesPadrao, desenharCorteLateral, desenharVistaFrontal, vistaParaPrancha } from '../index';
 import { Prancha } from '../prancha';
 import { ALVENARIA, solidosDoModelo } from '../geometria';
@@ -26,7 +26,7 @@ const PEDIDOS: [string, PedidoDeVista][] = [
 ];
 
 /** Camadas que o DXF recebe (prancha.ts, cabeçalho). */
-const CAMADAS = new Set(['alvenaria', 'graute', 'concreto', 'aco', 'terreno', 'drenagem', 'cotas', 'eixos', 'textos', 'legenda', 'geral', '3d-faces']);
+const CAMADAS = new Set(['alvenaria', 'graute', 'concreto', 'aco', 'terreno', 'drenagem', 'cotas', 'eixos', 'textos', 'legenda', 'geral', '3d-faces', 'chamadas']);
 
 type Caixa = [number, number, number, number];
 
@@ -188,13 +188,21 @@ describe('escala fixa', () => {
     expect(largo).toBeGreaterThan(m.dims.L_real - 20);
   });
 
-  it('em 1:25 a cota sai com 2,5 mm de letra e o traço mais fino do corte com ~0,14 mm', () => {
+  it('em 1:25 a cota sai com 2,5 mm de maiúscula e o traço mais fino do corte com ~0,19 mm', () => {
     const v = vistaParaPrancha(m, { tipo: 'corte' }, 25, 'c');
     const cotas = textosDe(v.primitivas).filter((q) => q.camada === 'cotas');
-    expect(new Set(cotas.map((q) => q.altura / PX_POR_MM))).toEqual(new Set([2.5]));
+    expect(cotas.length).toBeGreaterThan(0);
+    for (const q of cotas) expect((q.altura / PX_POR_MM) * MAIUSCULA_DA_ARIAL).toBeCloseTo(2.5, 9);
     // (o contorno de espessura 0 do ponto de barra é só o portador da camada: fica de fora)
     const fino = Math.min(...tracos(v.primitivas).map((e) => e.espessura).filter((x) => x > 0));
-    expect(fino / PX_POR_MM).toBeCloseTo(0.6 / 4.4, 9);
+    expect(fino / PX_POR_MM).toBeCloseTo(0.19, 2);
+  });
+
+  it('nenhum texto da vista frontal fica abaixo da letra mínima no papel, nem os números das fiadas em 1:100', () => {
+    for (const e of [25, 50, 100]) {
+      const v = vistaParaPrancha(m, { tipo: 'frontal' }, e, 'f');
+      for (const q of textosDe(v.primitivas)) expect((q.altura / PX_POR_MM) * MAIUSCULA_DA_ARIAL).toBeGreaterThanOrEqual(2.5 - 1e-9);
+    }
   });
 
   it('as assinaturas antigas continuam: sem opções, a vista escolhe a escala da tela e tem título', () => {

@@ -49,7 +49,7 @@
   coluna. A tela não muda (sem a opção, o SVG é o de antes byte a byte) e as primitivas também não (o DXF tem as
   hachuras dele).
 */
-import type { PadraoHachura, Primitiva, Traco } from '@/pranchas/tipos';
+import { CORPO_DA_COTA, type PadraoHachura, type Primitiva, type Traco } from '@/pranchas/tipos';
 import { esc, n } from './formato';
 import { HACHURA, hachurasDeMaterial, ladrilhoDeMaterial, type MaterialComLadrilho } from './hachuras';
 
@@ -84,7 +84,8 @@ function larguraDoCaractere(c: string): number {
   if (' '.includes(c)) return 0.28;
   if ('.,:;\'!|iljI'.includes(c)) return 0.28;
   if ('ftrª'.includes(c)) return 0.36;
-  if ('mwMW—'.includes(c)) return 0.86;
+  if (c === '—') return 1;      // o travessão da Arial é 1 em: com 0,86 o valor depois de " — " encostava nele
+  if ('mwMW'.includes(c)) return 0.86;
   if (c >= '0' && c <= '9') return 0.56;
   if ('×=+−-<>'.includes(c)) return 0.6;
   if (c.toUpperCase() === c && c.toLowerCase() !== c) return 0.7;    // maiúscula (com acento também)
@@ -131,6 +132,8 @@ export interface OpcoesDaVista {
   semLegendaDeCores?: boolean;
   /** Hachura em traço de verdade, sem <pattern> (o SVG do PDF; ver "HACHURA EM VETOR" no cabeçalho). */
   hachuraVetorial?: boolean;
+  /** Chamadas das barras ("N1 – 15 Ø10 c/40 C=210", desenhos/chamadas.ts) numa coluna à direita: a prancha pede. */
+  chamadas?: boolean;
 }
 
 export type Pt = [number, number];
@@ -226,6 +229,11 @@ export class Prancha {
   /** Referência a um padrão de preenchimento desta prancha. */
   padrao(nome: NomeDoPadrao): string {
     return `url(#${this.prefixo}-${nome})`;
+  }
+
+  /** O x mais à direita de tudo o que já foi traçado (texto pela largura estimada), px de desenho. */
+  direita(): number {
+    return this.x1;
   }
 
   /** Os traços já desenhados, estruturados para o DXF (px de desenho, y para baixo). */
@@ -548,7 +556,7 @@ export class Prancha {
    * `de`: para cada segmento, os y de onde partem as linhas de chamada (ou um par para todos).
    */
   cadeiaH(segs: { a: number; b: number; rotulo: string }[], y: number, o: { tam?: number; de?: [number, number][] } = {}): void {
-    const tam = o.tam ?? 11;
+    const tam = o.tam ?? CORPO_DA_COTA;
     const ocupados: [number, number, number][] = [];
     segs.forEach((s, k) => {
       const de = o.de ? o.de[Math.min(k, o.de.length - 1)] : undefined;
@@ -571,7 +579,7 @@ export class Prancha {
 
   /** Cota vertical (figlib.dim_v). `lado` −1 escreve à esquerda da linha, +1 à direita. */
   cotaV(x: number, ya: number, yb: number, rotulo: string, o: { de?: [number, number]; lado?: -1 | 1; tam?: number } = {}): void {
-    const tam = o.tam ?? 11;
+    const tam = o.tam ?? CORPO_DA_COTA;
     const lado = o.lado ?? -1;
     const [y1, y2] = ya <= yb ? [ya, yb] : [yb, ya];
     if (o.de) {

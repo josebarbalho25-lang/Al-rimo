@@ -23,7 +23,7 @@ import { CARIMBO_MIN, ESCALAS, ORDEM_DOS_FORMATOS, quadroLateralPadrao, rotuloDa
 import { novaFolha } from './padrao';
 import { dentroDaFolha, folhaAtiva, itemDaVista, naFolha, noItem, NOMES_DO_CONTEUDO, porNaFolha } from './acoes';
 import { usePranchasUi } from './ui';
-import { legendaDasCores, notasAutomaticas, quadroDeAco } from './quadro';
+import { legendaDasCores, listaDeFerrosDaFolha, notasAutomaticas, quadroDeAco } from './quadro';
 import { criarDesenhista, type Desenhista } from './desenhista';
 import { logoEmPng, useEscritorio } from './escritorio';
 import { imprimirPranchas } from './pdf';
@@ -123,6 +123,7 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
   const carregamento = useApp((st) => st.carregamento);
   const mudar = useApp((st) => st.mudarPranchas);
   const dizer = useApp((st) => st.dizer);
+  const veredito = useApp((st) => st.veredito);
   const escritorio = useEscritorio((st) => st.dados);
   const mudarEscritorio = useEscritorio((st) => st.mudar);
   const ativa = usePranchasUi((st) => st.ativa);
@@ -168,8 +169,11 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
       notasAutomaticas: notasAutomaticas(resultado, muro),
       legenda: legendaDasCores(muro),
       aco: quadroDeAco(muro, resultado),
+      ferros: listaDeFerrosDaFolha(muro),
+      // muro desenhado sem "Passa" na conta (não passa, ou a conta não deu veredito): tarja na folha
+      naoVerificado: !!muro && !veredito?.passa,
     }),
-    [escritorio, resultado, muro],
+    [escritorio, resultado, muro, veredito],
   );
   const contexto = useCallback(
     (n: number, total: number, obra: DadosDaObra, saida = false): ContextoDaFolha => ({
@@ -436,6 +440,9 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
             <Linha rotulo="ART"><Texto valor={pranchas.obra.art} aoMudar={(v) => mudarObra({ art: v })} /></Linha>
             <Linha rotulo="Data"><Texto valor={pranchas.obra.data} aoMudar={(v) => mudarObra({ data: v })} /></Linha>
             <Linha rotulo="Revisão"><Texto valor={pranchas.obra.revisao} aoMudar={(v) => mudarObra({ revisao: v })} /></Linha>
+            <Linha rotulo="Código do desenho"><Texto valor={pranchas.obra.codigo} aoMudar={(v) => mudarObra({ codigo: v })} /></Linha>
+            <Linha rotulo="Desenhista"><Texto valor={pranchas.obra.desenhista} aoMudar={(v) => mudarObra({ desenhista: v })} /></Linha>
+            <Linha rotulo="Verificação"><Texto valor={pranchas.obra.verificacao} aoMudar={(v) => mudarObra({ verificacao: v })} /></Linha>
             <span style={{ ...s.tituloDoGrupo, marginTop: 6 }}>Escritório</span>
             <Linha rotulo="Empresa"><Texto valor={escritorio.empresa} aoMudar={(v) => mudarEscritorio({ empresa: v })} /></Linha>
             <Linha rotulo="Contato"><Texto valor={escritorio.contato} aoMudar={(v) => mudarEscritorio({ contato: v })} /></Linha>
@@ -462,6 +469,7 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
             <Linha rotulo="Largura (mm)"><Numero valor={folha.quadro.largura} min={40} aoMudar={(v) => mudarFolha((f) => ({ ...f, quadro: { ...f.quadro, largura: v } }))} /></Linha>
             <Linha rotulo="Altura (mm)"><Numero valor={folha.quadro.altura} aoMudar={(v) => mudarFolha((f) => ({ ...f, quadro: { ...f.quadro, altura: v } }))} /></Linha>
             <Linha rotulo="Legenda"><input type="checkbox" checked={folha.quadro.legenda} onChange={(e) => mudarFolha((f) => ({ ...f, quadro: { ...f.quadro, legenda: e.target.checked } }))} /></Linha>
+            <Linha rotulo="Lista de ferros"><input type="checkbox" checked={folha.quadro.listaDeFerros} onChange={(e) => mudarFolha((f) => ({ ...f, quadro: { ...f.quadro, listaDeFerros: e.target.checked } }))} /></Linha>
             <Linha rotulo="Resumo do aço"><input type="checkbox" checked={folha.quadro.quadroDeAco} onChange={(e) => mudarFolha((f) => ({ ...f, quadro: { ...f.quadro, quadroDeAco: e.target.checked } }))} /></Linha>
             <Linha rotulo="Notas">
               <select className="campo" value={folha.quadro.notas === null ? 'auto' : 'proprias'} onChange={(e) => {

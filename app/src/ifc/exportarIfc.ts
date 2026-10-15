@@ -606,7 +606,8 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
     ])!;
     const psAlRimo = pset('pset/tipo/barra/' + posicao + '/alrimo', 'AlRimo_Posicao', [
       prop('Posicao', 'IFCLABEL', posicao),
-      prop('Papel', 'IFCLABEL', mod.papel),
+      // o mesmo N pode servir a mais de um elemento (barra igual = mesma posição, modulacao/barras.ts)
+      prop('Papel', 'IFCLABEL', [...new Set(barras.map((b) => b.papel))].join(' + ')),
       prop('Quantidade', 'IFCINTEGER', I(barras.length)),
       prop('PesoTotal', 'IFCMASSMEASURE', kgm * comp * barras.length),
     ])!;

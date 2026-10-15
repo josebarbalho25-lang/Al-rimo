@@ -154,13 +154,13 @@ line(E, r, 'Todos os furos grauteados (seção cheia)?', '=IF(Graute<=m_mod,"Sim
 line(E, r, 'Largura da alma da seção I — opcional', None, 'cm', 'Em branco = furo grauteado + 2 septos = (L − 3·parede)/2 + 2·parede (19×39 → 21,25 cm). Preencha se quiser outro valor.', 'inp', '0.00', 'bw_dir'); r += 1
 line(E, r, 'Tipo de muro', 'Balanço', '', 'Balanço (aba Muro em balanço) ou Contrafortes (aba Contrafortes).', 'inp', None, 'Tipo_muro'); r += 1
 dv_m = DataValidation(type='list', formula1='"Balanço,Contrafortes"'); E.add_data_validation(dv_m); dv_m.add(f'B{r-1}')
-# Limites do app gratuito (decisão do Jose, 08/10): o app é básico e fechado; fora disso quem quiser faz a própria
-# conta. A planilha calcula assim mesmo — a linha só sinaliza (o app lê lim_H e não calcula fora dele). A lista da
+# Limites da ferramenta (decisão do Jose, 08/10, para o app gratuito; mantidos no produto pago em 15/10): o app é
+# básico e fechado; fora disso quem quiser faz a própria conta. A planilha calcula assim mesmo — a linha só sinaliza (o app lê lim_H e não calcula fora dele). A lista da
 # altura já para em 3,0/4,0 m; a linha fica porque trocar o tipo de muro depois não reconfere a altura.
 # (Contraforte com bloco 14 foi liberado em 09/10: o Jose modelou no Revit o 14×39 com contraforte de 34 e de 54.)
 # O limite é da altura do MURO (09/10, com as duas alturas separadas): o solo nunca passa do muro, então limitar o muro
 # limita os dois — e é o muro que define esbeltez, peso e flecha no topo.
-line(E, r, 'Limite de altura do app', '=IF(H_muro<=IF(Tipo_muro="Contrafortes",4,3),"OK",IF(Tipo_muro="Contrafortes","fora do limite: máx 4,0 m","fora do limite: máx 3,0 m"))', '', 'App gratuito: altura do muro até 3,0 m no balanço e 4,0 m com contrafortes (o solo fica abaixo do topo do muro).', 'key', None, 'lim_H'); r += 1
+line(E, r, 'Limite de altura', '=IF(H_muro<=IF(Tipo_muro="Contrafortes",4,3),"OK",IF(Tipo_muro="Contrafortes","fora do limite: máx 4,0 m","fora do limite: máx 3,0 m"))', '', 'Faixa da ferramenta: altura do muro até 3,0 m no balanço e 4,0 m com contrafortes (o solo fica abaixo do topo do muro).', 'key', None, 'lim_H'); r += 1
 line(E, r, 'Solo até o topo do muro', '=IF(AND(H_solo>0,H_solo<=H_muro),"OK","fora: 0 < h solo ≤ h muro")', '', 'A validação só confere ao digitar: baixar a altura do muro depois não reconfere o solo.', 'key', None, 'lim_Hs'); r += 1
 # As listas que dependem de outra entrada (ver LST) só valem no momento da digitação: com tenr 79 e o bloco trocado
 # para 14 depois, o 79 fica. Esta linha diz quais ficaram fora. CORRESP exato (0): a lista é do mesmo número que se

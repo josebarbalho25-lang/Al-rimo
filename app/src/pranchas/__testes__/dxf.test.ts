@@ -27,7 +27,7 @@ import { CAMADAS } from '../camadasDxf';
 import { comporFolha, type ContextoDaFolha } from '../folha';
 import { novaFolha } from '../padrao';
 import { PADRAO_DO_MATERIAL } from '../padroesDxf';
-import type { Primitiva, Pt, Traco } from '../tipos';
+import { PX_POR_MM, type Primitiva, type Pt, type Traco } from '../tipos';
 import { crc32, dataUrlParaBytes, zipar } from '../zip';
 
 const VALIDADOR = fileURLToPath(new URL('../../../../tools/validar_dxf.py', import.meta.url));
@@ -273,9 +273,9 @@ describe('dxf — gerado (sem Python)', () => {
     expect(num(alv, 91)).toBe(2);                              // anel de fora + furo
     expect(num(alv, 41)).toBeCloseTo(PADRAO_DO_MATERIAL.alvenaria.escala, 5);
     expect(num(alv, 78)).toBe(1);
-    // ANSI31 a 45°, espaçamento 3,175 × escala = 1,36 mm (o que o app desenha: 6 px ÷ 4,4)
+    // ANSI31 a 45°, espaçamento 3,175 × escala = o que o app desenha: 6 px ÷ PX_POR_MM (≈ 1,9 mm)
     const [ox, oy] = [num(alv, 45), num(alv, 46)];
-    expect(Math.hypot(ox, oy)).toBeCloseTo(6 / 4.4, 3);
+    expect(Math.hypot(ox, oy)).toBeCloseTo(6 / PX_POR_MM, 3);
     const graute = hs.filter((h) => val(h, 8) === 'GRAUTE');
     expect(graute.map((h) => val(h, 2))).toEqual(['ANSI31']);              // graute: só o risco, sem fundo
     // o disco cheio: dois arcos de 180° (bulge 1), na camada da barra (é o desenho dela, não fundo)
@@ -415,7 +415,7 @@ function contexto(): ContextoDaFolha {
   return {
     numero: 1,
     total: 1,
-    obra: { obra: 'Muro de arrimo — Ação', endereco: 'Rua A, 10', proprietario: 'José da Conceição', art: '123', data: '14/10/2026', revisao: 'R00' },
+    obra: { obra: 'Muro de arrimo — Ação', endereco: 'Rua A, 10', proprietario: 'José da Conceição', art: '123', data: '14/10/2026', revisao: 'R00', codigo: '', desenhista: '', verificacao: '' },
     escritorio: { empresa: 'Escritório Ação φ ≥', responsavel: 'Eng. Fulano', crea: 'MG-1', contato: '', logo: null, logoLargura: 30 },
     notasAutomaticas: [],
     legenda: [],

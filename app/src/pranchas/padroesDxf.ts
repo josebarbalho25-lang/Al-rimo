@@ -14,7 +14,7 @@
   Traço > 0, espaço < 0, ponto = 0. Lista vazia = linha contínua.
 
   ESCALA: o DXF é a folha em milímetros de papel (como plotado), então a escala de cada padrão é a que dá, no papel,
-  o tamanho que o app desenha (desenhos/hachuras.ts e desenhos/prancha.ts, px de desenho ÷ PX_POR_MM = 4,4 px/mm).
+  o tamanho que o app desenha (desenhos/hachuras.ts e desenhos/prancha.ts, px de desenho ÷ PX_POR_MM, ≈ 3,15 px/mm desde 15/10).
   Mudou o tamanho lá, recalcular aqui. A conta de cada um está ao lado do número.
 */
 
@@ -110,6 +110,10 @@ export interface PadraoNoDxf {
 
 const mm = (px: number): number => px / PX_POR_MM;
 
+/** As três escalas medidas a olho no render do ezdxf (concreto, areia, brita) foram tiradas a 4,4 px/mm, o papel de
+ *  antes de 15/10: acompanham o PX_POR_MM de hoje, como as outras que já saíam da conta (`mm`). */
+const MEDIDA_A_4_4 = 4.4 / PX_POR_MM;
+
 /**
  * O material do app → o padrão do CAD (o José escolheu os quatro primeiros no Revit dele, 14/10).
  *
@@ -131,9 +135,9 @@ const mm = (px: number): number => px / PX_POR_MM;
  */
 export const PADRAO_DO_MATERIAL: Record<PadraoHachura, PadraoNoDxf> = {
   terra: { nome: 'EARTH', escala: mm(48 * 0.4) / 6.35 },
-  concreto: { nome: 'AR-CONC', escala: 0.065 },
-  areia: { nome: 'AR-SAND', escala: 0.04 },
-  brita: { nome: 'GRAVEL', escala: 0.15 },
+  concreto: { nome: 'AR-CONC', escala: 0.065 * MEDIDA_A_4_4 },
+  areia: { nome: 'AR-SAND', escala: 0.04 * MEDIDA_A_4_4 },
+  brita: { nome: 'GRAVEL', escala: 0.15 * MEDIDA_A_4_4 },
   alvenaria: { nome: 'ANSI31', escala: mm(6) / 3.175 },
   graute: { nome: 'ANSI31', escala: mm(5) / 3.175 },
   solido: { nome: 'SOLID', escala: 1 },

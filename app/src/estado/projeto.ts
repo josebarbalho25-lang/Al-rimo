@@ -67,9 +67,11 @@ interface Arquivo {
     · ÚNICA por muro — tirada do nome, todo muro novo se chamava "Sem título" e dois muros diferentes saíam com
       os MESMOS GUIDs, um por cima do outro no modelo federado;
     · FIXA na vida do muro — tirada do nome, renomear trocava todos os GUIDs e o vínculo perdia as peças.
-  Por isso é sorteada quando o muro nasce (Novo, ou o app aberto pela primeira vez) e viaja no arquivo.
-  Copiar o arquivo (Explorer, "Salvar como") leva a mesma identidade — é a mesma convenção do Revit, onde a
-  cópia de um .rvt mantém os ids das peças.
+  Por isso é sorteada quando o muro nasce (Novo, o app aberto pela primeira vez, ou o "Salvar como" de um muro que
+  já mora num arquivo) e viaja no arquivo. O "Salvar como" faz MURO NOVO (Jose, 15/10): aqui cada arquivo é um muro,
+  e o caminho natural para o Muro 2 é abrir o Muro 1 e salvar como — com a mesma identidade, os dois IFC se
+  atropelariam no modelo federado. (No Revit a cópia mantém os ids porque lá o arquivo é o prédio inteiro.) Revisão
+  do mesmo muro é "Salvar". Copiar o arquivo pelo Explorer leva a mesma identidade — isso o app não enxerga.
 */
 const FORMATO_DO_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

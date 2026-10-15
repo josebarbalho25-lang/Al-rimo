@@ -14,6 +14,7 @@
 interface AlcaDeArquivo {
   name: string;
   getFile(): Promise<File>;
+  isSameEntry?(outra: AlcaDeArquivo): Promise<boolean>;
   createWritable(): Promise<{ write(d: Blob | string): Promise<void>; close(): Promise<void> }>;
 }
 interface TipoDeArquivo {
@@ -48,24 +49,45 @@ export async function abrirDoDisco(): Promise<{ texto: string; nome: string; alc
   return f ? { texto: await f.text(), nome: f.name, alca: null } : null;
 }
 
-/** Grava o texto. Com alça, por cima do mesmo arquivo; sem, pergunta onde (ou baixa). */
+/** O destino escolhido é o arquivo que está aberto? Pela alça quando o navegador sabe dizer; senão, pelo nome. */
+async function mesmoArquivo(destino: AlcaDeArquivo, aberto: { alca: Alca | null; nome: string | null }): Promise<boolean> {
+  if (aberto.alca?.isSameEntry) {
+    try {
+      return await aberto.alca.isSameEntry(destino);
+    } catch {
+      // alça velha (arquivo movido ou apagado): o nome decide
+    }
+  }
+  return aberto.nome !== null && destino.name === aberto.nome;
+}
+
+/**
+ * Grava. Com alça, por cima do mesmo arquivo; sem, pergunta onde (ou baixa). O texto só é montado depois de escolhido
+ * o destino: `montar(mesmoArquivo)` diz se ele é o arquivo aberto (`aberto`) — a identidade do muro depende de ONDE ele
+ * vai, não da tecla (acoesDeArquivo.ts, salvarProjeto). No download o navegador escolhe o nome; o sugerido é o do
+ * arquivo aberto, então vale como o mesmo.
+ */
 export async function salvarNoDisco(
-  texto: string,
+  montar: (mesmoArquivo: boolean) => string,
   nomeSugerido: string,
   alca: Alca | null,
+  aberto: { alca: Alca | null; nome: string | null },
 ): Promise<{ nome: string; alca: Alca | null }> {
   const w = janela();
   let destino = alca;
+  let mesmo = alca !== null;
   if (!destino && w.showSaveFilePicker) {
     destino = await w.showSaveFilePicker({ suggestedName: nomeSugerido, types: [TIPO_ALRIMO] });
+    mesmo = await mesmoArquivo(destino, aberto);
   }
   if (destino) {
+    const texto = montar(mesmo);
     const s = await destino.createWritable();
     await s.write(texto);
     await s.close();
     return { nome: destino.name, alca: destino };
   }
-  baixar(texto, nomeSugerido, 'application/json');
+  baixar(montar(aberto.nome !== null && nomeSugerido === aberto.nome), nomeSugerido, 'application/json');
   return { nome: nomeSugerido, alca: null };
 }
 

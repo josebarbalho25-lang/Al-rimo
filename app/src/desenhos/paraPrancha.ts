@@ -32,7 +32,7 @@ export function vistaParaPrancha(m: Modelo, pedido: PedidoDeVista, escala: numbe
   // a legenda das cores dos blocos vai uma vez só, no quadro lateral da folha — a não ser que a folha peça (quadro
   // fechado)
   // `hachuraVetorial`: a folha pede quando compõe para o arquivo — o <pattern> o Chrome imprime como imagem
-  const o: OpcoesDaVista = { S: escalaDaVista(escala), semTitulo: true, prefixo, semLegendaDeCores: !opcoes.legendaDeCores, hachuraVetorial: opcoes.hachuraVetorial };
+  const o: OpcoesDaVista = { S: escalaDaVista(escala), semTitulo: true, prefixo, semLegendaDeCores: !opcoes.legendaDeCores, hachuraVetorial: opcoes.hachuraVetorial, chamadas: true };
   let pr: Prancha;
   switch (pedido.tipo) {
     case 'frontal':

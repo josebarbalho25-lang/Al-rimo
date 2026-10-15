@@ -24,15 +24,21 @@ interface Disco {
   baixados: { conteudo: string; nome: string }[];
   gravados: { texto: string; nome: string }[];
   paraAbrir: { texto: string; nome: string } | null;
+  /** O nome que o usuário escolhe na próxima janela de salvar (null = aceita o sugerido). */
+  escolhido: string | null;
 }
 
 async function abrirApp(m: Map<string, string>) {
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: armazenamento(m) });
   vi.resetModules();
-  const disco: Disco = { baixados: [], gravados: [], paraAbrir: null };
+  const disco: Disco = { baixados: [], gravados: [], paraAbrir: null, escolhido: null };
   vi.doMock('./arquivo', () => ({
     abrirDoDisco: async () => (disco.paraAbrir ? { ...disco.paraAbrir, alca: null } : null),
-    salvarNoDisco: async (texto: string, nome: string) => {
+    // sem alça (como no navegador sem a janela de arquivo): toda gravação pergunta o nome; o mesmo arquivo é o mesmo nome
+    salvarNoDisco: async (montar: (mesmo: boolean) => string, sugerido: string, _alca: unknown, aberto: { nome: string | null }) => {
+      const nome = disco.escolhido ?? sugerido;
+      disco.escolhido = null;
+      const texto = montar(aberto.nome !== null && nome === aberto.nome);
       disco.gravados.push({ texto, nome });
       return { nome, alca: null };
     },
@@ -148,6 +154,59 @@ describe('o mesmo muro guarda os GUIDs', () => {
     expect(s.idDoProjeto).toBe(id);
     expect(s.sujo).toBe(false);
     expect(app.guidsDoIfc()).toEqual(antes);
+  });
+});
+
+describe('"Salvar como" faz muro novo (Jose, 15/10)', () => {
+  it('muro já salvo: o "Salvar como" em outro arquivo grava com identidade nova, e o IFC dos dois não divide GUID', async () => {
+    const app = await abrirApp(new Map());
+    await app.salvarProjeto();
+    const muro1 = JSON.parse(app.disco.gravados.at(-1)!.texto).id as string;
+    const guids1 = app.guidsDoIfc();
+
+    app.disco.escolhido = 'Muro 2.alrimo';
+    await app.salvarProjeto(true);
+    const muro2 = JSON.parse(app.disco.gravados.at(-1)!.texto).id as string;
+    expect(muro2).toMatch(UUID_V4);
+    expect(muro2).not.toBe(muro1);
+    expect(app.useApp.getState().idDoProjeto).toBe(muro2);
+    const guids2 = app.guidsDoIfc();
+    expect(guids2.filter((g) => guids1.includes(g))).toEqual([]);
+
+    // e o "Salvar" seguinte continua o muro 2
+    await app.salvarProjeto();
+    expect(JSON.parse(app.disco.gravados.at(-1)!.texto).id).toBe(muro2);
+  });
+
+  it('"Salvar como" por cima do próprio arquivo: o mesmo muro (vale o destino, não a tecla)', async () => {
+    const app = await abrirApp(new Map());
+    await app.salvarProjeto();
+    const id = JSON.parse(app.disco.gravados.at(-1)!.texto).id as string;
+    await app.salvarProjeto(true);
+    expect(JSON.parse(app.disco.gravados.at(-1)!.texto).id).toBe(id);
+    expect(app.useApp.getState().idDoProjeto).toBe(id);
+  });
+
+  it('Ctrl+S depois do F5 (sem a alça, o navegador pergunta) para outro nome: outro muro', async () => {
+    const m = new Map<string, string>();
+    let app = await abrirApp(m);
+    app.lembrarUltimoProjeto();
+    await app.salvarProjeto();
+    const id = app.useApp.getState().idDoProjeto;
+    app = await abrirApp(m);
+    expect(app.useApp.getState().arquivo).not.toBeNull();
+    app.disco.escolhido = 'Copia.alrimo';
+    await app.salvarProjeto();
+    expect(JSON.parse(app.disco.gravados.at(-1)!.texto).id).not.toBe(id);
+  });
+
+  it('muro que nunca foi para o disco: o primeiro "Salvar como" ainda é o mesmo muro', async () => {
+    const app = await abrirApp(new Map());
+    const id = app.useApp.getState().idDoProjeto;
+    expect(app.useApp.getState().arquivo).toBeNull();
+    await app.salvarProjeto(true);
+    expect(JSON.parse(app.disco.gravados.at(-1)!.texto).id).toBe(id);
+    expect(app.useApp.getState().idDoProjeto).toBe(id);
   });
 });
 

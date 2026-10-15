@@ -35,7 +35,7 @@ export interface Ctx {
   barras: BarraNova[];
   avisos: Aviso[];
   /** Barbacãs pedidos × desenhados no muro todo (entorno.ts: drenagem conta por trecho, conferenciasGerais avisa). */
-  barbacas?: { pedidos: number; desenhados: number; emCanaleta: boolean };
+  barbacas?: { pedidos: number; desenhados: number; emCanaleta: boolean; acimaDoAterro?: boolean };
 }
 
 export const pad = (n: number, w: number): string => String(n).padStart(w, '0');

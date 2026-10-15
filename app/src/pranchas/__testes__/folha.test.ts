@@ -1,13 +1,14 @@
 /*
   A folha composta e o que vai para o arquivo: tamanho pela norma, carimbo no canto inferior direito como bloco com
-  os campos, desenho na escala pedida (1:25 → o px de desenho vira 1/4,4 mm), quadro lateral que avisa quando não
+  os campos, desenho na escala pedida (1:25 → o px de desenho vira 1/PX_POR_MM mm), quadro lateral que avisa quando não
   cabe, e o .alrimo levando as folhas de ida e volta.
 */
 import { describe, expect, it } from 'vitest';
 import { comporFolha, type ContextoDaFolha } from '../folha';
+import { Prancha } from '@/desenhos/prancha';
 import { novaFolha, lerPranchas, temPranchas, SEM_PRANCHAS } from '../padrao';
 import { quadroUtil, tamanhoDaFolha } from '../formatos';
-import { PX_POR_MM, type Primitiva, type VistaParaPrancha } from '../tipos';
+import { MAIUSCULA_DA_ARIAL, PX_POR_MM, type Primitiva, type VistaParaPrancha } from '../tipos';
 import { desserializarProjeto, serializarProjeto } from '@/estado/projeto';
 
 const vista: VistaParaPrancha = {
@@ -21,7 +22,7 @@ function ctx(parcial: Partial<ContextoDaFolha> = {}): ContextoDaFolha {
   return {
     numero: 1,
     total: 2,
-    obra: { obra: 'Muro da divisa', endereco: 'Rua A, 10', proprietario: 'Fulano', art: '123', data: '14/10/2026', revisao: 'R00' },
+    obra: { obra: 'Muro da divisa', endereco: 'Rua A, 10', proprietario: 'Fulano', art: '123', data: '14/10/2026', revisao: 'R00', codigo: 'ARR', desenhista: 'Ciclano', verificacao: 'Beltrano' },
     escritorio: { empresa: 'Escritório X', responsavel: 'Eng. Fulano', crea: 'MG-1', contato: '', logo: null, logoLargura: 30 },
     notasAutomaticas: ['Cotas em centímetros, exceto onde indicado.', 'Aço CA-50.'],
     legenda: [{ cor: '#787878', rotulo: 'Inteiro' }],
@@ -34,12 +35,12 @@ function ctx(parcial: Partial<ContextoDaFolha> = {}): ContextoDaFolha {
 const blocos = (ps: Primitiva[]) => ps.filter((p): p is Extract<Primitiva, { k: 'bloco' }> => p.k === 'bloco');
 
 describe('folha composta', () => {
-  it('A1 deitada pela norma: 841 × 594, moldura a 20/10 mm, carimbo 180 × 50 no canto inferior direito', () => {
+  it('A1 deitada pela norma: 841 × 594, moldura a 20/10 mm, carimbo 180 × 65 no canto inferior direito', () => {
     const f = novaFolha('Formas');
     const c = comporFolha(f, ctx());
     expect([c.largura, c.altura]).toEqual([841, 594]);
     expect(quadroUtil('A1', 'deitada')).toEqual([20, 10, 831, 584]);
-    expect(c.carimbo).toEqual([831 - 180, 584 - 50, 180, 50]);
+    expect(c.carimbo).toEqual([831 - 180, 584 - 65, 180, 65]);
     expect(c.svg).toContain('viewBox="0 0 841 594"');
     expect(c.svg).toContain('width="841mm"');
   });
@@ -58,15 +59,44 @@ describe('folha composta', () => {
     expect([v.OBRA, v.ENDERECO, v.PROPRIETARIO]).toEqual(['Muro da divisa', 'Rua A, 10', 'Fulano']);
     expect([v.RESPONSAVEL, v.CREA, v.ART]).toEqual(['Eng. Fulano', 'CREA MG-1', 'ART 123']);
     expect([v.DATA, v.REVISAO]).toEqual(['14/10/2026', 'R00']);
+    // número do desenho = código-folha; desenhista e verificação, cada um no seu atributo (Jose, 15/10)
+    expect([v.DESENHO, v.DESENHISTA, v.VERIFICACAO]).toEqual(['ARR-01', 'Ciclano', 'Beltrano']);
   });
 
-  it('desenho em 1:25: 440 px de desenho viram 100 mm de papel, e o título sai embaixo com a escala', () => {
+  it('sem código, o número do desenho fica vazio, mas o atributo continua no bloco para o cadista preencher', () => {
+    const c = comporFolha(novaFolha(''), ctx({ obra: { ...ctx().obra, codigo: ' ' } }));
+    const v = Object.fromEntries(blocos(c.primitivas)[0].atributos.map((a) => [a.etiqueta, a.valor]));
+    expect(v.DESENHO).toBe('');
+  });
+
+  it('todo texto do carimbo e do quadro lateral sai com a maiúscula de pelo menos 2,5 mm (carimbo de partida)', () => {
+    const c = comporFolha(novaFolha('Formas'), ctx());
+    const [b] = blocos(c.primitivas);
+    const alturas = [
+      ...b.prims.filter((p) => p.k === 'texto').map((p) => (p.k === 'texto' ? p.altura : 0)),
+      ...b.atributos.map((a) => a.altura),
+      ...c.primitivas.filter((p) => p.k === 'texto').map((p) => (p.k === 'texto' ? p.altura : 0)),
+    ];
+    for (const a of alturas) expect(a * MAIUSCULA_DA_ARIAL).toBeGreaterThanOrEqual(2.5 - 1e-9);
+  });
+
+  it('arquivo com o carimbo de partida antigo (180 × 50) abre com o de hoje, e o quadro lateral desce junto', () => {
+    const p = lerPranchas({ folhas: [{ formato: 'A1', orientacao: 'deitada', carimbo: { largura: 180, altura: 50 }, quadro: { largura: 180, altura: 524 }, itens: [] }] });
+    expect(p.folhas[0].carimbo).toEqual({ largura: 180, altura: 65 });
+    expect(p.folhas[0].quadro.altura).toBe(574 - 65);
+    // o regulado pelo projetista fica
+    const q = lerPranchas({ folhas: [{ formato: 'A1', carimbo: { largura: 200, altura: 50 }, quadro: { largura: 180, altura: 300 }, itens: [] }] });
+    expect(q.folhas[0].carimbo).toEqual({ largura: 200, altura: 50 });
+    expect(q.folhas[0].quadro.altura).toBe(300);
+  });
+
+  it('desenho em 1:25: 440 px de desenho viram 440 ÷ PX_POR_MM mm de papel, e o título sai embaixo com a escala', () => {
     const f = novaFolha('');
     f.itens.push({ id: 'a', conteudo: { tipo: 'corte' }, escala: 25, x: 40, y: 30, titulo: 'Corte A' });
     const c = comporFolha(f, ctx());
     expect(c.itens[0].caixa[2]).toBeCloseTo(440 / PX_POR_MM, 6);
     const linha = c.primitivas.find((p) => p.k === 'linha' && p.e.camada === 'alvenaria');
-    expect(linha && linha.k === 'linha' && linha.b[0]).toBeCloseTo(40 + 100, 6);
+    expect(linha && linha.k === 'linha' && linha.b[0]).toBeCloseTo(40 + 440 / PX_POR_MM, 6);
     const textos = c.primitivas.filter((p) => p.k === 'texto').map((p) => (p.k === 'texto' ? p.t : ''));
     expect(textos).toContain('CORTE A');
     expect(textos).toContain('ESC. 1:25');
@@ -84,7 +114,7 @@ describe('folha composta', () => {
     const f = novaFolha('');
     f.itens.push({ id: 'ok', conteudo: { tipo: 'corte' }, escala: 25, x: 40, y: 30, titulo: 'A' });
     f.itens.push({ id: 'carimbo', conteudo: { tipo: 'corte' }, escala: 25, x: 700, y: 520, titulo: 'B' });
-    f.itens.push({ id: 'fora', conteudo: { tipo: 'corte' }, escala: 25, x: 10, y: 30, titulo: 'C' });
+    f.itens.push({ id: 'fora', conteudo: { tipo: 'corte' }, escala: 25, x: 10, y: 300, titulo: 'C' });
     const c = comporFolha(f, ctx());
     expect(Object.fromEntries(c.itens.map((i) => [i.id, i.invade]))).toEqual({ ok: false, carimbo: true, fora: true });
   });
@@ -102,6 +132,9 @@ describe('folha composta', () => {
     const c = comporFolha(f, ctx());
     const textos = c.primitivas.filter((p) => p.k === 'texto').map((p) => (p.k === 'texto' ? p.t : ''));
     expect(textos).toEqual(expect.arrayContaining(['NOTAS GERAIS', 'LEGENDA', 'RESUMO DO AÇO', 'Aço CA-50.']));
+    // a massa com 10 % de perda sai da massa impressa (74,3 × 1,1 = 81,73 → 81,7), na linha e no total
+    expect(textos).toEqual(expect.arrayContaining(['Massa + 10 % (kg)', '74,3', '81,7']));
+    expect(textos.filter((t) => t === '81,7')).toHaveLength(2);
     expect(c.quadroEstourou).toBe(false);
     f.quadro.altura = 20;
     expect(comporFolha(f, ctx()).quadroEstourou).toBe(true);
@@ -190,5 +223,48 @@ describe('pranchas no arquivo .alrimo', () => {
     expect(p.folhas[0].itens).toHaveLength(1);
     expect(p.folhas[0].itens[0].escala).toBeNull();
     expect(p.obra.revisao).toBe('R00');
+  });
+});
+
+describe('tarja do muro que não passa (Jose, 15/10)', () => {
+  const tarjas = (ps: Primitiva[]) => ps.filter((p): p is Extract<Primitiva, { k: 'texto' }> => p.k === 'texto' && p.t === 'NÃO VERIFICADO');
+
+  it('muro que passa: folha limpa', () => {
+    expect(tarjas(comporFolha(novaFolha(''), ctx()).primitivas)).toHaveLength(0);
+  });
+
+  it('muro que não passa: NÃO VERIFICADO na diagonal da área de desenho, em camada própria, vazado no PDF', () => {
+    const f = novaFolha('');
+    const c = comporFolha(f, ctx({ naoVerificado: true }));
+    const [t] = tarjas(c.primitivas);
+    expect(t.camada).toBe('aviso');
+    expect(t.cor).toBe('#c00000');
+    // a área de desenho é a útil sem o quadro lateral (A1 deitada: 20..651 × 10..584); sobe da esquerda para a direita
+    const [x0, y0, x1, y1] = [20, 10, 831 - f.quadro.largura, 584];
+    expect(t.angulo).toBeCloseTo((Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI, 6);
+    expect(Math.abs(t.p[0] - (x0 + x1) / 2)).toBeLessThan(t.altura);
+    expect(Math.abs(t.p[1] - (y0 + y1) / 2)).toBeLessThan(t.altura);
+    expect(c.svg).toMatch(/<text [^>]*fill="none" stroke="#c00000"[^>]*>NÃO VERIFICADO<\/text>/);
+  });
+});
+
+describe('revisão de 15/10', () => {
+  it('A4 em pé: a tarja fica acima do carimbo (centrada na área toda, o NÃO caía embaixo dele)', () => {
+    const f = novaFolha('', 'A4', 'em_pe');
+    const c = comporFolha(f, ctx({ naoVerificado: true }));
+    const t = c.primitivas.find((p): p is Extract<Primitiva, { k: 'texto' }> => p.k === 'texto' && p.t === 'NÃO VERIFICADO')!;
+    const [, cy] = c.carimbo;
+    // a palavra inteira (meia largura na diagonal) acima do carimbo
+    const meia = (Prancha.largura('NÃO VERIFICADO', t.altura, true) / 2) * Math.sin((t.angulo * Math.PI) / 180);
+    expect(t.p[1] + meia).toBeLessThanOrEqual(cy + 1);
+  });
+
+  it('dois desenhos encavalados acendem os dois (a vista de ontem engordou com a letra de hoje)', () => {
+    const f = novaFolha('');
+    f.itens.push({ id: 'a', conteudo: { tipo: 'corte' }, escala: 25, x: 40, y: 30, titulo: '' });
+    f.itens.push({ id: 'b', conteudo: { tipo: 'corte' }, escala: 25, x: 60, y: 40, titulo: '' });
+    f.itens.push({ id: 'c', conteudo: { tipo: 'corte' }, escala: 25, x: 400, y: 300, titulo: '' });
+    const c = comporFolha(f, ctx());
+    expect(c.itens.map((i) => i.invade)).toEqual([true, true, false]);
   });
 });

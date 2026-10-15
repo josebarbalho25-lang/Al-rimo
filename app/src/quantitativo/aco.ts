@@ -84,15 +84,17 @@ export function compararPosicoes(a: string, b: string): number {
  * a diferença numa média faria a lista de ferros mentir para quem corta a barra.
  */
 export function listaDeFerros(barras: readonly Barra[]): { linhas: PosicaoDeFerro[]; avisos: string[] } {
-  const porPosicao = new Map<string, Map<string, { b: Barra; n: number; cm: number }>>();
+  const porPosicao = new Map<string, Map<string, { b: Barra; n: number; cm: number; elementos: Set<string> }>>();
   for (const b of barras) {
     const cm = Math.round(b.comprimento / 10);
     const variante = `${chaveDaBitola(b.diametro)}|${cm}`;
     let vs = porPosicao.get(b.posicao);
     if (!vs) porPosicao.set(b.posicao, (vs = new Map()));
     const v = vs.get(variante);
-    if (v) v.n += 1;
-    else vs.set(variante, { b, n: 1, cm });
+    if (v) {
+      v.n += 1;
+      v.elementos.add(rotuloDaBarra(b));
+    } else vs.set(variante, { b, n: 1, cm, elementos: new Set([rotuloDaBarra(b)]) });
   }
   const linhas: PosicaoDeFerro[] = [];
   const avisos: string[] = [];
@@ -100,10 +102,11 @@ export function listaDeFerros(barras: readonly Barra[]): { linhas: PosicaoDeFerr
     const vs = [...porPosicao.get(posicao)!.values()]
       .sort((a, b) => a.b.diametro - b.b.diametro || a.cm - b.cm);
     if (vs.length > 1) avisos.push(`${posicao}: barras diferentes na mesma posição`);
-    for (const { b, n, cm } of vs) {
+    for (const { b, n, cm, elementos } of vs) {
       const comprimentoTotal = (n * cm) / 100;
+      // a mesma barra em elementos diferentes (numerarPosicoes): a linha diz todos, na ordem em que apareceram
       linhas.push({
-        posicao, papel: b.papel, elemento: rotuloDaBarra(b), diametro: b.diametro, quantidade: n, comprimentoUnit: cm,
+        posicao, papel: b.papel, elemento: [...elementos].join(' + '), diametro: b.diametro, quantidade: n, comprimentoUnit: cm,
         comprimentoTotal, massa: comprimentoTotal * massaLinear(b.diametro),
       });
     }

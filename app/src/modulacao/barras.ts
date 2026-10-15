@@ -159,12 +159,16 @@ function formaDaBarra(eixo: Vec3[], fechada: boolean): string {
   return melhor ?? '';
 }
 
-/** N1, N2... — mesma forma, mesmo Ø e mesmo papel = mesma posição da lista de ferros (como prancha de armação). */
+/**
+ * N1, N2... — mesma forma, mesmo Ø e mesmo comprimento = mesma posição da lista de ferros, de QUALQUER elemento
+ * (Jose, 15/10): o armador corta e dobra por posição, e a vertical do painel igual à construtiva do contraforte é a
+ * mesma barra no feixe. Até 15/10 o papel entrava na chave e a mesma barra saía com dois N.
+ */
 export function numerarPosicoes(barras: BarraNova[]): Barra[] {
   const mapa = new Map<string, string>();
   return barras.map((b) => {
     const forma = formaDaBarra(b.eixo, !!b.fechada);
-    const chave = `${b.papel}|${b.diametro}|${b.fechada ? 'F' : ''}|${Math.round(b.comprimento)}|${forma}`;
+    const chave = `${b.diametro}|${b.fechada ? 'F' : ''}|${Math.round(b.comprimento)}|${forma}`;
     let pos = mapa.get(chave);
     if (!pos) {
       pos = `N${mapa.size + 1}`;

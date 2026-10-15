@@ -17,6 +17,7 @@ import {
   solidosDoModelo, type Regiao, type Solido,
 } from './geometria';
 import { COR, Prancha, escalaPara, type Estilo, type OpcoesDaVista, type Pt } from './prancha';
+import { ancoraNaBarra, desenharChamadas, elementoDaBarra, type Chamada } from './chamadas';
 
 export interface CortePadrao {
   rotulo: string;
@@ -67,7 +68,8 @@ export function barrasNoCorte(m: Modelo, x0: number): BarrasNoCorte {
       continue;
     }
     if (barraNoPlanoX(b.eixo)) {
-      const k = b.posicao || `${b.papel}|${b.diametro}`;
+      // por elemento E posição: o mesmo N pode estar no painel e no contraforte (barra igual, mesmo N)
+      const k = `${b.papel}|${b.posicao || b.diametro}`;
       planas.set(k, [...(planas.get(k) ?? []), b]);
     } else {
       // barra que corre DENTRO do plano do corte num trecho (a da canaleta do contraforte, que vem pelo eixo dele e
@@ -205,6 +207,7 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
   // ── armadura ───────────────────────────────────────────────────────────────────────────────────────────────────
   const br = barrasNoCorte(m, x0);
   const ySecoes = br.linhas.filter((l) => l.barra.papel !== 'ESPERA').map((l) => l.pts[0][0]);
+  const chamadas: Chamada[] = [];
   pr.abrir('data-camada="barras"');
   for (const l of br.linhas) {
     let pts = l.pts;
@@ -220,11 +223,19 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
     }
     const tp = pts.map(tela);
     pr.polilinha(l.fechada ? [...tp, tp[0]] : tp, { stroke: COR.aco, sw: Math.max(1, l.barra.diametro * S), id: l.barra.id });
+    chamadas.push({ posicao: l.barra.posicao, elemento: elementoDaBarra(l.barra), ancora: ancoraNaBarra(tp) });
   }
+  // barra cortada (ponto): a chamada vai ao ponto mais perto da coluna das chamadas (à direita), o de cima no empate
+  const pontoDaChamada = new Map<string, Chamada>();
   for (const p of br.pontos) {
     const [u, v] = tela(p.p);
     pr.circulo(u, v, Math.max(1.6, (p.barra.diametro / 2) * S), { id: p.barra.id });
+    const el = elementoDaBarra(p.barra);
+    const k = `${p.barra.posicao}|${el}`;
+    const a = pontoDaChamada.get(k)?.ancora;
+    if (!a || u > a[0] + 0.5 || (Math.abs(u - a[0]) <= 0.5 && v < a[1])) pontoDaChamada.set(k, { posicao: p.barra.posicao, elemento: el, ancora: [u, v] });
   }
+  chamadas.push(...pontoDaChamada.values());
   pr.fechar();
 
   // ── cotas ──────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -282,6 +293,9 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
     pr.cotaH(U(t / 2), U(y1), linha + 24, cm(y1 - t / 2), { de: [linha + 24, V(zPe)] });
   }
   pr.fechar();
+
+  // ── chamadas das barras: à direita, além do solo da frente ─────────────────────────────────────────────────────
+  if (o.chamadas) desenharChamadas(pr, m, chamadas, U(yPerto) + 24);
 
   // ── título ─────────────────────────────────────────────────────────────────────────────────────────────────────
   // na prancha o título é dela (embaixo do desenho, com a escala); o PROVISÓRIO fica, é aviso e não título

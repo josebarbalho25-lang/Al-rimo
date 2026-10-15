@@ -48,7 +48,7 @@ import {
 import { HACHURA } from '@/desenhos/hachuras';
 import { camadaDeFundo, camadaDoCad } from './camadasDxf';
 import { PADRAO_DO_MATERIAL, linhasNaEscala, type PadraoNoDxf } from './padroesDxf';
-import type { AtributoDoBloco, PadraoHachura, Primitiva, Pt, Traco } from './tipos';
+import { MAIUSCULA_DA_ARIAL, type AtributoDoBloco, type PadraoHachura, type Primitiva, type Pt, type Traco } from './tipos';
 import { dataUrlParaBytes, zipar } from './zip';
 
 export interface FolhaDxf {
@@ -70,10 +70,10 @@ const ESTILO_NEGRITO = 'ALRIMO_NEGRITO';
 
 /**
  * No CAD a altura do TEXT com fonte TrueType é a da LETRA MAIÚSCULA; no SVG (e no PDF) a altura do texto é o corpo
- * da fonte (o "em"). Na Arial a maiúscula tem 1467/2048 = 0,716 do corpo: sem esta conta a letra sairia 40 % maior no
- * DXF do que no PDF da mesma prancha.
+ * da fonte (o "em"). Sem a conversão (MAIUSCULA_DA_ARIAL, no contrato) a letra sairia 40 % maior no DXF do que no
+ * PDF da mesma prancha.
  */
-export const MAIUSCULA_DA_ARIAL = 1467 / 2048;
+export { MAIUSCULA_DA_ARIAL };
 
 /** Espessuras de linha que o CAD aceita (grupo 370, centésimos de mm). */
 const ESPESSURAS = [0, 5, 9, 13, 15, 18, 20, 25, 30, 35, 40, 50, 53, 60, 70, 80, 90, 100, 106, 120, 140, 158, 200, 211];

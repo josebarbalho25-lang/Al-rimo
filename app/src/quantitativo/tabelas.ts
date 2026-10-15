@@ -8,7 +8,7 @@
   CSV para o Excel em português: separador ';', vírgula decimal, sem separador de milhar (o Excel lê "1234,5"
   como número; "1.234,5" depende da configuração), UTF-8 com BOM (sem ele o Excel estraga os acentos) e CRLF.
 */
-import type { Quantitativo } from './index';
+import { blocosParaCompra, type Quantitativo } from './index';
 import { figuraDaPeca, type FiguraDaPeca } from './pecas';
 
 export type Celula = string | { n: number; casas: number } | null;
@@ -65,13 +65,15 @@ export function tabelasDoQuantitativo(q: Quantitativo): Tabela[] {
   if (q.muro.trechos > 1) muro.push(['Trechos', num(q.muro.trechos, 0), 'un']);
   t.push({ id: 'muro', titulo: 'Muro', cabecalho: ['Item', 'Valor', 'Unidade'], linhas: muro });
 
+  // a compra: canaleta cortada vira inteira, com a parte para cortar logo abaixo (fora do total)
+  const compra = blocosParaCompra(q.blocos);
   t.push({
     id: 'blocos',
     titulo: 'Blocos e canaletas',
     cabecalho: ['Peça', 'Catálogo', 'Quantidade (un)'],
-    linhas: q.blocos.map((l) => [l.rotulo, l.catalogo, num(l.quantidade, 0)]),
+    linhas: compra.map((l) => [l.dasQuais ? `↳ ${l.rotulo}` : l.rotulo, l.catalogo, num(l.quantidade, 0)]),
     total: ['Total', null, num(q.totalBlocos, 0)],
-    figuras: q.blocos.map((l) => figuraDaPeca(q.muro.familia, l)),
+    figuras: compra.map((l) => figuraDaPeca(q.muro.familia, l)),
   });
 
   t.push({

@@ -1,5 +1,5 @@
 # Fig. 17 (app, nova) — drenagem: corte (dreno de brita com manta no tardoz, terminando abaixo do topo do
-# solo; impermeabilização da face do solo; barbacã na 1ª fiada caindo para fora) e elevação (barbacãs a
+# solo; impermeabilização da face do solo até o topo do solo; barbacã na 1ª fiada caindo para fora) e elevação (barbacãs a
 # cada s). Tudo configurável (decisão do Jose, 08/10: "cada projetista se vira com isso").
 # Régua comum (12/10, applib): as duas vistas em K_GERAL; o corte com parede(), sapata() e solo() à direita, como a
 # Fig. 1; títulos pela titulo_vista(). A manta deixou o verde (verde é do passivo) e ficou cinza tracejada; saiu o
@@ -68,7 +68,8 @@ def desenhar():
         s.poly(borda(AREIA) + borda(0)[::-1], fill=s.AREIA, stroke=C['dim'], sw=0.6)
         s.chamada(xs + (ESP + AREIA / 2) * K, yb - 0.88 * K, xs + (ESP + AREIA) * K + 50, yb - 0.88 * K - 22, 'areia', size=T_TXT)
     with s.campo('imper_on'):
-        s.line(xs + 1.5, yb - HM * K + 10, xs + 1.5, yb, stroke=C['line'], sw=3.4)
+        # só até o topo do solo, como o quantitativo conta (Jose, 15/10): acima dele a parede não encosta em terra
+        s.line(xs + 1.5, yt, xs + 1.5, yb, stroke=C['line'], sw=3.4)
         s.chamada(xs + 2, yt + 22, xs + 54, yt - 30, 'impermeabilização', size=T_TXT)
     with s.campo('dreno_esp'):
         s.dim_h(xs, xs + ESP * K, yd_out + AREIA * K - 16, 'e', ext_from=(yd_out + AREIA * K, yd_out + AREIA * K), size=T_SIM, halo=True)

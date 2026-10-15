@@ -41,6 +41,13 @@ describe('notas gerais automáticas', () => {
     }
   });
 
+  it('barbacã atravessando a canaleta (muro todo em canaleta): a nota diz para passar o tubo antes do graute', () => {
+    const { r, m } = muro('sorteio23');
+    expect(notasAutomaticas(r, m)).toContain('Barbacã na canaleta: furar as duas paredes do U e passar o tubo acima da barra, antes de grautear.');
+    const comum = muro('aula122');
+    expect(notasAutomaticas(comum.r, comum.m).some((n) => n.startsWith('Barbacã na canaleta'))).toBe(false);
+  });
+
   it('só o dreno de fundo ligado: a nota não fala em dreno no tardoz', () => {
     const { r, m } = muro('aula122', { dreno_on: 'Não' });
     const notas = notasAutomaticas(r, m);

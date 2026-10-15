@@ -12,6 +12,7 @@ import {
   desserializarProjeto,
   EXTENSAO,
   nomeDeArquivo,
+  novoIdDeProjeto,
   projetoExemplo,
   projetoNovo,
   recadoDeAbertura,
@@ -102,9 +103,16 @@ export async function salvarProjeto(comoNovo = false): Promise<void> {
   try {
     // O que vai para o disco é o retrato DESTE instante; se o usuário digitar
     // enquanto o disco responde, a tela continua com • (ver marcarSalvo).
-    const gravado = projetoAtual(s);
-    const texto = serializarProjeto(gravado, VERSAO_DA_CONTA);
-    const r = await salvarNoDisco(texto, s.arquivo ?? nomeDeArquivo(s.titulo, EXTENSAO), comoNovo ? null : alcaAtual);
+    // Muro que já mora num arquivo, gravado em OUTRO arquivo, é outro muro: identidade nova, senão os IFC dos dois
+    // saem com os mesmos GUIDs (projeto.ts). Vale o destino, não a tecla: "Salvar como" por cima do próprio arquivo
+    // é o mesmo muro, e o Ctrl+S depois do F5 (sem a alça, o navegador pergunta onde) para outro nome é outro muro.
+    // O primeiro salvar de um muro novo é o próprio muro.
+    let gravado = projetoAtual(s);
+    const montar = (mesmo: boolean): string => {
+      if (s.arquivo !== null && !mesmo) gravado = { ...gravado, id: novoIdDeProjeto() };
+      return serializarProjeto(gravado, VERSAO_DA_CONTA);
+    };
+    const r = await salvarNoDisco(montar, s.arquivo ?? nomeDeArquivo(s.titulo, EXTENSAO), comoNovo ? null : alcaAtual, { alca: alcaAtual, nome: s.arquivo });
     // O disco pode demorar (pasta de rede, OneDrive, a janela de permissão do
     // navegador aberta). Se no meio o usuário abriu outro muro ou começou um
     // novo, a gravação foi do muro ANTERIOR: guardar a alça dela agora faria

@@ -26,11 +26,32 @@ import type { EstiloVisual } from '@/visor/estiloVisual';
 export type Pt = [number, number];
 
 /**
- * Quantos px de desenho viram 1 mm de papel. A anotação dos desenhos tem tamanho fixo em px (cota 11 px, título
- * 15 px, traço 0,9 px): com 4,4 px/mm a cota sai com 2,5 mm de altura no papel, o título com 3,4 mm e o traço fino
- * com 0,2 mm — a letra técnica de prancha, em qualquer escala do desenho (a escala muda o muro, não a letra).
+ * Na Arial a maiúscula tem 1467/2048 = 0,716 do corpo. No SVG (e no PDF) o tamanho do texto é o CORPO; no CAD, e na
+ * norma de letra técnica, é a altura da MAIÚSCULA — toda conversão entre os dois passa por aqui.
  */
-export const PX_POR_MM = 4.4;
+export const MAIUSCULA_DA_ARIAL = 1467 / 2048;
+
+/**
+ * Altura mínima da maiúscula no papel, mm. NBR 8402 (de memória: a série dela começa em 2,5; a ISO 3098, que é a
+ * base, desce a 1,8 — e era em 1,8 que a prancha saía até 15/10, quando o Jose pediu os 2,5).
+ */
+export const LETRA_MINIMA = 2.5;
+
+/** Corpo do rótulo de cota, px de desenho: o menor texto que os desenhos escrevem e o que manda na escala abaixo. */
+export const CORPO_DA_COTA = 11;
+
+/** Corpo de texto (mm de papel) para a maiúscula sair com `h` mm. */
+export const corpoDaLetra = (h: number): number => h / MAIUSCULA_DA_ARIAL;
+
+/**
+ * Quantos px de desenho viram 1 mm de papel. A anotação dos desenhos tem tamanho fixo em px (cota 11 px, título
+ * 15 px, traço 0,9 px, afastamento das cotas): a escala sai da cota, para a maiúscula dela ter LETRA_MINIMA no
+ * papel (≈ 3,15 px/mm; o título fica com 3,4 mm de maiúscula e o traço fino com 0,29 mm). Toda a anotação cresce
+ * junto — letra, marca, afastamento, traço, ladrilho da hachura —, como o fator de escala de cota do CAD: o desenho
+ * no papel continua com a mesma cara da tela, só o muro fica menor em relação à letra. A escala da vista não muda
+ * nada disso (a escala muda o muro, não a letra).
+ */
+export const PX_POR_MM = (CORPO_DA_COTA * MAIUSCULA_DA_ARIAL) / LETRA_MINIMA;
 
 /** px de desenho por mm do MURO numa escala 1:e — o S que a vista recebe para sair na escala da prancha. */
 export const escalaDaVista = (e: number): number => PX_POR_MM / e;
@@ -165,6 +186,8 @@ export interface QuadroLateral {
   notas: string[] | null;
   legenda: boolean;        // legenda de cores dos blocos
   quadroDeAco: boolean;    // resumo do aço por bitola
+  /** Lista de ferros com o desenho de cada barra (Jose, 15/10). Arquivo de antes: ligada. */
+  listaDeFerros: boolean;
 }
 
 export interface Folha {
@@ -197,6 +220,10 @@ export interface DadosDaObra {
   art: string;
   data: string;
   revisao: string;
+  /** Código do desenho (Jose, 15/10): o carimbo escreve código-folha ("ARR" → ARR-01, ARR-02…). Vazio = campo vazio. */
+  codigo: string;
+  desenhista: string;
+  verificacao: string;
 }
 
 /** Tudo das pranchas que se grava no arquivo .alrimo (o escritório não: ele é do app). */

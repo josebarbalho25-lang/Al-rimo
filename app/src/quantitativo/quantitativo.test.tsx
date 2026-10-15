@@ -8,6 +8,7 @@ import type { Modelo } from '@/modelo/tipos';
 import type { Resultado, Valor } from '@/motor/tipos';
 import {
   conferirGeometrias, csvDoQuantitativo, massaLinear, quantificar, tabelasDoQuantitativo, formatarNaTela,
+  blocosParaCompra, type LinhaDeBloco, type LinhaDeCompra,
 } from '@/quantitativo';
 import { Quantitativo } from '@/quantitativo/Quantitativo';
 import { areaDaFolha, caixaDaPeca } from './geometria';
@@ -560,5 +561,34 @@ describe('com a modulação de verdade', () => {
     let v = 0;
     for (const f of porFiada.values()) v += (f.n - 1) * (f.canaleta ? faceU : t * 190) * 10;
     expect(q.argamassa.vertical).toBeCloseTo(v / 1e9, 9);
+  });
+});
+
+describe('compra: canaleta cortada vira canaleta inteira (Jose, 15/10)', () => {
+  const L = (tipo: LinhaDeBloco['tipo'], catalogo: string, quantidade: number): LinhaDeBloco => ({ tipo, rotulo: tipo, catalogo, quantidade });
+
+  it('cada cortada soma uma inteira na compra e aparece logo abaixo como "das quais, para cortar"; o total fica igual', () => {
+    const pecas = [L('BLOCO', 'bloco 19x19x39', 100), L('CANALETA', 'canaleta 19x19x39', 30), L('MEIA_CANALETA', 'meia', 4), L('CANALETA_CORTADA', 'canaleta 19x19x39 cortada em 24', 6)];
+    const c = blocosParaCompra(pecas);
+    expect(c.map((l) => [l.tipo, l.quantidade, !!l.dasQuais])).toEqual([
+      ['BLOCO', 100, false], ['CANALETA', 36, false], ['CANALETA_CORTADA', 6, true], ['MEIA_CANALETA', 4, false],
+    ]);
+    const total = (ls: LinhaDeCompra[]) => ls.filter((l) => !l.dasQuais).reduce((s, l) => s + l.quantidade, 0);
+    expect(total(c)).toBe(pecas.reduce((s, l) => s + l.quantidade, 0));
+    // a lista de peças (montagem) não muda
+    expect(pecas[1].quantidade).toBe(30);
+  });
+
+  it('sem cortada, a compra é a lista de peças', () => {
+    const pecas = [L('BLOCO', 'b', 10), L('CANALETA', 'c', 3)];
+    expect(blocosParaCompra(pecas)).toEqual(pecas);
+  });
+
+  it('na tabela da tela e do CSV: a linha da canaleta já com as cortadas, e a das cortadas fora do total', () => {
+    const q = quantificar(modeloAMao());
+    const t = tabelasDoQuantitativo(q).find((x) => x.id === 'blocos')!;
+    expect(t.total?.[2]).toEqual({ n: q.totalBlocos, casas: 0 });
+    const soma = t.linhas.filter((l) => !String(l[0]).startsWith('↳')).reduce((s, l) => s + (l[2] as { n: number }).n, 0);
+    expect(soma).toBe(q.totalBlocos);
   });
 });

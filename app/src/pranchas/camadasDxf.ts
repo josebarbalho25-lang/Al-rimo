@@ -56,6 +56,8 @@ export const CAMADAS: Readonly<Record<string, CamadaDoCad>> = {
   IMAGENS: { aci: 7, espessura: 0.13, conteudo: 'foto do 3D Realista (imagem vinculada)' },
   GERAL: { aci: 7, espessura: 0.18, conteudo: 'o que o desenho não classificou' },
   '3D-FACES': { aci: 8, espessura: 0.13, conteudo: 'faces coloridas do 3D Cores, na cor verdadeira' },
+  AVISO: { aci: 1, espessura: 0.5, conteudo: 'tarja NÃO VERIFICADO (muro que não passa na conta)' },
+  CHAMADAS: { aci: 7, espessura: 0.18, conteudo: 'chamadas das barras (N – quantidade Ø c/ C=) e linha de chamada' },
 };
 
 /** Sufixo das camadas de fundo sólido. */

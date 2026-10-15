@@ -351,7 +351,8 @@ export const useApp = create<EstadoDoApp>()((set, get) => ({
   marcarSalvo(arquivo, titulo, gravado) {
     const s = get();
     const igual = s.alteracoes === gravado.alteracoes && s.extras === gravado.extras && (gravado.pranchas === undefined || s.pranchas === gravado.pranchas);
-    set({ arquivo, titulo, sujo: !igual, contaDoArquivo: null });
+    // a identidade é a do arquivo gravado (o "Salvar como" de um muro já salvo grava com uma nova)
+    set({ arquivo, titulo, sujo: !igual, contaDoArquivo: null, idDoProjeto: gravado.id });
   },
 
   selecionar(id) {

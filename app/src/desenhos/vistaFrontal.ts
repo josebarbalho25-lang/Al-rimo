@@ -19,6 +19,8 @@ import {
 } from './geometria';
 import { desenharLegenda, estiloPintado, itensDasTintas, tintaDaPeca, tintasPresentes, type Amostra } from './cores';
 import { COR, Prancha, escalaPara, type Estilo, type OpcoesDaVista, type Pt } from './prancha';
+import { CORPO_DA_COTA, MAIUSCULA_DA_ARIAL } from '@/pranchas/tipos';
+import { ancoraNaBarra, desenharChamadas, elementoDaBarra, type Chamada } from './chamadas';
 
 /** Corridas de intervalos iguais viram uma cota só: "12×40" em vez de doze "40" espremidos. */
 export function cadeia(pontos: number[]): { a: number; b: number; rotulo: string }[] {
@@ -111,6 +113,8 @@ export function desenharVistaFrontal(m: Modelo, o: OpcoesDaVista = {}): Prancha 
   // some no laranja do 34), que é justamente onde ficam as barras do contraforte. O filete não leva id nem
   // recebe clique — o clique atravessa para a peça de baixo, e a seleção acende só a barra.
   const barras = m.barras.filter((b) => PAPEIS_VISTOS.has(b.papel));
+  // chamada de cada posição na barra dela mais à direita (a coluna das chamadas fica depois da ponta do muro)
+  const daChamada = new Map<string, { x: number; pts: Pt[]; b: Barra }>();
   pr.abrir('data-camada="barras"');
   for (const b of barras) {
     const pts = projetarPontos(b.eixo, 'Y').map(([x, z]): Pt => [X(x), Y(z)]);
@@ -118,8 +122,13 @@ export function desenharVistaFrontal(m: Modelo, o: OpcoesDaVista = {}): Prancha 
     const dash = b.papel === 'ESPERA' ? '5,3' : undefined;
     pr.polilinha(pts, { stroke: '#ffffff', sw: sw + 1.2, dash, extra: 'pointer-events="none"', soTela: true });
     pr.polilinha(pts, { stroke: COR.aco, sw, dash, id: b.id });
+    const xMax = Math.max(...pts.map((q) => q[0]));
+    const k = `${b.posicao}|${elementoDaBarra(b)}`;
+    const antes = daChamada.get(k);
+    if (!antes || xMax > antes.x + 0.5) daChamada.set(k, { x: xMax, pts, b });
   }
   pr.fechar();
+  const chamadas: Chamada[] = [...daChamada.values()].map(({ pts, b }) => ({ posicao: b.posicao, elemento: elementoDaBarra(b), ancora: ancoraNaBarra(pts) }));
 
   // ── eixos dos contrafortes e juntas de controle ──────────────────────────────────────────────────────────────
   const topo = Y(H_muro);
@@ -137,8 +146,15 @@ export function desenharVistaFrontal(m: Modelo, o: OpcoesDaVista = {}): Prancha 
   }
 
   // ── números das fiadas ────────────────────────────────────────────────────────────────────────────────────────
-  const tamFiada = Math.max(4, Math.min(10, fiadaPx * 0.7));
+  // Na tela o número acompanha a altura da fiada (até 10 px). Na prancha ele tem a letra mínima do papel, como a
+  // cota: encolher com a fiada daria número de 2 mm em 1:50; quando a fiada fica mais baixa que a letra (1:75,
+  // 1:100) numera de 2 em 2 (ou mais), em vez de encolher ou encavalar
+  const naPrancha = o.S !== undefined;
+  const tamFiada = naPrancha ? CORPO_DA_COTA : Math.max(4, Math.min(10, fiadaPx * 0.7));
+  const folgaDoNumero = 1.25 * CORPO_DA_COTA * MAIUSCULA_DA_ARIAL;
+  const passoFiada = naPrancha ? ([1, 2, 5, 10].find((k) => k * fiadaPx >= folgaDoNumero) ?? 10) : 1;
   for (let i = 0; i < n_fiadas; i++) {
+    if (i % passoFiada !== 0) continue;
     pr.texto(X(xIni) - 6, Y(200 * i + 105) + tamFiada * 0.35, String(i + 1), { tam: tamFiada, ancora: 'end', cor: COR.nota });
   }
 
@@ -192,6 +208,8 @@ export function desenharVistaFrontal(m: Modelo, o: OpcoesDaVista = {}): Prancha 
   if (barras.some((b) => b.papel !== 'ESPERA')) itens.push(['Barra', 'barra']);
   if (barras.some((b) => b.papel === 'ESPERA')) itens.push(['Espera', 'espera']);
   if (itens.length) desenharLegenda(pr, X(xIni), linhaTotal + 30, itens, Math.max(320, X(xFim) - X(xIni)));
+  // ── chamadas das barras: por último, à direita de tudo (o fim da linha do terreno, as cotas e a legenda) ────────
+  if (o.chamadas) desenharChamadas(pr, m, chamadas, X(xFim) + 52);
   return pr;
 }
 
