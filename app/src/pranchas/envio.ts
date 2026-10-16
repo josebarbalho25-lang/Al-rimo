@@ -13,11 +13,12 @@
     · tabela — uma tabela de materiais do quantitativo (blocos, materiais, drenagem), que a prancha tira do muro.
 */
 
-import type { Camera3d, ConteudoDoItem, PedidoDeVista } from './tipos';
+import type { Camera3d, ConteudoDoItem } from './tipos';
 
 export type PedidoParaPrancha =
   | { tipo: '3d'; dataUrl: string; camera: Camera3d; proporcao: number }
-  | { tipo: 'vista'; pedido: PedidoDeVista }
+  /** A vista do projeto escolhida na aba (16/10: vistas como no Revit), pelo id — a de fábrica virtual também. */
+  | { tipo: 'vista'; id: string }
   | { tipo: 'tabela'; id: Extract<ConteudoDoItem, { tipo: 'tabela' }>['id'] };
 
 export type OuvinteDaPrancha = (pedido: PedidoParaPrancha) => void;

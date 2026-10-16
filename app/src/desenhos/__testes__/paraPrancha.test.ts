@@ -139,13 +139,13 @@ describe('corte para a prancha', () => {
     expect([tCota.camada, tCota.altura, tCota.angulo, tCota.ancora]).toEqual(['cotas', 11, 0, 'start']);
     const muro = t.find((q) => q.t.startsWith('muro '))!;
     expect([muro.camada, muro.angulo]).toEqual(['cotas', 90]);
-    // o rótulo que não é de cota vai para os textos
-    expect(t.find((q) => q.t === 'aterro')!.camada).toBe('textos');
+    // o rótulo do aterro é do terreno (16/10: na cor da terra, fora da cor dos "Textos" da tabela de gráficos)
+    expect(t.find((q) => q.t === 'aterro')!.camada).toBe('terreno');
   });
 
   it('as camadas do corte: cada material na sua', () => {
     const cs = new Set(v.primitivas.map(camadaDe));
-    for (const c of ['alvenaria', 'graute', 'concreto', 'aco', 'terreno', 'drenagem', 'cotas', 'eixos', 'textos']) expect(cs.has(c), c).toBe(true);
+    for (const c of ['alvenaria', 'graute', 'concreto', 'aco', 'terreno', 'drenagem', 'cotas', 'eixos']) expect(cs.has(c), c).toBe(true);
     // a barra vertical (polilinha) e o eixo do muro (traço-ponto)
     expect(v.primitivas.some((q) => q.k === 'polilinha' && q.e.camada === 'aco' && q.e.cor === '#c00000')).toBe(true);
     const eixo = v.primitivas.find((q) => q.k === 'linha' && q.e.camada === 'eixos') as Extract<Primitiva, { k: 'linha' }>;

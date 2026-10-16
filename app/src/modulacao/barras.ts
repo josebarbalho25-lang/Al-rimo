@@ -112,39 +112,50 @@ export function medidasDoNo(phi: number, h: number, c: number): { raio: number; 
 
 /**
  * A espera em nó de cachorro na posição (x, y) do furo, do topo zTopo (o traspasse) até a sapata. null = não cabe:
- * a subida é negativa (sapata baixa para a dobra) ou o U sai da sapata pela frente (sem pé para ele). O U vira
- * para −Y (a frente), a perna deitada corre para +Y (o talão); `lado` (±1) é para onde a subida anda em X.
+ * a subida é negativa (sapata baixa para a dobra) ou a ponta da sapata não comporta as duas dobras do pé.
+ *
+ * Desde 15/10 o nó VAI ATÉ A PONTA (Jose: "quando usar nó de cachorro quero que ela vá até a ponta"): da espera ele
+ * dobra para a frente e corre pelo fundo até a face da ponta da sapata, sobe essa face, volta deitado por cima de
+ * tudo até a ponta do talão e desce — abraça a sapata inteira. No Revit dele a sapata não tinha pé (o muro na borda)
+ * e o U ficava colado na espera; com pé, o U colado deixava a ponta sem o nó. Sem pé suficiente para as duas dobras
+ * (fundo reto < 0), não cabe — é a tabela de pontas dele (PONTA_DO_NO), que avisa antes.
+ * A conta não conta o nó (Jose, 15/10: "deixa quieto essa parte de contabilizar ela no cálculo"): é armação de
+ * confiança da ligação muro–sapata, por cima do estribo da sapata.
+ * O nó dobra para −Y (a frente), a perna deitada corre para +Y (o talão); `lado` (±1) é para onde a subida anda
+ * em X — a perna deitada passa por cima da que desce, e a barra não volta ao lugar de onde saiu.
  */
 export function esperaNoDeCachorro(id: string, phi: number, x: number, y: number, zTopo: number, sap: SapataDoNo, trecho: number, contraforte?: number, lado: 1 | -1 = 1): BarraNova | null {
   const { raio: r, subida } = medidasDoNo(phi, sap.h, sap.c);
-  const zb = -sap.h + sap.c + phi / 2;        // eixo do fundo do U e do pé da perna da ponta
-  const zt = -sap.c - phi / 2;                // eixo da perna deitada
-  const yr = y - 2 * r;                       // a perna que sobe, na frente da que desce
-  const yf = sap.yTalao - sap.c - phi / 2;    // a perna que desce na face da ponta do talão
-  const deitada = yf - yr - 2 * r;
-  if (subida < -1e-6 || yr - phi / 2 < sap.yFrente + sap.c - 1e-6 || deitada < -1e-6) return null;
+  const zb = -sap.h + sap.c + phi / 2;        // eixo da perna do fundo e do pé das pernas de pé
+  const zt = -sap.c - phi / 2;                // eixo da perna deitada de cima
+  const yp = sap.yFrente + sap.c + phi / 2;   // a perna que sobe, na face da ponta da sapata
+  const yf = sap.yTalao - sap.c - phi / 2;    // a perna que desce, na face da ponta do talão
+  const fundo = (y - r) - (yp + r);           // reto do fundo, da espera à ponta
+  const deitada = (yf - r) - (yp + r);        // reto de cima, da ponta ao talão
+  if (subida < -1e-6 || fundo < -1e-6 || deitada < -1e-6) return null;
   const s = lado * phi;
   const P = (yy: number, z: number, dx: number): Vec3 => p3(x + dx, yy, z);
+  const arco = (cy: number, cz: number, f: (t: number) => [number, number], dx: number): Vec3[] =>
+    Array.from({ length: SEG_DOBRA }, (_, k) => {
+      const t = ((k + 1) / SEG_DOBRA) * (Math.PI / 2);
+      const [dy, dz] = f(t);
+      return P(cy + dy, cz + dz, dx);
+    });
   const eixo: Vec3[] = [P(y, zTopo, 0), P(y, zb + r, 0)];
-  // o U: meia volta em torno de (y − r, zb + r), descendo pela frente
-  for (let k = 1; k <= 2 * SEG_DOBRA; k++) {
-    const t = (k / (2 * SEG_DOBRA)) * Math.PI;
-    eixo.push(P(y - r + r * Math.cos(t), zb + r - r * Math.sin(t), 0));
-  }
-  // a subida (andando `lado`·φ em X) e a dobra para a perna deitada
-  for (let k = 0; k <= SEG_DOBRA; k++) {
-    const t = (k / SEG_DOBRA) * (Math.PI / 2);
-    eixo.push(P(yr + r - r * Math.cos(t), zt - r + r * Math.sin(t), s));
-  }
+  // dobra do pé da espera para a frente, o fundo até a ponta e a dobra para cima na face da ponta
+  eixo.push(...arco(y - r, zb + r, (t) => [r * Math.cos(t), -r * Math.sin(t)], 0));
+  eixo.push(P(yp + r, zb, 0));
+  eixo.push(...arco(yp + r, zb + r, (t) => [-r * Math.sin(t), -r * Math.cos(t)], 0));
+  // a subida na face da ponta (andando `lado`·φ em X) e a dobra para a perna deitada
+  eixo.push(P(yp, zt - r, s));
+  eixo.push(...arco(yp + r, zt - r, (t) => [-r * Math.cos(t), r * Math.sin(t)], s));
   // a perna deitada até a ponta do talão e a dobra para baixo
-  for (let k = 0; k <= SEG_DOBRA; k++) {
-    const t = (k / SEG_DOBRA) * (Math.PI / 2);
-    eixo.push(P(yf - r + r * Math.sin(t), zt - r + r * Math.cos(t), s));
-  }
+  eixo.push(P(yf - r, zt, s));
+  eixo.push(...arco(yf - r, zt - r, (t) => [r * Math.sin(t), r * Math.cos(t)], s));
   eixo.push(P(yf, zb, s));
   const limpo = eixo.filter((q, k) => k === 0 || Math.hypot(q[0] - eixo[k - 1][0], q[1] - eixo[k - 1][1], q[2] - eixo[k - 1][2]) > 1e-6);
-  // desenvolvido: a perna do muro, o U (π·r), a subida, as duas dobras de 90° (π·r), a deitada e a perna da ponta
-  const comprimento = (zTopo - zb - r) + Math.PI * r + Math.hypot(Math.max(0, subida), s) + Math.PI * r + deitada + (zt - r - zb);
+  // desenvolvido: a perna do muro, quatro dobras de 90° (2·π·r), o fundo, a subida, a deitada e a perna do talão
+  const comprimento = (zTopo - zb - r) + 2 * Math.PI * r + fundo + Math.hypot(Math.max(0, subida), s) + deitada + (zt - r - zb);
   const out: BarraNova = { id, papel: 'ESPERA', diametro: phi, eixo: limpo, comprimento: arred(comprimento), trecho };
   if (contraforte !== undefined) out.contraforte = contraforte;
   return out;

@@ -310,9 +310,13 @@ e dizer ao Jose o que mudou e por quê.
   'Reta' (a de antes, barra a barra): estribo fechado na seção B × h com cobrimento, perna de baixo = flexão, de
   cima = talão (construtiva com Mk_heel = 0), ganchos no canto de cima do lado da ponta; torção continua à parte; o
   aço sobe (aula 12.2 93 → 105 kg). ARRANQUE: entrada `arranque` 'Padrão' / 'Nó de cachorro' — forma lida das
-  barras 337807/337808/337806 do Revit dele: desce ao cobrimento de baixo, U de 180° para a PONTA (pino 5φ/8φ, sem
-  reta entre os arcos), sobe ao cobrimento de cima, corre por cima até a face do lado do talão e desce até embaixo;
-  avisos NO_DE_CACHORRO_DOBRA (h_sap < 2c + pino + 2φ, barra não sai), _FORA e _PONTA (tabela dele, `PONTA_DO_NO`:
+  barras 337807/337808/337806 do Revit dele: desce ao cobrimento de baixo, corre por baixo ATÉ A PONTA (Jose, 15/10
+  tarde: "quando usar nó de cachorro quero que ela vá até a ponta"), sobe na face da ponta (pino 5φ/8φ nas dobras),
+  corre por cima até a face do lado do talão e desce até embaixo. O nó NÃO entra na conta (Jose: "deixa quieto essa
+  parte de contabilizar ela no cálculo" — cobriria só a face de cima e estragaria o estribo; ele usa o nó pela
+  confiança na flexão do muro, mesmo com o ℓb atendido do outro jeito);
+  avisos NO_DE_CACHORRO_DOBRA (h_sap < 2c + pino + 2φ, barra não sai), _FORA (a ponta não comporta as dobras do pé —
+  espera não desenhada) e _PONTA (tabela dele, `PONTA_DO_NO`:
   bloco 14 Ø≤8 → 0, Ø10–12,5 → 4 cm, Ø16–20 → 7 cm, Ø25 não cabe — 8,4 % do furo de 117 cm² com traspasse; bloco 19
   Ø≤12,5 → 0, Ø16–20 → 2 cm, Ø25 → 7 cm DEDUZIDO, a confirmar). A "ponta" da tabela dele é a PONTA DA SAPATA à frente
   do muro. O `h_dob()` da planilha ficou (a regra do Padrão, com a malha, é mais exigente: a lista de bitolas segue
@@ -320,6 +324,87 @@ e dizer ao Jose o que mudou e por quê.
   espera Padrão pode dar "empuxo no vazio" em sapata baixa; a partir de ~30 cm não. A CONFIRMAR com ele: canto dos
   ganchos (sapata: em cima, lado da ponta; contraforte: lado do muro); Ø25 no bloco 19; o ramo do nó que sobe anda
   um φ de lado; o nó ignora `gancho_`; ESTRIBO_NA_JUNTA avisar também Ø6,3?
+- **A LISTA DO JOSE DE 16/10 (feita no mesmo dia; decisões dele nas perguntas: "Como no Revit", "Valor cheio 600",
+  "Por folha"):**
+  · VISTAS COMO NO REVIT (`pranchas/vistas.ts`): cada vista tem NOME numa lista por aba (o select "Vista" da aba:
+    Nova vista / Duplicar — com as anotações / Renomear / Excluir), guarda o conteúdo (lugar do corte, fiada, lado do
+    isométrico, câmera do 3D), a ESCALA, o título na folha, as ANOTAÇÕES e a sobreposição de gráficos. A aba mostra a
+    vista escolhida NA ESCALA DELA (o mesmo desenho da folha). Uma vista vai numa folha só (o 2º envio diz "já está
+    na folha NN"); tirar da folha NÃO apaga (volta pelo "Adicionar › Vistas" da aba Pranchas: é o "índice" que ele
+    pediu). As de fábrica (uma por tipo 2D) são VIRTUAIS até a 1ª mexida (abrir aba não acende o •). O item da folha
+    guarda lugar, número e tamanho; `noItem` → `gravarNoItem` manda cada mexida para a vista ou para o item; no
+    arquivo o item de vista leva o ESPELHO do conteúdo, escala e título, sem anotações (`pranchasParaArquivo`: o app
+    de antes de 16/10 abre os desenhos; vista que não se lê volta pelo espelho e vai para o recado). Arquivo de antes: cada desenho vira uma vista
+    (o título vira o nome). O 3D enviado vira a vista "3D", "3D (2)"… Título na folha: vazio = o nome dado à vista
+    ("Corte A"), senão o automático (`nomeDado`).
+  · ANOTAR NA ABA E NA FOLHA (`pranchas/EdicaoDeAnotacoes.tsx`, a MESMA edição nos dois): clicar, arrastar texto e
+    linha, duplo clique reescreve, Delete esconde/apaga, Cota (D), Texto (T), Etiqueta (I). Na folha: 1 clique
+    escolhe e move o desenho; DUPLO CLIQUE ENTRA nele (véu branco no resto, moldura tracejada; Esc, duplo clique fora
+    ou "Sair" saem); duplo clique no TÍTULO reescreve no lugar. Na aba: camada por cima do desenho e o quadrinho do
+    escolhido no canto.
+  · COTA DE VERDADE: a do A-PORT só se afasta (as alças estão PENDENTES lá também); aqui: criação em CADEIA como a do
+    Revit (pontos capturados em sequência; o clique solto é o lugar da linha — `ferramentas.ts cotasDaCadeia`; a linha
+    da cadeia anda junto, `CotaNova.cadeia`), ALÇAS nas duas pontas (a ponta captura outro ponto; a automática puxada
+    pela ponta vira cota do projetista no lugar dela), PREFIXO/SUFIXO em volta do valor medido (automática e criada).
+    Cota criada NÃO é associativa (pontos em mm do muro): muro mudou, ela não acompanha — anotar se ele estranhar.
+  · ETIQUETA DE AÇO (`EtiquetaNova`, `chamadas.ts desenharEtiquetas`): clica perto da barra (anel de 1 em 1 px até 8
+    px), diz o mesmo da chamada ("N1 – 15 Ø10 c/40 C=210"), âncora no ponto da barra mais perto do clique, texto por
+    afastamento (a barra que anda leva junto); só na FRONTAL e no CORTE (armação/planta: não). COM/SEM LINHA DE
+    CHAMADA na etiqueta e na chamada da coluna (`semLinha`).
+  · VALOR CHEIO (`formato.ts cmCheio`): comprimento do muro e dos trechos entre juntas = real + 10 (5,99 → "600"), na
+    frontal e na planta; o concreto segue o real.
+  · TÍTULO DA IMAGEM DELE (`folha.ts titular`): número grande, branco e itálico num quadrado azul-marinho de 10 mm (o
+    da marca), título como ele escreveu (sem caixa alta, SEM sublinhado) e a escala "1 : 25" embaixo. Número POR FOLHA,
+    o primeiro livre (quem sai deixa a vaga; os outros não mudam), editável no painel. DXF: quadrado em TITULOS-FUNDO,
+    número em ALRIMO_ITALICO (ariali.ttf) branco de verdade.
+  · ENCAIXE (`pranchas/encaixe.ts`): arrastando o desenho, bordas e meio grudam nos outros, na moldura, no quadro e
+    no carimbo (8 px de tela), guia magenta; Alt solta.
+  · GRÁFICOS GERAL + SOBREPOSIÇÃO (substitui a tabela por tipo de 15/10): a engrenagem › "Gerais" edita a GERAL (app,
+    `alrimo.graficos.v3`; a v2 abre com a geral montada das vistas + o Opaco do 3D, e a diferença do 3D vira a do visor);
+    o "Gráficos" da aba (e o "Sobrepor…" do painel do desenho na folha) edita a SOBREPOSIÇÃO DA VISTA (vai no arquivo,
+    na vista); o botão do 3D, a do visor (app). O "Mostrar" da aba agora é da vista. Janela = cópia da do A-PORT
+    (`ui/JanelaDeGraficos.tsx`: abas Modelo/Anotação/Bitolas, Visibilidade | Projeção (Linhas, Padrões,
+    Transparência) | Corte (Padrões) | Meio-tom, linha principal com "Sobrepor…", janelinha com Primeiro e Segundo
+    plano, Todos/Nenhum/Inverter, fundo transparente que segura o clique, Esc cancela). MEIO-TOM novo (cor a 60 % do
+    caminho até o papel, 2D e 3D). Textos e sombras com visível próprio. A prancha guarda a sobreposição com que nasceu
+    (os <pattern> e as cotas criadas saem com ela).
+  · GRAUTE DA FRONTAL EM SOMBRA (`vistaFrontal.ts`): uma faixa vertical por coluna de furo (`colunasDoGraute`, mesma
+    coluna até 25 mm de diferença no meio, largura MÉDIA dos furos), cinza ESCURO #3d3d3d a 35 % × a transparência
+    do graute (`corDaSombraDoGraute`; o graute de fábrica é `cor: null` = o neutro de cada lugar — no 3D Cores segue
+    o bege claro; cor escolhida vale nos dois); no DXF, a faixa inteira sobre o papel e por cima os pedaços misturados
+    com a cor de cada bloco que APARECE. Tirado o filete branco sob as barras.
+  · REVISÃO ADVERSARIAL DA LISTA (16/10 noite, 3 revisores, 36 achados; `pranchas/__testes__/revisaoDaLista.test.ts`):
+    Cancelar sem mexer não grava a vista virtual (`naVistaDoProjeto`) e a comparação ignora a ordem dos campos
+    (`mesmoConteudo`, também no • do store e no guardar dos gráficos — o de fábrica não se grava); cores de 15/10:
+    cada campo da 1ª vista que o mexeu (hachura do corte), transparência não vira geral (`geralDasVistas`); a
+    sobreposição guarda 0 % e meio-tom desligado (desfaz o da geral; a janela não grava o igual à geral); Restaurar da
+    janela geral mantém o visor; "Vistas 3D fora das folhas" com Excluir na aba Pranchas; nome de vista único (" (2)");
+    um gerador de id só. Tela: Texto (o mousedown roubava o foco do campo; o campo de escrever agora é foreignObject
+    dentro do desenho e o título fica preso ao papel — andam com zoom e rolagem); a aba não rouba foco ao montar;
+    ferramenta solta sozinha quando o desenho muda (troca de folha, de vista, excluir); duplo clique dentro do
+    desenho ativo (ou na cota, na alça, com a Cota armada) não sai nem reenquadra; Esc num campo é do campo
+    (`teclaDeCampo`); Etiqueta só arma na frontal e no corte, cota/texto só com escala (`aceitaEtiqueta`,
+    `podeAnotar`); janela de Gráficos no body (por cima do painel e da barra de estado) e fecha ao abrir outro muro;
+    "Exibir categorias" do 3D cobre blocos e drenagem; transparência digitada vale no Enter; × da bitola volta à de
+    fábrica; Opaco só onde o 3D lê (`camposDaSuperficie`). Desenho: categoria desligada guarda a MESMA caixa e não
+    publica anotação editável (`categoriaVisivel`); traspasse obedece o "Cotas"; meio-tom uma vez na faixa do graute e
+    no 3D da prancha (`corDaPecaSemMeioTom`/`corDoAcoSemMeioTom`) e na borda da hachura do PDF; número comprido do
+    título encolhe e o quadrado alarga (`quadradoDoNumero`); cota de comprimento guarda a chave do valor sem a junta
+    (`textoDaChave`: o ajuste de 15/10 continua achando). Ficou: cota criada entre as pontas do muro mede 599 ao lado
+    da automática 600 (a criada mede a geometria — explicar se ele estranhar); o "aterro" fica com a terra a 100 %.
+- **Gráficos POR VISTA (Jose, 15/10 tarde — SUBSTITUÍDO em 16/10 pela geral + sobreposição, acima):** UMA TABELA POR VISTA — 3D,
+  frontal, corte, planta, isométrico e armação (`Graficos.vistas`; a tabela única da manhã abre valendo para todas).
+  O desenho na prancha usa a tabela do tipo dele (o corte da folha segue a aba Corte), como o Mostrar. Cada desenho 2D
+  roda em `naVista(tipo, …)` e a Prancha guarda a vista em que nasceu (o <defs> sai depois). TRANSPARÊNCIA 0–100 de 5
+  em 5 por material: no 2D é `opacity` no traço do material (padrão, bloco pintado, aço — `Estilo.material`); no 3D é
+  do material, um por estilo × acabamento × CLASSE do bloco (o inteiro transparente com a canaleta cheia), vale no
+  Realista também (ver através é olhar, não pintar), o terreno multiplica o véu dele, 100 % não pega clique; o DXF
+  (AC1018) não leva transparência. ANOTAÇÕES com cor por vista (cotas, textos, chamadas, sombras, eixos — o id é a
+  camada; null = a do desenho). JANELA "Gráficos" (`ui/JanelaDeGraficos.tsx`, o VV do A-PORT): botão em cada aba 2D,
+  ícone na barra do 3D e nas Configurações; abas Modelo (grupos do Mostrar com os materiais, Visível, cor, hachura,
+  transparência; no 3D Cores/Opaco/hachura/Transparência e as bitolas) e Anotação; MUDA NA HORA e o Cancelar volta o
+  que a janela mexeu (Esc só com o foco nela); clicar fora não cancela; "Aplicar às outras vistas" (só o que a janela
+  mostra) e "Restaurar padrão" (só a vista; a do 3D com as bitolas). Guardada em `alrimo.graficos.v2`.
 - **Cores, hachuras e o que aparece (Jose, 15/10 — o Visibilidade/Gráficos do Revit):** tabela de gráficos
   (`desenhos/graficos.ts`: materiais com cor do 3D Cores, cor do Opaco, cor do traço 2D do aço e hachura de corte
   — desenho terra/concreto/areia/brita/riscado/sólido/vazio, risco, fundo, escala; cor por Ø; itens desligados por
@@ -331,6 +416,33 @@ e dizer ao Jose o que mudou e por quê.
   sem a tela, vale o de fábrica = as cores de antes (HACHURA de `hachuras.ts` sai de lá). `Prancha.silenciar()`
   desliga um bloco de traços sem perder as contas de posição. No DXF o fundo vai na cor da tabela e o padrão na
   escala dela; o risco do padrão segue a cor da CAMADA (o cadista manda pela camada).
+- **Chamada solta (Jose, 15/10: "o tag da armadura… deixar livre pra eu colocar quando quiser do jeito que quiser?
+  Girar ele, por na vertical, pra um lado, por outro"):** na folha a chamada se arrasta, gira (⟲/⟳ 90° e ângulo, em
+  torno do meio) e se esconde (Delete); a linha sai da barra e encosta na ponta do texto mais perto dela, com ombro.
+  Guardada no item da folha por "posição|elemento" (`ItemDaFolha.chamadas`, `ChamadaPosta`: texto contado do ponto
+  da barra em px de desenho — mesma distância no papel em qualquer escala). Quem fica na coluna não anda; a caixa
+  que prende o desenho na folha (`VistaParaPrancha.referencia`) é a da coluna inteira: o desenho não pula.
+- **Anotações editáveis na folha (Jose, 15/10: "deletar ou criar cotas e mover anotações em geral, escrever de novo o
+  que quiser"; o comportamento do A-PORT, redesenhado em SVG):** toda cota (cada trecho de cadeia) e todo texto solto
+  ganha CHAVE = tipo + texto de origem + ordem ("cota:B = 140#0", `desenhos/prancha.ts` "ANOTAÇÃO EDITÁVEL"); o
+  ajuste fica no item da folha (`anotacoes`: dx/dy do número ou texto, afastamento da linha, giro, texto, oculta). Muro
+  mudou e o número também: a chave não casa e a cota volta ao automático (melhor sobrar que esconder errado). A
+  mexida deixa o lugar de origem reservado (o "fantasma") — nada pula. Na folha: clicar seleciona, arrastar o
+  texto move, arrastar a linha afasta, duplo clique reescreve no lugar, Delete esconde (a automática; "Mostrar
+  ocultas"/"Voltar ao automático" no desenho) ou apaga (a criada). Ferramentas COTA (D: dois pontos capturados —
+  pontas e meios dos traços, a anotação não — e o lugar da linha, horizontal ou vertical pelo terceiro clique, como o
+  DIMLINEAR) e TEXTO (T: clica e escreve; desarma depois de um), Esc volta um passo, recado curto na barra. Criadas
+  ficam em mm do muro no plano da vista (`cotas`, `textos`; trocar a escala não tira do lugar) e somem com o Mostrar
+  das cotas. `pranchas/ferramentas.ts` (captura, direção, papel ↔ muro). Sem desfazer (o A-PORT tem; não pedido).
+- **Armação da sapata — as SOMBRAS (Jose, 15/10: "sombra das armaduras… principalmente pra detalhar a sapata corrida,
+  isso tem no Pró-Viga"; feito por agente sob revisão, `desenhos/armacaoDaSapata.ts`):** aba nova "Armação" (palco,
+  Desenhos, prancha `{ tipo: 'armacao' }` em 1:25, tabela de gráficos própria): elevação da sapata com os estribos,
+  esperas e toco do muro com interrupção; faixa de cada família de estribo ("N4 – 36 Ø10 c/17"); SOMBRA de cada
+  longitudinal (uma por marca + estação + face, quantidade somada, "N5 – 11 Ø6,3 C=591"; emendas em fileiras
+  vizinhas sobrepostas no traspasse) — as de baixo embaixo e as de CIMA EM CIMA (regra do Pró-Viga: o lado diz a
+  face); seção transversal com "11 N5" por camada e a sombra do estribo com as medidas da forma. Camada DXF SOMBRAS
+  (vermelho, 0,5). As legendas são texto solto: arrastáveis e reescrevíveis na folha. Fontes no Pró-Viga citadas no
+  cabeçalho do arquivo (dxf-writer.js, armadura.jsx, detailing.js).
 - **3D e prancha, comandos (Jose, 15/10):** SEM o terno de eixos X/Y/Z no 3D ("não são necessários nesse software";
   o muro se lê pelo cubo de vistas). Na aba Pranchas, rodinha = zoom no ponto do mouse e botão do meio arrastado =
   pan, como no 3D (Ctrl+rodinha fica com o navegador). Aterro do 3D desce pela face do muro até o topo do pacote do
@@ -562,6 +674,37 @@ e dizer ao Jose o que mudou e por quê.
      nosso Vd ≤ Va): com Asw_c = 0 a planilha zera Asw,ef e n_est (Vrd3 = Va), o resumo diz "sem estribos", o app
      não desenha estribo (3D/IFC/quantitativo) e apaga Ø/ramos/s nas Entradas (única regra de campo apagado que lê
      a CONTA: `ATIVA_SE` com `LerConta`). Conta sem número ("—") continua desenhando. 14 de 39 cenários dispensam.
+- **DENTE SEM ARMADURA (Jose, 15/10: "nosso dente não tá armando, é muito detalhe, só anota, depois resolvemos"):** o
+  dente da sapata sai no 3D, no corte e na armação sem barra nenhuma. Resolver depois, quando ele pedir.
+- **Revisão adversarial de 15/10 (3 revisores, 16 achados) — CORRIGIDA em 16/10** (`pranchas/__testes__/revisao16.test.ts`
+  prova cada um): `Prancha.direita()` é a caixa de REFERÊNCIA (anotação arrastada não empurra a coluna das chamadas
+  nem a seção da armação); a armação tem PARTES com origem própria (`RegiaoDoDesenho`: 'secao' e 'estribo:N…'; a
+  cota/texto criados nelas guardam `regiao` e contam da origem dela — muro mais comprido ou outra escala e a cota
+  continua na seção); texto repetido: chave dita pelo desenho onde ele sabe a diferença (`OpcoesTexto.chave` /
+  `chave` da cota: as sombras por face e pedaço, as camadas da seção por N e altura) e, nas de chave pela ordem
+  ("#n"), o ajuste guarda o lugar (`AnotacaoPosta.ref`, vale a até 30 px — a herdeira da chave fica automática);
+  reescrever em BRANCO esconde a automática e apaga a criada (a seleção volta ao desenho); material a 100 % sai do
+  SVG, das primitivas (DXF) e da captura, mas o lugar fica na caixa; materiais que faltavam no 2D (retângulo atrás
+  da seção do bloco, barbacã/tubo, linha do terreno); legenda do quadro com as cores da VISTA FRONTAL e o desenho
+  que pinta com outras cores leva a legenda dele; borda vermelha olha anotação movida e criada; isométrico e 3D não
+  publicam anotação editável; recado de abertura conta desenho de folha desconhecido (`lerPranchas(v, perdidos)`).
+  Janela de gráficos: Cancelar devolve só o que ELA mexeu (o Mostrar mexido na aba fica), Esc só com o foco nela ou
+  em lugar nenhum, outro botão Gráficos só troca a vista (não regrava), "Aplicar às outras vistas" copia só o que a
+  janela da vista mostra (`camposDaJanela`), "Restaurar padrão" do 3D leva as bitolas, Configurações tem o restaurar
+  geral e fecham ao abrir a janela, janela do 3D mostra também a hachura e o traço do aço (o 3D em vetor da prancha
+  usa). 3D: a linha "Alvenaria" multiplica a transparência de todo bloco; a 100 % não pega clique (barra também),
+  perde o traço e não faz sombra. Guardado: `alrimo.graficos.v2` (lê a v1 uma vez, nunca a escreve; restaurar
+  esquece as duas). Camadas: "aterro" → 'terreno' (cor da terra), C1/JC → 'eixos', legendas da sombra → 'sombras';
+  texto solto editável = camadas textos/eixos/sombras/terreno.
+  Conferência das correções (4º revisor, 16/10 à tarde) — corrigido também: o arquivo guarda `regiao` (cota e texto
+  criados), `ref` e `original` (reabrir/F5 jogava a cota da seção na elevação); `ref` em MM DO MURO (px ÷ S, vale
+  em qualquer escala), refeito a cada mexida e guardado em todo ajuste de chave pela ordem; `original` em todo
+  ajuste: na chave dita pelo desenho (sem o texto), muro mudou o texto ("36 Ø10" → "54 Ø10") e o reescrito/esconder
+  caem, o lugar fica; "aterro" e C1/C2 com chave própria (únicos: o ajuste não depende do lugar); as fileiras de
+  sombra e as faixas da armação também são partes (`sombra:…`, `faixa:…`) e, com duas partes encostadas, vale a menor;
+  "Aplicar às outras vistas" copia só os MATERIAIS que a janela mostra (`GRUPOS_DE_MATERIAIS` ∩ `MATERIAIS_DA_VISTA`);
+  o 3D em vetor da prancha multiplica a "Alvenaria" como o visor; a legenda do quadro sai da vista que pinta os
+  blocos NA FOLHA (frontal › planta › isométrico › 3D; `legendaPorVista`); a janela de gráficos nasce com o foco.
 - Receber a NBR 16868-1 em PDF: conferir numeração de itens, Anexo E (βf) e os contornos do ábaco do ELS (lidos do slide).
 - Confirmar os FS da NBR 11682 (tombamento 2,0, deslizamento 1,5 — "pelo que sei").
 - Fig. 24 (tombamento e deslizamento no traço do Bastos, Fig. 1.116) FEITA 10/10: planilha e app; abre em dphi, ades_b, pass_on, FS_tomb, FS_desl.

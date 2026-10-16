@@ -23,6 +23,16 @@ function Svg({ tamanho = 17, children, ...resto }: P) {
   );
 }
 
+/** Gráficos da vista: as amostras de cor, uma cheia, duas de leve e uma que some (o VV do A-PORT). */
+export const IconeGraficos = (p: P) => (
+  <Svg {...p}>
+    <path d="M4 4h7v7H4z" {...CHEIO} />
+    <path d="M13 4h7v7h-7z" {...MASSA} />
+    <path d="M4 13h7v7H4z" {...MASSA} />
+    <path d="M13 13h7v7h-7z" {...SOME} />
+  </Svg>
+);
+
 /** Frente: a fachada do muro, fiadas em amarração. */
 export const IconeFrente = (p: P) => (
   <Svg {...p}>

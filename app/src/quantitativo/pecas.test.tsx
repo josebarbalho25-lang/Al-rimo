@@ -125,5 +125,5 @@ describe('com a modulação de verdade', () => {
       }
     }
     expect(conferidas).toBeGreaterThan(0);
-  });
+  }, 30_000); // percorre todos os cenários do gabarito: com a suíte inteira rodando junto, passa dos 5 s de praxe
 });

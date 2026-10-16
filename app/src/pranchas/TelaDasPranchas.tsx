@@ -10,6 +10,15 @@
 //  a cada passo do mouse travaria a tela num A0 cheio).
 //
 //  Painel = rótulo + valor + controle, sem texto explicativo (regra do Jose).
+//
+//  ENTRAR NO DESENHO (Jose, 16/10: "1 clique só seleciona o desenho pra
+//  posicionar ele; pra entrar e editar de verdade o que tem nele direto na
+//  prancha tem de dar duplo clique e entrar nele, aí os outros desenhos ficam
+//  mais clarinhos e o destaque vai pra quem está sendo editado"). Dentro do
+//  desenho vale a MESMA edição da aba de desenho (EdicaoDeAnotacoes.tsx):
+//  cotas, textos e chamadas — e o que se mexe aqui é a VISTA (vistas.ts), a
+//  mesma que a aba mostra. Esc, duplo clique fora ou "Sair" saem do desenho.
+//  Duplo clique no título reescreve o título no lugar.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as PE } from 'react';
@@ -18,32 +27,52 @@ import type { Resultado } from '@/motor/tipos';
 import { useApp } from '@/estado/store';
 import { ruim } from '@/estado/recadoRuim';
 import { nomeDeArquivo } from '@/estado/projeto';
-import { comporFolha, type ContextoDaFolha, type FolhaComposta } from './folha';
-import { CARIMBO_MIN, ESCALAS, ORDEM_DOS_FORMATOS, quadroLateralPadrao, rotuloDaEscala, tamanhoDaFolha } from './formatos';
+import { comporFolha, numeroDoItem, ondeVaiOTitulo, type ChamadaNaFolha, type ContextoDaFolha, type FolhaComposta, type ItemPosto } from './folha';
+import { cantosDoTexto } from '@/desenhos/chamadas';
+import { CARIMBO_MIN, ESCALAS, LETRA, ORDEM_DOS_FORMATOS, quadroLateralPadrao, quadroUtil, rotuloDaEscala, tamanhoDaFolha } from './formatos';
+import { encaixar } from './encaixe';
 import { novaFolha } from './padrao';
-import { dentroDaFolha, folhaAtiva, itemDaTabela, itemDaVista, naFolha, noItem, NOMES_DO_CONTEUDO, porNaFolha } from './acoes';
+import { dentroDaFolha, folhaAtiva, itemDaTabela, naAnotacao, naChamada, naFolha, noItem, NOMES_DO_CONTEUDO, numeroLivre, porNaFolha, porVistaNaFolha } from './acoes';
+import { AZUL, barraNaTela, teclaDeCampo, useEdicaoDeAnotacoes, type DesenhoEditavel } from './EdicaoDeAnotacoes';
+import { estiloDosCampos, Linha, Numero, Texto, TextoConfirmado } from './campos';
+import { TIPOS_2D, acharVista, excluirVista, novaVista, ondeEstaAVista, pranchasComVistas, renomearVista, vistasDoTipo } from './vistas';
 import type { IdDaTabela } from './tabelaDaFolha';
 import { usePranchasUi } from './ui';
 import { useGraficos } from '@/desenhos/useGraficos';
+import { naVista, type TipoDeVista } from '@/desenhos/graficos';
+import { useJanelaDeGraficos } from '@/desenhos/useJanelaDeGraficos';
 import { legendaDasCores, listaDeFerrosDaFolha, notasAutomaticas, quadroDeAco } from './quadro';
 import { criarDesenhista, type Desenhista } from './desenhista';
 import { logoEmPng, useEscritorio } from './escritorio';
 import { imprimirPranchas } from './pdf';
 import { pacoteDxf } from './dxf';
-import type { ConteudoDoItem, DadosDaObra, Folha, Formato, ItemDaFolha, Orientacao, PranchasDoProjeto } from './tipos';
+import type { ConteudoDoItem, DadosDaObra, Folha, Formato, ItemDaFolha, Orientacao, PedidoDeVista, PranchasDoProjeto, Pt, VistaDoProjeto } from './tipos';
 
 type Selecao = { tipo: 'item'; id: string } | { tipo: 'carimbo' } | { tipo: 'quadro' } | null;
 
 /** O que está sendo arrastado: só a moldura azul anda; o papel muda ao soltar. */
 type Arrasto =
-  | { tipo: 'mover'; id: string; x0: number; y0: number; px: number; py: number; dx: number; dy: number; solto: boolean }
+  /** `w`, `h`: a caixa do desenho (o encaixe alinha por ela); `gx`, `gy`: as guias em que ele grudou. */
+  | { tipo: 'mover'; id: string; x0: number; y0: number; w: number; h: number; px: number; py: number; dx: number; dy: number; solto: boolean; gx?: number; gy?: number }
   | { tipo: 'tamanho'; id: string; px: number; py: number; w0: number; h0: number; dw: number; dh: number }
   | { tipo: 'carimbo'; px: number; py: number; w0: number; h0: number; dw: number; dh: number }
   | { tipo: 'quadro'; px: number; py: number; w0: number; h0: number; dw: number; dh: number };
 
-const AZUL = '#0080ff';
+/** O título sendo reescrito no lugar (duplo clique nele). */
+interface TituloNoLugar {
+  id: string;
+  p: Pt;
+  texto: string;
+}
+
 /** Folga do clique: menos que isto (px de tela) é tremida da mão, não arrasto — o desenho não sai do lugar. */
 const FOLGA_DO_CLIQUE_PX = 3;
+/** Até onde (px de tela) o desenho arrastado gruda numa linha de alinhamento (encaixe.ts). */
+const IMA_PX = 8;
+/** A cor das guias do encaixe (a do ponto revelado do A-PORT: não se confunde com o azul da seleção). */
+const MAGENTA = '#d946ef';
+/** O véu sobre o que não está sendo editado (os outros desenhos, o carimbo, o quadro): mais claro, não some. */
+const VEU = 'rgba(255,255,255,0.6)';
 /** Espera depois da última tecla nas entradas para redesenhar a folha (cada tecla é um muro novo). */
 const ESPERA_DO_MURO_MS = 300;
 
@@ -76,37 +105,6 @@ const s = {
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 12;
 
-function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
-  return (
-    <label style={s.linha}>
-      <span style={s.rotulo} title={rotulo}>{rotulo}</span>
-      {children}
-    </label>
-  );
-}
-
-function Texto({ valor, aoMudar, sugestao }: { valor: string; aoMudar: (v: string) => void; sugestao?: string }) {
-  return <input className="campo" type="text" value={valor} placeholder={sugestao} onChange={(e) => aoMudar(e.target.value)} />;
-}
-
-function Numero({ valor, aoMudar, min = 0 }: { valor: number; aoMudar: (v: number) => void; min?: number }) {
-  const [rascunho, setRascunho] = useState<string | null>(null);
-  return (
-    <input
-      className="campo"
-      type="text"
-      inputMode="decimal"
-      value={rascunho ?? String(Math.round(valor * 10) / 10).replace('.', ',')}
-      onChange={(e) => {
-        setRascunho(e.target.value);
-        const v = Number(e.target.value.replace(',', '.'));
-        if (Number.isFinite(v) && v >= min) aoMudar(v);
-      }}
-      onBlur={() => setRascunho(null)}
-    />
-  );
-}
-
 /** O valor, só depois que ele parou de mudar por `ms` (o muro novo a cada tecla não redesenha a folha a cada tecla). */
 function useAssentado<T>(valor: T, ms: number): T {
   const [assentado, setAssentado] = useState(valor);
@@ -124,7 +122,10 @@ function prenderNaFolha(f: Folha): Folha {
 }
 
 export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; resultado: Resultado | null }) {
-  const pranchas = useApp((st) => st.pranchas);
+  // as folhas como a tela as vê: cada desenho com a VISTA dele (conteúdo, escala, título e anotações — 16/10). As
+  // mexidas vão no que está guardado (useApp), e o `noItem` manda cada coisa para o seu lugar (vistas.ts)
+  const guardadas = useApp((st) => st.pranchas);
+  const pranchas = useMemo(() => pranchasComVistas(guardadas), [guardadas]);
   const tituloDoMuro = useApp((st) => st.titulo);
   const carregamento = useApp((st) => st.carregamento);
   const mudar = useApp((st) => st.mudarPranchas);
@@ -138,6 +139,9 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
   const [sel, setSel] = useState<Selecao>(null);
   const [zoom, setZoom] = useState(1);
   const [arrasto, setArrasto] = useState<Arrasto | null>(null);
+  /** O desenho em que se entrou (duplo clique): as anotações dele ficam editáveis, os outros ficam mais claros. */
+  const [ativo, setAtivo] = useState<string | null>(null);
+  const [titulo, setTitulo] = useState<TituloNoLugar | null>(null);
   const [exportando, setExportando] = useState(false);
   const mesaRef = useRef<HTMLDivElement>(null);
   const papelRef = useRef<HTMLDivElement>(null);
@@ -147,7 +151,12 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
   const numero = folha ? pranchas.folhas.indexOf(folha) + 1 : 0;
 
   // outro muro aberto: a seleção do muro anterior não vale (Delete nela acenderia o • num arquivo recém-aberto)
-  useEffect(() => setSel(null), [carregamento]);
+  useEffect(() => {
+    setSel(null);
+    setAtivo(null);
+  }, [carregamento]);
+  // trocou de folha: sai do desenho
+  useEffect(() => setAtivo(null), [folha?.id]);
 
   // o tamanho da mesa: no zoom 1 a folha INTEIRA cabe (carimbo à vista, como o "ajustar à janela" do CAD) e o zoom
   // amplia a partir daí
@@ -231,7 +240,13 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
     () => ({
       escritorio,
       notasAutomaticas: notasAutomaticas(resultado, muro),
-      legenda: legendaDasCores(muro),
+      // a tabela de gráficos é por vista: a legenda do quadro sai da vista que pinta os blocos na folha (folha.ts)
+      legenda: naVista('frontal', () => legendaDasCores(muro)),
+      legendaPorVista: ((cache: Map<string, ReturnType<typeof legendaDasCores>>) => (v: Parameters<typeof naVista>[0], sob?: Parameters<typeof naVista>[2]) => {
+        const k = `${v}|${JSON.stringify(sob ?? {})}`;
+        if (!cache.has(k)) cache.set(k, naVista(v, () => legendaDasCores(muro), sob));
+        return cache.get(k)!;
+      })(new Map()),
       aco: quadroDeAco(muro, resultado),
       ferros: listaDeFerrosDaFolha(muro),
       // muro desenhado sem "Passa" na conta (não passa, ou a conta não deu veredito): tarja na folha
@@ -315,15 +330,26 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
     setAtiva(null);
     setSel(null);
   };
-  const adicionarVista = (tipo: 'frontal' | 'corte' | 'planta' | 'iso') => {
-    const pedido = tipo === 'planta' ? { tipo, fiada: 0 } : tipo === 'iso' ? { tipo, vista: 'frente-direita' as const, corteX: null } : { tipo };
-    const r = porNaFolha(pranchas, folha?.id ?? null, (f) => itemDaVista(f, pedido));
+  /**
+   * "vista:<id>": uma vista do projeto que não está em folha nenhuma (é por aqui que volta a vista tirada da folha);
+   * "nova:<tipo>": uma vista nova da pré-definida do tipo. A conta parte do que está GUARDADO (sem os espelhos).
+   */
+  const adicionarVista = (valor: string) => {
+    let base = useApp.getState().pranchas;
+    let vista: VistaDoProjeto | null;
+    if (valor.startsWith('vista:')) vista = acharVista(base, valor.slice(6));
+    else {
+      const r = novaVista(base, valor.slice(5) as PedidoDeVista['tipo']);
+      [base, vista] = [r.pranchas, r.vista];
+    }
+    if (!vista) return;
+    const r = porVistaNaFolha(base, folha?.id ?? null, vista);
     mudar(() => r.pranchas);
     setAtiva(r.folha);
     setSel({ tipo: 'item', id: r.item.id });
   };
   const adicionarTabela = (id: IdDaTabela) => {
-    const r = porNaFolha(pranchas, folha?.id ?? null, (f) => itemDaTabela(f, id));
+    const r = porNaFolha(useApp.getState().pranchas, folha?.id ?? null, (f) => itemDaTabela(f, id));
     mudar(() => r.pranchas);
     setAtiva(r.folha);
     setSel({ tipo: 'item', id: r.item.id });
@@ -337,46 +363,137 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
     [folha, mudar],
   );
 
-  // Delete apaga o desenho selecionado SÓ com o foco na mesa (clicar na folha a foca): digitando no painel de
-  // entradas, o Enter tira o foco do campo e um Backspace seguinte apagava o desenho sem a pessoa ver
-  useEffect(() => {
-    const aoTeclar = (e: KeyboardEvent) => {
-      if (!(e.key === 'Delete' || e.key === 'Backspace') || sel?.tipo !== 'item') return;
-      if (!mesaRef.current || document.activeElement !== mesaRef.current) return;
-      e.preventDefault();
-      excluirItem(sel.id);
-    };
-    window.addEventListener('keydown', aoTeclar);
-    return () => window.removeEventListener('keydown', aoTeclar);
-  }, [sel, excluirItem]);
-
-  // ── arrastar no papel ─────────────────────────────────────────────────────
+  // ── o papel e o mouse ──────────────────────────────────────────────────────
   const capaRef = useRef<SVGSVGElement>(null);
   const [W, H] = folha ? tamanhoDaFolha(folha.formato, folha.orientacao) : [841, 594];
   const larguraPx = Math.min(mesa[0], (mesa[1] * W) / H) * zoom;
   const mmPorPx = W / Math.max(1, larguraPx);
-
-  const mm = (e: PE): [number, number] => {
+  const mm = (e: { clientX: number; clientY: number }): Pt => {
     const svg = capaRef.current;
     const m = svg?.getScreenCTM();
     if (!svg || !m) return [0, 0];
     const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
     return [p.x, p.y];
   };
+  const naTela = (p: Pt): Pt | null => {
+    const m = capaRef.current?.getScreenCTM();
+    if (!m) return null;
+    const q = new DOMPoint(p[0], p[1]).matrixTransform(m);
+    return [q.x, q.y];
+  };
+  const focarMesa = () => mesaRef.current?.focus({ preventScroll: true });
+
+  // ── dentro do desenho (duplo clique) ──────────────────────────────────────
+  const postoAtivo = ativo ? composta?.itens.find((i) => i.id === ativo) ?? null : null;
+  const itemAtivo = ativo ? folha?.itens.find((i) => i.id === ativo) ?? null : null;
+  // o desenho em que se entrou saiu da folha (Excluir da folha, outra folha, outro muro): sai dele também — senão o
+  // véu some mas os outros desenhos continuam sem pegar clique e o "Sair" fica na barra
+  useEffect(() => {
+    if (ativo && composta && !composta.itens.some((i) => i.id === ativo)) setAtivo(null);
+  }, [ativo, composta]);
+  const desenhosEditaveis = useMemo<DesenhoEditavel[]>(
+    () => (postoAtivo && itemAtivo && composta && postoAtivo.prims
+      ? [{ posto: postoAtivo, item: itemAtivo, primitivas: composta.primitivas.slice(postoAtivo.prims[0], postoAtivo.prims[1]) }]
+      : []),
+    [postoAtivo, itemAtivo, composta],
+  );
+  const edicao = useEdicaoDeAnotacoes({
+    desenhos: desenhosEditaveis,
+    mudarItem: (id, f) => folha && mudar((p) => noItem(p, folha.id, id, f)),
+    mmPorPx,
+    ponto: mm,
+    naTela,
+    focar: focarMesa,
+    temFoco: () => !!mesaRef.current && document.activeElement === mesaRef.current,
+    aoSelecionar: () => setSel(null),
+    barraEm: (e) => barraNaTela(e, papelRef.current, muro),
+  });
+  /** Entra no desenho: só os em escala têm anotação para mexer (o 3D e o isométrico não; a tabela também não). */
+  const entrar = (id: string) => {
+    const it = composta?.itens.find((i) => i.id === id);
+    if (!it?.S) return;
+    setAtivo(id);
+    setSel(null);
+    edicao.limpar();
+    focarMesa();
+  };
+  const sair = () => {
+    edicao.armar(null);
+    edicao.limpar();
+    setAtivo(null);
+  };
+
+  /** Reescreve o título no lugar (duplo clique nele): vazio volta ao automático. */
+  const reescreverTitulo = (it: ItemPosto) => {
+    const item = folha?.itens.find((i) => i.id === it.id);
+    if (!item || !it.titulo) return;
+    // o número que a folha escreveu (sem número guardado, ela numera pela ordem): a caixa vai depois do quadrado dele
+    const q = ondeVaiOTitulo(it.titulo, folha ? numeroDoItem(folha, item) : '');
+    setTitulo({ id: it.id, p: q, texto: item.titulo.trim() || desenhista?.tituloAutomatico(item) || '' });
+  };
+  const tituloRef = useRef<TituloNoLugar | null>(null);
+  tituloRef.current = titulo;
+  const confirmarTitulo = () => {
+    const t = tituloRef.current;
+    tituloRef.current = null;
+    setTitulo(null);
+    if (!t || !folha) return;
+    const item = folha.itens.find((i) => i.id === t.id);
+    if (!item) return;
+    // igual ao automático continua automático (o título acompanha a vista quando ela muda)
+    const auto = desenhista?.tituloAutomatico({ ...item, titulo: '' }) ?? '';
+    const novo = t.texto.trim() === auto ? '' : t.texto;
+    if (novo !== item.titulo) mudar((p) => noItem(p, folha.id, t.id, (i) => ({ ...i, titulo: novo })));
+  };
+
+  // O teclado da folha. Delete apaga SÓ com o foco na mesa (clicar na folha a foca): digitando no painel de
+  // entradas, o Enter tira o foco do campo e um Backspace seguinte apagava o desenho sem a pessoa ver. Dentro do
+  // desenho, quem responde primeiro é a edição (Esc volta um passo, D e T armam, Delete tira a anotação); o Esc que
+  // sobra sai do desenho. Pela ref: o ouvinte é um só, e lê o estado da vez.
+  const teclar = useRef<(e: KeyboardEvent) => void>(() => undefined);
+  teclar.current = (e: KeyboardEvent) => {
+    if (titulo) return;
+    if (edicao.teclar(e)) return;
+    if (e.key === 'Escape') {
+      if (ativo && !teclaDeCampo(e)) sair();
+      return;
+    }
+    if (!mesaRef.current || document.activeElement !== mesaRef.current) return;
+    if (!(e.key === 'Delete' || e.key === 'Backspace') || !sel || ativo) return;
+    if (sel.tipo === 'item') excluirItem(sel.id);
+    else return;
+    e.preventDefault();
+  };
+  useEffect(() => {
+    const aoTeclar = (e: KeyboardEvent) => teclar.current(e);
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, []);
+
+  // ── arrastar no papel ─────────────────────────────────────────────────────
   const apertar = (e: PE, a: Arrasto) => {
     e.stopPropagation();
-    mesaRef.current?.focus({ preventScroll: true });
+    focarMesa();
     (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
     setArrasto(a);
   };
   const mover = (e: PE) => {
+    edicao.mover(e);
     if (!arrasto) return;
     const [x, y] = mm(e);
     const dx = Math.round((x - arrasto.px) * 2) / 2;
     const dy = Math.round((y - arrasto.py) * 2) / 2;
     if (arrasto.tipo === 'mover') {
       const solto = arrasto.solto || Math.hypot(x - arrasto.px, y - arrasto.py) > FOLGA_DO_CLIQUE_PX * mmPorPx;
-      setArrasto({ ...arrasto, dx: solto ? dx : 0, dy: solto ? dy : 0, solto });
+      if (!solto) return setArrasto({ ...arrasto, dx: 0, dy: 0, solto });
+      // o encaixe: as bordas e o meio grudam nos outros desenhos, na moldura, no quadro e no carimbo (Alt: livre)
+      if (e.altKey || !composta || !folha) return setArrasto({ ...arrasto, dx, dy, solto, gx: undefined, gy: undefined });
+      const [mx0, my0, mx1, my1] = quadroUtil(folha.formato, folha.orientacao);
+      const outros = composta.itens.filter((i) => i.id !== arrasto.id && !i.pendente).map((i) => i.caixa);
+      const linhasX = [mx0, mx1, composta.carimbo[0], ...(composta.quadro ? [composta.quadro[0]] : [])];
+      const linhasY = [my0, my1, composta.carimbo[1]];
+      const g = encaixar([arrasto.x0 + dx, arrasto.y0 + dy, arrasto.w, arrasto.h], outros, linhasX, linhasY, IMA_PX * mmPorPx);
+      setArrasto({ ...arrasto, dx: dx + g.dx, dy: dy + g.dy, solto, gx: g.gx, gy: g.gy });
     } else setArrasto({ ...arrasto, dw: dx, dh: dy });
   };
   /** O tamanho que o redimensionar dá, já com a proporção travada (a moldura-fantasma mostra o resultado). */
@@ -386,6 +503,7 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
     return [w, w / prop];
   };
   const soltar = () => {
+    edicao.soltar();
     const a = arrasto;
     setArrasto(null);
     if (!a || !folha) return;
@@ -406,8 +524,12 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
   };
 
   // ── o painel do que está selecionado ──────────────────────────────────────
-  const itemSel = folha && sel?.tipo === 'item' ? folha.itens.find((i) => i.id === sel.id) ?? null : null;
-  const caixaSel = itemSel ? composta?.itens.find((i) => i.id === itemSel.id)?.caixa ?? null : null;
+  // dentro do desenho, sem anotação escolhida, o painel é o do desenho (título, número, escala…)
+  const idDoPainel = sel?.tipo === 'item' ? sel.id : ativo && !edicao.sel ? ativo : null;
+  const itemSel = folha && idDoPainel ? folha.itens.find((i) => i.id === idDoPainel) ?? null : null;
+  const postoSel = itemSel ? composta?.itens.find((i) => i.id === itemSel.id) ?? null : null;
+  const caixaSel = postoSel?.caixa ?? null;
+  const ocultasSel = (postoSel?.chamadas?.filter((c) => c.oculta).length ?? 0) + (postoSel?.anotacoes?.filter((a) => a.oculta && !a.nova).length ?? 0);
   const mudarItem = (f: (i: ItemDaFolha) => ItemDaFolha) => folha && itemSel && mudar((p) => noItem(p, folha.id, itemSel.id, f));
 
   const subirLogo = (alvo: HTMLInputElement) => {
@@ -419,6 +541,17 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
   };
 
   const desenhosDaFolha = composta?.itens ?? [];
+  // as vistas que não estão em folha nenhuma, de todos os tipos (as de fábrica que ninguém pôs também), na ordem das abas
+  const vistasLivres = useMemo(
+    () => [...TIPOS_2D, '3d' as const].flatMap((t) => vistasDoTipo(guardadas, t)).filter((v) => !ondeEstaAVista(guardadas, v.id)),
+    [guardadas],
+  );
+  // as vistas 3D fora das folhas: o 3D não tem aba, então é aqui que a câmera guardada se apaga (cada "Enviar para a
+  // prancha" do visor cria uma; sem isto elas se acumulam no arquivo para sempre)
+  const tresDLivres = vistasLivres.filter((v) => v.conteudo.tipo === '3d');
+  const excluirVista3d = (v: VistaDoProjeto) => {
+    if (window.confirm(`Excluir a vista "${v.nome}"?`)) mudar((p) => excluirVista(p, v.id));
+  };
 
   return (
     <div style={s.raiz} data-frente="pranchas">
@@ -457,9 +590,46 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
           </div>
         )}
 
+        {!sel && tresDLivres.length > 0 && (
+          <div style={s.grupo} data-vistas-3d-livres>
+            <span style={s.tituloDoGrupo}>Vistas 3D fora das folhas</span>
+            {tresDLivres.map((v) => (
+              <div key={v.id} style={estiloDosCampos.linha}>
+                <span style={estiloDosCampos.rotulo} title={v.nome}>{v.nome}</span>
+                <button type="button" className="btn-caixa" onClick={() => excluirVista3d(v)}>Excluir vista</button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {itemSel && (
           <div style={s.grupo}>
             <span style={s.tituloDoGrupo}>{NOMES_DO_CONTEUDO[itemSel.conteudo.tipo]}</span>
+            {itemSel.vista && (
+              <Linha rotulo="Vista">
+                <TextoConfirmado valor={acharVista(guardadas, itemSel.vista)?.nome ?? ''} aoConfirmar={(v) => mudar((p) => renomearVista(p, itemSel.vista!, v))} />
+              </Linha>
+            )}
+            {/* a sobreposição de gráficos da vista deste desenho (a mesma do botão Gráficos da aba) */}
+            {itemSel.vista && itemSel.conteudo.tipo !== '3d' && itemSel.conteudo.tipo !== 'tabela' && itemSel.conteudo.tipo !== 'detalhe' && (
+              <Linha rotulo="Gráficos">
+                <button
+                  type="button" className="btn-caixa"
+                  onClick={() => useJanelaDeGraficos.getState().abrir({ tipo: 'vista', id: itemSel.vista!, tipoDaVista: itemSel.conteudo.tipo as TipoDeVista })}
+                >
+                  Sobrepor…
+                </button>
+              </Linha>
+            )}
+            {itemSel.conteudo.tipo !== 'tabela' && (
+              <Linha rotulo="Número">
+                {/* vazio volta ao primeiro número livre da folha (o desenho não fica sem número) */}
+                <TextoConfirmado
+                  valor={itemSel.numero ?? ''}
+                  aoConfirmar={(v) => mudarItem((i) => ({ ...i, numero: v.trim().slice(0, 8) || numeroLivre({ ...folha!, itens: folha!.itens.filter((x) => x.id !== i.id) }) }))}
+                />
+              </Linha>
+            )}
             <Linha rotulo="Título">
               <Texto valor={itemSel.titulo} sugestao={desenhista?.tituloAutomatico(itemSel)} aoMudar={(v) => mudarItem((i) => ({ ...i, titulo: v }))} />
             </Linha>
@@ -499,9 +669,35 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
                 </select>
               </Linha>
             )}
+            {!ativo && (ocultasSel > 0 || itemSel.chamadas || itemSel.anotacoes) && (
+              <div style={s.linha}>
+                <span style={s.rotulo}>Anotações</span>
+                <span style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {ocultasSel > 0 && (
+                    <button
+                      type="button" className="btn-caixa"
+                      onClick={() =>
+                        mudarItem((i) => {
+                          const comChamadas = (postoSel?.chamadas ?? []).filter((c) => c.oculta).reduce((x, c) => naChamada(x, c.chave, ({ oculta: _o, ...q }) => q), i);
+                          // o texto vazio guardado antes de 16/10 também escondia: sai junto
+                          return (postoSel?.anotacoes ?? []).filter((a) => a.oculta && !a.nova).reduce((x, a) => naAnotacao(x, a.chave, ({ oculta: _o, ...q }) => (q.texto !== undefined && !q.texto.trim() ? (({ texto: _t, ...r }) => r)(q) : q)), comChamadas);
+                        })
+                      }
+                    >
+                      Mostrar ocultas ({ocultasSel})
+                    </button>
+                  )}
+                  {(itemSel.chamadas || itemSel.anotacoes) && (
+                    <button type="button" className="btn-caixa" onClick={() => mudarItem(({ chamadas: _c, anotacoes: _a, ...i }) => i)}>Voltar ao automático</button>
+                  )}
+                </span>
+              </div>
+            )}
             <button type="button" className="btn-caixa" onClick={() => excluirItem(itemSel.id)}>Excluir da folha</button>
           </div>
         )}
+
+        {edicao.painel}
 
         {folha && sel?.tipo === 'carimbo' && (
           <div style={s.grupo}>
@@ -577,15 +773,19 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
               onChange={(e) => {
                 const v = e.target.value;
                 if (v.startsWith('tabela:')) adicionarTabela(v.slice(7) as IdDaTabela);
-                else if (v) adicionarVista(v as 'frontal');
+                else if (v) adicionarVista(v);
               }}
               disabled={!modelo}
             >
               <option value="">—</option>
-              <option value="frontal">Vista frontal</option>
-              <option value="corte">Corte</option>
-              <option value="planta">Planta</option>
-              <option value="iso">Isométrico</option>
+              {vistasLivres.length > 0 && (
+                <optgroup label="Vistas">
+                  {vistasLivres.map((v) => <option key={v.id} value={`vista:${v.id}`}>{v.nome}</option>)}
+                </optgroup>
+              )}
+              <optgroup label="Nova vista">
+                {TIPOS_2D.map((t) => <option key={t} value={`nova:${t}`}>{NOMES_DO_CONTEUDO[t]}</option>)}
+              </optgroup>
               <optgroup label="Tabela">
                 <option value="tabela:blocos">Blocos e canaletas</option>
                 <option value="tabela:quantidades">Materiais</option>
@@ -594,6 +794,16 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
             </select>
           </label>
           <span style={{ flex: 1 }} />
+          {edicao.dica && (
+            <span style={{ ...s.rotulo, overflow: 'visible' }} data-dica-da-ferramenta>{edicao.dica}</span>
+          )}
+          {/* as ferramentas valem dentro do desenho (duplo clique nele): é a vista dele que se anota */}
+          <div className="cad-escolha">
+            <button type="button" style={s.botao} className={edicao.ferramenta === 'cota' ? 'on' : undefined} disabled={!ativo || !edicao.podeAnotar} title="Cota  ·  D" onClick={() => edicao.armar(edicao.ferramenta === 'cota' ? null : 'cota')}>Cota</button>
+            <button type="button" style={s.botao} className={edicao.ferramenta === 'texto' ? 'on' : undefined} disabled={!ativo || !edicao.podeAnotar} title="Texto  ·  T" onClick={() => edicao.armar(edicao.ferramenta === 'texto' ? null : 'texto')}>Texto</button>
+            <button type="button" style={s.botao} className={edicao.ferramenta === 'etiqueta' ? 'on' : undefined} disabled={!ativo || !edicao.podeEtiquetar} title="Etiqueta  ·  I" onClick={() => edicao.armar(edicao.ferramenta === 'etiqueta' ? null : 'etiqueta')}>Etiqueta</button>
+            {ativo && <button type="button" style={s.botao} title="Sair do desenho  ·  Esc" onClick={sair}>Sair</button>}
+          </div>
           <div className="cad-escolha">
             <button type="button" style={s.botao} onClick={() => setZoom((z) => Math.max(ZOOM_MIN, z / 1.25))} title="Diminuir" aria-label="Diminuir">−</button>
             <button type="button" style={s.botao} onClick={() => setZoom(1)}>Ajustar</button>
@@ -609,18 +819,35 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
           </div>
         </div>
 
-        <div ref={mesaRef} style={s.mesa} tabIndex={0} onPointerDownCapture={panear} onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }} onPointerDown={() => { setSel(null); mesaRef.current?.focus({ preventScroll: true }); }}>
+        <div
+          ref={mesaRef} style={s.mesa} tabIndex={0} onPointerDownCapture={panear}
+          onMouseDown={(e) => { if (e.button === 1) e.preventDefault(); }}
+          onPointerDown={() => { setSel(null); edicao.limpar(); focarMesa(); }}
+          onDoubleClick={() => { if (ativo) sair(); }}
+        >
           {composta && folha ? (
             <div ref={papelRef} style={{ position: 'relative', width: larguraPx, height: (larguraPx * H) / W, margin: '0 auto', boxShadow: '0 2px 10px rgba(0,0,0,0.35)' }}>
               <div style={{ position: 'absolute', inset: 0, lineHeight: 0 }} dangerouslySetInnerHTML={{ __html: composta.svg.replace(/width="[\d.]+mm" height="[\d.]+mm"/, 'width="100%" height="100%"') }} />
               <svg
                 ref={capaRef}
                 viewBox={`0 0 ${W} ${H}`}
-                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', touchAction: 'none' }}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', touchAction: 'none', cursor: edicao.ferramenta ? 'crosshair' : undefined }}
                 onPointerMove={mover}
+                onPointerDown={(e) => { edicao.apertarComFerramenta(e); }}
                 onPointerUp={soltar}
                 onPointerCancel={soltar}
+                onDoubleClick={(e) => {
+                  // duplo clique fora do desenho em que se entrou: sai dele. Dentro (no vazio, na linha da cota, na
+                  // alça) ou com a ferramenta armada (dois cliques rápidos da cota) fica — e a mesa não fica sabendo
+                  e.stopPropagation();
+                  if (!postoAtivo || edicao.ferramenta) return;
+                  const p = mm(e);
+                  const [x, y, w, h] = postoAtivo.caixa;
+                  if (p[0] < x || p[0] > x + w || p[1] < y || p[1] > y + h) sair();
+                }}
               >
+                {/* dentro de um desenho, o resto da folha não se pega (nem se move): o clique é da edição */}
+                <g style={{ pointerEvents: ativo || edicao.ferramenta ? 'none' : undefined }}>
                 {/* quadro lateral: a alça no canto de cima à esquerda puxa largura e altura (por baixo dos desenhos:
                     um desenho em cima do quadro ainda se pega) */}
                 {composta.quadro && (() => {
@@ -670,7 +897,7 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
                     </g>
                   );
                 })()}
-                {/* os desenhos: clicar seleciona, arrastar move */}
+                {/* os desenhos: clicar seleciona, arrastar move, duplo clique entra (as anotações dele ficam editáveis) */}
                 {desenhosDaFolha.map((it) => {
                   const item = folha.itens.find((i) => i.id === it.id);
                   if (!item) return null;
@@ -680,6 +907,13 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
                   const dy = a?.tipo === 'mover' ? a.dy : 0;
                   const [x, y, w, h] = it.caixa;
                   const [ww, hh] = a?.tipo === 'tamanho' ? tamanhoTravado(a) : [w, h];
+                  const pegarParaMover = (e: PE) => {
+                    if (e.button !== 0) return;
+                    setSel({ tipo: 'item', id: it.id });
+                    edicao.limpar();
+                    const [px, py] = mm(e);
+                    apertar(e, { tipo: 'mover', id: it.id, x0: item.x, y0: item.y, w: it.caixa[2], h: it.caixa[3], px, py, dx: 0, dy: 0, solto: false });
+                  };
                   return (
                     <g key={it.id}>
                       <rect
@@ -689,13 +923,30 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
                         stroke={ligado || a ? AZUL : it.invade ? '#e0685a' : 'transparent'}
                         strokeWidth={0.6}
                         style={{ cursor: 'move' }}
-                        onPointerDown={(e) => {
-                          setSel({ tipo: 'item', id: it.id });
-                          const [px, py] = mm(e);
-                          apertar(e, { tipo: 'mover', id: it.id, x0: item.x, y0: item.y, px, py, dx: 0, dy: 0, solto: false });
+                        onPointerDown={pegarParaMover}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          entrar(it.id);
                         }}
                       />
+                      {/* o título: pega o desenho como o resto dele; duplo clique reescreve no lugar */}
+                      {it.titulo && (
+                        <rect
+                          x={it.titulo[0] + dx} y={it.titulo[1] + dy} width={it.titulo[2]} height={it.titulo[3]}
+                          fill="transparent" style={{ cursor: 'move' }}
+                          data-titulo={it.id}
+                          onPointerDown={pegarParaMover}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            reescreverTitulo(it);
+                          }}
+                        />
+                      )}
                       {pendenteRotulo(it.pendente, x + dx, y + dy, ww, hh, NOMES_DO_CONTEUDO[item.conteudo.tipo])}
+                      {/* durante o arrasto do desenho, as chamadas soltas andam junto na moldura azul */}
+                      {a?.tipo === 'mover' && it.chamadas?.filter((c) => c.posta && !c.oculta).map((c) => (
+                        <polygon key={c.chave} points={pontosDoTexto(c, dx, dy)} fill="none" stroke={AZUL} strokeWidth={0.3} style={{ pointerEvents: 'none' }} />
+                      ))}
                       {/* a tabela não tem alça: o tamanho dela é o da letra da folha */}
                       {ligado && item.escala === null && item.conteudo.tipo !== 'tabela' && (
                         <rect
@@ -710,7 +961,64 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
                     </g>
                   );
                 })}
+                </g>
+                {/* dentro de um desenho: o resto da folha fica mais claro e o desenho ganha a moldura (só a tela) */}
+                {postoAtivo && (
+                  <g style={{ pointerEvents: 'none' }} data-veu>
+                    {desenhosDaFolha.filter((it) => it.id !== postoAtivo.id).flatMap((it) => [it.caixa, ...(it.titulo ? [it.titulo] : [])]).map((r, k) => (
+                      <rect key={`d${k}`} x={r[0]} y={r[1]} width={r[2]} height={r[3]} fill={VEU} />
+                    ))}
+                    <rect x={composta.carimbo[0]} y={composta.carimbo[1]} width={composta.carimbo[2]} height={composta.carimbo[3]} fill={VEU} />
+                    {composta.quadro && <rect x={composta.quadro[0]} y={composta.quadro[1]} width={composta.quadro[2]} height={composta.quadro[3]} fill={VEU} />}
+                    <rect
+                      x={postoAtivo.caixa[0] - 1} y={postoAtivo.caixa[1] - 1} width={postoAtivo.caixa[2] + 2} height={postoAtivo.caixa[3] + 2}
+                      fill="none" stroke={AZUL} strokeWidth={0.4} strokeDasharray="2,1"
+                    />
+                  </g>
+                )}
+                {/* as guias do encaixe: a linha em que o desenho arrastado grudou */}
+                {arrasto?.tipo === 'mover' && (
+                  <g style={{ pointerEvents: 'none' }} data-guias>
+                    {arrasto.gx !== undefined && <line x1={arrasto.gx} y1={0} x2={arrasto.gx} y2={H} stroke={MAGENTA} strokeWidth={0.25} strokeDasharray="1.2,0.8" />}
+                    {arrasto.gy !== undefined && <line x1={0} y1={arrasto.gy} x2={W} y2={arrasto.gy} stroke={MAGENTA} strokeWidth={0.25} strokeDasharray="1.2,0.8" />}
+                  </g>
+                )}
+                {edicao.camada}
               </svg>
+              {/* reescrever o título no lugar: a caixa na linha de base dele */}
+              {titulo && (() => {
+                // no papel (absoluta dentro dele, pela escala do papel na tela): anda com o zoom e com a folha rolando
+                const pxPorMm = larguraPx / W;
+                const base: Pt = [titulo.p[0] * pxPorMm, titulo.p[1] * pxPorMm];
+                const fonte = Math.max(10, LETRA.titulo * pxPorMm);
+                return (
+                  <input
+                    autoFocus
+                    aria-label="Título"
+                    data-titulo-no-lugar
+                    value={titulo.texto}
+                    onChange={(e) => setTitulo({ ...titulo, texto: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        confirmarTitulo();
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        tituloRef.current = null;
+                        setTitulo(null);
+                      }
+                    }}
+                    onBlur={confirmarTitulo}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    style={{
+                      position: 'absolute', left: base[0] - 3, top: base[1] - fonte * 1.05, zIndex: 50,
+                      font: `${fonte}px Arial, sans-serif`, padding: '0 2px', border: `1px solid ${AZUL}`, background: '#ffffff', color: '#262626',
+                      outline: 'none', width: Math.max(140, (titulo.texto.length + 2) * fonte * 0.6),
+                    }}
+                  />
+                );
+              })()}
             </div>
           ) : (
             <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 40 }}>
@@ -721,6 +1029,11 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
       </div>
     </div>
   );
+}
+
+/** A caixa do texto da chamada (girada), deslocada de (dx, dy) mm, como pontos de <polygon>. */
+function pontosDoTexto(c: ChamadaNaFolha, dx: number, dy: number): string {
+  return cantosDoTexto([c.texto[0] + dx, c.texto[1] + dy], c.giro, c.largura, c.tam).map((p) => `${p[0]},${p[1]}`).join(' ');
 }
 
 /** O lugar de um desenho que ainda não chegou: o nome no meio do quadro tracejado. */

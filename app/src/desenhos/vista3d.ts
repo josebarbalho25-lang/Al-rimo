@@ -45,10 +45,12 @@
 import type { Barra, Modelo, Vec2, Vec3 } from '@/modelo/tipos';
 import type { Camera3d, Primitiva, Traco } from '@/pranchas/tipos';
 import { acabamentoDaPeca, categoriasDaBarra, categoriasDaPeca, visivel, type Categoria } from '@/visor/lotes';
-import { corDaPeca, corDoAco, opacidadeDoTerreno, tracoDoEstilo, type EstiloVisual } from '@/visor/estiloVisual';
+// as cores SEM o meio-tom: cada traço leva o material (ou a camada do aço) e a Prancha aplica o meio-tom uma vez — com
+// a cor já clara, ela clareava de novo e a prancha saía bem mais pálida que o visor
+import { corDaPecaSemMeioTom as corDaPeca, corDoAcoSemMeioTom as corDoAco, opacidadeDoTerreno, tracoDoEstilo, type EstiloVisual } from '@/visor/estiloVisual';
 import { lerPaleta } from '@/visor/tema3d';
 import { corDaBitola, rotuloDaBitola } from '@/visor/coresDasBitolas';
-import { corDoAcoNoDesenho, hachuraDe } from './graficos';
+import { corDoAcoNoDesenho, hachuraDe, materialDaPeca, naVista } from './graficos';
 import { metros } from './formato';
 import {
   ALVENARIA, CANALETA, GRAUTE, ehCostura, escalar, facesDoSolido, fatiarEmZ, recortarEmX, secao, solidosDoModelo, type Face, type Solido,
@@ -410,7 +412,12 @@ function camadaDaPeca(tp: Solido['peca']['tipo']): string {
   return 'drenagem';
 }
 
+/** O 3D em vetor com a tabela de gráficos dela (3d: graficos.ts, naVista). */
 export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {}): Prancha {
+  return naVista('3d', () => vista3dNaVista(m, cam, o));
+}
+
+function vista3dNaVista(m: Modelo, cam: Camera3d, o: OpcoesVista3d): Prancha {
   const pr = new PranchaDo3d(o.prefixo ?? 'des', o.hachuraVetorial);
   const c = montarCena(m, cam);
   const { v, dir, cima, luz } = c.base;
@@ -433,7 +440,7 @@ export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {})
     pr.abrir('data-camada="terreno"');
     const faces = c.terreno.flatMap((s) => facesDoSolido(s).filter(frente).map((f) => ({ s, f, prof: fundo(f) })));
     for (const { s, f } of faces.sort((a, b) => a.prof - b.prof)) {
-      pr.poligono(f.pts.map(P), { fill: cor, stroke: cor, sw: 0.6, id: s.peca.id, camada: 'terreno' });
+      pr.poligono(f.pts.map(P), { fill: cor, stroke: cor, sw: 0.6, id: s.peca.id, camada: 'terreno', material: 'terra' });
     }
     pr.fechar();
   }
@@ -447,6 +454,7 @@ export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {})
     const tp = s.peca.tipo;
     const alv = ALVENARIA.has(tp);
     const camada = camadaDaPeca(tp);
+    const material = materialDaPeca(tp, s.geo.classe);
     const base = opaco ? corOpaca(s) : corDoCores(s);
     // traço escuro também no bloco (o cinza do inteiro engoliria um mais claro); no Opaco o traço é o desenho
     const traco = opaco ? tracoOpaco : alv ? '#2e2e2e' : '#404040';
@@ -460,16 +468,16 @@ export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {})
       const fator = opaco ? 1 : alv ? Math.min(1, 0.8 + 0.25 * luzDaFace) : 0.6 + 0.4 * luzDaFace;
       const cor = sombrear(base, fator);
       if (!partida) {
-        pr.poligono(f.pts.map(P), { fill: cor, stroke: traco, sw: alv ? 0.4 : 0.6, id: s.peca.id, camada });
+        pr.poligono(f.pts.map(P), { fill: cor, stroke: traco, sw: alv ? 0.4 : 0.6, id: s.peca.id, camada, material });
       } else {
         // peça partida: a divisa não aparece — o contorno na cor da face cobre a fresta, e só as arestas da peça
         // original levam traço
-        pr.poligono(f.pts.map(P), { fill: cor, stroke: cor, sw: 0.6, id: s.peca.id, camada });
+        pr.poligono(f.pts.map(P), { fill: cor, stroke: cor, sw: 0.6, id: s.peca.id, camada, material });
         f.pts.forEach((p, k) => {
           const q = f.pts[(k + 1) % f.pts.length];
           if (arestaInterna(pd, p, q)) return;
           const [a, b] = [P(p), P(q)];
-          pr.linha(a[0], a[1], b[0], b[1], { stroke: traco, sw: 0.6, camada });
+          pr.linha(a[0], a[1], b[0], b[1], { stroke: traco, sw: 0.6, camada, material });
         });
       }
       // furo visto na tampa: graute se a peça diz que o furo é grauteado (e o graute está à mostra); vazio, senão
@@ -480,7 +488,7 @@ export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {})
           const corDoFuro = cheio
             ? opaco ? corDaPeca('opaco', paleta!, 'graute') : sombrear(hachuraDe('graute').fundo, fator)
             : opaco ? '#ffffff' : COR.furoEscuro;
-          pr.poligono(furo.map(P), { fill: corDoFuro, stroke: traco, sw: 0.3, camada: cheio ? 'graute' : camada });
+          pr.poligono(furo.map(P), { fill: corDoFuro, stroke: traco, sw: 0.3, camada: cheio ? 'graute' : camada, material: cheio ? 'graute' : material });
         });
       }
     }
@@ -491,7 +499,7 @@ export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {})
         const lado = escalar(sub(t.topo[0], t.base[0]), v);
         if (Math.abs(lado) < 1e-9) continue;
         const boca = lado > 0 ? t.topo : t.base;
-        pr.poligono(boca.map(P), { fill: opaco ? corOpaca(t) : COR.furoEscuro, stroke: traco, sw: 0.4, id: t.peca.id, camada: 'drenagem' });
+        pr.poligono(boca.map(P), { fill: opaco ? corOpaca(t) : COR.furoEscuro, stroke: traco, sw: 0.4, id: t.peca.id, camada: 'drenagem', material: 'tubo' });
         continue;
       }
       // o graute que enche o U: só a tampa de cima e, onde a corrida acaba de verdade, a de topo — as outras faces
@@ -505,7 +513,7 @@ export function desenharVista3d(m: Modelo, cam: Camera3d, o: OpcoesVista3d = {})
       };
       for (const f of facesDoSolido(t).filter((q) => frente(q) && aparece(q)).sort((a, b) => fundo(a) - fundo(b))) {
         const cor = opaco ? corDaPeca('opaco', paleta!, 'graute') : sombrear(hachuraDe('graute').fundo, 0.6 + 0.4 * Math.max(0, escalar(f.normal, luz)));
-        pr.poligono(f.pts.map(P), { fill: cor, stroke: opaco ? traco : hachuraDe('graute').risco, sw: 0.3, id: t.peca.id, camada: 'graute' });
+        pr.poligono(f.pts.map(P), { fill: cor, stroke: opaco ? traco : hachuraDe('graute').risco, sw: 0.3, id: t.peca.id, camada: 'graute', material: 'graute' });
       }
     }
   }

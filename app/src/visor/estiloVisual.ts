@@ -22,7 +22,7 @@ import type { ClassePeca } from '@/modelo/tipos';
 import { CORES_DO_JOSE } from '@/modulacao/catalogo';
 import type { Acabamento } from './lotes';
 import type { PaletaVisor } from './tema3d';
-import { graficos, type Material } from '@/desenhos/graficos';
+import { emMeioTom, tabelaDaVista, type Material } from '@/desenhos/graficos';
 
 export type EstiloVisual = 'cores' | 'realista' | 'opaco';
 
@@ -68,7 +68,7 @@ export const COR_DA_CLASSE = Object.fromEntries(ORDEM_DAS_CLASSES.map((c) => [c,
 
 /** A cor da classe na tabela de gráficos em uso (o Jose troca na tela — 15/10); a de fábrica é COR_DA_CLASSE. */
 export function corDaClasse(c: ClassePeca): string {
-  return graficos().materiais[c]?.cor ?? COR_DA_CLASSE[c];
+  return tabelaDaVista('3d')[c]?.cor ?? COR_DA_CLASSE[c];
 }
 
 /** O material da tabela de gráficos de cada acabamento do 3D. */
@@ -144,8 +144,16 @@ const ACO_OPACO = '#4a4a4a';
  * a do tema, que muda entre o claro e o escuro. O Realista é foto e não lê a tabela.
  */
 export function corDaPeca(estilo: EstiloVisual, p: PaletaVisor, a: Acabamento, classe?: ClassePeca): string {
+  const cor = corDaPecaSemMeioTom(estilo, p, a, classe);
+  // o meio-tom da sobreposição do visor (a do A-PORT): a peça vai para perto do claro, opaca. O Realista é foto
+  const m = a === 'alvenaria' && classe ? classe : MATERIAL_DO_ACABAMENTO[a];
+  return estilo !== 'realista' && tabelaDaVista('3d')[m]?.meioTom ? emMeioTom(cor) : cor;
+}
+
+/** A cor da peça sem o meio-tom: o 3D em vetor da prancha, que passa o material e deixa o meio-tom com a Prancha. */
+export function corDaPecaSemMeioTom(estilo: EstiloVisual, p: PaletaVisor, a: Acabamento, classe?: ClassePeca): string {
   if (estilo === 'realista') return REALISTA[a];
-  const g = graficos().materiais;
+  const g = tabelaDaVista('3d');
   if (estilo === 'opaco') return g[MATERIAL_DO_ACABAMENTO[a]]?.opaco ?? OPACO[a];
   const escolhida = a === 'alvenaria' ? undefined : g[MATERIAL_DO_ACABAMENTO[a]]?.cor;
   if (escolhida) return escolhida;
@@ -171,8 +179,14 @@ export function corDaPeca(estilo: EstiloVisual, p: PaletaVisor, a: Acabamento, c
 }
 
 export function corDoAco(estilo: EstiloVisual): string {
+  const cor = corDoAcoSemMeioTom(estilo);
+  return estilo !== 'realista' && tabelaDaVista('3d').aco?.meioTom ? emMeioTom(cor) : cor;
+}
+
+/** A cor do aço sem o meio-tom (o 3D em vetor: a camada 'aco' faz a Prancha aplicar). */
+export function corDoAcoSemMeioTom(estilo: EstiloVisual): string {
   if (estilo === 'realista') return ACO_REALISTA;
-  const g = graficos().materiais.aco;
+  const g = tabelaDaVista('3d').aco;
   return estilo === 'opaco' ? (g?.opaco ?? ACO_OPACO) : (g?.cor ?? NEUTRO_DAS_CORES.aco);
 }
 

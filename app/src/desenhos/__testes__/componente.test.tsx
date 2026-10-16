@@ -46,6 +46,16 @@ describe('Desenhos (componente)', () => {
     expect(html).toContain(`[data-frente="desenhos"] [data-id="${id}"]`);
   });
 
+  it('a Etiqueta só arma onde a etiqueta aparece (frontal e corte); cota e texto, em todo desenho com escala', () => {
+    const botao = (html: string, nome: string) => new RegExp(`<button[^>]*>${nome}</button>`).exec(html)![0];
+    for (const v of ['frontal', 'corte'] as const) expect(botao(renderToString(<Desenhos modelo={m} vista={v} />), 'Etiqueta')).not.toContain('disabled');
+    const planta = renderToString(<Desenhos modelo={m} vista="planta" />);
+    expect(botao(planta, 'Etiqueta')).toContain('disabled');
+    expect(botao(planta, 'Cota')).not.toContain('disabled');
+    const iso = renderToString(<Desenhos modelo={m} vista="iso" />);
+    for (const nome of ['Cota', 'Texto', 'Etiqueta']) expect(botao(iso, nome)).toContain('disabled');
+  });
+
   it('a barra só tem rótulo, valor e controle', () => {
     const html = renderToString(<Desenhos modelo={m} vista="corte" />);
     const barra = html.slice(0, html.indexOf('class="prancheta'));

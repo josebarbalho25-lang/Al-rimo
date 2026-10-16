@@ -26,6 +26,7 @@ import { TITULO_DO_EXEMPLO } from '@/estado/novo';
 import { useApp } from '@/estado/store';
 import { definirPreferencia, NOME_DO_TEMA, proximoTema, usePreferencias } from '@/estilo/preferenciasDaInterface';
 import { Configuracoes } from './Configuracoes';
+import { JanelaDeGraficos } from './JanelaDeGraficos';
 import { JanelaDoTermo } from './TermoDeUso';
 import { MarcaAlrimo } from './Marca';
 import {
@@ -128,6 +129,7 @@ export function TopBar() {
       </div>
 
       {config && <Configuracoes aoFechar={fecharConfig} />}
+      <JanelaDeGraficos />
       {termo && <JanelaDoTermo modo="leitura" aoFechar={fecharTermo} />}
     </header>
   );

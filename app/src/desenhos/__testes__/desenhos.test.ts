@@ -13,7 +13,7 @@ import { corteLateral, cortesPadrao, isometrico, planta, vistaFrontal } from '..
 import { cadeia } from '../vistaFrontal';
 import { quemNaFrente, camera, desenharIsometrico } from '../isometrico';
 import { ehCostura, fatiarEmZ, solidoDaPeca, solidosDoModelo, secao } from '../geometria';
-import { cm } from '../formato';
+import { cm, cmCheio } from '../formato';
 import { modeloDeExemplo } from './modeloDeExemplo';
 import { ids, rotulos, textos, textosForaDoViewBox, xmlBemFormado } from './lerSvg';
 
@@ -52,10 +52,10 @@ describe.each(Object.entries(MODELOS))('%s', (_, m) => {
 
   it('vista frontal: comprimento, alturas e eixo a eixo saem do modelo', () => {
     const r = rotulos(svgs.frontal);
-    expect(r).toContain(cm(m.dims.L_real));
+    expect(r).toContain(cmCheio(m.dims.L_real));
     expect(r).toContain(`muro ${cm(m.dims.H_muro)}`);
     expect(r).toContain(`solo ${cm(m.dims.H_solo)}`);
-    if (m.dims.trechos.length > 1) for (const t of m.dims.trechos) expect(r).toContain(cm(t.x1 - t.x0));
+    if (m.dims.trechos.length > 1) for (const t of m.dims.trechos) expect(r).toContain(cmCheio(t.x1 - t.x0));
     const cf = m.dims.contrafortes;
     if (cf.length >= 2) {
       const passo = cf[1].x - cf[0].x;
@@ -135,7 +135,7 @@ describe('contrafortes', () => {
   it('planta: eixo a eixo, comprimento total, t e tenr', () => {
     const r = rotulos(planta(m));
     expect(r).toContain('2×160');
-    expect(r).toContain(cm(m.dims.L_real));
+    expect(r).toContain(cmCheio(m.dims.L_real));
     expect(r).toContain('t = 19');
     expect(r).toContain('contraforte 59');
     expect(r).toContain('Planta — 1ª fiada');

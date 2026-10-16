@@ -67,6 +67,8 @@ export interface ImagemDoDxf {
 export const PASTA_DAS_IMAGENS = 'imagens';
 export const ESTILO_DE_TEXTO = 'ALRIMO';
 const ESTILO_NEGRITO = 'ALRIMO_NEGRITO';
+/** O número do título dos desenhos (o quadrado azul): itálico, como na imagem do Jose (16/10). */
+const ESTILO_ITALICO = 'ALRIMO_ITALICO';
 
 /**
  * No CAD a altura do TEXT com fonte TrueType é a da LETRA MAIÚSCULA; no SVG (e no PDF) a altura do texto é o corpo
@@ -371,6 +373,8 @@ class Gravador {
     estilo.fontFileName = 'arial.ttf';
     const negrito = w.tables.addStyle(ESTILO_NEGRITO);
     negrito.fontFileName = 'arialbd.ttf';
+    const italico = w.tables.addStyle(ESTILO_ITALICO);
+    italico.fontFileName = 'ariali.ttf';
 
     // a vista inicial do CAD enquadra a folha (a da biblioteca enquadra caixas de ±100 em volta de cada texto)
     const ms = w.modelSpace;
@@ -537,6 +541,10 @@ class Gravador {
     return { horizontalAlignment: ancora === 'middle' ? TextHorizontalAlignment.Center : TextHorizontalAlignment.Right, secondAlignmentPoint: p };
   }
 
+  private estiloDoTexto(q: Extract<Primitiva, { k: 'texto' }>): string {
+    return q.negrito ? ESTILO_NEGRITO : q.italico ? ESTILO_ITALICO : ESTILO_DE_TEXTO;
+  }
+
   private texto(alvo: EntitiesManager, q: Extract<Primitiva, { k: 'texto' }>): void {
     if (!q.t.trim()) return;   // texto vazio não vai (a célula vazia de uma tabela): no CAD é entidade fantasma
     if (q.mascara) {
@@ -546,10 +554,12 @@ class Gravador {
     const p = this.P(q.p);
     const t = new Text(p, r(q.altura * MAIUSCULA_DA_ARIAL), textoDoCad(q.t), {
       ...this.porCamada(q.camada),
+      // a cor que é informação (o número branco no quadrado azul do título) vai de verdade, não pela camada
+      ...(q.corPropria ? this.corVerdadeira(q.cor) : {}),
       ...this.alinhamento(q.ancora, p),
       rotation: q.angulo ? r(q.angulo) : undefined,
     });
-    t.textStyle = q.negrito ? ESTILO_NEGRITO : ESTILO_DE_TEXTO;
+    t.textStyle = this.estiloDoTexto(q);
     alvo.addEntity(t);
   }
 
@@ -566,8 +576,8 @@ class Gravador {
     // meio da maiúscula: sobe h/2 na perpendicular à direção (no papel y desce, por isso o sinal)
     const p: Pt = [q.p[0] - (h / 2) * dy, q.p[1] - (h / 2) * dx];
     const anexo = q.ancora === 'start' ? MTextAttachmentPoint.MiddleLeft : q.ancora === 'middle' ? MTextAttachmentPoint.MiddleCenter : MTextAttachmentPoint.MiddleRight;
-    const t = new MText(this.P(p), r(h), textoDoMtext(q.t), { ...this.porCamada(q.camada), attachmentPoint: anexo });
-    t.textStyle = q.negrito ? ESTILO_NEGRITO : ESTILO_DE_TEXTO;
+    const t = new MText(this.P(p), r(h), textoDoMtext(q.t), { ...this.porCamada(q.camada), ...(q.corPropria ? this.corVerdadeira(q.cor) : {}), attachmentPoint: anexo });
+    t.textStyle = this.estiloDoTexto(q);
     corrigir(alvo.addEntity(t), (c, v) => {
       if (c !== 7) return [[c, v]];
       const giro: Grupo[] = q.angulo ? [[11, r(dx)], [21, r(dy)], [31, 0]] : [];

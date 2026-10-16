@@ -28,9 +28,11 @@ import {
   IconeIso,
   IconeLateral,
   IconeArmadura,
+  IconeGraficos,
   IconePrancha,
   IconeTopo,
 } from './icones';
+import { useJanelaDeGraficos } from '@/desenhos/useJanelaDeGraficos';
 import { CATEGORIAS, type Categoria } from './lotes';
 
 const ICONE_DO_ESTILO: Record<EstiloVisual, () => ReactNode> = {
@@ -134,6 +136,9 @@ export function BarraDoVisor(p: PropsDaBarra) {
           {ICONE_DO_ESTILO[e.id]()}
         </Botao>
       ))}
+      <Botao titulo="Gráficos" acao="graficos" aoClicar={() => useJanelaDeGraficos.getState().abrir({ tipo: 'visor' })}>
+        <IconeGraficos />
+      </Botao>
       <Fio />
       <Botao titulo="Foto (PNG)" acao="foto" aoClicar={p.aoFoto}>
         <IconeFoto />

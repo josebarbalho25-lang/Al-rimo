@@ -17,6 +17,7 @@ import { mesmoValor, validarValor, type Campo } from './campos';
 import { alteracoesDoExemplo, alteracoesDoNovo, extrasDoNovo, TITULO_DO_EXEMPLO } from './novo';
 import { ruim } from './recadoRuim';
 import { lerPranchas, temPranchas } from '@/pranchas/padrao';
+import { pranchasParaArquivo } from '@/pranchas/vistas';
 import type { PranchasDoProjeto } from '@/pranchas/tipos';
 
 export const EXTENSAO = '.alrimo';
@@ -118,7 +119,7 @@ export function serializarProjeto(p: Projeto, versaoDaConta: string): string {
     alteracoes: p.alteracoes,
     extras: p.extras,
   };
-  if (temPranchas(p.pranchas)) a.pranchas = p.pranchas;
+  if (temPranchas(p.pranchas)) a.pranchas = pranchasParaArquivo(p.pranchas);
   return JSON.stringify(a, null, 2);
 }
 
@@ -254,7 +255,7 @@ export function desserializarProjeto(
       titulo: TITULOS_ANTIGOS_DO_EXEMPLO.has(titulo) ? TITULO_DO_EXEMPLO : titulo,
       alteracoes,
       extras: filtrar(a.extras, 'modelo'),
-      ...(a.pranchas !== undefined ? { pranchas: lerPranchas(a.pranchas) } : {}),
+      ...(a.pranchas !== undefined ? { pranchas: lerPranchas(a.pranchas, descartados) } : {}),
     },
     descartados,
     recusados,

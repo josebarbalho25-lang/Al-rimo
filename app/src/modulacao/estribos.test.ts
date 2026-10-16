@@ -309,13 +309,14 @@ describe('nó de cachorro (arranque = Nó de cachorro)', () => {
     expect(medidasDoNo(20, 350, 40)).toEqual({ raio: 90, subida: 70 });
   });
 
-  it('a forma: desce, U para a frente no cobrimento de baixo, sobe, deitada por cima até a ponta do talão e desce', () => {
-    // a amostra Ø10 (337807): perna do muro 2239, total 3870. A espera a 143 mm da face é a posição que fecha esse total
-    // com o reto de 5 a 9 mm entre as dobras do U que ele tem no desenho — aqui sem ele
+  it('a forma: desce, corre pelo fundo ATÉ A PONTA, sobe a face da ponta, deitada por cima até a ponta do talão e desce', () => {
+    // a amostra Ø10 (337807): perna do muro 2239, total 3870 com o U colado na espera (o muro dele na borda da
+    // sapata, a espera a 143 mm da face). Desde 15/10 o nó vai até a face da ponta (Jose: "quero que ela vá até a
+    // ponta"): o fundo e a deitada crescem os 38 mm entre o U colado (subida a 83) e a face (subida a 45)
     const zb = -350 + 40 + 5;
     const b = esperaNoDeCachorro('e', 10, 500, 143, 2239 + zb + 30, SAP, 1)!;
     expect(b).not.toBeNull();
-    expect(b.comprimento).toBeCloseTo(3870, -1);
+    expect(b.comprimento).toBeCloseTo(3870 + 2 * 38, -1);
     // o comprimento é o da polilinha com os arcos verdadeiros: U (2 arcos de 90°), dobra de cima e da ponta
     const e = eixoDaBarra(b.eixo, 10)!;
     expect(e.comprimento).toBeCloseTo(b.comprimento, 2);
@@ -329,9 +330,9 @@ describe('nó de cachorro (arranque = Nó de cachorro)', () => {
         expect(z + 5).toBeLessThanOrEqual(-40 + tol);
       }
     }
-    // o U vira para a frente: a perna que sobe fica 2r = 60 na frente da que desce
+    // a perna que sobe fica na face da ponta, no cobrimento (40 + φ/2)
     const ys = b.eixo.map((q) => q[1]);
-    expect(Math.min(...ys)).toBeCloseTo(143 - 60, 6);
+    expect(Math.min(...ys)).toBeCloseTo(SAP.yFrente + 45, 6);
     // termina embaixo, na face da ponta do talão
     const fim = b.eixo[b.eixo.length - 1];
     expect(fim[1]).toBeCloseTo(1200 - 45, 6);
@@ -346,7 +347,8 @@ describe('nó de cachorro (arranque = Nó de cachorro)', () => {
     // Ø20: 2·40 + 160 + 40 = 280
     expect(esperaNoDeCachorro('e', 20, 0, 400, 1000, { ...SAP, h: 279 }, 1)).toBeNull();
     expect(esperaNoDeCachorro('e', 20, 0, 400, 1000, { ...SAP, h: 280 }, 1)).not.toBeNull();
-    // Ø10 a 143 da face: o U chega a 143 − 65 = 78 da face; com a frente a 50, o cobrimento de 40 não sobra
+    // Ø10 a 143 da face: as duas dobras do pé pedem 2r = 60 entre a espera e a perna da ponta (a 45 da face): com a
+    // frente a 50 o fundo reto ficaria negativo
     expect(esperaNoDeCachorro('e', 10, 0, 143, 1000, { ...SAP, yFrente: 50 }, 1)).toBeNull();
     expect(esperaNoDeCachorro('e', 10, 0, 143, 1000, { ...SAP, yFrente: 38 }, 1)).not.toBeNull();
   });

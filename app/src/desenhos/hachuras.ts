@@ -17,10 +17,10 @@
   tem como sair com outra hachura que a da tela.
 */
 
-import { GRAFICOS_DE_FABRICA, hachuraDe, type Hachura } from './graficos';
+import { MATERIAIS_DE_FABRICA, hachuraDe, type Hachura } from './graficos';
 
 /** As cores de fábrica de cada hachura (as do Revit do Jose, em graficos.ts — um lugar só). */
-const FAB = GRAFICOS_DE_FABRICA.materiais;
+const FAB = MATERIAIS_DE_FABRICA;
 export const HACHURA = {
   terra: FAB.terra.hachura!.risco,          // RGB 166-120-087
   terraFundo: FAB.terra.hachura!.fundo,     // RGB 219-201-187

@@ -15,7 +15,7 @@ const camera: Camera3d = {
   ocultas: [],
 };
 const foto: PedidoParaPrancha = { tipo: '3d', dataUrl: 'data:image/png;base64,AAAA', camera, proporcao: 4 / 3 };
-const vista: PedidoParaPrancha = { tipo: 'vista', pedido: { tipo: 'corte', x: 1350 } };
+const vista: PedidoParaPrancha = { tipo: 'vista', id: 'corte' };
 
 describe('canal "Enviar para a prancha"', () => {
   it('sem prancha ouvindo, o envio não quebra nada (ninguém recebe)', () => {

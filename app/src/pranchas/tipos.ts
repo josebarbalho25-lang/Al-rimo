@@ -1,3 +1,4 @@
+import type { SobreposicaoDaVista } from '@/desenhos/graficos';
 /*
   PRANCHAS — o contrato entre as frentes do modo prancha (Jose, 14/10: "prancha pronta, de forma intuitiva e prática").
 
@@ -82,7 +83,7 @@ export type Primitiva =
   /** Texto: `p` = ponto de inserção na linha de base; ângulo em graus, ANTI-horário (cota vertical = 90).
    *  `mascara`: texto escrito em cima de hachura (o halo branco do SVG) — no DXF vai como MTEXT com máscara de
    *  fundo na cor do desenho, que tapa a hachura só atrás da letra. */
-  | { k: 'texto'; p: Pt; t: string; altura: number; ancora: 'start' | 'middle' | 'end'; angulo: number; cor: string; negrito?: boolean; mascara?: boolean; camada: string }
+  | { k: 'texto'; p: Pt; t: string; altura: number; ancora: 'start' | 'middle' | 'end'; angulo: number; cor: string; negrito?: boolean; italico?: boolean; mascara?: boolean; camada: string; corPropria?: boolean }
   /** Imagem (a foto do 3D): canto superior esquerdo, largura e altura. No DXF vai como imagem vinculada ao arquivo. */
   | { k: 'imagem'; p: Pt; largura: number; altura: number; arquivo: string; dataUrl: string; camada: string }
   /** Grupo que vira BLOCO no DXF (o carimbo: quem tem carimbo próprio troca o bloco inteiro de uma vez). Os
@@ -126,7 +127,8 @@ export type PedidoDeVista =
   | { tipo: 'frontal' }
   | { tipo: 'corte'; x?: number }                 // mm ao longo do muro; sem x = o corte padrão (meio do painel)
   | { tipo: 'planta'; fiada: number }
-  | { tipo: 'iso'; vista?: VistaIso; corteX?: number | null };
+  | { tipo: 'iso'; vista?: VistaIso; corteX?: number | null }
+  | { tipo: 'armacao' };                          // armação da sapata: elevação, sombras, seção e estribo
 
 export interface VistaParaPrancha {
   /** Corpo SVG (sem <svg>), em px de desenho, e os <defs> que ele usa (padrões, marcadores). */
@@ -134,8 +136,189 @@ export interface VistaParaPrancha {
   defs: string;
   /** Caixa do desenho em px: [x, y, largura, altura] (o que a vista ocupa, já com as cotas e rótulos). */
   caixa: [number, number, number, number];
+  /**
+   * A caixa que segura o LUGAR do desenho na folha, px: a de tudo com as chamadas na coluna, como saem sozinhas.
+   * Tirar uma chamada da coluna (ou escondê-la) não pode fazer o desenho pular nem o título descer. Ausente = `caixa`.
+   */
+  referencia?: [number, number, number, number];
+  /** As chamadas das barras desenhadas, para a tela pegar e arrastar (desenhos/chamadas.ts). */
+  chamadas?: InfoDaChamada[];
+  /** As cotas e os textos editáveis desenhados (AnotacaoPosta, CotaNova, TextoNovo). */
+  anotacoes?: InfoDaAnotacao[];
+  /** As partes do desenho com origem própria (a seção da armação…): a anotação criada nelas conta dali. */
+  regioes?: RegiaoDoDesenho[];
+  /** px de desenho por mm do muro: o que a tela usa para guardar o ponto clicado em mm do muro (CotaNova). */
+  S?: number;
   /** Os mesmos traços, estruturados, em px de desenho. */
   primitivas: Primitiva[];
+}
+
+/**
+ * A chamada da barra que o projetista tirou da coluna e pôs onde quis (Jose, 15/10: "deixar livre pra eu colocar
+ * quando quiser do jeito que quiser? Girar ele, por na vertical, pra um lado, por outro"). Fica no item da folha,
+ * pela chave "posição|elemento" (chaveDaChamada). O texto anda com a barra: dx, dy contam do ponto da barra, em px
+ * de desenho — no papel é sempre a mesma distância, em qualquer escala, como a letra.
+ */
+export interface ChamadaPosta {
+  /** O ponto de inserção do texto (começo da linha de base) menos o ponto da barra, px. Ausente = na coluna. */
+  dx?: number;
+  dy?: number;
+  /** Graus, anti-horário (90 = lê de baixo para cima). */
+  giro?: number;
+  oculta?: boolean;
+  /** Sem a linha de chamada (Jose, 16/10: "opção de com linha de chamada e sem linha de chamada"): só o texto. */
+  semLinha?: boolean;
+}
+
+/**
+ * A ETIQUETA DE AÇO que o projetista põe (Jose, 16/10: "etiqueta de verdade de aço"): clica numa barra e a etiqueta
+ * diz o N, a quantidade, a bitola, o espaçamento e o comprimento dela ("N1 – 15 Ø10 c/40 C=210"), lidos do muro do
+ * dia. Não tem lugar, tem AFASTAMENTO (a lição do A-PORT): o texto conta do ponto da barra, e a barra que anda leva a
+ * etiqueta junto.
+ */
+export interface EtiquetaNova {
+  id: string;
+  /** A barra: "posição|elemento" ("N1|muro") — a mesma chave da chamada da coluna. */
+  barra: string;
+  /** O ponto clicado, mm do muro no plano da vista: a âncora é o ponto da barra mais perto dele. */
+  ponto: Pt;
+  /** O texto (começo da linha de base) menos a âncora, px de desenho. */
+  dx: number;
+  dy: number;
+  giro?: number;
+  semLinha?: boolean;
+}
+
+/**
+ * O ajuste do projetista numa anotação AUTOMÁTICA do desenho (Jose, 15/10: "deletar ou criar cotas e mover
+ * anotações em geral, escrever de novo o que quiser"), pela chave dela (desenhos/prancha.ts, "ANOTAÇÃO EDITÁVEL":
+ * o tipo, o texto de origem e a ordem — "cota:B = 140#0"). Muro mudou e o texto de origem também: a chave não
+ * casa e a anotação volta ao automático (melhor uma cota a mais no lugar certo que uma escondida errada).
+ */
+export interface AnotacaoPosta {
+  /** O texto deslocado (texto solto; o número da cota), px de desenho — no papel, a mesma distância em toda escala. */
+  dx?: number;
+  dy?: number;
+  /** Texto solto girado, graus anti-horários. */
+  giro?: number;
+  /** Cota: a linha de cota afastada da original, px de desenho (+ = para baixo / para a direita). */
+  afastamento?: number;
+  /** Escrito de novo. */
+  texto?: string;
+  /** Cota: antes e depois do valor medido (Jose, 16/10: "cota de verdade" — o número continua o do desenho). */
+  prefixo?: string;
+  sufixo?: string;
+  oculta?: boolean;
+  /**
+   * Onde a anotação estava (o ponto de origem, em mm do muro: o px do desenho ÷ S) quando o ajuste foi feito — em
+   * toda anotação de chave pela ordem ("#n"). Se uma de antes com o mesmo texto mudar, sumir ou aparecer, a ordem
+   * anda e outra herda a chave; com o lugar guardado, o ajuste só vale perto de onde nasceu (a herdeira fica
+   * automática). Em mm do muro para valer em qualquer escala.
+   */
+  ref?: Pt;
+  /** O texto de origem quando o ajuste foi feito. Na chave dita pelo desenho (que não leva o texto), o texto de
+   *  origem que mudou (muro mudou: "36 Ø10" virou "54 Ø10") tira o texto reescrito e o esconder — volta o número
+   *  certo. */
+  original?: string;
+}
+
+/**
+ * Uma parte do desenho com origem própria (a seção e a sombra de cada estribo da armação, que ficam DEPOIS da
+ * elevação, a uma distância que depende do comprimento do muro e da escala): a cota e o texto criados nela guardam
+ * o ponto contado da origem da parte, e não da do desenho — senão saíam de cima da seção quando o muro crescia.
+ */
+export interface RegiaoDoDesenho {
+  nome: string;
+  /** O ponto (0, 0) da parte, px de desenho; o mm do muro dela é (px − origem) ÷ S. */
+  origem: Pt;
+  /** Onde ela fica, px de desenho [x, y, largura, altura]: o clique dentro dela cria a anotação nela. */
+  caixa: [number, number, number, number];
+}
+
+/**
+ * A cota que o projetista criou na folha (a ferramenta Cota: dois pontos e o lugar da linha). Os pontos ficam em mm
+ * do muro no plano da vista (o px do desenho dividido pela escala dele): trocar a escala do desenho não tira a cota
+ * do lugar. Horizontal mede o x, vertical o y.
+ */
+export interface CotaNova {
+  id: string;
+  a: Pt;
+  b: Pt;
+  /** Um ponto da linha de cota (o terceiro clique). */
+  linha: Pt;
+  direcao: 'h' | 'v';
+  /** A parte do desenho em que os pontos foram tomados (RegiaoDoDesenho); sem = o desenho todo. */
+  regiao?: string;
+  /** Escrito de novo (sem = a medida, em cm). */
+  texto?: string;
+  /** Antes e depois da medida, que continua a medida de verdade. */
+  prefixo?: string;
+  sufixo?: string;
+  /** O número deslocado, px de desenho. */
+  dx?: number;
+  dy?: number;
+  /** As cotas feitas de uma vez, ponto a ponto (a cadeia, como a do Revit): a linha delas anda junto. */
+  cadeia?: string;
+}
+
+/** O texto que o projetista escreveu na folha: o ponto de inserção em mm do muro no plano da vista. */
+export interface TextoNovo {
+  id: string;
+  p: Pt;
+  texto: string;
+  giro?: number;
+  /** A parte do desenho do ponto (RegiaoDoDesenho); sem = o desenho todo. */
+  regiao?: string;
+}
+
+/** Uma anotação editável como saiu no desenho, px de desenho (a tela pega, arrasta e reescreve). */
+export interface InfoDaAnotacao {
+  chave: string;
+  tipo: 'texto' | 'cota';
+  /** Criada na folha (CotaNova, TextoNovo: a chave é o id): apaga de verdade; a automática só se esconde. */
+  nova: boolean;
+  /** O texto como está, e o de origem (o que a chave guarda). */
+  texto: string;
+  original: string;
+  /** O ponto de inserção do texto (na linha de base), a âncora, o giro (graus anti-horários), o comprimento e o corpo. */
+  p: Pt;
+  /** O ponto de inserção de ORIGEM (sem ajuste), e se outra anotação do desenho tem o mesmo texto de origem: o
+   *  ajuste dela guarda o lugar (AnotacaoPosta.ref). */
+  p0: Pt;
+  repetida?: boolean;
+  ancora: 'start' | 'middle' | 'end';
+  giro: number;
+  largura: number;
+  tam: number;
+  /** Cota: as pontas da linha de cota e para onde ela anda quando arrastada. */
+  linha?: [Pt, Pt];
+  eixo?: 'h' | 'v';
+  /** Cota: os dois pontos MEDIDOS (de onde saem as linhas de chamada) — as alças que levam a cota a outro ponto. */
+  pontas?: [Pt, Pt];
+  /** Cota criada em cadeia: o nome da cadeia (a linha de todas anda junto). */
+  cadeia?: string;
+  oculta: boolean;
+}
+
+/** Uma chamada como saiu no desenho, px de desenho. */
+export interface InfoDaChamada {
+  chave: string;
+  /** O ponto da barra (onde a linha de chamada encosta). */
+  ancora: Pt;
+  /** O ponto de inserção do texto (começo da linha de base) e o giro, graus anti-horários. */
+  texto: Pt;
+  giro: number;
+  /** Comprimento e corpo do texto. */
+  largura: number;
+  tam: number;
+  /** "N1 – 15 Ø10 c/40 C=210" (o painel mostra). */
+  rotulo: string;
+  /** Saiu da coluna (tem lugar guardado no item). */
+  posta: boolean;
+  oculta: boolean;
+  /** É uma etiqueta posta pelo projetista (EtiquetaNova; a chave é o id): apagar apaga de verdade. */
+  etiqueta?: boolean;
+  semLinha?: boolean;
 }
 
 // ── a folha ──────────────────────────────────────────────────────────────────
@@ -164,8 +347,39 @@ export type ConteudoDoItem =
   | { tipo: 'detalhe'; id: string }                                 // det01…det05 (figs/app/detalhes)
   | { tipo: 'tabela'; id: 'aco' | 'blocos' | 'quantidades' | 'drenagem' };
 
+/** O que uma vista do projeto desenha: as vistas 2D (com o lugar do corte, a fiada, o lado do isométrico) e o 3D. */
+export type ConteudoDaVista = PedidoDeVista | Extract<ConteudoDoItem, { tipo: '3d' }>;
+export type TipoDaVista = ConteudoDaVista['tipo'];
+
+/** As anotações que uma vista guarda (até 16/10 ficavam no item da folha). */
+export interface AnotacoesDaVista {
+  chamadas?: Record<string, ChamadaPosta>;
+  anotacoes?: Record<string, AnotacaoPosta>;
+  cotas?: CotaNova[];
+  textos?: TextoNovo[];
+  etiquetas?: EtiquetaNova[];
+}
+
+/**
+ * UMA VISTA DO PROJETO (Jose, 16/10: "como no Revit"; pranchas/vistas.ts): nome na lista da aba, o que ela mostra,
+ * a escala (null = sem escala: isométrico e 3D), o título na folha (vazio = o automático) e as anotações. Vai numa
+ * folha só; tirar da folha não apaga a vista.
+ */
+export interface VistaDoProjeto extends AnotacoesDaVista {
+  id: string;
+  nome: string;
+  conteudo: ConteudoDaVista;
+  escala: number | null;
+  titulo: string;
+  /** A sobreposição de gráficos da vista (desenhos/graficos.ts): só o que ela muda em relação à geral. */
+  graficos?: SobreposicaoDaVista;
+}
+
 export interface ItemDaFolha {
   id: string;
+  /** A vista do projeto que este desenho mostra. Com ela, o conteúdo, a escala, o título e as anotações são DA VISTA
+   *  (o que está aqui é espelho; quem lê passa por `itemComVista`) — o item é só o lugar, o número e o tamanho. */
+  vista?: string;
   conteudo: ConteudoDoItem;
   /** Escala 1:e (e = 25 → 1:25). null = sem escala (3D, imagem): aí vale largura × altura. */
   escala: number | null;
@@ -175,8 +389,24 @@ export interface ItemDaFolha {
   /** Só para "sem escala": o tamanho no papel, mm. */
   largura?: number;
   altura?: number;
-  /** Título embaixo do item ("CORTE A", "VISTA FRONTAL"); a escala vai ao lado, sozinha. */
+  /** Título embaixo do item, do jeito que o projetista escreveu (sem caixa alta forçada); vazio = o automático. */
   titulo: string;
+  /** A sobreposição de gráficos da vista, só na LEITURA (itemComVista): a folha desenha com ela. */
+  graficos?: SobreposicaoDaVista;
+  /** O nome da vista, só na LEITURA (itemComVista; não vai para o arquivo): se o projetista deu nome à vista ("Corte
+   *  A"), é o título quando ele não escreve outro — como no Revit. */
+  nomeDaVista?: string;
+  /** O número do desenho na folha, no quadrado do título (Jose, 16/10: numeração POR FOLHA, na ordem em que o
+   *  desenho entrou, editável). A tabela não tem. Ausente = o arquivo de antes: ganha ao abrir (padrao.ts). */
+  numero?: string;
+  /** As chamadas das barras que saíram da coluna, por chave (ChamadaPosta). Ausente = todas na coluna. */
+  chamadas?: Record<string, ChamadaPosta>;
+  /** Ajustes nas cotas e textos automáticos, por chave (AnotacaoPosta). */
+  anotacoes?: Record<string, AnotacaoPosta>;
+  /** Cotas, textos e etiquetas criados na folha. */
+  cotas?: CotaNova[];
+  textos?: TextoNovo[];
+  etiquetas?: EtiquetaNova[];
 }
 
 export interface QuadroLateral {
@@ -230,4 +460,6 @@ export interface DadosDaObra {
 export interface PranchasDoProjeto {
   folhas: Folha[];
   obra: DadosDaObra;
+  /** As vistas do projeto (as guardadas; as de fábrica que ninguém mexeu valem sem estar aqui — vistas.ts). */
+  vistas: VistaDoProjeto[];
 }

@@ -1,11 +1,11 @@
 /*
-  O "Mostrar" das vistas 2D (Jose, 15/10: "controlar o que aparece ou não, principalmente na vista em planta") — o
-  liga/desliga POR TIPO DE VISTA: o que se desliga na planta some de toda planta, na tela e na prancha (PDF e DXF).
-  Mesmo jeito do menu do 3D: o botão acende quando há algo desligado.
+  O "Mostrar" de uma vista 2D (Jose, 15/10: "controlar o que aparece ou não, principalmente na vista em planta") — o
+  liga/desliga DA VISTA (16/10: é a parte de visibilidade da sobreposição dela, a mesma da janela de gráficos): o que
+  se desliga numa vista some dela, na tela e na prancha (PDF e DXF); as outras vistas não mudam. O botão acende quando
+  há algo desligado.
 */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { ITENS_DA_VISTA, rotuloDoItem, type Graficos, type ItemDaVista, type TipoDeVista } from './graficos';
-import { useGraficos } from './useGraficos';
+import { ITENS_DA_VISTA, rotuloDoItem, type ItemDaVista, type TipoDeVista } from './graficos';
 
 const s = {
   ancora: { position: 'relative', display: 'inline-flex' } as CSSProperties,
@@ -17,9 +17,12 @@ const s = {
   linha: { display: 'flex', alignItems: 'center', gap: 8, padding: '3px 12px', cursor: 'pointer', whiteSpace: 'nowrap' } as CSSProperties,
 };
 
-export function MenuMostrar({ vista, estiloDoBotao }: { vista: TipoDeVista; estiloDoBotao?: CSSProperties }) {
-  const ocultos = useGraficos((st) => st.dados.ocultos[vista]);
-  const mudar = useGraficos((st) => st.mudar);
+export function MenuMostrar({ vista, ocultos, aoMudar, estiloDoBotao }: {
+  vista: TipoDeVista;
+  ocultos: readonly ItemDaVista[];
+  aoMudar: (item: ItemDaVista, mostra: boolean) => void;
+  estiloDoBotao?: CSSProperties;
+}) {
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
 
@@ -33,24 +36,18 @@ export function MenuMostrar({ vista, estiloDoBotao }: { vista: TipoDeVista; esti
     return () => window.removeEventListener('pointerdown', fora, true);
   }, [aberto]);
 
-  const alternar = (item: ItemDaVista) =>
-    mudar((g): Graficos => {
-      const lista = g.ocultos[vista];
-      const nova = lista.includes(item) ? lista.filter((i) => i !== item) : [...lista, item];
-      return { ...g, ocultos: { ...g.ocultos, [vista]: nova } };
-    });
-
+  const algum = ITENS_DA_VISTA[vista].some((i) => ocultos.includes(i));
   return (
-    <div ref={caixa} style={s.ancora}>
-      <button type="button" style={estiloDoBotao} className={aberto || ocultos.length ? 'on' : undefined} aria-haspopup="menu" aria-expanded={aberto} onClick={() => setAberto((a) => !a)}>
+    <div style={s.ancora} ref={caixa}>
+      <button type="button" style={estiloDoBotao} className={algum ? 'on' : undefined} aria-expanded={aberto} onClick={() => setAberto((a) => !a)}>
         Mostrar
       </button>
       {aberto && (
         <div style={s.menu} role="menu">
           {ITENS_DA_VISTA[vista].map((item) => (
-            <label key={item} style={s.linha} data-item={item}>
-              <input type="checkbox" checked={!ocultos.includes(item)} onChange={() => alternar(item)} />
-              <span>{rotuloDoItem(item)}</span>
+            <label key={item} style={s.linha}>
+              <input type="checkbox" checked={!ocultos.includes(item)} onChange={(e) => aoMudar(item, e.target.checked)} />
+              {rotuloDoItem(item)}
             </label>
           ))}
         </div>

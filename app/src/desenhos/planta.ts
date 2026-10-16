@@ -12,17 +12,23 @@
   34, o 54. A hachura continua no corte lateral, onde é convenção de desenho.
 */
 import type { Modelo, Vec2 } from '@/modelo/tipos';
-import { cm } from './formato';
+import { cm, cmCheio } from './formato';
 import { ALVENARIA, contrafortesDoModelo, cruzamentos, secao, solidosDoModelo, type Regiao } from './geometria';
 import { estiloDaSecao } from './corteLateral';
 import { desenharLegenda, estiloPintado, itensDasTintas, tintaDaPeca, tintasPresentes } from './cores';
 import { cadeia } from './vistaFrontal';
 import { COR, Prancha, escalaPara, type OpcoesDaVista, type Pt } from './prancha';
-import { aparece as apareceNa, corDoAcoNoDesenho, pecaAparece } from './graficos';
+import { aparece as apareceNa, corDoAcoNoDesenho, naVista, pecaAparece } from './graficos';
 
 /** `fiada` conta de 0 (0 = 1ª fiada). `o`: escala fixa, sem título e prefixo dos ids — o pedido do modo prancha. */
+/** A planta com a tabela de gráficos dela (planta: graficos.ts, naVista). */
 export function desenharPlanta(m: Modelo, fiada = 0, o: OpcoesDaVista = {}): Prancha {
+  return naVista('planta', () => plantaNaVista(m, fiada, o), o.graficos);
+}
+
+function plantaNaVista(m: Modelo, fiada: number, o: OpcoesDaVista): Prancha {
   const pr = new Prancha(o.prefixo ?? 'des', o.hachuraVetorial);
+  pr.ajustar(o.anotacoes, o.S);
   const sol = solidosDoModelo(m).filter((s) => s.peca.grupo !== 'terreno');
   const t = m.familia.t;
   const { trechos, sapata, L_real, n_fiadas } = m.dims;
@@ -95,12 +101,12 @@ export function desenharPlanta(m: Modelo, fiada = 0, o: OpcoesDaVista = {}): Pra
   pr.silenciar(!aparece('eixos'));
   for (const c of cfs) {
     pr.linha(X(c.x), yBase + 10, X(c.x), yTopo - 34, { stroke: COR.cota, sw: 0.6, dash: '14,3,2,3', camada: 'eixos' });
-    pr.texto(X(c.x), yTopo - 38, `C${c.numero}`, { tam: 11, cor: COR.cota, negrito: true });
+    pr.texto(X(c.x), yTopo - 38, `C${c.numero}`, { tam: 11, cor: COR.cota, negrito: true, camada: 'eixos', chave: `eixo:C${c.numero}` });
   }
   for (let k = 0; k + 1 < trechos.length; k++) {
     const xj = (trechos[k].x1 + trechos[k + 1].x0) / 2;
     pr.linha(X(xj), Y(-60), X(xj), Y(t + 60), { stroke: COR.linha, sw: 1.8, camada: 'eixos' });
-    pr.texto(X(xj), yBase + 22, 'JC', { tam: 11, negrito: true });
+    pr.texto(X(xj), yBase + 22, 'JC', { tam: 11, negrito: true, camada: 'eixos' });
   }
   pr.silenciar(!aparece('cotas'));
   // eixo a eixo dos contrafortes, por cima (lado do solo)
@@ -111,10 +117,10 @@ export function desenharPlanta(m: Modelo, fiada = 0, o: OpcoesDaVista = {}): Pra
   // comprimento por trecho e total, por baixo
   let linha = yBase + (trechos.length > 1 ? 40 : 24);
   if (trechos.length > 1) {
-    pr.cadeiaH(trechos.map((r) => ({ a: X(r.x0), b: X(r.x1), rotulo: cm(r.x1 - r.x0) })), linha, { de: [[Y(0), Y(0)]] });
+    pr.cadeiaH(trechos.map((r) => ({ a: X(r.x0), b: X(r.x1), rotulo: cmCheio(r.x1 - r.x0), textoDaChave: cm(r.x1 - r.x0) })), linha, { de: [[Y(0), Y(0)]] });
     linha += 24;
   }
-  pr.cotaH(X(xIni), X(xFim), linha, cm(L_real), { de: [Y(0), Y(0)] });
+  pr.cotaH(X(xIni), X(xFim), linha, cmCheio(L_real), { de: [Y(0), Y(0)], textoDaChave: cm(L_real) });
   const linhaLegenda = linha + 30;
   // espessura do muro, na ponta esquerda
   pr.cotaV(X(xIni) - 18, Y(0), Y(t), `t = ${cm(t)}`, { de: [X(xIni), X(xIni)] });

@@ -43,6 +43,7 @@ import { caixaDaPeca, caixaLocal, MM, arestasDaGeometria, moldeDaGeometria, type
 import { emMetro, montarLotes, unirCaixas, visivel, type Acabamento, type Categoria, type Lote } from './lotes';
 import type { PaletaVisor } from './tema3d';
 import { corDaBitola } from './coresDasBitolas';
+import { opacidadeDe, type Material } from '@/desenhos/graficos';
 
 /** Acabamentos que levam traço. Graute (empilhado por fiada) riscaria o pilar de linhas a cada 20 cm. */
 const COM_ARESTA: ReadonlySet<Acabamento> = new Set(['alvenaria', 'concreto']);
@@ -168,34 +169,62 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
     estilo aparece e guardados (voltar a um estilo não recompila nada). Quem
     nasce depois já nasce com o corte do momento.
   */
-  const materiais = new Map<EstiloVisual, Map<Acabamento, MaterialDaPeca>>();
+  /*
+    Um material por estilo × acabamento × CLASSE do bloco: a transparência da tabela de gráficos do 3D (Jose, 15/10:
+    "transparências por vista, igual no A-PORT") é do material, e o inteiro pode ficar transparente com a canaleta
+    cheia. A cor do bloco continua por instância (a seleção pinta um bloco só).
+  */
+  const materiais = new Map<EstiloVisual, Map<string, { m: MaterialDaPeca; a: Acabamento; classe?: ClassePeca }>>();
   const acos = new Map<EstiloVisual, MaterialDaPeca>();
-  /** O véu do terreno (do estilo): o único jeito de uma peça ficar transparente. */
-  const ajustarTransparencia = (m: MaterialDaPeca, a: Acabamento, e: EstiloVisual) => {
-    if (a !== 'terreno') return;
-    // O terreno é só referência: nunca tapa o muro, em estilo nenhum (a opacidade é a do estilo DONO do material).
-    m.transparent = true;
-    m.opacity = opacidadeDoTerreno(e);
-    m.depthWrite = false;
+  /**
+   * O que multiplica a transparência da linha do material: o véu do terreno (do estilo) e, no bloco de classe, a
+   * linha "Alvenaria" — ela vale para todo bloco, como a categoria por cima das subcategorias do A-PORT (sem isso a
+   * linha não mexia em nada: todo bloco do catálogo tem classe).
+   */
+  const veuDe = (e: EstiloVisual, a: Acabamento, classe?: ClassePeca): number =>
+    a === 'terreno' ? opacidadeDoTerreno(e) : a === 'alvenaria' && classe ? opacidadeDe('alvenaria', '3d') : 1;
+  /** O material da tabela de gráficos de um acabamento (o bloco pela classe). */
+  const daTabela = (a: Acabamento, classe?: ClassePeca): Material => (a === 'alvenaria' ? (classe ?? 'alvenaria') : a === 'terreno' ? 'terra' : a);
+  /**
+   * A transparência do material: a da tabela do 3D, vezes o véu do terreno (o terreno é só referência e nunca tapa o
+   * muro, em estilo nenhum — a opacidade dele é a do estilo DONO do material). Transparente não escreve
+   * profundidade: o que está atrás aparece. Vale no Realista também (ver através do solo é olhar, não pintar).
+   */
+  const ajustarTransparencia = (m: THREE.Material, mat: Material, veu = 1) => {
+    const op = veu * opacidadeDe(mat, '3d');
+    const transparente = op < 1;
+    if (m.transparent !== transparente) m.needsUpdate = true;
+    m.transparent = transparente;
+    m.opacity = op;
+    m.depthWrite = !transparente;
   };
-  const material = (e: EstiloVisual, a: Acabamento): MaterialDaPeca => {
+  const material = (e: EstiloVisual, a: Acabamento, classe?: ClassePeca): MaterialDaPeca => {
     let doEstilo = materiais.get(e);
     if (!doEstilo) materiais.set(e, (doEstilo = new Map()));
-    let m = doEstilo.get(a);
-    if (!m) {
-      doEstilo.set(a, (m = materialDoAcabamento(e, a, peles)));
-      m.clippingPlanes = planos.length ? [...planos] : null;
-      ajustarTransparencia(m, a, e);
+    const chave = `${a}|${classe ?? ''}`;
+    let q = doEstilo.get(chave);
+    if (!q) {
+      doEstilo.set(chave, (q = { m: materialDoAcabamento(e, a, peles), a, classe }));
+      q.m.clippingPlanes = planos.length ? [...planos] : null;
+      ajustarTransparencia(q.m, daTabela(a, classe), veuDe(e, a, classe));
     }
-    return m;
+    return q.m;
   };
   const aco = (e: EstiloVisual): MaterialDaPeca => {
     let m = acos.get(e);
     if (!m) {
       acos.set(e, (m = materialDoAco(e)));
       m.clippingPlanes = planos.length ? [...planos] : null;
+      ajustarTransparencia(m, 'aco');
     }
     return m;
+  };
+  /** A tabela mudou: a transparência de todos os materiais já criados (os de outros estilos também). */
+  const reaplicarTransparencias = () => {
+    for (const [e, doEstilo] of materiais) {
+      for (const q of doEstilo.values()) ajustarTransparencia(q.m, daTabela(q.a, q.classe), veuDe(e, q.a, q.classe));
+    }
+    for (const m of acos.values()) ajustarTransparencia(m, 'aco');
   };
   const tracoComum = materialDoTraco();
   /*
@@ -230,7 +259,8 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
   const lotes: MalhaDoLote[] = brutos.map((lote) => {
     const m = molde(lote.geometria);
     const n = lote.ids.length;
-    const malha = new THREE.InstancedMesh(m.geo, material(estilo, lote.acabamento), n);
+    const classeDoLote = lote.acabamento === 'alvenaria' ? modelo.geometrias[lote.geometria]?.classe : undefined;
+    const malha = new THREE.InstancedMesh(m.geo, material(estilo, lote.acabamento, classeDoLote), n);
     malha.instanceMatrix.array.set(lote.matrizes);
     malha.instanceMatrix.needsUpdate = true;
     // A cor nasce aqui (ver o cabeçalho); o tom certo vem no `aplicarEstilo` logo abaixo.
@@ -240,7 +270,7 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
     malha.name = lote.chave;
     const traco = COM_ARESTA.has(lote.acabamento) && m.arestas.count ? tracoInstanciado(m.arestas, malha, tracoComum) : null;
     if (traco) traco.name = `${lote.chave} traço`;
-    const classe = lote.acabamento === 'alvenaria' ? modelo.geometrias[lote.geometria]?.classe : undefined;
+    const classe = classeDoLote;
     const ml: MalhaDoLote = { lote, malha, traco, classe };
     lote.ids.forEach((id, i) => indicePorId.set(id, { malha: ml, i }));
     grupo.add(malha);
@@ -312,22 +342,30 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
     ⚠️ A SOMBRA É SÓ DO REALISTA, e só de quem é sólido de verdade: o terreno é véu (não faz sombra, só a recebe).
     Na Armadura a barra é chapada e fica por cima: nem faz nem recebe sombra.
   */
+  /** A peça que a tabela apagou de todo (100 % transparente): some de verdade — sem clique, traço nem sombra. */
+  const apagada = (m: THREE.Material | THREE.Material[]): boolean => !Array.isArray(m) && m.opacity <= 0;
+
   const ajustarSombras = () => {
     const comSombra = estilo === 'realista';
     for (const l of lotes) {
       l.malha.receiveShadow = comSombra;
-      l.malha.castShadow = comSombra && l.lote.acabamento !== 'terreno';
+      // o three faz a sombra pela forma, sem olhar a opacidade: a peça invisível ainda escurecia o chão
+      l.malha.castShadow = comSombra && l.lote.acabamento !== 'terreno' && !apagada(l.malha.material);
     }
-    for (const b of barras) b.malha.castShadow = b.malha.receiveShadow = comSombra && !armadura;
+    for (const b of barras) b.malha.castShadow = b.malha.receiveShadow = comSombra && !armadura && !apagada(b.malha.material);
+  };
+  /** O traço do lote: com o estilo que tem traço, aceso e não apagado pela tabela. */
+  const ajustarTracos = () => {
+    const comTraco = !!tracoDoEstilo(estilo, paletaAtual);
+    for (const l of lotes) if (l.traco) l.traco.visible = comTraco && l.malha.visible && !apagada(l.malha.material);
   };
 
   let ultimoZoom: number | null = null;
   const aplicarEstilo = (e: EstiloVisual) => {
     estilo = e;
-    for (const l of lotes) l.malha.material = material(e, l.lote.acabamento);
+    for (const l of lotes) l.malha.material = material(e, l.lote.acabamento, l.classe);
     for (const b of barras) b.malha.material = armadura ? acoDaArmadura : aco(e);
-    const t = tracoDoEstilo(e, paletaAtual);
-    for (const l of lotes) if (l.traco) l.traco.visible = !!t && l.malha.visible;
+    ajustarTracos();
     repintar();
     ajustarSombras();
     // O traço desbota em outra faixa de zoom em cada estilo: refaz com o último zoom visto (antes do
@@ -336,19 +374,19 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
     aplicarZoom(ultimoZoom ?? Infinity);
   };
 
+  /** A paleta do tema ou a tabela de gráficos mudou: as cores e a transparência de tudo. */
   const aplicarPaleta = (p: PaletaVisor) => {
     paletaAtual = p;
+    reaplicarTransparencias();
+    ajustarTracos();
+    ajustarSombras();
     repintar();
   };
 
   const aplicarVisibilidade = (o: ReadonlySet<Categoria>) => {
     ocultas = o;
-    const comTraco = !!tracoDoEstilo(estilo, paletaAtual);
-    for (const l of lotes) {
-      const v = visivel(l.lote.categorias, o);
-      l.malha.visible = v;
-      if (l.traco) l.traco.visible = v && comTraco;
-    }
+    for (const l of lotes) l.malha.visible = visivel(l.lote.categorias, o);
+    ajustarTracos();
     for (const b of barras) b.malha.visible = visivel(b.lote.categorias, o);
   };
 
@@ -368,7 +406,7 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
 
   const todosOsMateriais = (): THREE.Material[] => {
     const ms: THREE.Material[] = [tracoComum, acoDaArmadura, apagador.material, ...acos.values()];
-    for (const doEstilo of materiais.values()) ms.push(...doEstilo.values());
+    for (const doEstilo of materiais.values()) for (const q of doEstilo.values()) ms.push(q.m);
     return ms;
   };
   const aplicarCorte = (ps: readonly THREE.Plane[]) => {
@@ -405,17 +443,19 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
     if (selecionado) pintar(selecionado, paletaAtual.selecionado);
   };
 
-  const pegavel = (l: MalhaDoLote) => l.malha.visible && l.lote.acabamento !== 'terreno';
+  // a peça 100 % transparente não segura o clique (some da tela, some do mouse)
+  const pegavel = (l: MalhaDoLote) => l.malha.visible && l.lote.acabamento !== 'terreno' && !apagada(l.malha.material);
+  const barraPegavel = (b: MalhaDeBarras) => b.malha.visible && !apagada(b.malha.material);
 
   const pegar = (raio: THREE.Raycaster): string | null => {
     // Na Armadura a barra está por cima de tudo na tela: o clique acha a barra antes da peça que está na frente dela.
     if (armadura) {
-      const daBarra = pegarEm(raio, barras.filter((b) => b.malha.visible).map((b) => b.malha));
+      const daBarra = pegarEm(raio, barras.filter((b) => b.malha.visible).map((b) => b.malha));  // a Armadura é chapada: nunca apagada
       if (daBarra) return daBarra;
     }
     const alvos: THREE.Object3D[] = [];
     for (const l of lotes) if (pegavel(l)) alvos.push(l.malha);
-    for (const b of barras) if (b.malha.visible) alvos.push(b.malha);
+    for (const b of barras) if (barraPegavel(b)) alvos.push(b.malha);
     return pegarEm(raio, alvos);
   };
 

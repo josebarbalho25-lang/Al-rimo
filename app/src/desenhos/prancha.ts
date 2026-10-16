@@ -49,10 +49,10 @@
   coluna. A tela não muda (sem a opção, o SVG é o de antes byte a byte) e as primitivas também não (o DXF tem as
   hachuras dele).
 */
-import { CORPO_DA_COTA, type PadraoHachura, type Primitiva, type Traco } from '@/pranchas/tipos';
-import { esc, n } from './formato';
+import { CORPO_DA_COTA, type AnotacaoPosta, type ChamadaPosta, type CotaNova, type EtiquetaNova, type InfoDaAnotacao, type InfoDaChamada, type PadraoHachura, type Primitiva, type RegiaoDoDesenho, type TextoNovo, type Traco } from '@/pranchas/tipos';
+import { cm, esc, n } from './formato';
 import { HACHURA, ladrilhoDe, padraoDoLadrilho, type Ladrilho } from './hachuras';
-import { corDoAcoNoDesenho, hachuraDe, type Hachura, type Material } from './graficos';
+import { anotacaoDaCamada, anotacaoVisivel, corDaAnotacao, corDoAcoNoDesenho, emMeioTom, hachuraDe, meioTomDe, naVista, opacidadeDe, sobreposicaoEmDesenho, vistaEmDesenho, type Hachura, type Material, type SobreposicaoDaVista, type VistaDosGraficos } from './graficos';
 
 /** Cores das figuras (figlib.C) + as que os desenhos de obra pedem a mais (peça especial, brita). */
 export const COR = {
@@ -106,6 +106,12 @@ export interface Estilo {
   /** Só para a tela (o filete branco sob a barra): fica fora das primitivas — plotado em monocromático, o branco
    *  vira um traço preto grosso por baixo da barra. */
   soTela?: boolean;
+  /** Só para o ARQUIVO (o DXF): não vai para o SVG. A sombra do graute vai em transparência na tela e no PDF; no DXF,
+   *  que não tem transparência, vai já misturada com a cor do bloco de baixo, peça por peça (vistaFrontal.ts). */
+  soArquivo?: boolean;
+  /** O material da tabela de gráficos por trás do traço, quando o padrão e a camada não dizem (o bloco pintado):
+   *  a transparência da vista vale para ele. */
+  material?: Material;
 }
 
 export interface OpcoesTexto {
@@ -114,9 +120,21 @@ export interface OpcoesTexto {
   cor?: string;
   negrito?: boolean;
   vertical?: boolean;   // girado −90° (lê de baixo para cima), como cota vertical
+  /** Giro qualquer, graus anti-horários (a chamada que o Jose gira na folha); vale por cima de `vertical`. */
+  giro?: number;
   halo?: boolean;       // contorno branco por baixo: texto legível em cima de hachura
   camada?: string;      // camada do DXF (padrão 'textos')
+  /** A chave da anotação dita pelo desenho, quando ele sabe separar textos iguais (a sombra de baixo e a de cima):
+   *  vale no lugar do "texto + ordem" (Prancha, "ANOTAÇÃO EDITÁVEL"). */
+  chave?: string;
 }
+
+/** As camadas do texto solto que o projetista mexe na folha: o rótulo, o do eixo (C1, JC), o da sombra e o do terreno
+ *  ("aterro"). A cota, a chamada, a legenda e o título têm regra própria ou não se mexem. */
+const TEXTO_EDITAVEL = new Set(['textos', 'eixos', 'sombras', 'terreno']);
+
+/** Até onde (px de desenho) a anotação repetida pode ter andado e o ajuste ainda vale (AnotacaoPosta.ref). */
+const ANDOU_DEMAIS = 30;
 
 /**
  * O que a prancha (modo prancha, pranchas/) pede a cada vista: a escala fixa, sem o título interno e com o prefixo
@@ -135,6 +153,14 @@ export interface OpcoesDaVista {
   hachuraVetorial?: boolean;
   /** Chamadas das barras ("N1 – 15 Ø10 c/40 C=210", desenhos/chamadas.ts) numa coluna à direita: a prancha pede. */
   chamadas?: boolean;
+  /** As chamadas que o projetista tirou da coluna (lugar, giro, escondida), por chave — guardadas no item da folha. */
+  chamadasPostas?: Readonly<Record<string, ChamadaPosta>>;
+  /** Os ajustes do projetista nas cotas e textos automáticos, por chave (Prancha, "ANOTAÇÃO EDITÁVEL"). */
+  anotacoes?: Readonly<Record<string, AnotacaoPosta>>;
+  /** As etiquetas de aço que o projetista pôs (desenhos/chamadas.ts, desenharEtiquetas). */
+  etiquetas?: readonly EtiquetaNova[];
+  /** A sobreposição de gráficos da vista (graficos.ts): a geral com ela por cima. */
+  graficos?: SobreposicaoDaVista;
 }
 
 export type Pt = [number, number];
@@ -164,8 +190,11 @@ const DO_PADRAO: Record<NomeDoPadrao, { material: Material; camada: string }> = 
  * continua aparecendo entre os riscos — um tom chapado por cima tingia o cinza do inteiro de azul e ele passava
  * por meio bloco.
  */
-export function hachuraDoPadrao(nome: NomeDoPadrao): Hachura {
-  const h = hachuraDe(DO_PADRAO[nome].material);
+export function hachuraDoPadrao(nome: NomeDoPadrao, vista?: VistaDosGraficos): Hachura {
+  const m = DO_PADRAO[nome].material;
+  const h0 = hachuraDe(m, vista);
+  // o meio-tom do material (16/10, o do A-PORT): o risco e o fundo vão para perto do papel
+  const h = meioTomDe(m, vista) ? { ...h0, risco: emMeioTom(h0.risco), fundo: h0.fundo === 'none' ? 'none' : emMeioTom(h0.fundo) } : h0;
   if (nome === 'graute') return { desenho: 'riscado', risco: h.fundo, fundo: 'none', escala: h.escala };
   return h;
 }
@@ -193,8 +222,8 @@ function padraoRiscado(id: string, r: Riscado): string {
  * Padrão do SVG → hachura do DXF: o padrão do CAD, o fundo e o risco (as cores da tabela), a escala sobre a calibrada
  * e a camada do material. null = 'vazio' (sai só o contorno).
  */
-function hachuraDxf(nome: NomeDoPadrao): { padrao: PadraoHachura; fundo?: string; risco: string; camada: string; escala: number } | null {
-  const h = hachuraDoPadrao(nome);
+function hachuraDxf(nome: NomeDoPadrao, vista: VistaDosGraficos): { padrao: PadraoHachura; fundo?: string; risco: string; camada: string; escala: number } | null {
+  const h = hachuraDoPadrao(nome, vista);
   const camada = DO_PADRAO[nome].camada;
   const fundo = h.fundo === 'none' ? undefined : h.fundo;
   switch (h.desenho) {
@@ -216,10 +245,10 @@ function n3(v: number): string {
 }
 
 /** Tintas que, sozinhas, já dizem o material (passo 3 do cabeçalho), pela tabela em uso. */
-function camadaDaCor(cor: string): string | undefined {
-  if (cor === corDoAcoNoDesenho()) return 'aco';
-  if (cor === hachuraDe('terra').risco) return 'terreno';
-  const g = hachuraDe('graute');
+function camadaDaCor(cor: string, vista: VistaDosGraficos): string | undefined {
+  if (cor === corDoAcoNoDesenho(vista)) return 'aco';
+  if (cor === hachuraDe('terra', vista).risco) return 'terreno';
+  const g = hachuraDe('graute', vista);
   if (cor === g.risco || cor === g.fundo) return 'graute';
   return undefined;
 }
@@ -264,21 +293,189 @@ export class Prancha {
    *  caixa. Assim a vista desliga um bloco de cotas inteiro sem perder as contas de posição que vêm depois. */
   private mudo = false;
 
+  /**
+   * A caixa de REFERÊNCIA (VistaParaPrancha.referencia): a de tudo, menos a chamada que saiu da coluna — essa
+   * reserva o lugar que tinha na coluna (desenhos/chamadas.ts). É ela que prende o desenho na folha.
+   */
+  private r0 = Infinity;
+  private s0 = Infinity;
+  private r1 = -Infinity;
+  private s1 = -Infinity;
+  private foraDaRef = false;
+
+  /** As chamadas das barras como saíram (a tela da prancha pega e arrasta). */
+  readonly chamadas: InfoDaChamada[] = [];
+
+  /*
+    ANOTAÇÃO EDITÁVEL (Jose, 15/10: "deletar ou criar cotas e mover anotações em geral, escrever de novo o que
+    quiser"). Cada cota (cada trecho de uma cadeia) e cada texto solto (camada 'textos') ganha uma CHAVE: o tipo, o
+    texto de origem e quantos iguais vieram antes nesta prancha ("cota:B = 140#0"). A folha guarda, por chave, o
+    ajuste do projetista (AnotacaoPosta) e a prancha desenha com ele. A anotação mexida deixa o lugar de origem
+    reservado na caixa de referência — o FANTASMA: desenha a original, fica só a caixa, o traço vai fora —, e o
+    desenho não pula na folha nem o título desce. O lugar dos outros também não muda: a cadeia arranja os números
+    pelos textos de origem.
+  */
+  private ajustes: Readonly<Record<string, AnotacaoPosta>> = {};
+  private vezes = new Map<string, number>();
+  /** As cotas e textos editáveis como saíram (a tela da prancha pega, arrasta e reescreve). */
+  readonly anotacoes: InfoDaAnotacao[] = [];
+
+  /** px de desenho por mm do muro (o S da vista): o lugar guardado no ajuste está em mm do muro. */
+  private escalaDosAjustes = 0;
+
+  /** Os ajustes que a folha guardou para as anotações desta prancha (antes de desenhar); S = px por mm do muro. */
+  ajustar(a: Readonly<Record<string, AnotacaoPosta>> | undefined, S?: number): void {
+    this.ajustes = a ?? {};
+    this.escalaDosAjustes = S ?? 0;
+  }
+
+  /**
+   * O ajuste guardado, se ainda vale. Com o lugar guardado (AnotacaoPosta.ref, mm do muro), só perto de onde foi
+   * feito — senão é de outra anotação que herdou a chave. Com o texto de origem guardado e diferente do de agora (o
+   * muro mudou), o texto reescrito e o esconder caem: o número certo volta; o lugar e o giro ficam.
+   */
+  private valeOAjuste(a: AnotacaoPosta | undefined, origem: Pt, original: string): AnotacaoPosta | undefined {
+    if (!a) return a;
+    const S = this.escalaDosAjustes;
+    if (a.ref && S > 0 && Math.hypot(origem[0] - a.ref[0] * S, origem[1] - a.ref[1] * S) > ANDOU_DEMAIS) return undefined;
+    if (a.original !== undefined && a.original !== original) {
+      const { texto: _t, oculta: _o, ...resto } = a;
+      return resto;
+    }
+    return a;
+  }
+
+  private chaveNova(tipo: 'texto' | 'cota', t: string): string {
+    const base = `${tipo}:${t}`;
+    const k = this.vezes.get(base) ?? 0;
+    this.vezes.set(base, k + 1);
+    return `${base}#${k}`;
+  }
+
+  /** Desenha `f` só para a caixa de referência: o traço e a caixa de verdade voltam ao que eram. */
+  private fantasma(f: () => void): void {
+    const [nc, np] = [this.corpo.length, this.prims.length];
+    const caixa = [this.x0, this.y0, this.x1, this.y1];
+    const antes = this.foraDaRef;
+    this.foraDaRef = false;
+    f();
+    this.foraDaRef = antes;
+    this.corpo.length = nc;
+    this.prims.length = np;
+    [this.x0, this.y0, this.x1, this.y1] = caixa;
+  }
+
+  /** Desenha `f` fora da caixa de referência (a anotação fora do lugar de origem, a criada na folha). */
+  private foraDoLugar(f: () => void): void {
+    const antes = this.foraDaRef;
+    this.foraDaRef = true;
+    f();
+    this.foraDaRef = antes;
+  }
+
+  /** O que se desenha agora fica fora da caixa de referência (a chamada posta: desenhos/chamadas.ts). */
+  foraDaReferencia(sim: boolean): void {
+    this.foraDaRef = sim;
+  }
+
+  /** Reserva um retângulo na caixa de referência sem desenhar nada (o lugar que a chamada tinha na coluna). */
+  reservar(xa: number, ya: number, xb: number, yb: number): void {
+    if (![xa, ya, xb, yb].every(Number.isFinite)) return;
+    this.r0 = Math.min(this.r0, xa, xb);
+    this.s0 = Math.min(this.s0, ya, yb);
+    this.r1 = Math.max(this.r1, xa, xb);
+    this.s1 = Math.max(this.s1, ya, yb);
+  }
+
   silenciar(mudo: boolean): void {
     this.mudo = mudo;
   }
 
-  /** `hachuraVetorial`: o SVG do PDF, sem <pattern> (cabeçalho, "HACHURA EM VETOR"). */
-  constructor(readonly prefixo = 'des', readonly hachuraVetorial = false) {}
+  /**
+   * `hachuraVetorial`: o SVG do PDF, sem <pattern> (cabeçalho, "HACHURA EM VETOR"). `vista`: a tabela de gráficos
+   * desta prancha — a da vista que está sendo desenhada quando ela nasce (graficos.ts, naVista); guardada porque o
+   * <defs> dos padrões sai depois que a função de desenho já voltou.
+   */
+  /** A sobreposição de gráficos da vista em que a prancha nasceu: o que se desenha DEPOIS (os <pattern> do partes(),
+   *  as cotas e textos criados na folha) usa a mesma, e não a geral. */
+  private readonly sobreposicao: SobreposicaoDaVista | undefined = sobreposicaoEmDesenho();
+
+  constructor(readonly prefixo = 'des', readonly hachuraVetorial = false, readonly vista: VistaDosGraficos = vistaEmDesenho()) {}
+
+  /** Roda `f` com os gráficos da vista desta prancha (a vista e a sobreposição com que ela nasceu). */
+  private naMinhaVista<T>(f: () => T): T {
+    return naVista(this.vista, f, this.sobreposicao);
+  }
+
+  /** A cor que a vista dá à anotação desta camada (cota, texto, chamada, sombra, eixo), ou a do desenho. */
+  private corDe(camada: string | undefined, padrao: string): string {
+    const a = anotacaoDaCamada(camada);
+    return (a && corDaAnotacao(a, this.vista)) || padrao;
+  }
+
+  /** A opacidade do traço pela transparência da vista: o material dito, o do padrão ou o aço. 1 = cheio. */
+  /** O material por trás do traço: o dito, o do padrão de preenchimento, ou o aço pela camada. */
+  private materialDoTraco(e: Estilo, fill: string, stroke: string): Material | undefined {
+    const nome = this.nomeDoPadrao(fill);
+    return e.material ?? (nome ? DO_PADRAO[nome].material : this.camadaDe(e, fill, stroke) === 'aco' ? 'aco' : undefined);
+  }
+
+  /** A cor do traço com o meio-tom do material, se a vista pede (a cor de padrão url(#…) já vem clara do <pattern>). */
+  private comMeioTom(e: Estilo, fill: string, stroke: string, cor: string): string {
+    if (!cor.startsWith('#')) return cor;
+    const m = this.materialDoTraco(e, fill, stroke);
+    return m && meioTomDe(m, this.vista) ? emMeioTom(cor) : cor;
+  }
+
+  private opacidadeDoTraco(e: Estilo, fill: string, stroke: string): number {
+    const m = this.materialDoTraco(e, fill, stroke);
+    if (!m) return 1;
+    // no 3D (visor e o 3D em vetor da prancha) a linha "Alvenaria" vale para todo bloco, por cima da do tipo dele;
+    // no 2D ela é só o bloco cortado
+    const doBloco = this.vista === '3d' && (m === 'inteiro' || m === 'meio' || m === 'canaleta' || m === 'bloco34' || m === 'bloco54');
+    return opacidadeDe(m, this.vista) * (doBloco ? opacidadeDe('alvenaria', '3d') : 1);
+  }
 
   /** Referência a um padrão de preenchimento desta prancha. */
   padrao(nome: NomeDoPadrao): string {
     return `url(#${this.prefixo}-${nome})`;
   }
 
-  /** O x mais à direita de tudo o que já foi traçado (texto pela largura estimada), px de desenho. */
+  /**
+   * O x mais à direita do que já foi traçado NO LUGAR DE ORIGEM (a caixa de referência; texto pela largura estimada),
+   * px de desenho. A anotação que o projetista arrastou para fora não conta: senão arrastar uma cota para a direita
+   * empurrava a coluna das chamadas e, na armação, a seção e a sombra do estribo.
+   */
   direita(): number {
-    return this.x1;
+    return Number.isFinite(this.r1) ? this.r1 : this.x1;
+  }
+
+  /** As partes do desenho com origem própria (RegiaoDoDesenho), na ordem em que nasceram. */
+  readonly regioes: RegiaoDoDesenho[] = [];
+
+  /** Marca uma parte do desenho com origem própria (a seção da armação, a sombra de um estribo). */
+  regiao(nome: string, origem: Pt, caixa: [number, number, number, number]): void {
+    this.regioes.push({ nome, origem, caixa });
+  }
+
+  /**
+   * O material a 100 % de transparência na vista: o traço sai da tela, do PDF e do DXF (e da captura da ferramenta
+   * Cota, que lê as primitivas), mas o lugar fica na caixa — apagar a terra não faz o desenho pular na folha.
+   */
+  /**
+   * A categoria de anotação da camada aparece nesta vista? A desligada (Mostrar, ou o visível da janela de gráficos)
+   * guarda o lugar do que seria desenhado (o desenho não pula na folha), mas não publica a anotação editável: senão
+   * a folha teria um alvo invisível de clique e arrasto, e a borda vermelha contaria o que não está lá.
+   */
+  private categoriaVisivel(camada: string | undefined): boolean {
+    const a = anotacaoDaCamada(camada);
+    return !a || anotacaoVisivel(a, this.vista);
+  }
+
+  private apagado(e: Estilo, fillPadrao = 'none', strokePadrao: string = COR.linha): boolean {
+    const a = anotacaoDaCamada(e.camada);
+    if (a && !anotacaoVisivel(a, this.vista)) return true;
+    return this.opacidadeDoTraco(e, e.fill ?? fillPadrao, e.stroke ?? strokePadrao) <= 0;
   }
 
   /** Os traços já desenhados, estruturados para o DXF (px de desenho, y para baixo). */
@@ -318,7 +515,7 @@ export class Prancha {
 
     let fundo: string | undefined;
     let riscos = '';
-    const h = hachuraDoPadrao(nome);
+    const h = hachuraDoPadrao(nome, this.vista);
     if (h.desenho === 'riscado') {
       const r = riscadoDe(nome, h);
       fundo = r.fundo;
@@ -340,13 +537,16 @@ export class Prancha {
 
     const g: string[] = [];
     if (e.id) g.push(`data-id="${esc(e.id)}"`);
-    if (e.opacidade !== undefined) g.push(`opacity="${Math.min(1, Math.max(0, e.opacidade)).toFixed(2)}"`);
+    const op = (e.opacidade ?? 1) * this.opacidadeDoTraco(e, e.fill ?? 'none', e.stroke ?? COR.linha);
+    if (op < 1) g.push(`opacity="${Math.min(1, Math.max(0, op)).toFixed(2)}"`);
     if (e.extra) g.push(e.extra);
     let s = `<g${g.length ? ' ' + g.join(' ') : ''}>`;
     if (fundo) s += `<path d="${d}" fill-rule="evenodd" fill="${fundo}" stroke="none"/>`;
     s += `<g clip-path="url(#${id})">${riscos}</g>`;
     if ((e.stroke ?? COR.linha) !== 'none') {
-      s += `<path d="${d}" fill-rule="evenodd" ${this.atributos({ ...e, fill: 'none', id: undefined, opacidade: undefined, extra: undefined })}/>`;
+      // o contorno sem miolo leva o material que o padrão dizia (sem ele, o meio-tom da hachura não chegava à borda)
+      const material = this.materialDoTraco(e, e.fill ?? 'none', e.stroke ?? COR.linha);
+      s += `<path d="${d}" fill-rule="evenodd" ${this.atributos({ ...e, fill: 'none', material, id: undefined, opacidade: undefined, extra: undefined })}/>`;
     }
     this.corpo.push(s + '</g>');
     return true;
@@ -377,14 +577,14 @@ export class Prancha {
     if (e.camada) return e.camada;
     const nome = this.nomeDoPadrao(fill);
     if (nome) return DO_PADRAO[nome].camada;
-    const porCor = camadaDaCor(fill) ?? camadaDaCor(stroke);
+    const porCor = camadaDaCor(fill, this.vista) ?? camadaDaCor(stroke, this.vista);
     if (porCor) return porCor;
     const grupo = this.grupos[this.grupos.length - 1];
     return (grupo && CAMADA_DO_GRUPO[grupo]) || 'geral';
   }
 
   private traco(stroke: string, e: Estilo, camada: string): Traco {
-    const t: Traco = { camada, cor: stroke, espessura: e.sw ?? 1 };
+    const t: Traco = { camada, cor: this.comMeioTom(e, e.fill ?? 'none', stroke, stroke), espessura: e.sw ?? 1 };
     const d = tracejado(e.dash);
     if (d) t.tracejado = d;
     return t;
@@ -402,12 +602,12 @@ export class Prancha {
     const borda = stroke !== 'none' ? this.traco(stroke, e, camada) : undefined;
     const fechados = aneis.filter((a) => a.length >= 3).map((a) => a.map(([x, y]): Pt => [x, y]));
     const nome = this.nomeDoPadrao(fill);
-    const p = nome ? hachuraDxf(nome) : null;
+    const p = nome ? hachuraDxf(nome, this.vista) : null;
     // padrão 'vazio' da tabela: só o contorno, como área sem preenchimento
     if (fill !== 'none' && fechados.length && (p || !nome)) {
       const h: Extract<Primitiva, { k: 'hachura' }> = p
         ? { k: 'hachura', aneis: fechados, padrao: p.padrao, risco: p.risco, camada }
-        : { k: 'hachura', aneis: fechados, padrao: 'solido', fundo: fill, camada };
+        : { k: 'hachura', aneis: fechados, padrao: 'solido', fundo: this.comMeioTom(e, fill, stroke, fill), camada };
       if (p?.fundo) h.fundo = p.fundo;
       if (p && p.escala !== 1) h.escala = p.escala;
       if (borda) h.borda = borda;
@@ -420,7 +620,7 @@ export class Prancha {
 
   /** Linha de cota com as duas marcas oblíquas como riscos de verdade (o DXF não tem <marker>). */
   private anotarLinhaDeCota(xa: number, ya: number, xb: number, yb: number): void {
-    const e: Traco = { camada: 'cotas', cor: COR.cota, espessura: 0.9 };
+    const e: Traco = { camada: 'cotas', cor: this.corDe('cotas', COR.cota), espessura: 0.9 };
     this.prims.push({ k: 'linha', a: [xa, ya], b: [xb, yb], e });
     // orient="auto": o eixo x da marca acompanha a linha, de A para B, nas duas pontas
     const L = Math.hypot(xb - xa, yb - ya);
@@ -428,7 +628,7 @@ export class Prancha {
     const k = MARCA.lado / MARCA.caixa;
     const gira = ([u, v]: Pt): Pt => [((u - MARCA.ref) * dx - (v - MARCA.ref) * dy) * k, ((u - MARCA.ref) * dy + (v - MARCA.ref) * dx) * k];
     const [p, q] = [gira(MARCA.de), gira(MARCA.ate)];
-    const marca: Traco = { camada: 'cotas', cor: COR.cota, espessura: MARCA.sw * k };
+    const marca: Traco = { camada: 'cotas', cor: this.corDe('cotas', COR.cota), espessura: MARCA.sw * k };
     for (const [x, y] of [[xa, ya], [xb, yb]] as Pt[]) {
       this.prims.push({ k: 'linha', a: [x + p[0], y + p[1]], b: [x + q[0], y + q[1]], e: marca });
     }
@@ -440,19 +640,30 @@ export class Prancha {
     this.y0 = Math.min(this.y0, ya, yb);
     this.x1 = Math.max(this.x1, xa, xb);
     this.y1 = Math.max(this.y1, ya, yb);
+    if (!this.foraDaRef) this.reservar(xa, ya, xb, yb);
   }
 
   private atributos(e: Estilo, fillPadrao = 'none', strokePadrao: string = COR.linha): string {
     let fill = e.fill ?? fillPadrao;
+    const op = (e.opacidade ?? 1) * this.opacidadeDoTraco(e, fill, e.stroke ?? strokePadrao);
     // no SVG do PDF não há <pattern> para apontar: o que sobrar com padrão (área sem anel fechado, linha com fill)
     // não tem miolo para pintar, e o url(#…) órfão não pode ir para o papel
+    let st = e.stroke ?? strokePadrao;
+    // o meio-tom do material (a cor perto do papel, opaca) — decidido com o padrão ainda no fill: é ele que diz o
+    // material da área hachurada
+    [fill, st] = [this.comMeioTom(e, fill, st, fill), this.comMeioTom(e, fill, st, st)];
     if (this.hachuraVetorial && this.nomeDoPadrao(fill)) fill = 'none';
+    // a anotação (cota, chamada, eixo, sombra) na cor que a vista der: traço e miolo chapado (o ponto da chamada)
+    const anotada = anotacaoDaCamada(e.camada) && corDaAnotacao(anotacaoDaCamada(e.camada)!, this.vista);
+    if (anotada) {
+      if (st !== 'none') st = anotada;
+      if (fill !== 'none' && !fill.startsWith('url(')) fill = anotada;
+    }
     const a = [`fill="${fill}"`];
-    const st = e.stroke ?? strokePadrao;
     a.push(`stroke="${st}"`);
     if (st !== 'none') a.push(`stroke-width="${n(e.sw ?? 1)}"`);
     if (e.dash) a.push(`stroke-dasharray="${e.dash}"`);
-    if (e.opacidade !== undefined) a.push(`opacity="${Math.min(1, Math.max(0, e.opacidade)).toFixed(2)}"`);
+    if (op < 1) a.push(`opacity="${Math.min(1, Math.max(0, op)).toFixed(2)}"`);
     if (e.id) a.push(`data-id="${esc(e.id)}"`);
     if (e.extra) a.push(e.extra);
     return a.join(' ');
@@ -463,14 +674,16 @@ export class Prancha {
     const xa = Math.min(x, x + w), ya = Math.min(y, y + h);
     const ww = Math.abs(w), hh = Math.abs(h);
     if (!(ww > 0 && hh > 0)) return;
+    if (this.apagado(e)) return this.estender(xa, ya, xa + ww, ya + hh);
     const aneis: Pt[][] = [[[xa, ya], [xa + ww, ya], [xa + ww, ya + hh], [xa, ya + hh]]];
-    if (!this.areaEmVetor(aneis, e)) this.corpo.push(`<rect x="${n(xa)}" y="${n(ya)}" width="${n(ww)}" height="${n(hh)}" ${this.atributos(e)}/>`);
+    if (!e.soArquivo && !this.areaEmVetor(aneis, e)) this.corpo.push(`<rect x="${n(xa)}" y="${n(ya)}" width="${n(ww)}" height="${n(hh)}" ${this.atributos(e)}/>`);
     this.estender(xa, ya, xa + ww, ya + hh);
     this.anotarArea(aneis, e);
   }
 
   linha(xa: number, ya: number, xb: number, yb: number, e: Estilo = {}): void {
     if (this.mudo) return;
+    if (this.apagado(e)) return this.estender(xa, ya, xb, yb);
     this.corpo.push(`<line x1="${n(xa)}" y1="${n(ya)}" x2="${n(xb)}" y2="${n(yb)}" ${this.atributos(e)}/>`);
     this.estender(xa, ya, xb, yb);
     const stroke = e.stroke ?? COR.linha;
@@ -482,6 +695,10 @@ export class Prancha {
   poligono(pts: Pt[], e: Estilo = {}): void {
     if (this.mudo) return;
     if (pts.length < 2) return;
+    if (this.apagado(e)) {
+      for (const [x, y] of pts) this.estender(x, y, x, y);
+      return;
+    }
     if (!this.areaEmVetor([pts], e)) {
       const p = pts.map(([x, y]) => `${n(x)},${n(y)}`).join(' ');
       this.corpo.push(`<polygon points="${p}" ${this.atributos(e)}/>`);
@@ -494,6 +711,10 @@ export class Prancha {
   polilinha(pts: Pt[], e: Estilo = {}): void {
     if (this.mudo) return;
     if (pts.length < 2) return;
+    if (this.apagado(e)) {
+      for (const [x, y] of pts) this.estender(x, y, x, y);
+      return;
+    }
     const p = pts.map(([x, y]) => `${n(x)},${n(y)}`).join(' ');
     this.corpo.push(`<polyline points="${p}" ${this.atributos(e)} stroke-linejoin="round" stroke-linecap="round"/>`);
     for (const [x, y] of pts) this.estender(x, y, x, y);
@@ -514,6 +735,10 @@ export class Prancha {
       .map((a) => 'M' + a.map(([x, y]) => `${n(x)},${n(y)}`).join('L') + 'Z')
       .join('');
     if (!d) return;
+    if (this.apagado(e)) {
+      for (const a of aneis) for (const [x, y] of a) this.estender(x, y, x, y);
+      return;
+    }
     if (!this.areaEmVetor(aneis, e)) this.corpo.push(`<path d="${d}" fill-rule="evenodd" ${this.atributos(e)}/>`);
     for (const a of aneis) for (const [x, y] of a) this.estender(x, y, x, y);
     this.anotarArea(aneis.filter((a) => a.length >= 3), e);
@@ -521,7 +746,8 @@ export class Prancha {
 
   circulo(cx: number, cy: number, r: number, e: Estilo = {}): void {
     if (this.mudo) return;
-    const aco = corDoAcoNoDesenho();
+    const aco = corDoAcoNoDesenho(this.vista);
+    if (this.apagado(e, aco, 'none')) return this.estender(cx - r, cy - r, cx + r, cy + r);
     this.corpo.push(`<circle cx="${n(cx)}" cy="${n(cy)}" r="${n(r)}" ${this.atributos(e, aco, 'none')}/>`);
     this.estender(cx - r, cy - r, cx + r, cy + r);
     if (e.soTela) return;
@@ -551,25 +777,72 @@ export class Prancha {
 
   texto(x: number, y: number, t: string, o: OpcoesTexto = {}): void {
     if (this.mudo) return;
+    // só o texto solto é anotação editável (TEXTO_EDITAVEL); cota, chamada, legenda escrevem direto
+    if (!TEXTO_EDITAVEL.has(o.camada ?? 'textos')) {
+      this.escrever(x, y, t, o);
+      return;
+    }
+    const chave = o.chave !== undefined ? `texto:${o.chave}` : this.chaveNova('texto', t);
+    // categoria desligada: só o lugar (a chave já andou: o "#n" dos textos iguais não muda com ela desligada)
+    if (!this.categoriaVisivel(o.camada ?? 'textos')) {
+      this.escrever(x, y, t, o);
+      return;
+    }
+    const a = this.valeOAjuste(this.ajustes[chave], [x, y], t);
+    const tam = o.tam ?? 12;
+    const ancora = o.ancora ?? 'middle';
+    const giro0 = o.giro ?? (o.vertical ? 90 : 0);
+    const info = (texto: string, p: Pt, giro: number, oculta: boolean): InfoDaAnotacao => ({
+      chave, tipo: 'texto', nova: false, texto, original: t, p, p0: [x, y], ancora, giro, largura: Prancha.largura(texto, tam, o.negrito), tam, oculta,
+    });
+    if (!a) {
+      this.escrever(x, y, t, o);
+      this.anotacoes.push(info(t, [x, y], giro0, false));
+      return;
+    }
+    this.fantasma(() => this.escrever(x, y, t, o));
+    const texto = a.texto ?? t;
+    const p: Pt = [x + (a.dx ?? 0), y + (a.dy ?? 0)];
+    const giro = a.giro ?? giro0;
+    this.anotacoes.push(info(texto, p, giro, !!a.oculta || !texto.trim()));
+    if (a.oculta || !texto.trim()) return;
+    this.foraDoLugar(() => this.escrever(p[0], p[1], texto, { ...o, giro, vertical: undefined }));
+  }
+
+  /** O texto, sem chave nem ajuste (o traço de verdade). */
+  private escrever(x: number, y: number, t: string, o: OpcoesTexto = {}): void {
+    if (this.mudo) return;
     const tam = o.tam ?? 12;
     const anc = o.ancora ?? 'middle';
-    const cor = o.cor ?? COR.linha;
     const w = Prancha.largura(t, tam, o.negrito);
-    const rot = o.vertical ? ` transform="rotate(-90 ${n(x)} ${n(y)})"` : '';
+    const giro = o.giro ?? (o.vertical ? 90 : 0);
+    // a caixa do texto: linha de base em y, sobe ~0,8·corpo e desce ~0,25·corpo (girada em torno do ponto de inserção)
+    const a0 = anc === 'start' ? 0 : anc === 'middle' ? -w / 2 : -w;
+    const caixa = (): void => {
+      if (!giro) return this.estender(x + a0, y - 0.85 * tam, x + a0 + w, y + 0.25 * tam);
+      // y para baixo: o giro anti-horário é −giro
+      const g = (-giro * Math.PI) / 180;
+      const [c, sn] = [Math.cos(g), Math.sin(g)];
+      for (const [u, v] of [[a0, -0.85 * tam], [a0 + w, -0.85 * tam], [a0 + w, 0.25 * tam], [a0, 0.25 * tam]] as Pt[]) {
+        const [px, py] = [x + u * c - v * sn, y + u * sn + v * c];
+        this.estender(px, py, px, py);
+      }
+    };
+    // a categoria desligada guarda a MESMA caixa que o texto ocuparia: o desenho não pula na folha
+    if (!this.categoriaVisivel(o.camada ?? 'textos')) return caixa();
+    const cor = this.corDe(o.camada ?? 'textos', o.cor ?? COR.linha);
+    const rot = giro ? ` transform="rotate(${n(-giro)} ${n(x)} ${n(y)})"` : '';
     const halo = o.halo ? ' paint-order="stroke" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"' : '';
     this.corpo.push(
       `<text x="${n(x)}" y="${n(y)}" font-size="${n(tam)}" text-anchor="${anc}" fill="${cor}"` +
         `${o.negrito ? ' font-weight="bold"' : ''} font-family="${FONTE}"${halo}${rot}>${esc(t)}</text>`,
     );
-    // caixa do texto: linha de base em y, sobe ~0,8·corpo e desce ~0,25·corpo
-    const a0 = anc === 'start' ? 0 : anc === 'middle' ? -w / 2 : -w;
-    if (!o.vertical) this.estender(x + a0, y - 0.85 * tam, x + a0 + w, y + 0.25 * tam);
-    else this.estender(x - 0.85 * tam, y - a0 - w, x + 0.25 * tam, y - a0);
+    caixa();
     // o y do texto já é a linha de base, que é o ponto de inserção do DXF; o giro de −90° do SVG (y para baixo)
     // é o de +90° anti-horário do CAD (y para cima): a cota vertical lê de baixo para cima nos dois
     if (!t) return;
     const p: Extract<Primitiva, { k: 'texto' }> = {
-      k: 'texto', p: [x, y], t, altura: tam, ancora: anc, angulo: o.vertical ? 90 : 0, cor, camada: o.camada ?? 'textos',
+      k: 'texto', p: [x, y], t, altura: tam, ancora: anc, angulo: giro, cor, camada: o.camada ?? 'textos',
     };
     if (o.negrito) p.negrito = true;
     // o halo do SVG (rótulo legível sobre hachura) vira MTEXT com máscara de fundo no DXF
@@ -581,8 +854,8 @@ export class Prancha {
    * Cota horizontal com marca oblíqua (figlib.dim_h). `de` = y de onde partem as linhas de chamada (o ponto
    * medido). Rótulo acima da linha; se não cabe entre as marcas, vai para fora, à direita — nunca em cima de outro.
    */
-  cotaH(xa: number, xb: number, y: number, rotulo: string, o: { de?: [number, number]; tam?: number } = {}): void {
-    this.cadeiaH([{ a: xa, b: xb, rotulo }], y, { tam: o.tam, de: o.de ? [o.de] : undefined });
+  cotaH(xa: number, xb: number, y: number, rotulo: string, o: { de?: [number, number]; tam?: number; chave?: string; textoDaChave?: string } = {}): void {
+    this.cadeiaH([{ a: xa, b: xb, rotulo, chave: o.chave, textoDaChave: o.textoDaChave }], y, { tam: o.tam, de: o.de ? [o.de] : undefined });
   }
 
   private linhaDeCotaH(xa: number, xb: number, y: number, de?: [number, number]): [number, number] {
@@ -594,11 +867,12 @@ export class Prancha {
         if (Math.abs(y - y0) > 3) this.linha(x, y0 + s * 2, x, y + s * 4, { stroke: COR.cota, sw: 0.6, camada: 'cotas' });
       }
     }
+    this.estender(x1 - 4, y - 4, x2 + 4, y + 4);
+    if (!this.categoriaVisivel('cotas')) return [x1, x2];
     this.corpo.push(
-      `<line x1="${n(x1)}" y1="${n(y)}" x2="${n(x2)}" y2="${n(y)}" stroke="${COR.cota}" stroke-width="0.9"` +
+      `<line x1="${n(x1)}" y1="${n(y)}" x2="${n(x2)}" y2="${n(y)}" stroke="${this.corDe('cotas', COR.cota)}" stroke-width="0.9"` +
         ` marker-start="url(#${this.prefixo}-tick)" marker-end="url(#${this.prefixo}-tick)"/>`,
     );
-    this.estender(x1 - 4, y - 4, x2 + 4, y + 4);
     this.anotarLinhaDeCota(x1, y, x2, y);
     return [x1, x2];
   }
@@ -609,12 +883,35 @@ export class Prancha {
    * isso, duas cotas curtas lado a lado (as duas pontas de uma junta) escrevem uma em cima da outra.
    * `de`: para cada segmento, os y de onde partem as linhas de chamada (ou um par para todos).
    */
-  cadeiaH(segs: { a: number; b: number; rotulo: string }[], y: number, o: { tam?: number; de?: [number, number][] } = {}): void {
+  /**
+   * `textoDaChave`: a chave sai deste texto e não do rótulo — a cota de comprimento mostra o valor cheio (16/10) e
+   * guarda a chave do valor de antes, sem a junta: o ajuste feito nela até 15/10 continua achando a cota.
+   */
+  cadeiaH(segs: { a: number; b: number; rotulo: string; chave?: string; textoDaChave?: string }[], y: number, o: { tam?: number; de?: [number, number][] } = {}): void {
+    this.cadeiaComChave(segs, y, o, (rotulo, k) => {
+      const dita = segs[k]?.chave;
+      const chave = dita !== undefined ? `cota:${dita}` : this.chaveNova('cota', segs[k]?.textoDaChave ?? rotulo);
+      return { chave, ajuste: this.ajustes[chave], nova: false };
+    });
+  }
+
+  /**
+   * A cadeia, com a chave e o ajuste de cada trecho. O arranjo dos números (no meio, para fora, um degrau acima) sai
+   * dos textos de ORIGEM: esconder ou reescrever um trecho não mexe no número do vizinho.
+   */
+  private cadeiaComChave(
+    segs: { a: number; b: number; rotulo: string }[],
+    y: number,
+    o: { tam?: number; de?: [number, number][] },
+    resolver: (rotulo: string, k: number) => { chave: string; ajuste?: AnotacaoPosta; nova: boolean; cadeia?: string },
+  ): void {
+    if (this.mudo) return;
     const tam = o.tam ?? CORPO_DA_COTA;
+    const visiveis = this.categoriaVisivel('cotas');
     const ocupados: [number, number, number][] = [];
     segs.forEach((s, k) => {
       const de = o.de ? o.de[Math.min(k, o.de.length - 1)] : undefined;
-      const [x1, x2] = this.linhaDeCotaH(s.a, s.b, y, de);
+      const [x1, x2] = s.a <= s.b ? [s.a, s.b] : [s.b, s.a];
       const w = Prancha.largura(s.rotulo, tam);
       let x0: number, nivel = 0;
       if (w + 6 <= x2 - x1) x0 = (x1 + x2) / 2 - w / 2;
@@ -626,33 +923,155 @@ export class Prancha {
       }
       while (ocupados.some(([a, b, nv]) => nv === nivel && x0 < b + 3 && x0 + w > a - 3)) nivel++;
       ocupados.push([x0, x0 + w, nivel]);
+      const yt = y - 4 - nivel * (tam + 2);
       // halo branco: o rótulo fica legível quando um eixo ou uma chamada passa por baixo dele
-      this.texto(x0, y - 4 - nivel * (tam + 2), s.rotulo, { tam, cor: COR.cota, ancora: 'start', halo: true, camada: 'cotas' });
+      const desenhar = (yl: number, rot: string, xt: number, ytt: number) => {
+        this.linhaDeCotaH(s.a, s.b, yl, de);
+        this.escrever(xt, ytt, rot, { tam, cor: COR.cota, ancora: 'start', halo: true, camada: 'cotas' });
+      };
+      const r = resolver(s.rotulo, k);
+      const { chave, nova } = r;
+      const a = nova ? r.ajuste : this.valeOAjuste(r.ajuste, [x0, yt], s.rotulo);
+      // os pontos medidos: de onde saem as linhas de chamada (sem elas, as pontas da própria linha)
+      const pontas: [Pt, Pt] = de ? [[x1, de[0]], [x2, de[1]]] : [[x1, y], [x2, y]];
+      const info = (rot: string, p: Pt, yl: number, oculta: boolean): InfoDaAnotacao => {
+        const i: InfoDaAnotacao = {
+          chave, tipo: 'cota', nova, texto: rot, original: s.rotulo, p, p0: [x0, yt], ancora: 'start', giro: 0, largura: Prancha.largura(rot, tam), tam,
+          linha: [[x1, yl], [x2, yl]], eixo: 'h', pontas, oculta,
+        };
+        if (r.cadeia) i.cadeia = r.cadeia;
+        return i;
+      };
+      if (!a) {
+        desenhar(y, s.rotulo, x0, yt);
+        if (visiveis) this.anotacoes.push(info(s.rotulo, [x0, yt], y, false));
+        return;
+      }
+      if (!nova) this.fantasma(() => desenhar(y, s.rotulo, x0, yt));
+      const af = a.afastamento ?? 0;
+      const rot = a.texto ?? `${a.prefixo ?? ''}${s.rotulo}${a.sufixo ?? ''}`;
+      // o número reescrito fica com o meio onde estava o de origem
+      const p: Pt = [x0 + (w - Prancha.largura(rot, tam)) / 2 + (a.dx ?? 0), yt + af + (a.dy ?? 0)];
+      const oculta = !!a.oculta || !rot.trim();
+      if (visiveis) this.anotacoes.push(info(rot, p, y + af, oculta));
+      if (oculta) return;
+      this.foraDoLugar(() => desenhar(y + af, rot, p[0], p[1]));
     });
   }
 
   /** Cota vertical (figlib.dim_v). `lado` −1 escreve à esquerda da linha, +1 à direita. */
-  cotaV(x: number, ya: number, yb: number, rotulo: string, o: { de?: [number, number]; lado?: -1 | 1; tam?: number } = {}): void {
+  cotaV(x: number, ya: number, yb: number, rotulo: string, o: { de?: [number, number]; lado?: -1 | 1; tam?: number; chave?: string } = {}): void {
     if (this.mudo) return;
+    const chave = o.chave !== undefined ? `cota:${o.chave}` : this.chaveNova('cota', rotulo);
+    this.cotaVComChave(x, ya, yb, rotulo, o, chave, this.ajustes[chave], false);
+  }
+
+  private cotaVComChave(
+    x: number, ya: number, yb: number, rotulo: string, o: { de?: [number, number]; lado?: -1 | 1; tam?: number; cadeia?: string },
+    chave: string, ajuste: AnotacaoPosta | undefined, nova: boolean,
+  ): void {
+    let a = ajuste;
     const tam = o.tam ?? CORPO_DA_COTA;
     const lado = o.lado ?? -1;
     const [y1, y2] = ya <= yb ? [ya, yb] : [yb, ya];
-    if (o.de) {
-      for (const [y, x0] of [[y1, o.de[0]], [y2, o.de[1]]] as Pt[]) {
-        const s = x > x0 ? 1 : -1;
-        this.linha(x0 + s * 2, y, x + s * 4, y, { stroke: COR.cota, sw: 0.6, camada: 'cotas' });
-      }
-    }
-    this.corpo.push(
-      `<line x1="${n(x)}" y1="${n(y1)}" x2="${n(x)}" y2="${n(y2)}" stroke="${COR.cota}" stroke-width="0.9"` +
-        ` marker-start="url(#${this.prefixo}-tick)" marker-end="url(#${this.prefixo}-tick)"/>`,
-    );
-    this.estender(x - 4, y1 - 4, x + 4, y2 + 4);
-    this.anotarLinhaDeCota(x, y1, x, y2);
     const w = Prancha.largura(rotulo, tam);
+    const cabe = w + 6 <= y2 - y1;
+    const ancora = cabe ? 'middle' : 'start';
     const xt = lado < 0 ? x - 4 : x + 4 + 0.85 * tam;
-    if (w + 6 <= y2 - y1) this.texto(xt, (y1 + y2) / 2, rotulo, { tam, cor: COR.cota, vertical: true, halo: true, camada: 'cotas' });
-    else this.texto(xt, y1 - 5, rotulo, { tam, cor: COR.cota, vertical: true, ancora: 'start', halo: true, camada: 'cotas' });
+    const yt = cabe ? (y1 + y2) / 2 : y1 - 5;
+    const desenhar = (xl: number, rot: string, p: Pt) => {
+      if (o.de) {
+        for (const [y, x0] of [[y1, o.de[0]], [y2, o.de[1]]] as Pt[]) {
+          const s = xl > x0 ? 1 : -1;
+          this.linha(x0 + s * 2, y, xl + s * 4, y, { stroke: COR.cota, sw: 0.6, camada: 'cotas' });
+        }
+      }
+      this.estender(xl - 4, y1 - 4, xl + 4, y2 + 4);
+      if (this.categoriaVisivel('cotas')) {
+        this.corpo.push(
+          `<line x1="${n(xl)}" y1="${n(y1)}" x2="${n(xl)}" y2="${n(y2)}" stroke="${this.corDe('cotas', COR.cota)}" stroke-width="0.9"` +
+            ` marker-start="url(#${this.prefixo}-tick)" marker-end="url(#${this.prefixo}-tick)"/>`,
+        );
+        this.anotarLinhaDeCota(xl, y1, xl, y2);
+      }
+      this.escrever(p[0], p[1], rot, { tam, cor: COR.cota, vertical: true, ancora, halo: true, camada: 'cotas' });
+    };
+    const pontas: [Pt, Pt] = o.de ? [[o.de[0], y1], [o.de[1], y2]] : [[x, y1], [x, y2]];
+    const info = (rot: string, p: Pt, xl: number, oculta: boolean): InfoDaAnotacao => {
+      const i: InfoDaAnotacao = {
+        chave, tipo: 'cota', nova, texto: rot, original: rotulo, p, p0: [xt, yt], ancora, giro: 90, largura: Prancha.largura(rot, tam), tam,
+        linha: [[xl, y1], [xl, y2]], eixo: 'v', pontas, oculta,
+      };
+      if (o.cadeia) i.cadeia = o.cadeia;
+      return i;
+    };
+    const visiveis = this.categoriaVisivel('cotas');
+    if (!nova) a = this.valeOAjuste(a, [xt, yt], rotulo);
+    if (!a) {
+      desenhar(x, rotulo, [xt, yt]);
+      if (visiveis) this.anotacoes.push(info(rotulo, [xt, yt], x, false));
+      return;
+    }
+    if (!nova) this.fantasma(() => desenhar(x, rotulo, [xt, yt]));
+    const af = a.afastamento ?? 0;
+    const rot = a.texto ?? `${a.prefixo ?? ''}${rotulo}${a.sufixo ?? ''}`;
+    const p: Pt = [xt + af + (a.dx ?? 0), yt + (a.dy ?? 0)];
+    const oculta = !!a.oculta || !rot.trim();
+    if (visiveis) this.anotacoes.push(info(rot, p, x + af, oculta));
+    if (oculta) return;
+    this.foraDoLugar(() => desenhar(x + af, rot, p));
+  }
+
+  /**
+   * As cotas e os textos criados na folha (pranchas/tipos.ts, CotaNova e TextoNovo): os pontos guardados em mm do
+   * muro no plano da vista, aqui de volta a px (× S). Ficam fora da caixa de referência — criar uma cota fora do
+   * desenho não empurra o desenho na folha. A chave é o id: a tela apaga de verdade, não esconde.
+   */
+  desenharNovas(cotas: readonly CotaNova[] = [], textos: readonly TextoNovo[] = [], S: number): void {
+    if (this.mudo) return;
+    // a folha pede depois que o desenho saiu da vista: a cota e o texto criados seguem a sobreposição dela
+    if (this.vista !== vistaEmDesenho() || this.sobreposicao !== sobreposicaoEmDesenho()) {
+      this.naMinhaVista(() => this.desenharNovas(cotas, textos, S));
+      return;
+    }
+    // a parte do desenho em que o ponto foi tomado (a seção da armação…): conta da origem dela; a parte que sumiu
+    // (o estribo que deixou de existir) cai na origem do desenho — fora do lugar, mas à vista para apagar
+    const origemDe = (regiao: string | undefined): Pt => this.regioes.find((r) => r.nome === regiao)?.origem ?? [0, 0];
+    this.foraDoLugar(() => {
+      for (const c of cotas) {
+        const o = origemDe(c.regiao);
+        const px = (p: Pt): Pt => [o[0] + p[0] * S, o[1] + p[1] * S];
+        const [a, b, l] = [px(c.a), px(c.b), px(c.linha)];
+        const ajuste: AnotacaoPosta = {};
+        if (c.texto !== undefined) ajuste.texto = c.texto;
+        if (c.prefixo) ajuste.prefixo = c.prefixo;
+        if (c.sufixo) ajuste.sufixo = c.sufixo;
+        if (c.dx !== undefined) ajuste.dx = c.dx;
+        if (c.dy !== undefined) ajuste.dy = c.dy;
+        if (c.direcao === 'h') {
+          const medida = cm(Math.abs(c.b[0] - c.a[0]));
+          const de: [number, number] = a[0] <= b[0] ? [a[1], b[1]] : [b[1], a[1]];
+          this.cadeiaComChave([{ a: a[0], b: b[0], rotulo: medida }], l[1], { de: [de] }, () => ({ chave: c.id, ajuste, nova: true, cadeia: c.cadeia }));
+        } else {
+          const medida = cm(Math.abs(c.b[1] - c.a[1]));
+          const de: [number, number] = a[1] <= b[1] ? [a[0], b[0]] : [b[0], a[0]];
+          // o número do lado de fora: à esquerda se a linha está à esquerda dos pontos
+          const lado: -1 | 1 = l[0] < Math.min(a[0], b[0]) ? -1 : 1;
+          this.cotaVComChave(l[0], a[1], b[1], medida, { de, lado, cadeia: c.cadeia }, c.id, ajuste, true);
+        }
+      }
+      for (const t of textos) {
+        const o = origemDe(t.regiao);
+        const [x, y]: Pt = [o[0] + t.p[0] * S, o[1] + t.p[1] * S];
+        const tam = CORPO_DA_COTA;
+        const giro = t.giro ?? 0;
+        this.escrever(x, y, t.texto, { tam, ancora: 'start', cor: COR.linha, halo: true, camada: 'textos', giro });
+        if (this.categoriaVisivel('textos')) this.anotacoes.push({
+          chave: t.id, tipo: 'texto', nova: true, texto: t.texto, original: t.texto, p: [x, y], p0: [x, y], ancora: 'start', giro,
+          largura: Prancha.largura(t.texto, tam), tam, oculta: false,
+        });
+      }
+    });
   }
 
   /** Grupo com atributos (ex.: data-camada) — para o componente e o teste acharem uma camada inteira. */
@@ -673,7 +1092,7 @@ export class Prancha {
     const M = MARCA;
     const marca =
       `<marker id="${p}-tick" viewBox="0 0 ${M.caixa} ${M.caixa}" refX="${M.ref}" refY="${M.ref}" markerWidth="${M.lado}" markerHeight="${M.lado}" markerUnits="userSpaceOnUse" orient="auto">` +
-      `<path d="M${M.de[0]},${M.de[1]} L${M.ate[0]},${M.ate[1]}" stroke="${COR.cota}" stroke-width="${M.sw}"/></marker>`;
+      `<path d="M${M.de[0]},${M.de[1]} L${M.ate[0]},${M.ate[1]}" stroke="${this.corDe('cotas', COR.cota)}" stroke-width="${M.sw}"/></marker>`;
     if (this.hachuraVetorial) {
       // só os ladrilhos que alguma área usou; overflow hidden: cada cópia recortada no quadrado dela, como no <pattern>
       const ladrilhos = [...this.ladrilhosUsados].map(([k, l]) => {
@@ -683,20 +1102,24 @@ export class Prancha {
     }
     // cada material com a hachura da tabela em uso: ladrilho (terra, concreto, areia, brita, sólido, vazio) ou riscado
     const padroes = NOMES_DOS_PADROES.map((nome) => {
-      const h = hachuraDoPadrao(nome);
+      const h = hachuraDoPadrao(nome, this.vista);
       return h.desenho === 'riscado' ? padraoRiscado(`${p}-${nome}`, riscadoDe(nome, h)) : padraoDoLadrilho(`${p}-${nome}`, ladrilhoDe(h));
     });
     return marca + padroes.join('');
   }
 
   /** Pedaços do desenho para quem quer controlar o viewBox (zoom/arrasto do componente). */
-  partes(margem = 14): { viewBox: [number, number, number, number]; defs: string; corpo: string } {
-    const vazio = !Number.isFinite(this.x0);
-    const x = vazio ? 0 : Math.floor(this.x0 - margem);
-    const y = vazio ? 0 : Math.floor(this.y0 - margem);
-    const w = vazio ? 100 : Math.ceil(this.x1 + margem) - x;
-    const h = vazio ? 100 : Math.ceil(this.y1 + margem) - y;
-    return { viewBox: [x, y, w, h], defs: this.defs(), corpo: this.corpo.join('') };
+  partes(margem = 14): { viewBox: [number, number, number, number]; referencia: [number, number, number, number]; defs: string; corpo: string } {
+    const caixa = (x0: number, y0: number, x1: number, y1: number): [number, number, number, number] => {
+      if (!Number.isFinite(x0)) return [0, 0, 100, 100];
+      const [x, y] = [Math.floor(x0 - margem), Math.floor(y0 - margem)];
+      return [x, y, Math.ceil(x1 + margem) - x, Math.ceil(y1 + margem) - y];
+    };
+    const viewBox = caixa(this.x0, this.y0, this.x1, this.y1);
+    // sem chamada fora da coluna as duas são a mesma
+    const referencia = Number.isFinite(this.r0) ? caixa(this.r0, this.s0, this.r1, this.s1) : viewBox;
+    // os <pattern> saem com as hachuras da vista desta prancha (a sobreposição dela), não com as da geral
+    return { viewBox, referencia, defs: this.naMinhaVista(() => this.defs()), corpo: this.corpo.join('') };
   }
 
   svg(margem = 14): string {

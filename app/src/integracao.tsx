@@ -42,6 +42,7 @@ export function ligarAsFrentes(): void {
       corte: (c) => c.modelo && <Desenhos modelo={c.modelo} vista="corte" selecionado={c.selecionado} onSelecionar={c.selecionar} />,
       planta: (c) => c.modelo && <Desenhos modelo={c.modelo} vista="planta" selecionado={c.selecionado} onSelecionar={c.selecionar} />,
       iso: (c) => c.modelo && <Desenhos modelo={c.modelo} vista="iso" selecionado={c.selecionado} onSelecionar={c.selecionar} />,
+      armacao: (c) => c.modelo && <Desenhos modelo={c.modelo} vista="armacao" selecionado={c.selecionado} onSelecionar={c.selecionar} />,
       memoria: (c) => c.resultado && <MemoriaDoProjeto resultado={c.resultado} />,
       quantitativo: (c) => c.modelo && <Quantitativo modelo={c.modelo} />,
       pranchas: (c) => <TelaDasPranchas modelo={c.modelo} resultado={c.resultado} />,

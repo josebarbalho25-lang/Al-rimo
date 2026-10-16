@@ -13,7 +13,7 @@
   que já era o destaque delas antes das cores.
 */
 import type { ClassePeca, TipoPeca } from '@/modelo/tipos';
-import { corDoAcoNoDesenho, graficos } from './graficos';
+import { corDaSombraDoGraute, corDoAcoNoDesenho, tabelaDaVista, type Material, SOMBRA_DO_GRAUTE } from './graficos';
 import { ALVENARIA, type Solido } from './geometria';
 import { COR, Prancha, type Estilo } from './prancha';
 
@@ -50,7 +50,7 @@ export function tintaDaPeca(s: Solido): Tinta | null {
   if (!ALVENARIA.has(s.peca.tipo)) return null;
   const classe = s.geo.classe ?? classePeloTipo(s.peca.tipo);
   // a cor da tabela de gráficos (de fábrica, a do Revit do Jose; ele troca na tela — 15/10)
-  const cor = classe && graficos().materiais[classe]?.cor;
+  const cor = classe && tabelaDaVista()[classe]?.cor;
   if (classe && cor) return { chave: classe, nome: NOME[classe], cor };
   // o bloco cortado: sem cor no Revit do Jose
   return { chave: classe ?? 'especial', nome: classe ? NOME[classe] : 'Peça especial', cor: COR.especialFundo };
@@ -58,7 +58,9 @@ export function tintaDaPeca(s: Solido): Tinta | null {
 
 /** Estilo de preenchimento da peça pintada (vista frontal e planta). Camada do DXF: alvenaria. */
 export function estiloPintado(t: Tinta): Estilo {
-  return { fill: t.cor, stroke: TRACO_DA_PECA, sw: 0.7, camada: 'alvenaria' };
+  // o material leva a transparência da vista (a da classe; o bloco especial vai com a alvenaria)
+  const material: Material = t.chave === 'especial' ? 'alvenaria' : (t.chave as Material);
+  return { fill: t.cor, stroke: TRACO_DA_PECA, sw: 0.7, camada: 'alvenaria', material };
 }
 
 /** As tintas presentes num conjunto de peças, uma vez cada, na ordem da legenda. */
@@ -95,11 +97,11 @@ export function desenharLegenda(pr: Prancha, x: number, y: number, itens: [strin
       cy += 18;
     }
     if (e === 'barra' || e === 'espera') {
-      pr.linha(cx, cy - 4, cx + 18, cy - 4, { stroke: corDoAcoNoDesenho(), sw: 2, dash: e === 'espera' ? '5,3' : undefined, camada: 'legenda' });
+      pr.linha(cx, cy - 4, cx + 18, cy - 4, { stroke: corDoAcoNoDesenho(pr.vista), sw: 2, dash: e === 'espera' ? '5,3' : undefined, camada: 'legenda' });
     } else if (e === 'graute') {
-      // a hachura do graute por cima do cinza do inteiro: é assim que ela aparece na vista
-      pr.rect(cx, cy - 9, 18, 10, { fill: graficos().materiais.inteiro?.cor ?? COR.blocoFundo, stroke: TRACO_DA_PECA, sw: 0.7, camada: 'legenda' });
-      pr.rect(cx, cy - 9, 18, 10, { fill: pr.padrao('graute'), stroke: 'none', camada: 'legenda' });
+      // a sombra do graute por cima do cinza do inteiro: é assim que ela aparece na vista frontal
+      pr.rect(cx, cy - 9, 18, 10, { fill: tabelaDaVista(pr.vista).inteiro?.cor ?? COR.blocoFundo, stroke: TRACO_DA_PECA, sw: 0.7, camada: 'legenda', material: 'inteiro' });
+      pr.rect(cx + 6, cy - 9, 6, 10, { fill: corDaSombraDoGraute(pr.vista), stroke: 'none', camada: 'legenda', material: 'graute', opacidade: SOMBRA_DO_GRAUTE });
     } else {
       pr.rect(cx, cy - 9, 18, 10, { ...e, camada: 'legenda' });
     }

@@ -626,3 +626,41 @@ describe('dxf — a tabela de blocos com as figuras das peças', { timeout: 60_0
     expect(rel.ok).toBe(true);
   });
 });
+
+/*
+  As novidades de 16/10 no DXF: a sombra do graute na vista frontal (sem transparência no DXF: já misturada com a cor
+  de cada bloco, em pedaços na camada GRAUTE-FUNDO), a etiqueta de aço posta pelo projetista (CHAMADAS), a cota em
+  cadeia criada na folha (COTAS) e o título com o número no quadrado azul (o sólido em TITULOS-FUNDO, o número em
+  itálico branco de verdade) — audit sem erro e recover sem conserto.
+*/
+describe('dxf — sombra do graute, etiqueta, cadeia de cotas e o título numerado', { timeout: 60_000 }, () => {
+  const m = gerarModelo(resultadoDoGabarito('aula122'), { ...padroesDoModelo(), L_total: 6 });
+  const d = criarDesenhista(m, () => {});
+  const f = novaFolha('Formas');
+  f.itens.push({
+    id: 'f', conteudo: { tipo: 'frontal' }, escala: 50, x: 40, y: 40, titulo: 'Vista frontal', numero: '13',
+    etiquetas: [{ id: 'e1', barra: 'N1|muro', ponto: [100, -800], dx: 20, dy: -15 }],
+  });
+  f.itens.push({
+    id: 'c', conteudo: { tipo: 'corte' }, escala: 25, x: 300, y: 40, titulo: '', numero: '2',
+    cotas: [
+      { id: 'k1', a: [0, 0], b: [-500, 0], linha: [0, -300], direcao: 'h', cadeia: 'k' },
+      { id: 'k2', a: [-500, 0], b: [-1400, 0], linha: [0, -300], direcao: 'h', cadeia: 'k' },
+    ],
+  });
+  const c = comporFolha(f, { ...contexto(), desenhar: (item, prefixo, o) => d.desenhar(item, prefixo, o) });
+  const { dxf } = gerarDxf({ nome: 'novidades', largura: c.largura, altura: c.altura, prims: c.primitivas });
+
+  it('a sombra do graute vai em pedaços sólidos no GRAUTE-FUNDO; o título tem o quadrado e o número', () => {
+    const ents = entidades(dxf, 'ENTITIES');
+    expect(ents.filter((e) => e.tipo === 'HATCH' && val(e, 8) === 'GRAUTE-FUNDO').length).toBeGreaterThan(10);
+    expect(ents.some((e) => e.tipo === 'HATCH' && val(e, 8) === 'TITULOS-FUNDO')).toBe(true);
+    expect(ents.some((e) => e.tipo === 'TEXT' && val(e, 1) === '13' && val(e, 7) === 'ALRIMO_ITALICO')).toBe(true);
+    expect(ents.some((e) => (e.tipo === 'TEXT' || e.tipo === 'MTEXT') && /N1 – \d+ Ø10/.test(String(val(e, 1)).replace(/\U\+2013/g, '–').replace(/\U\+00D8/g, 'Ø')))).toBe(true);
+  });
+
+  it.skipIf(!temEzdxf)('audit sem erro e recover sem conserto', () => {
+    const rel = validar(dxf, 'dxf');
+    expect(rel.ok, JSON.stringify(rel).slice(0, 2000)).toBe(true);
+  });
+});

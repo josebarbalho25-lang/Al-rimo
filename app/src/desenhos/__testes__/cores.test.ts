@@ -9,6 +9,8 @@ import { describe, expect, it } from 'vitest';
 import type { Modelo } from '@/modelo/tipos';
 import { CORES_DO_JOSE } from '@/modulacao/catalogo';
 import { isometrico, planta, vistaFrontal } from '../index';
+import { colunasDoGraute } from '../vistaFrontal';
+import { corDaSombraDoGraute, MATERIAIS_DE_FABRICA } from '../graficos';
 import { ALVENARIA, secao, solidosDoModelo } from '../geometria';
 import { COR } from '../prancha';
 import { modeloDeExemplo } from './modeloDeExemplo';
@@ -85,27 +87,42 @@ describe('cores do Jose', () => {
     expect(naLegenda(isometrico(bal)).length).toBeGreaterThan(0);
   });
 
-  it('o graute na elevação é risco sem fundo: não tinge a cor do bloco', () => {
+  it('o graute na elevação é uma SOMBRA VERTICAL por coluna (Jose, 16/10: "somente uma sombra vertical"): cinza transparente, sem o riscado', () => {
     const svg = vistaFrontal(cf);
-    const grautes = cf.pecas.filter((p) => p.tipo === 'GRAUTE_FURO').map((p) => p.id);
-    const f = fills(svg);
-    const vistos = grautes.filter((id) => f.has(id));
-    expect(vistos.length).toBeGreaterThan(0);
-    for (const id of vistos) expect(f.get(id)).toEqual(['url(#des-graute)']);
-    const padrao = svg.match(/<pattern id="des-graute"[^>]*>(.*?)<\/pattern>/)![1];
-    expect(padrao).not.toMatch(/<rect/);
+    const camada = svg.match(/<g data-camada="graute">(.*?)<\/g>/)![1];
+    const faixas = [...camada.matchAll(/<rect [^>]*>/g)].map((x) => x[0]);
+    expect(faixas.length).toBeGreaterThan(0);
+    for (const r of faixas) {
+      // o graute de fábrica não tem cor: a sombra é o cinza escuro (o claro sumia no inteiro)
+      expect(MATERIAIS_DE_FABRICA.graute.cor).toBeNull();
+      expect(r).toContain(`fill="${corDaSombraDoGraute()}"`);
+      expect(r).toMatch(/opacity="0\.35"/);
+    }
+    // uma faixa por coluna (os pedaços das fiadas emendados), e nada de riscado
+    expect(faixas.length).toBeLessThan(cf.pecas.filter((p) => p.tipo === 'GRAUTE_FURO').length);
+    expect(camada).not.toContain('url(#des-graute)');
   });
 
-  it('cada barra da elevação tem filete branco por baixo (o vermelho não some no 54)', () => {
+  it('as colunas: os pedaços de mesmo meio se emendam numa faixa reta, da largura MÉDIA dos furos (a união passava do furo)', () => {
+    const cs = colunasDoGraute([
+      { x0: 100, x1: 220, z0: 0, z1: 200 },
+      { x0: 105, x1: 225, z0: 200, z1: 400 },
+      { x0: 100, x1: 220, z0: 600, z1: 800 },
+      { x0: 500, x1: 620, z0: 0, z1: 200 },
+    ]);
+    expect(cs).toEqual([
+      { x0: 100, x1: 220, z0: 600, z1: 800 },
+      { x0: 102.5, x1: 222.5, z0: 0, z1: 400 },
+      { x0: 500, x1: 620, z0: 0, z1: 200 },
+    ]);
+  });
+
+  it('a barra da elevação vai SEM o filete branco por baixo (Jose, 16/10: "acabou só poluindo mais")', () => {
     const svg = vistaFrontal(cf);
     const linhas = [...svg.matchAll(/<polyline points="([^"]+)" ([^>]*)\/>/g)];
     const barras = linhas.filter((q) => q[2].includes('data-id=') && q[2].includes(`stroke="${COR.aco}"`));
     expect(barras.length).toBeGreaterThan(0);
-    for (const b of barras) {
-      const k = linhas.indexOf(b);
-      expect(linhas[k - 1][1], b[2]).toBe(b[1]);
-      expect(linhas[k - 1][2]).toMatch(/stroke="#ffffff".*pointer-events="none"/);
-    }
+    expect(linhas.some((q) => /stroke="#ffffff"/.test(q[2]) && q[2].includes('pointer-events="none"'))).toBe(false);
   });
 
   it('planta: o bloco cortado na fiada vai na cor do tipo, não na hachura do corte', () => {

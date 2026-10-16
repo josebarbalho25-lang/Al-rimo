@@ -419,7 +419,7 @@ function avisarJuntando(ctx: Ctx, a: Aviso): void {
 }
 
 /** Por que o nó não coube: a altura da sapata para a dobra (Jose: "a dobra nó de cachorro tem limites pela curvatura
- *  do aço" — h ≥ 2c + pino + 2φ) ou a largura (o U sai pela frente da sapata, sem pé para ele). */
+ *  do aço" — h ≥ 2c + pino + 2φ) ou a ponta (as duas dobras do pé não cabem entre a espera e a face da ponta). */
 function avisarNoQueNaoCabe(ctx: Ctx, phi: number, id: string): void {
   const { p } = ctx;
   const { subida } = medidasDoNo(phi, p.h_sap, p.cob_sap);
@@ -430,7 +430,7 @@ function avisarNoQueNaoCabe(ctx: Ctx, phi: number, id: string): void {
       ids: [id],
     });
   } else {
-    avisarJuntando(ctx, { codigo: 'NO_DE_CACHORRO_FORA', texto: `Nó de cachorro Ø${br(phi, 1)}: o U sai da sapata pela frente — espera não desenhada`, ids: [id] });
+    avisarJuntando(ctx, { codigo: 'NO_DE_CACHORRO_FORA', texto: `Nó de cachorro Ø${br(phi, 1)}: a ponta da sapata não comporta as dobras do pé — espera não desenhada`, ids: [id] });
   }
 }
 

@@ -17,7 +17,7 @@ import { corteLateral, cortesPadrao, isometrico, planta, vistaFrontal } from '..
 import { barrasNoCorte } from '../corteLateral';
 import { camera, ordemDePintura, pecasDoIsometrico, quemNaFrente, sentido, type VistaIso } from '../isometrico';
 import { escalar, solidosDoModelo } from '../geometria';
-import { cm } from '../formato';
+import { cm, cmCheio } from '../formato';
 import { CORES_DO_JOSE } from '@/modulacao/catalogo';
 import { ids, rotulos, textosForaDoViewBox, xmlBemFormado } from './lerSvg';
 import type { Vec3 } from '@/modelo/tipos';
@@ -83,7 +83,7 @@ describe.skipIf(!casos.length).each(casos.map((c) => [c.cenario, c] as const))('
 
   it('vista frontal: comprimento real, altura do muro, altura de solo e todas as fiadas', () => {
     const rot = rotulos(svgs.frontal);
-    expect(rot).toContain(cm(m.dims.L_real));
+    expect(rot).toContain(cmCheio(m.dims.L_real));
     expect(rot).toContain(`muro ${cm(m.dims.H_muro)}`);
     expect(rot).toContain(`solo ${cm(m.dims.H_solo)}`);
     for (let i = 1; i <= m.dims.n_fiadas; i++) expect(rot).toContain(String(i));
@@ -123,7 +123,7 @@ describe.skipIf(!casos.length).each(casos.map((c) => [c.cenario, c] as const))('
 
   it('planta: comprimento e espessura', () => {
     const rot = rotulos(svgs.planta);
-    expect(rot).toContain(cm(m.dims.L_real));
+    expect(rot).toContain(cmCheio(m.dims.L_real));
     expect(rot).toContain(`t = ${cm(m.familia.t)}`);
   });
 

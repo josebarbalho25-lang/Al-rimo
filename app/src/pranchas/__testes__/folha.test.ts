@@ -3,6 +3,8 @@
   os campos, desenho na escala pedida (1:25 → o px de desenho vira 1/PX_POR_MM mm), quadro lateral que avisa quando não
   cabe, e o .alrimo levando as folhas de ida e volta.
 */
+import { AZUL_DA_MARCA } from '@/ui/Marca';
+import { pranchasComVistas } from '../vistas';
 import { describe, expect, it } from 'vitest';
 import { comporFolha, type ContextoDaFolha } from '../folha';
 import { Prancha } from '@/desenhos/prancha';
@@ -98,8 +100,17 @@ describe('folha composta', () => {
     const linha = c.primitivas.find((p) => p.k === 'linha' && p.e.camada === 'alvenaria');
     expect(linha && linha.k === 'linha' && linha.b[0]).toBeCloseTo(40 + 440 / PX_POR_MM, 6);
     const textos = c.primitivas.filter((p) => p.k === 'texto').map((p) => (p.k === 'texto' ? p.t : ''));
-    expect(textos).toContain('CORTE A');
-    expect(textos).toContain('ESC. 1:25');
+    // o título da imagem do Jose (16/10): o número no quadrado, o título como foi escrito, a escala embaixo
+    expect(textos).toContain('Corte A');
+    expect(textos).toContain('1 : 25');
+    expect(textos).toContain('1');
+    expect(textos).not.toContain('CORTE A');
+    // sem o sublinhado: nenhuma linha na camada dos títulos
+    expect(c.primitivas.some((p) => p.k === 'linha' && p.e.camada === 'titulos')).toBe(false);
+    // o quadrado azul cheio, com o número branco de verdade no DXF
+    expect(c.primitivas.some((p) => p.k === 'hachura' && p.camada === 'titulos' && p.fundo === AZUL_DA_MARCA)).toBe(true);
+    const n = c.primitivas.find((p) => p.k === 'texto' && p.t === '1');
+    expect(n && n.k === 'texto' && n.corPropria && n.italico && n.cor).toBe('#ffffff');
   });
 
   it('duas escalas na folha: o carimbo diz "Indicadas"', () => {
@@ -166,7 +177,7 @@ describe('folha composta', () => {
     const f = novaFolha('');
     f.itens.push({ id: 'a', conteudo: { tipo: 'planta', fiada: 2 }, escala: 50, x: 40, y: 30, titulo: '' });
     const c = comporFolha(f, ctx({ tituloAutomatico: () => 'Planta — 3ª fiada' }));
-    expect(c.primitivas.some((p) => p.k === 'texto' && p.t === 'PLANTA — 3ª FIADA')).toBe(true);
+    expect(c.primitivas.some((p) => p.k === 'texto' && p.t === 'Planta — 3ª fiada')).toBe(true);
     const saida = comporFolha(f, ctx({ desenhar: () => null, saida: true }));
     expect(saida.svg).not.toContain('stroke-dasharray="2,1.5"');
   });
@@ -204,10 +215,20 @@ describe('pranchas no arquivo .alrimo', () => {
       },
       escala: null, x: 300, y: 30, largura: 160, altura: 100, titulo: '3D',
     });
-    const pranchas = { folhas: [f], obra: { ...SEM_PRANCHAS.obra, obra: 'Muro' } };
+    const pranchas = { folhas: [f], obra: { ...SEM_PRANCHAS.obra, obra: 'Muro' }, vistas: [] };
     const texto = serializarProjeto({ id: '00000000-0000-4000-8000-000000000000', titulo: 'x', alteracoes: {}, extras: {}, pranchas }, 'v');
     const a = desserializarProjeto(texto, campos, 'v');
-    expect(a.ok && a.projeto.pranchas).toEqual(pranchas);
+    // a folha de antes de 16/10 ganha os números, na ordem dos desenhos, e cada desenho vira uma VISTA do projeto (o
+    // título de nome): o que a folha VÊ é o mesmo de antes
+    const lido = a.ok ? a.projeto.pranchas! : SEM_PRANCHAS;
+    const numerados = f.itens.map((i, k) => ({ ...i, numero: String(k + 1) }));
+    expect(pranchasComVistas(lido).folhas[0].itens.map(({ vista: _v, nomeDaVista: _n, ...i }) => i)).toEqual(numerados);
+    expect(lido.vistas.map((v) => v.nome)).toEqual(['Planta', '3D']);
+    expect(lido.obra).toEqual(pranchas.obra);
+    // e daí em diante vai e volta igual, vista e tudo
+    const texto2 = serializarProjeto({ id: '00000000-0000-4000-8000-000000000000', titulo: 'x', alteracoes: {}, extras: {}, pranchas: lido }, 'v');
+    const b = desserializarProjeto(texto2, campos, 'v');
+    expect(b.ok && b.projeto.pranchas).toEqual(lido);
   });
 
   it('muro sem prancha: o arquivo não ganha o campo', () => {

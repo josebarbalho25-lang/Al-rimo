@@ -633,6 +633,358 @@ select optgroup {
   border-radius: 1px;
 }
 
+/* ── A JANELA DE GRÁFICOS: Visibilidade/Gráficos (a do A-PORT, copiada — Jose, 16/10) ────────────
+   ui/JanelaDeGraficos.tsx. Fundo transparente (a vista aparece mudando atrás), mas o clique não passa; a janela anda
+   pelo título. As mesmas medidas e cores do A-PORT (componentes.css de lá, 2870–3082). */
+.modal-fundo.graficos-fundo {
+  background: transparent;
+  backdrop-filter: none;
+  z-index: 65;
+}
+.graficos-fundo .modal-cabeca {
+  cursor: move;
+}
+.btn-primario {
+  height: calc(30px * var(--escala-ui));
+  padding: 0 14px;
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-corpo);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.btn-primario:hover {
+  background: color-mix(in srgb, var(--accent) 88%, #ffffff);
+}
+.btn-primario:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.btn-fantasma {
+  height: calc(28px * var(--escala-ui));
+  padding: 0 11px;
+  border: 1px solid var(--control-stroke);
+  border-bottom-color: var(--control-stroke-2);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: var(--fs-rotulo);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-fantasma:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.btn-fantasma:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.modal-caixa.exibicao {
+  width: calc(400px * var(--escala-ui));
+  max-height: 86vh;
+}
+.exibicao-corpo {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 10px 10px;
+}
+.exibicao-rodape {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+}
+.vv-esquerda {
+  margin-right: auto;
+}
+.prop {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--row);
+}
+.prop > label {
+  font-size: var(--fs-rotulo);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.modal-caixa.vv {
+  width: min(calc(860px * var(--escala-ui)), 94vw);
+  height: min(calc(640px * var(--escala-ui)), 90vh);
+}
+.vv-abas {
+  display: flex;
+  gap: 2px;
+  padding: 8px 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.vv-aba {
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  color: var(--ink-2);
+  font-size: var(--fs-rotulo);
+}
+.vv-aba.on {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--ink);
+}
+.vv-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 12px;
+  font-size: var(--fs-rotulo);
+}
+.vv-exibir,
+.vv-busca {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.vv-busca .campo {
+  width: calc(180px * var(--escala-ui));
+}
+.vv-tabela-rolo {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin: 0 12px;
+  border: 1px solid var(--line);
+}
+.vv-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-rotulo);
+}
+.vv-tabela.apagada tbody {
+  opacity: 0.45;
+}
+.vv-tabela thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.vv-tabela th {
+  padding: 3px 6px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-weight: 500;
+  border: 1px solid var(--line);
+}
+.vv-tabela tbody tr {
+  user-select: none;
+}
+.vv-tabela td {
+  height: calc(25px * var(--escala-ui));
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+}
+.vv-tabela tbody tr.on td {
+  background: var(--sel-bg);
+}
+.vv-col-nome {
+  min-width: calc(210px * var(--escala-ui));
+  text-align: left;
+  white-space: nowrap;
+}
+.vv-col-nome > * {
+  vertical-align: middle;
+}
+.vv-tabela tr.filha .vv-col-nome {
+  padding-left: calc(24px * var(--escala-ui));
+}
+.vv-abre {
+  display: inline-block;
+  width: 14px;
+  margin-right: 4px;
+  color: var(--muted);
+  text-align: center;
+}
+.vv-col-nome input[type='checkbox'] {
+  margin-right: 6px;
+}
+.vv-cel.centro {
+  text-align: center;
+}
+.vv-cel.nada {
+  background-image: repeating-linear-gradient(45deg, var(--line) 0 1px, transparent 1px 5px);
+}
+.vv-sobrepor {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.vv-valor {
+  font-family: var(--font-mono);
+}
+.vv-botoes {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 10px;
+  font-size: var(--fs-rotulo);
+}
+.vv-botao-sobrepor {
+  padding: 1px 8px;
+  border: 1px solid var(--control-stroke);
+  border-radius: 3px;
+  background: var(--surface-2);
+  color: inherit;
+  font-size: var(--fs-rotulo);
+  cursor: pointer;
+}
+.vv-botao-sobrepor:hover {
+  border-color: var(--accent-3);
+}
+.vv-bitolas {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 10px 22px;
+  padding: 12px;
+  margin-top: 8px;
+}
+.vv-bitola {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-rotulo);
+}
+.modal-fundo.gf-sobrepor {
+  z-index: 70;
+}
+.gf-cor,
+.gf-transp {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.gf-amostra {
+  position: relative;
+  display: inline-block;
+  width: 18px;
+  height: 14px;
+  border: 1px solid var(--control-stroke);
+  border-radius: 2px;
+  cursor: pointer;
+}
+.gf-amostra.vazia {
+  background-image: linear-gradient(135deg, transparent 45%, var(--muted) 46% 54%, transparent 55%);
+}
+.gf-amostra input[type='color'] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.gf-limpa {
+  padding: 0 2px;
+  color: var(--muted);
+  line-height: 1;
+}
+.gf-camada + .gf-camada {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+.gf-camada-titulo {
+  margin-bottom: 4px;
+  font-size: var(--fs-rotulo);
+  opacity: 0.75;
+}
+.gf-amostra-padrao {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--control-stroke);
+  border-radius: 2px;
+  vertical-align: middle;
+}
+.gf-transp input[type='range'] {
+  width: calc(90px * var(--escala-ui));
+  accent-color: var(--accent);
+}
+.gf-transp input[type='number'] {
+  width: calc(52px * var(--escala-ui));
+}
+.gf-escala {
+  width: calc(72px * var(--escala-ui));
+}
+.menu-contexto {
+  position: fixed;
+  z-index: 1000;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  font-size: var(--fs-corpo);
+}
+.escolha-textura {
+  position: relative;
+  display: inline-block;
+}
+.escolha-textura-botao {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  text-align: left;
+}
+.escolha-hachura-lista {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  width: 360px;
+  padding: 10px;
+}
+.escolha-hachura-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+.escolha-hachura-item svg {
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--control-stroke);
+  border-radius: 3px;
+}
+.escolha-hachura-item:hover,
+.escolha-hachura-item.on {
+  border-color: var(--accent-3);
+}
+
 /* ── O TERMO DE USO ─────────────────────────────────────────────────────────
    Documento para LER, não painel: coluna de leitura estreita, entrelinha
    folgada e texto selecionável (o resto do app não seleciona — é palco 3D —,

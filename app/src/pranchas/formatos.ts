@@ -65,4 +65,6 @@ export function quadroLateralPadrao(f: Formato, o: Orientacao, carimbo: { largur
  * Corpo dos textos da folha, mm de papel, pela altura da MAIÚSCULA (NBR 8402): 2,5 no texto corrente e nos rótulos
  * do carimbo, 3,5 nos títulos, 5 no título grande. Até 15/10 os números eram o corpo, e a maiúscula saía 30 % menor.
  */
-export const LETRA = { nota: corpoDaLetra(LETRA_MINIMA), titulo: corpoDaLetra(3.5), tituloGrande: corpoDaLetra(5) } as const;
+/** A maiúscula do título dos desenhos e das tabelas, mm (o corpo dela é LETRA.titulo). */
+export const MAIUSCULA_DO_TITULO = 3.5;
+export const LETRA = { nota: corpoDaLetra(LETRA_MINIMA), titulo: corpoDaLetra(MAIUSCULA_DO_TITULO), tituloGrande: corpoDaLetra(5) } as const;

@@ -17,6 +17,7 @@
       cada peça vem do arquivo do app (figurasDasPecas.ts), uma vez por desenhista: como a foto, chega depois — a
       tabela sai com o lugar da figura vazio e se recompõe quando ela chega; o PDF e o DXF esperam por ela.
 */
+import { nomeDado } from './vistas';
 import { versaoDosGraficos } from '@/desenhos/graficos';
 import type { Modelo } from '@/modelo/tipos';
 import { refazerFoto } from '@/visor/fotoRefeita';
@@ -28,6 +29,9 @@ import type { ItemDesenhado } from './folha';
 import type { ItemDaFolha } from './tipos';
 import { carregarFigura, type CarregarFigura, type FiguraPronta } from './figurasDasPecas';
 import { TITULO_DA_TABELA, desenharTabela, tabelaParaFolha } from './tabelaDaFolha';
+
+/** Desenhos guardados por desenhista (um por muro): o bastante para várias folhas com o PDF e a tela juntos. */
+const MAXIMO_GUARDADO = 120;
 
 export interface Desenhista {
   desenhar: (item: ItemDaFolha, prefixo: string, opcoes?: { legendaDeCores: boolean; vetorial?: boolean }) => ItemDesenhado | null;
@@ -150,6 +154,9 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
         d = null;
       }
       vetores.set(chave, d);
+      // cada arrasto de chamada é uma chave nova: sem teto, uma tarde ajeitando a folha guardava centenas de desenhos
+      // iguais (o Map anda na ordem de entrada: sai o mais antigo)
+      if (vetores.size > MAXIMO_GUARDADO) vetores.delete(vetores.keys().next().value!);
     }
     return vetores.get(chave) ?? null;
   };
@@ -166,11 +173,17 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
         const largura = Math.round(item.largura ?? 160);
         return vetor(`3d|${JSON.stringify(c.camera)}|${largura}|${prefixo}|${leg}|${vet}`, () => ({ tipo: 'vetor', vista: vista3dParaPrancha(modelo, c.camera, largura, prefixo, { legendaDeCores: leg, hachuraVetorial: vet }) }));
       }
-      if (c.tipo === 'frontal' || c.tipo === 'corte' || c.tipo === 'planta' || c.tipo === 'iso') {
+      if (c.tipo === 'frontal' || c.tipo === 'corte' || c.tipo === 'planta' || c.tipo === 'iso' || c.tipo === 'armacao') {
         // isométrico sem escala: a projeção isométrica encurta as medidas (0,82), então não há "1:50" verdadeiro —
         // desenha-se na letra de 1:50 e a folha encaixa no tamanho pedido
         const escala = item.escala ?? 50;
-        return vetor(`${JSON.stringify(c)}|${escala}|${prefixo}|${leg}|${vet}`, () => ({ tipo: 'vetor', vista: vistaParaPrancha(modelo, c, escala, prefixo, { legendaDeCores: leg, hachuraVetorial: vet }) }));
+        // o que o projetista fez nas anotações deste desenho entra na chave: arrastou, é outro desenho
+        const { chamadas, anotacoes, cotas, textos, etiquetas, graficos } = item;
+        const editado = JSON.stringify({ chamadas, anotacoes, cotas, textos, etiquetas, graficos });
+        return vetor(`${JSON.stringify(c)}|${escala}|${prefixo}|${leg}|${vet}|${editado}`, () => ({
+          tipo: 'vetor',
+          vista: vistaParaPrancha(modelo, c, escala, prefixo, { legendaDeCores: leg, hachuraVetorial: vet, chamadas, anotacoes, cotas, textos, etiquetas, graficos }),
+        }));
       }
       if (c.tipo === 'tabela') {
         // sem guardar: a tabela é pouca linha, e a figura que chega muda o desenho
@@ -182,6 +195,8 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
     },
     tituloAutomatico: (item) => {
       const c = item.conteudo;
+      // a vista com nome dado pelo projetista ("Corte A") tem o nome de título, como no Revit
+      if (item.nomeDaVista && nomeDado(item.nomeDaVista, c.tipo)) return item.nomeDaVista;
       switch (c.tipo) {
         case 'frontal':
           return 'Vista frontal';
@@ -197,6 +212,8 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
           return `Planta — ${c.fiada + 1}ª fiada`;
         case 'iso':
           return 'Isométrico';
+        case 'armacao':
+          return 'Armação da sapata';
         case '3d':
           return 'Perspectiva';
         case 'tabela':

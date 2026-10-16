@@ -27,6 +27,9 @@ describe('enviar para a prancha', () => {
     const p = useApp.getState().pranchas;
     expect(p.folhas).toHaveLength(1);
     const [item] = p.folhas[0].itens;
+    // o 3D enviado vira uma VISTA do projeto ("3D"), e o desenho da folha aponta para ela (16/10)
+    expect(p.vistas.map((v) => v.nome)).toEqual(['3D']);
+    expect(item.vista).toBe(p.vistas[0].id);
     expect(item.conteudo).toEqual({ tipo: '3d', camera, proporcao: 2 });
     expect(item.escala).toBeNull();
     expect(item.largura! / item.altura!).toBeCloseTo(2, 6);
@@ -41,10 +44,16 @@ describe('enviar para a prancha', () => {
     useApp.setState({ pranchas: { ...SEM_PRANCHAS, folhas: [a, b] } });
     usePranchasUi.setState({ ativa: a.id });
     desligar = ligarEnvioParaPrancha();
-    enviarParaPrancha({ tipo: 'vista', pedido: { tipo: 'corte' } });
+    // a vista "Corte" de fábrica (virtual) é gravada no envio e vai para a folha ativa
+    enviarParaPrancha({ tipo: 'vista', id: 'corte' });
     const [fa, fb] = useApp.getState().pranchas.folhas;
-    expect(fa.itens.map((i) => [i.conteudo.tipo, i.escala])).toEqual([['corte', 25]]);
+    expect(fa.itens.map((i) => [i.conteudo.tipo, i.escala, i.vista])).toEqual([['corte', 25, 'corte']]);
     expect(fb.itens).toHaveLength(0);
+    expect(useApp.getState().pranchas.vistas.map((v) => v.nome)).toEqual(['Corte']);
+    // uma vista mora numa folha só: o segundo envio só diz onde ela está
+    enviarParaPrancha({ tipo: 'vista', id: 'corte' });
+    expect(useApp.getState().pranchas.folhas[0].itens).toHaveLength(1);
+    expect(useApp.getState().recado).toBe('Corte já está na folha 01');
   });
 
   it('a tabela do quantitativo cai na folha ativa, sem escala e com o título automático', () => {

@@ -17,8 +17,8 @@ import {
   solidosDoModelo, type Regiao, type Solido,
 } from './geometria';
 import { COR, Prancha, escalaPara, type Estilo, type OpcoesDaVista, type Pt } from './prancha';
-import { ancoraNaBarra, desenharChamadas, elementoDaBarra, type Chamada } from './chamadas';
-import { aparece, corDoAcoNoDesenho, hachuraDe, pecaAparece } from './graficos';
+import { ancoraNaBarra, desenharChamadas, desenharEtiquetas, elementoDaBarra, type Chamada } from './chamadas';
+import { aparece, corDoAcoNoDesenho, hachuraDe, naVista, pecaAparece } from './graficos';
 
 export interface CortePadrao {
   rotulo: string;
@@ -119,7 +119,7 @@ export function estiloDaSecao(s: Solido, pr: Prancha): Estilo | null {
   if (tp === 'DRENO') return { fill: pr.padrao('brita'), stroke: hachuraDe('brita').risco, sw: 0.8, camada: 'drenagem' };
   if (tp === 'AREIA') return { fill: pr.padrao('areia'), stroke: hachuraDe('areia').risco, sw: 0.6, camada: 'drenagem' };
   if (tp === 'MANTA') return { fill: pr.padrao('mnt'), stroke: hachuraDe('manta').risco, sw: 0.6, camada: 'drenagem' };
-  if (tp === 'BARBACA' || tp === 'TUBO_DRENO') return { fill: '#ffffff', stroke: COR.linha, sw: 0.8, camada: 'drenagem' };
+  if (tp === 'BARBACA' || tp === 'TUBO_DRENO') return { fill: '#ffffff', stroke: COR.linha, sw: 0.8, camada: 'drenagem', material: 'tubo' };
   return null;
 }
 
@@ -127,8 +127,14 @@ export function estiloDaSecao(s: Solido, pr: Prancha): Estilo | null {
 const ORDEM: Partial<Record<Solido['peca']['tipo'], number>> = { SAPATA: 0, DRENO: 1, AREIA: 1, MANTA: 2, GRAUTE_FURO: 4, GRAUTE_CANALETA: 4, BARBACA: 5, TUBO_DRENO: 5 };
 
 /** `o`: escala fixa, sem título e prefixo dos ids — o pedido do modo prancha (paraPrancha.ts). */
+/** O corte com a tabela de gráficos dela (corte: graficos.ts, naVista). */
 export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVista = {}): Prancha {
+  return naVista('corte', () => corteNaVista(m, xCorte, o), o.graficos);
+}
+
+function corteNaVista(m: Modelo, xCorte: number | undefined, o: OpcoesDaVista): Prancha {
   const pr = new Prancha(o.prefixo ?? 'des', o.hachuraVetorial);
+  pr.ajustar(o.anotacoes, o.S);
   const todos = solidosDoModelo(m);
   const sol = todos.filter((s) => s.peca.grupo !== 'terreno');
   // o solo da frente sobe sobre a ponta quando há aterro (h_fr): a altura sai do terreno do modelo
@@ -176,9 +182,10 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
   if (terra) {
     const corDaTerra = hachuraDe('terra').risco;
     pr.caminho([contornoDaTerra, ...furosDaTerra].map((a) => a.map(tela)), { fill: pr.padrao('solo'), stroke: 'none' });
-    pr.linha(U(yPerto), V(zFrente), U(zFrente > 0 ? 0 : Math.min(0, yMin)), V(zFrente), { stroke: corDaTerra, sw: 1.8 });
-    pr.linha(U(t), V(H_solo), U(yLonge), V(H_solo), { stroke: corDaTerra, sw: 1.8 });
-    pr.texto(U(yLonge) + 8, V(H_solo) + 16, 'aterro', { tam: 11, ancora: 'start', cor: corDaTerra, negrito: true, halo: true });
+    pr.linha(U(yPerto), V(zFrente), U(zFrente > 0 ? 0 : Math.min(0, yMin)), V(zFrente), { stroke: corDaTerra, sw: 1.8, material: 'terra' });
+    pr.linha(U(t), V(H_solo), U(yLonge), V(H_solo), { stroke: corDaTerra, sw: 1.8, material: 'terra' });
+    // o rótulo é do terreno (fica na cor da terra, não na dos textos) e se mexe na folha como os outros
+    pr.texto(U(yLonge) + 8, V(H_solo) + 16, 'aterro', { tam: 11, ancora: 'start', cor: corDaTerra, negrito: true, halo: true, camada: 'terreno', chave: 'aterro' });
     pr.fechar();
   }
 
@@ -201,7 +208,7 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
       // fundo branco na caixa da peça: furo sem graute é vazio, não é solo (a haste enterrada está no aterro)
       const ps = r.flatMap((q) => q.contorno);
       const ys = ps.map((p) => p[0]), zs = ps.map((p) => p[1]);
-      pr.rect(U(Math.min(...ys)), V(Math.max(...zs)), (Math.min(...ys) - Math.max(...ys)) * S, (Math.max(...zs) - Math.min(...zs)) * S, { fill: '#ffffff', stroke: 'none', camada: 'alvenaria' });
+      pr.rect(U(Math.min(...ys)), V(Math.max(...zs)), (Math.min(...ys) - Math.max(...ys)) * S, (Math.max(...zs) - Math.min(...zs)) * S, { fill: '#ffffff', stroke: 'none', camada: 'alvenaria', material: 'alvenaria' });
     }
     for (const q of r) pr.caminho(aneis(q), { ...e, id: s.peca.id });
   }
@@ -217,6 +224,12 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
   const br = barrasNoCorte(m, x0);
   const ySecoes = br.linhas.filter((l) => l.barra.papel !== 'ESPERA').map((l) => l.pts[0][0]);
   const chamadas: Chamada[] = [];
+  // as barras desenhadas de cada posição e elemento (a cortada é um ponto): a etiqueta posta acha a dela
+  const barrasPorChave = new Map<string, Pt[][]>();
+  const guardar = (b: { posicao: string; papel: Barra['papel']; contraforte?: number }, pts: Pt[]) => {
+    const k = `${b.posicao}|${elementoDaBarra(b)}`;
+    barrasPorChave.set(k, [...(barrasPorChave.get(k) ?? []), pts]);
+  };
   const armadura = aparece('corte', 'armadura');
   pr.abrir('data-camada="barras"');
   for (const l of armadura ? br.linhas : []) {
@@ -234,12 +247,15 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
     const tp = pts.map(tela);
     pr.polilinha(l.fechada ? [...tp, tp[0]] : tp, { stroke: corDoAcoNoDesenho(), sw: Math.max(1, l.barra.diametro * S), id: l.barra.id });
     chamadas.push({ posicao: l.barra.posicao, elemento: elementoDaBarra(l.barra), ancora: ancoraNaBarra(tp) });
+    // a barra fechada com o lado que fecha: a etiqueta prende em qualquer lado do estribo
+    guardar(l.barra, l.fechada ? [...tp, tp[0]] : tp);
   }
   // barra cortada (ponto): a chamada vai ao ponto mais perto da coluna das chamadas (à direita), o de cima no empate
   const pontoDaChamada = new Map<string, Chamada>();
   for (const p of armadura ? br.pontos : []) {
     const [u, v] = tela(p.p);
     pr.circulo(u, v, Math.max(1.6, (p.barra.diametro / 2) * S), { id: p.barra.id });
+    guardar(p.barra, [[u, v]]);
     const el = elementoDaBarra(p.barra);
     const k = `${p.barra.posicao}|${el}`;
     const a = pontoDaChamada.get(k)?.ancora;
@@ -287,10 +303,13 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
   }
   const traspasses = H_muro > 0 ? [...alturas.entries()].sort((a, b) => a[0] - b[0]) : [];
   const ordemDoN = (a: string, b: string) => a.localeCompare(b, 'pt-BR', { numeric: true });
-  traspasses.forEach(([z, ns], i) => {
-    const rotulo = traspasses.length > 1 ? `traspasse ${ns.sort(ordemDoN).join(', ')} ${cm(z)}` : `traspasse ${cm(z)}`;
-    pr.cotaV(uFace + 22 + 28 * i, V(0), V(z), rotulo, { lado: 1, de: [uFace, uFace] });
-  });
+  // a cota do traspasse é cota: some com o "Cotas" desligado (o lugar dela fica — a coluna da frente não anda)
+  if (cotas) {
+    traspasses.forEach(([z, ns], i) => {
+      const rotulo = traspasses.length > 1 ? `traspasse ${ns.sort(ordemDoN).join(', ')} ${cm(z)}` : `traspasse ${cm(z)}`;
+      pr.cotaV(uFace + 22 + 28 * i, V(0), V(z), rotulo, { lado: 1, de: [uFace, uFace] });
+    });
+  }
   const uFrente = uFace + (traspasses.length ? 22 + 28 * traspasses.length : 26);
   if (cotas) {
     pr.cotaV(uFrente, V(0), V(H_muro), `muro ${cm(H_muro)}`, { lado: 1, de: [uFace, uFace] });
@@ -322,7 +341,8 @@ export function desenharCorteLateral(m: Modelo, xCorte?: number, o: OpcoesDaVist
   pr.fechar();
 
   // ── chamadas das barras: à direita, além do solo da frente ─────────────────────────────────────────────────────
-  if (o.chamadas && aparece('corte', 'chamadas')) desenharChamadas(pr, m, chamadas, U(yPerto) + 24);
+  if (o.chamadas && aparece('corte', 'chamadas')) desenharChamadas(pr, m, chamadas, U(yPerto) + 24, o.chamadasPostas);
+  if (o.etiquetas?.length && aparece('corte', 'chamadas')) desenharEtiquetas(pr, m, o.etiquetas, barrasPorChave, S);
 
   // ── título ─────────────────────────────────────────────────────────────────────────────────────────────────────
   // na prancha o título é dela (embaixo do desenho, com a escala); o PROVISÓRIO fica, é aviso e não título

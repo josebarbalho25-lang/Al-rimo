@@ -28,7 +28,8 @@ import {
   usePreferencias,
 } from '@/estilo/preferenciasDaInterface';
 import { IconeFechar } from './icones';
-import { TabelaDeGraficos } from './TabelaDeGraficos';
+import { useJanelaDeGraficos } from '@/desenhos/useJanelaDeGraficos';
+import { useGraficos } from '@/desenhos/useGraficos';
 
 export function Configuracoes({ aoFechar }: { aoFechar: () => void }) {
   const pref = usePreferencias();
@@ -116,9 +117,27 @@ export function Configuracoes({ aoFechar }: { aoFechar: () => void }) {
             </button>
           </div>
 
-          {/* Cores e hachuras dos desenhos e do 3D (Jose, 15/10): guardadas no app, valem para todo muro */}
+          {/* A tabela GERAL de gráficos (Jose, 16/10: "a do menu da engrenagem é a geral; a da vista, Sobreposição"):
+              guardada no app, vale para toda vista que não sobrepõe */}
           <h4>Desenhos e 3D</h4>
-          <TabelaDeGraficos />
+          <Linha rotulo="Gráficos">
+            <div className="cad-escolha">
+              <button
+                type="button"
+                onClick={() => {
+                  // a janela flutua sem véu: as Configurações saem da frente (e o Esc de uma não fecha a outra)
+                  aoFechar();
+                  useJanelaDeGraficos.getState().abrir({ tipo: 'geral' });
+                }}
+              >
+                Gerais
+              </button>
+            </div>
+          </Linha>
+          <div className="cfg-linha">
+            <span />
+            <button type="button" className="btn-caixa" onClick={() => useGraficos.getState().restaurar()}>Restaurar padrão</button>
+          </div>
         </div>
       </div>
     </div>,

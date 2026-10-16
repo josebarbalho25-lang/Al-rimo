@@ -196,6 +196,16 @@ export const IconeIsometrico = (p: PropsDoIcone) => (
   </Svg>
 );
 
+/** Armação da sapata: a seção com o estribo e as barras, e a sombra da barra embaixo (a prancha de armação). */
+export const IconeArmacao = (p: PropsDoIcone) => (
+  <Svg {...p}>
+    <path d="M3.5 5.5h17v8h-17z" />
+    <path d="M6 8h12v3H6z" />
+    <path d="M3.5 18.5h17" />
+    <path d="M3.5 17v3M20.5 17v3" />
+  </Svg>
+);
+
 /** Memória de cálculo: a folha com as linhas da conta (o mesmo do memorial do A-PORT). */
 export const IconeMemoria = (p: PropsDoIcone) => (
   <Svg {...p}>

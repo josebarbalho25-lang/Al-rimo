@@ -9,19 +9,21 @@
   a paginação que vai para a obra, e o pedreiro acha o meio bloco e o 54 pela cor.
 
   O graute dos furos aparece por cima do bloco (como na Fig. 5): é escondido de verdade, mas é a informação que o
-  pedreiro precisa na elevação — onde grautear. Vai em riscos azul-claros e não em tom chapado: o tom tingiria a
-  cor do bloco e o código de cores deixaria de valer justo nas fiadas grauteadas.
+  pedreiro precisa na elevação — onde grautear. Vai como uma SOMBRA VERTICAL (Jose, 16/10: "esse graute com hachura
+  diagonal polui; temos de criar somente uma sombra vertical pra representar o furo grauteado"): uma faixa só por
+  coluna de furo, num cinza transparente — o bloco continua com a cor dele por baixo (o código de cores vale nas
+  fiadas grauteadas também). A cor e a transparência são as do graute na tabela de gráficos (superfície).
 */
 import type { Barra, Modelo } from '@/modelo/tipos';
-import { cm } from './formato';
+import { cm, cmCheio } from './formato';
 import {
   ALVENARIA, contrafortesDoModelo, projecao, projetarPontos, solidosDoModelo, type Regiao, type Solido,
 } from './geometria';
 import { desenharLegenda, estiloPintado, itensDasTintas, tintaDaPeca, tintasPresentes, type Amostra } from './cores';
 import { COR, Prancha, escalaPara, type Estilo, type OpcoesDaVista, type Pt } from './prancha';
 import { CORPO_DA_COTA, MAIUSCULA_DA_ARIAL } from '@/pranchas/tipos';
-import { ancoraNaBarra, desenharChamadas, elementoDaBarra, type Chamada } from './chamadas';
-import { aparece as apareceNa, corDoAcoNoDesenho, hachuraDe } from './graficos';
+import { ancoraNaBarra, desenharChamadas, desenharEtiquetas, elementoDaBarra, type Chamada } from './chamadas';
+import { SOMBRA_DO_GRAUTE, aparece as apareceNa, corDaSombraDoGraute, corDoAcoNoDesenho, emMeioTom, hachuraDe, meioTomDe, naVista, opacidadeDe, type Material } from './graficos';
 
 /** Corridas de intervalos iguais viram uma cota só: "12×40" em vez de doze "40" espremidos. */
 export function cadeia(pontos: number[]): { a: number; b: number; rotulo: string }[] {
@@ -47,9 +49,81 @@ export function estiloDaAlvenaria(s: Solido): Estilo {
 
 const PAPEIS_VISTOS = new Set<Barra['papel']>(['VERT_MURO', 'ESPERA', 'HORIZ', 'CF_PRINCIPAL', 'CF_CONSTRUTIVA']);
 
+
+/** Uma coluna de furo grauteado na elevação: o x dela e as alturas em que ela corre sem parar (mm). */
+interface ColunaDeGraute {
+  x0: number;
+  x1: number;
+  z0: number;
+  z1: number;
+}
+
+/** Até onde (mm) o meio do furo pode andar de uma fiada para a outra e ainda ser a mesma coluna (na amarração o
+ *  furo da fiada de cima fica meio centímetro ao lado do de baixo). */
+const MESMA_COLUNA = 25;
+
+/**
+ * As colunas de graute: os pedaços de furo (um por fiada, e o do fundo da canaleta) com o meio no mesmo lugar (até
+ * MESMA_COLUNA), emendados onde se encostam, numa faixa RETA da largura de todos juntos. Uma faixa por coluna e não
+ * uma por fiada: com transparência, faixa sobre faixa escurece a emenda, e o furo que anda meio centímetro entre
+ * fiadas deixava a sombra em zigue-zague.
+ */
+export function colunasDoGraute(pedacos: readonly { x0: number; x1: number; z0: number; z1: number }[]): ColunaDeGraute[] {
+  const meio = (p: { x0: number; x1: number }) => (p.x0 + p.x1) / 2;
+  const grupos: { x: number; pedacos: ColunaDeGraute[] }[] = [];
+  for (const p of [...pedacos].sort((a, b) => meio(a) - meio(b))) {
+    const g = grupos.find((q) => Math.abs(q.x - meio(p)) <= MESMA_COLUNA);
+    if (g) g.pedacos.push({ ...p });
+    else grupos.push({ x: meio(p), pedacos: [{ ...p }] });
+  }
+  const colunas: ColunaDeGraute[] = [];
+  for (const { pedacos: lista } of grupos) {
+    lista.sort((a, b) => a.z0 - b.z0);
+    // a faixa tem a largura MÉDIA dos furos da coluna (pesada pela altura): a união das fiadas pares e ímpares, que
+    // não se alinham ao milímetro, passava do furo e cobria bloco cheio
+    let atual: (ColunaDeGraute & { sx0: number; sx1: number; sh: number }) | null = null;
+    const fechar = () => {
+      if (!atual) return;
+      const { sx0, sx1, sh, ...c } = atual;
+      colunas.push(sh > 0 ? { ...c, x0: sx0 / sh, x1: sx1 / sh } : c);
+    };
+    for (const p of lista) {
+      const h = Math.max(0, p.z1 - p.z0);
+      if (atual && p.z0 <= atual.z1 + 1) {
+        atual.z1 = Math.max(atual.z1, p.z1);
+        atual.sx0 += p.x0 * h;
+        atual.sx1 += p.x1 * h;
+        atual.sh += h;
+      } else {
+        fechar();
+        atual = { ...p, sx0: p.x0 * h, sx1: p.x1 * h, sh: h };
+      }
+    }
+    fechar();
+  }
+  return colunas.sort((a, b) => a.x0 - b.x0 || a.z0 - b.z0);
+}
+
+/** A cor `de` vista através da sombra `cor` com opacidade `a` (a mistura que a tela faz; o DXF recebe pronta). */
+function misturar(de: string, cor: string, a: number): string {
+  const rgb = (c: string) => {
+    const m = /^#([0-9a-f]{6})$/i.exec(c);
+    const v = m ? parseInt(m[1], 16) : 0xffffff;
+    return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+  };
+  const [p, q] = [rgb(de), rgb(cor)];
+  return `#${p.map((x, k) => Math.round(x * (1 - a) + q[k] * a).toString(16).padStart(2, '0')).join('')}`;
+}
+
 /** `o`: escala fixa, sem título e prefixo dos ids — o pedido do modo prancha (paraPrancha.ts). */
+/** A vista frontal com a tabela de gráficos dela (frontal: graficos.ts, naVista). */
 export function desenharVistaFrontal(m: Modelo, o: OpcoesDaVista = {}): Prancha {
+  return naVista('frontal', () => frontalNaVista(m, o), o.graficos);
+}
+
+function frontalNaVista(m: Modelo, o: OpcoesDaVista): Prancha {
   const pr = new Prancha(o.prefixo ?? 'des', o.hachuraVetorial);
+  pr.ajustar(o.anotacoes, o.S);
   const sol = solidosDoModelo(m).filter((s) => s.peca.grupo !== 'terreno');
   const t = m.familia.t;
   const { H_muro, H_solo, n_fiadas, trechos, sapata, L_real } = m.dims;
@@ -77,7 +151,7 @@ export function desenharVistaFrontal(m: Modelo, o: OpcoesDaVista = {}): Prancha 
   }
   pr.fechar();
   // terreno na frente (topo da sapata) e nível do aterro atrás do muro
-  if (aparece('terreno')) pr.linha(X(xIni) - 40, Y(0), X(xFim) + 40, Y(0), { stroke: hachuraDe('terra').risco, sw: 1.8 });
+  if (aparece('terreno')) pr.linha(X(xIni) - 40, Y(0), X(xFim) + 40, Y(0), { stroke: hachuraDe('terra').risco, sw: 1.8, material: 'terra' });
 
   // ── alvenaria (pintor em Y: do fundo para a frente) ───────────────────────────────────────────────────────────
   const alv = sol.filter((s) => ALVENARIA.has(s.peca.tipo) && s.min[1] < t - 1).sort((a, b) => b.min[1] - a.min[1]);
@@ -89,10 +163,40 @@ export function desenharVistaFrontal(m: Modelo, o: OpcoesDaVista = {}): Prancha 
   for (const s of aparece('blocos') ? noPlano : []) pr.caminho(aneis(projecao(s, 'Y')), { ...estiloDaAlvenaria(s), id: s.peca.id });
   pr.fechar();
   // nível do aterro atrás do muro (escondido): só quando o muro sobe além do solo
-  if (aparece('terreno') && H_solo < H_muro - 0.5) pr.linha(X(xIni), Y(H_solo), X(xFim), Y(H_solo), { stroke: hachuraDe('terra').risco, sw: 1.2, dash: '10,4' });
+  if (aparece('terreno') && H_solo < H_muro - 0.5) pr.linha(X(xIni), Y(H_solo), X(xFim), Y(H_solo), { stroke: hachuraDe('terra').risco, sw: 1.2, dash: '10,4', material: 'terra' });
   const grautes = aparece('graute') ? sol.filter((q) => q.peca.tipo === 'GRAUTE_FURO' && q.min[1] < t && q.max[1] > 0) : [];
+  // a sombra vertical do furo grauteado (cabeçalho): na tela e no PDF, uma faixa por coluna com a transparência; no
+  // DXF (sem transparência), a mesma faixa já misturada com a cor de cada bloco de baixo e com o papel nas juntas
+  // a faixa da tela leva a cor crua e o material: o meio-tom é a Prancha que aplica (aplicado aqui também, saía duas
+  // vezes). O DXF, misturado na conta, leva o meio-tom uma vez, como a tela
+  const corCrua = corDaSombraDoGraute();
+  const corDoGraute = meioTomDe('graute') ? emMeioTom(corCrua) : corCrua;
+  const alfa = SOMBRA_DO_GRAUTE * opacidadeDe('graute');
+  const colunas = colunasDoGraute(grautes.map((s) => ({ x0: s.min[0], x1: s.max[0], z0: Math.max(0, s.min[2]), z1: s.max[2] })));
+  // a cor que a tela mostra embaixo da faixa: o bloco com o meio-tom e a transparência dele sobre o papel; o bloco que
+  // não aparece (Mostrar desligado, 100 % transparente, invisível) é papel — senão o DXF pintava o fantasma dele
+  const corDoBloco = (s: Solido): string => {
+    const e = estiloDaAlvenaria(s);
+    const m = e.material as Material | undefined;
+    const c = e.fill ?? '#ffffff';
+    const op = aparece('blocos') ? (m ? opacidadeDe(m) : 1) : 0;
+    return misturar('#ffffff', m && meioTomDe(m) ? emMeioTom(c) : c, op);
+  };
   pr.abrir('data-camada="graute"');
-  for (const s of grautes) pr.caminho(aneis(projecao(s, 'Y')), { fill: pr.padrao('graute'), stroke: 'none', id: s.peca.id });
+  for (const c of colunas) {
+    pr.rect(X(c.x0), Y(c.z1), (c.x1 - c.x0) * S, (c.z1 - c.z0) * S, { fill: corCrua, stroke: 'none', opacidade: SOMBRA_DO_GRAUTE, material: 'graute', soTela: true });
+    if (alfa <= 0) continue;
+    // o DXF: a faixa inteira sobre o papel (as juntas, em pé e deitadas) e, por cima, cada pedaço de bloco embaixo
+    // dela na cor que a tela mostra (o CAD desenha na ordem em que as peças entram)
+    pr.rect(X(c.x0), Y(c.z1), (c.x1 - c.x0) * S, (c.z1 - c.z0) * S, { fill: misturar('#ffffff', corDoGraute, alfa), stroke: 'none', camada: 'graute', soArquivo: true });
+    for (const b of noPlano) {
+      const [bx0, bx1, bz0, bz1] = [Math.max(c.x0, b.min[0]), Math.min(c.x1, b.max[0]), Math.max(c.z0, b.min[2]), Math.min(c.z1, b.max[2])];
+      if (bx1 - bx0 < 0.5 || bz1 - bz0 < 0.5) continue;
+      const embaixo = corDoBloco(b);
+      if (embaixo === '#ffffff') continue;
+      pr.rect(X(bx0), Y(bz1), (bx1 - bx0) * S, (bz1 - bz0) * S, { fill: misturar(embaixo, corDoGraute, alfa), stroke: 'none', camada: 'graute', soArquivo: true });
+    }
+  }
   pr.fechar();
   pr.abrir('data-camada="contraforte"');
   for (const s of aparece('blocos') ? naFrente : []) pr.caminho(aneis(projecao(s, 'Y')), { ...estiloDaAlvenaria(s), id: s.peca.id });
@@ -107,25 +211,26 @@ export function desenharVistaFrontal(m: Modelo, o: OpcoesDaVista = {}): Prancha 
 
   // barbacãs: o tubo atravessa o muro, de frente é um círculo
   for (const s of aparece('drenagem') ? sol.filter((q) => q.peca.tipo === 'BARBACA') : []) {
-    pr.caminho(aneis(projecao(s, 'Y')), { fill: '#ffffff', stroke: COR.linha, sw: 0.8, id: s.peca.id, camada: 'drenagem' });
+    pr.caminho(aneis(projecao(s, 'Y')), { fill: '#ffffff', stroke: COR.linha, sw: 0.8, id: s.peca.id, camada: 'drenagem', material: 'tubo' });
   }
 
   // ── armaduras ─────────────────────────────────────────────────────────────────────────────────────────────────
-  // cada barra leva um filete branco por baixo: o vermelho do aço some em cima do vermelho do bloco 54 (e quase
-  // some no laranja do 34), que é justamente onde ficam as barras do contraforte. O filete não leva id nem
-  // recebe clique — o clique atravessa para a peça de baixo, e a seleção acende só a barra.
+  // Sem o filete branco que ia por baixo de cada barra (para o vermelho do aço não sumir no vermelho do 54): o
+  // Jose achou que poluía mais do que ajudava (16/10). Quem quiser a barra destacada troca a cor do aço na vista.
   const barras = aparece('armadura') ? m.barras.filter((b) => PAPEIS_VISTOS.has(b.papel)) : [];
   // chamada de cada posição na barra dela mais à direita (a coluna das chamadas fica depois da ponta do muro)
   const daChamada = new Map<string, { x: number; pts: Pt[]; b: Barra }>();
+  // todas as barras desenhadas de cada posição e elemento: a etiqueta posta acha o ponto dela mais perto
+  const barrasPorChave = new Map<string, Pt[][]>();
   pr.abrir('data-camada="barras"');
   for (const b of barras) {
     const pts = projetarPontos(b.eixo, 'Y').map(([x, z]): Pt => [X(x), Y(z)]);
     const sw = Math.max(0.9, b.diametro * S);
     const dash = b.papel === 'ESPERA' ? '5,3' : undefined;
-    pr.polilinha(pts, { stroke: '#ffffff', sw: sw + 1.2, dash, extra: 'pointer-events="none"', soTela: true });
     pr.polilinha(pts, { stroke: corDoAcoNoDesenho(), sw, dash, id: b.id });
     const xMax = Math.max(...pts.map((q) => q[0]));
     const k = `${b.posicao}|${elementoDaBarra(b)}`;
+    barrasPorChave.set(k, [...(barrasPorChave.get(k) ?? []), pts]);
     const antes = daChamada.get(k);
     if (!antes || xMax > antes.x + 0.5) daChamada.set(k, { x: xMax, pts, b });
   }
@@ -139,12 +244,12 @@ export function desenharVistaFrontal(m: Modelo, o: OpcoesDaVista = {}): Prancha 
   const linhaCf = temBarras ? topo - 50 : topo - 22;
   for (const c of aparece('eixos') ? cfs : []) {
     pr.linha(X(c.x), Y(sapata.z0) + 8, X(c.x), linhaCf - 22, { stroke: COR.cota, sw: 0.6, dash: '14,3,2,3', camada: 'eixos' });
-    pr.texto(X(c.x), linhaCf - 26, `C${c.numero}`, { tam: 11, cor: COR.cota, negrito: true });
+    pr.texto(X(c.x), linhaCf - 26, `C${c.numero}`, { tam: 11, cor: COR.cota, negrito: true, camada: 'eixos', chave: `eixo:C${c.numero}` });
   }
   for (let k = 0; aparece('eixos') && k + 1 < trechos.length; k++) {
     const xj = (trechos[k].x1 + trechos[k + 1].x0) / 2;
     pr.linha(X(xj), Y(sapata.z0) + 8, X(xj), topo - 8, { stroke: COR.linha, sw: 1.8, camada: 'eixos' });
-    pr.texto(X(xj), Y(sapata.z0) + 22, 'JC', { tam: 11, negrito: true });
+    pr.texto(X(xj), Y(sapata.z0) + 22, 'JC', { tam: 11, negrito: true, camada: 'eixos' });
   }
 
   // ── números das fiadas ────────────────────────────────────────────────────────────────────────────────────────
@@ -184,9 +289,9 @@ export function desenharVistaFrontal(m: Modelo, o: OpcoesDaVista = {}): Prancha 
   pr.cadeiaH(segsCf.map((c) => ({ a: X(c.a), b: X(c.b), rotulo: c.rotulo })), linhaCf);
   // comprimento: por trecho (se houver junta) e total
   const base = Y(sapata.z0) + 40;
-  if (trechos.length > 1) pr.cadeiaH(trechos.map((r) => ({ a: X(r.x0), b: X(r.x1), rotulo: cm(r.x1 - r.x0) })), base);
+  if (trechos.length > 1) pr.cadeiaH(trechos.map((r) => ({ a: X(r.x0), b: X(r.x1), rotulo: cmCheio(r.x1 - r.x0), textoDaChave: cm(r.x1 - r.x0) })), base);
   const linhaTotal = trechos.length > 1 ? base + 24 : base;
-  pr.cotaH(X(xIni), X(xFim), linhaTotal, cm(L_real), { de: [Y(0), Y(0)] });
+  pr.cotaH(X(xIni), X(xFim), linhaTotal, cmCheio(L_real), { de: [Y(0), Y(0)], textoDaChave: cm(L_real) });
   // altura do muro desenhado × altura de solo (a da conta)
   // as linhas de chamada partem do lado de fora dos números das fiadas, para não riscar os números
   const xNum = X(xIni) - 10 - Prancha.largura(String(n_fiadas), tamFiada);
@@ -213,7 +318,8 @@ export function desenharVistaFrontal(m: Modelo, o: OpcoesDaVista = {}): Prancha 
   if (barras.some((b) => b.papel === 'ESPERA')) itens.push(['Espera', 'espera']);
   if (itens.length && aparece('legenda')) desenharLegenda(pr, X(xIni), linhaTotal + 30, itens, Math.max(320, X(xFim) - X(xIni)));
   // ── chamadas das barras: por último, à direita de tudo (o fim da linha do terreno, as cotas e a legenda) ────────
-  if (o.chamadas && aparece('chamadas')) desenharChamadas(pr, m, chamadas, X(xFim) + 52);
+  if (o.chamadas && aparece('chamadas')) desenharChamadas(pr, m, chamadas, X(xFim) + 52, o.chamadasPostas);
+  if (o.etiquetas?.length && aparece('chamadas')) desenharEtiquetas(pr, m, o.etiquetas, barrasPorChave, S);
   return pr;
 }
 

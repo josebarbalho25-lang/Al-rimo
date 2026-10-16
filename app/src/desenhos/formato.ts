@@ -11,6 +11,16 @@ export function cm(mm: number): string {
   return Number.isInteger(r) ? String(r) : r.toFixed(1).replace('.', ',');
 }
 
+/**
+ * Comprimento de alvenaria no VALOR CHEIO (Jose, 16/10: "nas cotas das juntas tá trabalhando com 99 e não valor
+ * cheio"): o trecho de 5,99 m de face a face sai "600" — a junta de 10 mm da ponta entra no módulo, como se conta o
+ * bloco na obra. Só o número muda: a linha da cota continua nas faces de verdade. Vale para o comprimento do muro e
+ * dos trechos entre juntas de controle (frontal e planta); o concreto (sapata, armação) segue o real.
+ */
+export function cmCheio(mm: number, junta = 10): string {
+  return cm(mm + junta);
+}
+
 /** mm → texto em m com duas casas: 1050 → "1,05". Usado no título do corte (posição ao longo do muro). */
 export function metros(mm: number): string {
   const v = Math.round(mm / 10) / 100;

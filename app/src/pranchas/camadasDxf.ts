@@ -60,6 +60,8 @@ export const CAMADAS: Readonly<Record<string, CamadaDoCad>> = {
   '3D-FACES': { aci: 8, espessura: 0.13, conteudo: 'faces coloridas do 3D Cores, na cor verdadeira' },
   AVISO: { aci: 1, espessura: 0.5, conteudo: 'tarja NÃO VERIFICADO (muro que não passa na conta)' },
   CHAMADAS: { aci: 7, espessura: 0.18, conteudo: 'chamadas das barras (N – quantidade Ø c/ C=) e linha de chamada' },
+  // a barra tirada de dentro da peça e desenhada solta, grossa (o SOMBRA do Pró-Viga): vermelha como o aço
+  SOMBRAS: { aci: 1, espessura: 0.5, conteudo: 'sombras das armaduras (a barra desenhada fora da peça) e do estribo' },
 };
 
 /** Sufixo das camadas de fundo sólido. */
