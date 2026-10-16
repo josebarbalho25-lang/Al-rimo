@@ -210,7 +210,8 @@ e dizer ao Jose o que mudou e por quê.
   install` no `app/` do main E reiniciar o servidor da porta 5180 (o Vite guarda o erro de import).
 - **Depois das pranchas: empacotar e vender** seguindo o Pró-Viga (`proviga-3d-limpo`: Electron, tela de ativação,
   `licenca.js`, contrato no instalador, gerar-icone a partir do SVG). GitHub: o Jose disse para deixar o push para
-  depois (14/10; só esta máquina).
+  depois (14/10); em 16/10 pediu "commit e merge no repo" — main subido (a2c57c5). Os outros ramos já estão no main,
+  menos o `formula-els-painel` (obra parada).
 
 ## App (começou em 08/10/2026) — `app/` (Vite + React + TS + three, como o A-PORT)
 
