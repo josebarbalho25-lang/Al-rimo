@@ -1,56 +1,102 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    layout.css — a concha do Al-rimo
    ---------------------------------------------------------------------------
-   A concha do A-PORT (src/estilo/layout.css) sem o trilho e sem a fita: aqui a
-   modelagem é toda por entradas. Barra de cima, painel de entradas à esquerda,
-   abas + palco à direita, barra de estado embaixo. As peças (topbar, abas,
-   barra de estado, cabeça de painel) são cópias das de lá, para os dois
-   programas lado a lado parecerem do mesmo fabricante.
+   A organização do Pró-Viga (Jose, 20/10): o trilho de seções à esquerda, e à
+   direita a seção aberta com o cabeçalho dela em cima; a barra de estado
+   embaixo. As peças (trilho, abas, barra de estado, cabeça de painel) são
+   cópias das do A-PORT e do Pró-Viga, para os programas lado a lado parecerem
+   do mesmo fabricante.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .app {
   display: grid;
-  grid-template-columns: var(--entradas-w) minmax(0, 1fr);
-  grid-template-rows: var(--topbar-h) var(--abas-h) minmax(0, 1fr) var(--status-h);
-  /* A linha das ABAS cobre só a coluna do palco — o painel sobe por baixo dela,
-     como no Revit: a aba pertence ao DESENHO, não à janela. */
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) var(--status-h);
+  /* o trilho desce até o pé, como no Pró-Viga: a barra de estado fica só sob a seção */
   grid-template-areas:
-    'topbar topbar'
-    'esq    abas'
-    'esq    palco'
-    'status status';
+    'trilho secao'
+    'trilho status';
   width: 100%;
   height: 100%;
   background: var(--bg);
 }
 
-/* ── TOPBAR ─────────────────────────────────────────────────────────────── */
+/* ── TRILHO ─────────────────────────────────────────────────────────────── */
 
-.topbar {
-  grid-area: topbar;
+.trilho {
+  grid-area: trilho;
+  background: var(--rail-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(4px * var(--escala-ui));
+  padding: calc(10px * var(--escala-ui)) 0;
+  z-index: 4;
+}
+.trilho-marca {
+  width: calc(34px * var(--escala-ui));
+  height: calc(34px * var(--escala-ui));
+  margin-bottom: calc(12px * var(--escala-ui));
+}
+.trilho-botao {
+  width: calc(44px * var(--escala-ui));
+  height: calc(44px * var(--escala-ui));
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--rail-fg);
+  cursor: pointer;
+}
+.trilho-botao > svg {
+  width: calc(22px * var(--escala-ui));
+  height: calc(22px * var(--escala-ui));
+}
+.trilho-botao:hover {
+  color: var(--rail-fg-2);
+  background: rgba(255, 255, 255, 0.07);
+}
+/* a seção aberta: o ícone aceso, o fundo claro de leve e o fio azul do lado de dentro */
+.trilho-botao.on {
+  color: var(--rail-fg-2);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 3px 0 0 var(--rail-active);
+}
+.trilho-pe {
+  margin-top: auto;
+}
+
+/* ── A SEÇÃO E O CABEÇALHO ──────────────────────────────────────────────── */
+
+.secao {
+  grid-area: secao;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.cabecalho {
+  height: var(--topbar-h);
+  flex: 0 0 auto;
   background: var(--surface);
   background-image: var(--speckle-soft);
   border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 0 12px 0 14px;
+  gap: 10px;
+  padding: 0 12px 0 16px;
   z-index: 3;
 }
-/* A logomarca no canto da barra (Jose, 14/10), na altura dos ícones. */
-.topbar .marca {
-  flex: 0 0 auto;
-  width: calc(24px * var(--escala-ui));
-  height: calc(24px * var(--escala-ui));
-}
-.topbar .titulo {
+.cabecalho-titulo {
   display: flex;
   flex-direction: column;
   justify-content: center;
   min-width: 0;
-  max-width: 40%;
+  max-width: 50%;
+  line-height: 1.2;
 }
-.topbar .titulo h1 {
+.cabecalho-titulo h1 {
   font-size: var(--fs-destaque);
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -58,41 +104,68 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Os ícones da barra de cima: 18 px, na escala da interface. */
-.topbar .btn-icone > svg {
+.cabecalho-secao {
+  font-size: var(--fs-nota);
+  color: var(--muted);
+}
+.cabecalho .btn-icone > svg {
   width: calc(18px * var(--escala-ui));
   height: calc(18px * var(--escala-ui));
 }
-.topbar .separador {
+.cabecalho .separador {
   width: 1px;
   height: calc(24px * var(--escala-ui));
   background: var(--line);
 }
-.topbar .grupo-botoes {
-  display: flex;
-  gap: 2px;
-}
-.topbar .direita {
+.cabecalho-direita {
   margin-left: auto;
   display: flex;
   align-items: center;
   gap: 8px;
 }
+.secao-corpo {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Gráfica: as abas das vistas sobre o palco */
+.secao-grafica {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* escondida enquanto se está noutra seção (o display:flex acima venceria o [hidden] do navegador) */
+.secao-grafica[hidden] {
+  display: none;
+}
+.secao-grafica > .abas-vista {
+  flex: 0 0 var(--abas-h);
+}
+
+/* Memória: a lista de entradas ao lado da conta, como era a concha inteira antes de 20/10 */
+.secao-memoria {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: var(--entradas-w) minmax(0, 1fr);
+}
+.secao-memoria[data-lista='recolhida'] {
+  grid-template-columns: calc(26px * var(--escala-ui)) minmax(0, 1fr);
+}
 
 /* ── PAINEL DE ENTRADAS ─────────────────────────────────────────────────── */
 
 .coluna-entradas {
-  grid-area: esq;
   position: relative;
   min-height: 0;
   min-width: 0;
   display: flex;
   z-index: 2;
-}
-/* Lista recolhida (Jose, 12/10): a coluna vira uma faixa fina e o palco ocupa o resto. A entrada principal é a por
-   figuras (botão na barra de cima); a lista é para ajuste rápido e conferência. */
-.app[data-lista='recolhida'] {
-  grid-template-columns: calc(26px * var(--escala-ui)) minmax(0, 1fr);
 }
 .faixa-entradas {
   flex: 1;
@@ -181,7 +254,7 @@
 /* ── PALCO ──────────────────────────────────────────────────────────────── */
 
 .palco {
-  grid-area: palco;
+  flex: 1 1 auto;
   position: relative;
   min-width: 0;
   min-height: 0;
@@ -207,7 +280,6 @@
 /* ── ABAS DO PALCO ──────────────────────────────────────────────────────── */
 
 .abas-vista {
-  grid-area: abas;
   display: flex;
   align-items: stretch;
   gap: 1px;

@@ -1,20 +1,19 @@
 // ═══════════════════════════════════════════════════════════════════════════
-//  ui/Configuracoes.tsx — a janela de configurações (engrenagem da barra de cima)
+//  ui/Configuracoes.tsx — a seção Configurações (a engrenagem do trilho)
 // ---------------------------------------------------------------------------
 //  Os ajustes de interface do A-PORT (Configurações > Interface e Aparência):
 //  tamanho, densidade, tema e as cores de seleção e alerta. Lá são cinco
 //  tópicos num menu vertical; aqui sobram estes, e cabem numa página só —
-//  decide-se olhando, sem trocar de tópico.
+//  decide-se olhando, sem trocar de tópico. Era janela por cima até 20/10;
+//  com o trilho virou seção, como no Pró-Viga.
 //
-//  Cada clique vale NA HORA (a janela cresce junto quando o tamanho muda: é a
-//  prévia). Por isso não há "Aplicar" nem "Cancelar", e fechar com Esc ou
-//  clique fora não perde nada — a mesma regra do modal da figura.
+//  Cada clique vale NA HORA (a tela inteira cresce junto quando o tamanho
+//  muda: é a prévia). Por isso não há "Aplicar" nem "Cancelar".
 //
 //  Linha = rótulo + controle. Sem texto explicando o ajuste (regra do dono).
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { useEffect, useRef, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useState, type ReactNode } from 'react';
 import {
   CORES,
   DENSIDADES,
@@ -27,46 +26,19 @@ import {
   restaurarCores,
   usePreferencias,
 } from '@/estilo/preferenciasDaInterface';
-import { IconeFechar } from './icones';
+import { VERSAO_DA_CONTA } from '@/estado/store';
+import { JanelaDoTermo } from './TermoDeUso';
 import { useJanelaDeGraficos } from '@/desenhos/useJanelaDeGraficos';
 import { useGraficos } from '@/desenhos/useGraficos';
 
-export function Configuracoes({ aoFechar }: { aoFechar: () => void }) {
+export function TelaDeConfiguracoes() {
   const pref = usePreferencias();
-  const caixa = useRef<HTMLDivElement>(null);
+  const [termo, setTermo] = useState(false);
+  const fecharTermo = useCallback(() => setTermo(false), []);
 
-  useEffect(() => {
-    // Na captura e parando aí, como no modal da figura: o Esc que fecha a
-    // janela não pode chegar a um campo de entrada aberto embaixo.
-    const tecla = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        aoFechar();
-      }
-    };
-    window.addEventListener('keydown', tecla, true);
-    caixa.current?.focus();
-    return () => window.removeEventListener('keydown', tecla, true);
-  }, [aoFechar]);
-
-  // Portal para o <body>, pelo mesmo motivo do modal da figura: dentro da
-  // barra de cima (camada própria) o véu ficaria preso nela.
-  return createPortal(
-    <div
-      className="modal-fundo"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) aoFechar();
-      }}
-    >
-      <div ref={caixa} className="modal-caixa cfg" role="dialog" aria-modal="true" aria-label="Configurações" tabIndex={-1}>
-        <div className="modal-cabeca">
-          <h3>Configurações</h3>
-          <button className="btn-icone" title="Fechar  ·  Esc" onClick={aoFechar}>
-            <IconeFechar tamanho={16} />
-          </button>
-        </div>
-
-        <div className="cfg-corpo">
+  return (
+    <div className="tela-cfg">
+      <div className="cfg-corpo">
           <h4>Interface</h4>
           <Linha rotulo="Tamanho">
             {ESCALAS.map((e) => (
@@ -122,14 +94,7 @@ export function Configuracoes({ aoFechar }: { aoFechar: () => void }) {
           <h4>Desenhos e 3D</h4>
           <Linha rotulo="Gráficos">
             <div className="cad-escolha">
-              <button
-                type="button"
-                onClick={() => {
-                  // a janela flutua sem véu: as Configurações saem da frente (e o Esc de uma não fecha a outra)
-                  aoFechar();
-                  useJanelaDeGraficos.getState().abrir({ tipo: 'geral' });
-                }}
-              >
+              <button type="button" onClick={() => useJanelaDeGraficos.getState().abrir({ tipo: 'geral' })}>
                 Gerais
               </button>
             </div>
@@ -138,10 +103,22 @@ export function Configuracoes({ aoFechar }: { aoFechar: () => void }) {
             <span />
             <button type="button" className="btn-caixa" onClick={() => useGraficos.getState().restaurar()}>Restaurar padrão</button>
           </div>
-        </div>
+
+          {/* o § e a versão saíram da barra de cima com o trilho (20/10) */}
+          <h4>Sobre</h4>
+          <div className="cfg-linha">
+            <span className="cfg-rotulo">Termo de uso</span>
+            <div>
+              <button type="button" className="btn-caixa" onClick={() => setTermo(true)}>Ler</button>
+            </div>
+          </div>
+          <div className="cfg-linha">
+            <span className="cfg-rotulo">Conta</span>
+            <span className="cfg-valor">{VERSAO_DA_CONTA.slice(0, 8)}</span>
+          </div>
       </div>
-    </div>,
-    document.body,
+      {termo && <JanelaDoTermo modo="leitura" aoFechar={fecharTermo} />}
+    </div>
   );
 }
 

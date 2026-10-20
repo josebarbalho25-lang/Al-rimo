@@ -452,6 +452,8 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
   // sobra sai do desenho. Pela ref: o ouvinte é um só, e lê o estado da vez.
   const teclar = useRef<(e: KeyboardEvent) => void>(() => undefined);
   teclar.current = (e: KeyboardEvent) => {
+    // a Gráfica fica montada (escondida) enquanto se está noutra seção do trilho: só a folha à vista responde
+    if (!mesaRef.current?.offsetParent) return;
     if (titulo) return;
     if (edicao.teclar(e)) return;
     if (e.key === 'Escape') {

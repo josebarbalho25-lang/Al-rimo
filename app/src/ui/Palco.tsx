@@ -1,9 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
-//  ui/Palco.tsx — as abas e o que cada uma mostra
+//  ui/Palco.tsx — as abas da Gráfica e o que cada seção mostra
 // ---------------------------------------------------------------------------
-//  Abas FIXAS (sem ✕): o muro tem sempre as mesmas sete folhas. A barra fica
-//  sobre o palco e não sobre a tela inteira — a aba pertence ao desenho, não à
-//  janela (como no A-PORT e no Revit).
+//  Abas FIXAS (sem ✕) na Gráfica: 3D, as vistas 2D e as Pranchas. A Memória e
+//  o Quantitativo eram abas até 20/10 e viraram seção do trilho; o conteúdo
+//  continua vindo da mesma tomada (`ligacoes.abas`), o palco só recebe qual.
 //
 //  O conteúdo de cada aba é ligado pela integração (`ligar({ abas })`). Até
 //  lá, o palco mostra só o ícone da aba, apagado. Nome de componente
@@ -38,12 +38,19 @@ const ICONE: Record<IdAba, Icone> = {
   pranchas: IconePranchas,
 };
 
+/** As abas que moram na Gráfica (as outras são seção do trilho). */
+const FORA_DA_GRAFICA = new Set<IdAba>(['memoria', 'quantitativo']);
+export const ABAS_DA_GRAFICA = ABAS.filter((a) => !FORA_DA_GRAFICA.has(a.id));
+
+/** A aba da Gráfica aberta: a lembrada, ou o 3D quando a lembrada era a Memória ou o Quantitativo (antes de 20/10). */
+export const abaDaGrafica = (aba: IdAba): IdAba => (FORA_DA_GRAFICA.has(aba) ? '3d' : aba);
+
 export function AbasDoPalco() {
-  const aba = useApp((s) => s.aba);
+  const aba = useApp((s) => abaDaGrafica(s.aba));
   const escolher = useApp((s) => s.escolherAba);
   return (
     <div className="abas-vista" role="tablist">
-      {ABAS.map(({ id, nome }) => {
+      {ABAS_DA_GRAFICA.map(({ id, nome }) => {
         const I = ICONE[id];
         return (
           <div
@@ -69,9 +76,8 @@ export function AbasDoPalco() {
   );
 }
 
-export function Palco() {
-  const aba = useApp((s) => s.aba);
-  const conteudo = useApp((s) => s.ligacoes.abas[s.aba]);
+export function Palco({ aba }: { aba: IdAba }) {
+  const conteudo = useApp((s) => s.ligacoes.abas[aba]);
   const modelo = useApp((s) => s.modelo);
   const resultado = useApp((s) => s.resultado);
   const selecionado = useApp((s) => s.selecionado);

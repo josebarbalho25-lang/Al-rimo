@@ -1,9 +1,11 @@
 // ═══════════════════════════════════════════════════════════════════════════
-//  ui/EntradaPorFiguras.tsx — a entrada por figuras (PILOTO, Jose, 10/10)
+//  ui/EntradaPorFiguras.tsx — a seção Entradas (a entrada por figuras)
 // ---------------------------------------------------------------------------
-//  Como os dados de vento do A-PORT: um modal grande, uma aba por grupo de
-//  entradas, com a figura de um lado e os campos do outro. As abas são as
-//  mesmas seções do painel lateral (que continua lá para o ajuste rápido).
+//  Como os dados de vento do A-PORT: uma aba por grupo de entradas, com a
+//  figura de um lado e os campos do outro. Até 20/10 era um modal por cima do
+//  app; com o trilho (a organização do Pró-Viga) virou a seção Entradas, de
+//  tela inteira. As abas são as seções do painel lateral (que mora na Memória,
+//  para conferir número contra entrada).
 //
 //  A figura acompanha o que se edita:
 //    - Geometria, Solo e cargas, Fundação: o corte do muro DESENHADO COM OS
@@ -15,12 +17,10 @@
 //  no Solo; σadm pelo SPT na Fundação) — a "mini conta no caminho".
 //
 //  Os campos são as mesmas linhas do painel (LinhaDeEntrada): a mesma conta,
-//  as mesmas travas e avisos. Fecha com Esc ou ✕; clique fora não fecha (é
-//  tela de edição).
+//  as mesmas travas e avisos.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { createPortal } from 'react-dom';
 import { campoEspelhado, secaoVisivel } from '@/estado/campos';
 import { CAMPOS, SECOES } from '@/estado/store';
 import { useInterface } from '@/estado/interface';
@@ -30,7 +30,6 @@ import type { Valor } from '@/motor/tipos';
 import { CalculadoraDoSolo } from './CalculadoraDoSolo';
 import { CalculadoraDaTensao } from './CalculadoraDaTensao';
 import { CampoNumero, Escolha, Lista } from './controles';
-import { IconeFechar } from './icones';
 import { SO_TABELA, TabelaDeReferencia } from './TabelasDeReferencia';
 import { LinhaDeEntrada, linhasDaSecao, useLinhasDeEntrada } from './PainelDeEntradas';
 
@@ -39,10 +38,11 @@ const ABAS_DO_CORTE = new Set(['muro', 'solo', 'fundacao']);
 /** Campos que o corte vivo mostra (os outros campos dessas abas mostram a figura fixa deles). */
 const NO_CORTE = new Set(['H_muro', 'H_solo', 't_bloco', 'Tipo_muro', 'q_sobre', 'Agua', 'z_NA', 'B_sap', 'h_sap', 'a_ater', 'h_fr']);
 
-export function EntradaPorFiguras({ aoFechar }: { aoFechar: () => void }) {
+export function TelaDeEntradas() {
   const { ler, propsDaLinha } = useLinhasDeEntrada();
   const secoes = SECOES.filter((s) => secaoVisivel(s, ler));
   const campoInicial = useInterface((s) => s.campoInicial);
+  const pedidoDeCampo = useInterface((s) => s.pedidoDeCampo);
   const [aba, setAba] = useState(
     () => secoes.find((s) => campoInicial && s.campos.some((c) => c.meta.nome === campoInicial))?.id ?? secoes[0]?.id ?? '',
   );
@@ -52,21 +52,19 @@ export function EntradaPorFiguras({ aoFechar }: { aoFechar: () => void }) {
   const caixaDaFigura = useRef<HTMLDivElement>(null);
   // A cota clicada no corte vivo: a caixinha do número abre em cima dela, como no CAD (Jose, 12/10).
   const [editando, setEditando] = useState<{ nome: string; x: number; y: number } | null>(null);
-  const caixa = useRef<HTMLDivElement>(null);
 
   const secao = secoes.find((s) => s.id === aba) ?? secoes[0];
 
+  // O "Faltam N dados" com a seção já aberta: vai à aba do campo pedido e põe o foco nele.
+  const pedidoVisto = useRef(pedidoDeCampo);
   useEffect(() => {
-    const tecla = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && (e.target as HTMLElement | null)?.tagName !== 'INPUT') {
-        e.stopPropagation();
-        aoFechar();
-      }
-    };
-    window.addEventListener('keydown', tecla, true);
-    caixa.current?.focus();
-    return () => window.removeEventListener('keydown', tecla, true);
-  }, [aoFechar]);
+    if (pedidoDeCampo === pedidoVisto.current) return;
+    pedidoVisto.current = pedidoDeCampo;
+    const alvo = secoes.find((s) => campoInicial && s.campos.some((c) => c.meta.nome === campoInicial));
+    if (alvo) setAba(alvo.id);
+    setAtivo(campoInicial);
+    setFocar(campoInicial);
+  }, [pedidoDeCampo, campoInicial, secoes]);
 
   // Clique numa cota: a caixinha do número abre ali mesmo, em cima da cota; a aba não troca (a figura fica).
   const irPara = useCallback((nome: string, e: MouseEvent) => {
@@ -95,15 +93,8 @@ export function EntradaPorFiguras({ aoFechar }: { aoFechar: () => void }) {
   // O botão de figura de cada linha, aqui, só troca a figura da esquerda.
   const mostrarFigura = useCallback((nome: string) => setAtivo(nome), []);
 
-  return createPortal(
-    <div className="modal-fundo">
-      <div ref={caixa} className="modal-caixa por-figuras" role="dialog" aria-modal="true" aria-label="Entrada por figuras" tabIndex={-1}>
-        <div className="modal-cabeca">
-          <h3>Entrada por figuras</h3>
-          <button className="btn-icone" title="Fechar  ·  Esc" onClick={aoFechar}>
-            <IconeFechar tamanho={16} />
-          </button>
-        </div>
+  return (
+    <div className="tela-entradas" aria-label="Entradas">
         <div className="pf-abas" role="tablist">
           {secoes.map((s) => (
             <button
@@ -161,9 +152,7 @@ export function EntradaPorFiguras({ aoFechar }: { aoFechar: () => void }) {
             {secao?.id === 'fundacao' && <CalculadoraDaTensao />}
           </div>
         </div>
-      </div>
-    </div>,
-    document.body,
+    </div>
   );
 }
 
@@ -204,7 +193,7 @@ function EditorDeCota({
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) aoFechar();
       }}
       onKeyDown={(e) => {
-        if (e.key === 'Escape') e.stopPropagation();   // Esc fecha a caixinha, não a janela inteira
+        if (e.key === 'Escape') e.stopPropagation();   // o Esc é da caixinha: não sobe para quem mais escute
       }}
     >
       <span>{c.curto}</span>

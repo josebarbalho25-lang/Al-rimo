@@ -571,13 +571,15 @@ select optgroup {
    Página só, linha = rótulo | controle (a mesma grade do painel de entradas).
    Tudo na escala: quando ele troca o tamanho, a janela cresce junto — é a
    prévia do que acabou de escolher. */
-.modal-caixa.cfg {
-  width: min(calc(600px * var(--escala-ui)), 94vw);
-  max-height: 92vh;
-}
-.cfg-corpo {
+.tela-cfg {
+  flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+  background: var(--surface);
+}
+/* a página das configurações numa coluna de leitura, não esticada na tela inteira */
+.cfg-corpo {
+  max-width: calc(640px * var(--escala-ui));
   padding: calc(6px * var(--escala-ui)) calc(18px * var(--escala-ui)) calc(18px * var(--escala-ui));
 }
 /* Título de seção com a cara do título de grupo do painel. */
@@ -1217,25 +1219,13 @@ body[data-theme='dark'] .prancheta-cores svg [stroke='#595959'] { stroke: #b4b4b
 /* ── ENTRADA POR FIGURAS (piloto, Jose 10/10) ───────────────────────────────
    Modal grande: abas dos grupos em cima; figura à esquerda, campos à direita.
    As linhas são as do painel (.entrada); a figura é a .prancheta das outras. */
-.btn-por-figuras {
-  align-self: center;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-md);
-  font-size: var(--fs-nota);
-  color: var(--muted);
-}
-.btn-por-figuras.on,
-.btn-por-figuras:hover {
-  color: var(--ink);
-  background: var(--sel-bg);
-}
-.modal-caixa.por-figuras {
-  width: min(calc(1400px * var(--escala-ui)), 96vw);
-  height: 92vh;
+/* A seção Entradas (20/10): a entrada por figuras na tela inteira — era um modal grande até o trilho. */
+.tela-entradas {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
 }
 .pf-abas {
   flex: 0 0 auto;
@@ -1472,4 +1462,99 @@ body[data-theme='dark'] .prancheta-cores svg [stroke='#595959'] { stroke: #b4b4b
 .cota-viva.on text {
   fill: #c55a11;
   font-weight: bold;
+}
+
+.cfg-valor {
+  font-family: var(--font-mono);
+  font-size: var(--fs-rotulo);
+  color: var(--muted);
+}
+
+/* ── O INÍCIO (20/10) ───────────────────────────────────────────────────────
+   O "Abrir / Salvar" do Pró-Viga: arquivo em botões grandes, as saídas numa lista. */
+.tela-inicio {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: calc(28px * var(--escala-ui));
+  padding: calc(24px * var(--escala-ui)) calc(28px * var(--escala-ui));
+}
+.inicio-bloco {
+  flex: 1 1 calc(360px * var(--escala-ui));
+  max-width: calc(520px * var(--escala-ui));
+  display: flex;
+  flex-direction: column;
+  gap: calc(8px * var(--escala-ui));
+}
+.inicio-titulo {
+  font-size: var(--fs-nota);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.inicio-grade {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: calc(8px * var(--escala-ui));
+}
+.inicio-grande {
+  height: calc(76px * var(--escala-ui));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--fs-rotulo);
+  cursor: pointer;
+}
+.inicio-grande > svg {
+  width: calc(22px * var(--escala-ui));
+  height: calc(22px * var(--escala-ui));
+  color: var(--accent);
+}
+.inicio-grande:hover,
+.inicio-linha:hover:not(:disabled) {
+  background: var(--sel-bg);
+}
+.inicio-lista {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+.inicio-linha {
+  height: calc(40px * var(--escala-ui));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--fs-rotulo);
+  cursor: pointer;
+  text-align: left;
+}
+.inicio-linha:last-child {
+  border-bottom: 0;
+}
+.inicio-linha:disabled {
+  color: var(--muted-2);
+  cursor: default;
+}
+.inicio-formato {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nota);
+  color: var(--muted);
 }

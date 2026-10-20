@@ -147,8 +147,17 @@ export function JanelaDoAlvo({ alvo, abaInicial }: { alvo: AlvoDosGraficos; abaI
   return <Janela alvo={alvo} estilo={{}} pegar={() => undefined} abaInicial={abaInicial} />;
 }
 
-/** O que a janela lê e escreve, conforme o alvo: a sobreposição (da vista ou do visor) ou a geral. */
+let aberturas = 0;
+
+/**
+ * O que a janela lê e escreve, conforme o alvo: a sobreposição (da vista ou do visor) ou a geral. Tudo o que UMA
+ * abertura da janela mexe numa vista é um passo só de desfazer (`passo`), e o Cancelar, que devolve o "antes", apaga
+ * o passo em vez de criar outro (store.ts).
+ */
 function useAlvo(alvo: AlvoDosGraficos) {
+  const passoRef = useRef<string | null>(null);
+  passoRef.current ??= `graficos:${++aberturas}`;
+  const passo = passoRef.current;
   const dados = useGraficos((s) => s.dados);
   const mudarGraficos = useGraficos((s) => s.mudar);
   const pranchas = useApp((s) => s.pranchas);
@@ -161,7 +170,7 @@ function useAlvo(alvo: AlvoDosGraficos) {
         const g = f(v.graficos);
         const { graficos: _g, ...resto } = v;
         return g ? { ...resto, graficos: g } : resto;
-      }));
+      }), { passo });
     } else if (alvo.tipo === 'visor') mudarGraficos((g) => ({ ...g, visor: f(g.visor) ?? {} }));
   };
   return { dados, mudarGraficos, vista, sobreposicao, mudarSobreposicao };
