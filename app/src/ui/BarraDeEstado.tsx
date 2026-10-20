@@ -26,9 +26,9 @@ export function BarraDeEstado() {
   const erroModelo = useApp((s) => s.erroModelo);
   const veredito = useApp((s) => s.veredito);
   const recado = useApp((s) => s.recado);
-  const escolherAba = useApp((s) => s.escolherAba);
   const faltando = useApp((s) => s.faltando);
   const abrirNoCampo = useInterface((s) => s.abrirNoCampo);
+  const irPara = useInterface((s) => s.irPara);
 
   return (
     <footer className="statusbar">
@@ -46,7 +46,7 @@ export function BarraDeEstado() {
           <button
             className={`situacao ${veredito.passa ? 'passa' : 'naoPassa'}`}
             title="Memória"
-            onClick={() => escolherAba('memoria')}
+            onClick={() => irPara('memoria')}
           >
             {veredito.passa ? 'Passa' : `Não passa · ${veredito.falhas}`}
           </button>

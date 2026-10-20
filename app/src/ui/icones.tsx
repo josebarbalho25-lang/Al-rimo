@@ -230,3 +230,46 @@ export const IconeQuantitativo = (p: PropsDoIcone) => (
     <path d="M3.5 9.5h17M3.5 14.25h17M9.5 5v14" />
   </Svg>
 );
+
+/* ── o trilho e o cabeçalho das seções (Jose, 20/10: a organização do Pró-Viga) ── */
+
+/** Início: abrir, salvar, exportar (o "Abrir / Salvar" do trilho do Pró-Viga). */
+export const IconeInicio = (p: PropsDoIcone) => (
+  <Svg {...p}>
+    <path d="M3.5 11L12 4l8.5 7" />
+    <path d="M5.5 9.5v10h13v-10" />
+    <path d="M10 19.5v-5.5h4v5.5" />
+  </Svg>
+);
+
+/** Entradas: o muro em corte com as linhas dos campos ao lado. */
+export const IconeEntradas = (p: PropsDoIcone) => (
+  <Svg {...p}>
+    <path d="M7 3.5v17" />
+    <path d="M3.5 17.5h13" />
+    <path d="M10.5 7.5h2.5M10.5 11h5M10.5 14.5h8" />
+  </Svg>
+);
+
+/** Gráfica (vistas e pranchas): a folha com o carimbo e um desenho. */
+export const IconeGrafica = (p: PropsDoIcone) => (
+  <Svg {...p}>
+    <path d="M3 4.5h18v14H3z" />
+    <path d="M13.5 18.5v-5.5H21" />
+    <path d="M6 8h4.5M6 11h3" />
+  </Svg>
+);
+
+export const IconeDesfazer = (p: PropsDoIcone) => (
+  <Svg {...p}>
+    <path d="M9 14L4 9l5-5" />
+    <path d="M4 9h10.5a5.5 5.5 0 010 11H11" />
+  </Svg>
+);
+
+export const IconeRefazer = (p: PropsDoIcone) => (
+  <Svg {...p}>
+    <path d="M15 14l5-5-5-5" />
+    <path d="M20 9H9.5a5.5 5.5 0 000 11H13" />
+  </Svg>
+);

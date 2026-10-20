@@ -1,33 +1,41 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //  App.tsx — a concha
 // ---------------------------------------------------------------------------
-//   ┌──────────────────────────────────────────────────────────────┐
-//   │ TOPBAR  nome •  │ novo abrir salvar │ IFC imprimir │ § ⚙  tema│
-//   ├──────────────────┬───────────────────────────────────────────┤
-//   │ ENTRADAS         │ 3D │ Vista frontal │ Corte │ … │ Memória │  │
-//   │ ▾ GEOMETRIA      ├───────────────────────────────────────────┤
-//   │  h    1,60  m ▣  │                                           │
-//   │ ▸ SOLO E CARGAS  │              PALCO / FOLHA                │
-//   ├──────────────────┴───────────────────────────────────────────┤
-//   │ Passa │ recado …                    Balanço · bloco 19x39 · conta │
-//   └──────────────────────────────────────────────────────────────┘
-//  Sem trilho e sem fita (o A-PORT tem os dois): aqui toda a modelagem é por
-//  entradas, e não há comando de desenho para pôr em fita.
+//   ┌────┬─────────────────────────────────────────────────────────┐
+//   │ ▣  │ Exemplo — muro em balanço •   │ salvar │ desfazer refazer │
+//   │ ⌂  │ Gráfica                                                 │
+//   │ ⚙  ├─────────────────────────────────────────────────────────┤
+//   │ ✎  │                                                         │
+//   │ ∑  │                    A SEÇÃO ABERTA                       │
+//   │ ▦  │                                                         │
+//   │ ▭  │                                                         │
+//   │ ☾  ├─────────────────────────────────────────────────────────┤
+//   │    │ Passa │ recado …              Balanço · bloco 19x39     │
+//   └────┴─────────────────────────────────────────────────────────┘
+//  A organização do Pró-Viga (Jose, 20/10; protótipo aprovado no mesmo dia):
+//  o trilho de seções à esquerda e cada seção uma tela inteira — Início,
+//  Configurações, Entradas, Memória de cálculo, Quantitativo e Gráfica (as
+//  vistas e as pranchas). O que era a barra de cima foi para o Início (arquivo
+//  e saídas), para o cabeçalho (salvar, desfazer) e para as Configurações.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { abrirProjeto, salvarProjeto } from '@/estado/acoesDeArquivo';
 import { CHAVES, guardar, lembrarLarguraDoPainel } from '@/estado/lembrete';
 import { aceiteVigente } from '@/estado/termo';
+import { useApp } from '@/estado/store';
 import { usePreferencias } from '@/estilo/preferenciasDaInterface';
 import { BarraDeEstado } from '@/ui/BarraDeEstado';
-import { AbasDoPalco, Palco } from '@/ui/Palco';
+import { TelaDeConfiguracoes } from '@/ui/Configuracoes';
+import { AbasDoPalco, Palco, abaDaGrafica } from '@/ui/Palco';
 import { useInterface } from '@/estado/interface';
-import { EntradaPorFiguras } from '@/ui/EntradaPorFiguras';
+import { TelaDeEntradas } from '@/ui/EntradaPorFiguras';
 import { Chevron } from '@/ui/icones';
+import { JanelaDeGraficos } from '@/ui/JanelaDeGraficos';
 import { PainelDeEntradas } from '@/ui/PainelDeEntradas';
+import { TelaInicio } from '@/ui/TelaInicio';
 import { PortaDoTermo } from '@/ui/TermoDeUso';
-import { TopBar } from '@/ui/TopBar';
+import { CabecalhoDaSecao, Trilho } from '@/ui/Trilho';
 
 /** Faixa da largura do painel ao arrastar, em px de TELA. */
 const LARGURA_MIN = 300;
@@ -46,26 +54,59 @@ export function App() {
 
 function Casca() {
   useAtalhos();
+  const secao = useInterface((s) => s.secao);
+  return (
+    <div className="app" data-secao={secao}>
+      <Trilho />
+      <div className="secao">
+        <CabecalhoDaSecao />
+        <div className="secao-corpo">
+          {secao === 'inicio' && <TelaInicio />}
+          {secao === 'configuracoes' && <TelaDeConfiguracoes />}
+          {secao === 'entradas' && <TelaDeEntradas />}
+          {secao === 'memoria' && <SecaoDaMemoria />}
+          {secao === 'quantitativo' && <Palco aba="quantitativo" />}
+          {secao === 'grafica' && <SecaoGrafica />}
+        </div>
+      </div>
+      <BarraDeEstado />
+      <JanelaDeGraficos />
+    </div>
+  );
+}
+
+/** A Gráfica: as abas das vistas e das pranchas sobre o palco (a etapa 3 troca as abas pelo navegador do A-PORT). */
+function SecaoGrafica() {
+  const aba = useApp((s) => abaDaGrafica(s.aba));
+  return (
+    <div className="secao-grafica">
+      <AbasDoPalco />
+      <Palco aba={aba} />
+    </div>
+  );
+}
+
+/**
+ * A Memória com a lista de entradas ao lado (Jose, 20/10: "a entrada resumo como uma segunda aba lateral que abre e
+ * recolhe do jeito que existe hoje, mas só na seção da memória de cálculo"): confere-se número contra entrada sem
+ * trocar de tela.
+ */
+function SecaoDaMemoria() {
   const { escala } = usePreferencias();
   // Em px na escala 100%: a tela multiplica pela escala, e o painel que ele
   // alargou cresce junto quando a letra cresce (ver lembrarLarguraDoPainel).
   const [largura, setLargura] = useState<number | null>(lembrarLarguraDoPainel);
-
   // Sem largura escolhida, vale a do token (que também acompanha a escala).
   const estilo = largura
     ? ({ '--entradas-w': `calc(${largura}px * var(--escala-ui))` } as CSSProperties)
     : undefined;
   const recolhida = useInterface((s) => s.listaRecolhida);
   const alternarLista = useInterface((s) => s.alternarLista);
-  const porFiguras = useInterface((s) => s.porFiguras);
-  const fecharPorFiguras = useInterface((s) => s.fecharPorFiguras);
-
   return (
-    <div className="app" style={estilo} data-lista={recolhida ? 'recolhida' : undefined}>
-      <TopBar />
+    <div className="secao-memoria" style={estilo} data-lista={recolhida ? 'recolhida' : undefined}>
       <div className="coluna-entradas">
         {recolhida ? (
-          // A faixa fina: o 3D fica com a tela; um clique traz a lista de volta como estava.
+          // A faixa fina: a memória fica com a tela; um clique traz a lista de volta como estava.
           <button type="button" className="faixa-entradas" title="Mostrar a lista" aria-label="Mostrar a lista" onClick={alternarLista}>
             <Chevron />
             <span>Entradas</span>
@@ -77,10 +118,7 @@ function Casca() {
           </>
         )}
       </div>
-      <AbasDoPalco />
-      <Palco />
-      <BarraDeEstado />
-      {porFiguras && <EntradaPorFiguras aoFechar={fecharPorFiguras} />}
+      <Palco aba="memoria" />
     </div>
   );
 }
@@ -119,7 +157,10 @@ function AlcaDeLargura({ escala, aoMudar }: { escala: number; aoMudar: (base: nu
   );
 }
 
-/** Ctrl+S salva, Ctrl+Shift+S salva como, Ctrl+O abre. (Ctrl+N é do navegador e não se toma.) */
+/**
+ * Ctrl+S salva, Ctrl+Shift+S salva como, Ctrl+O abre, Ctrl+Z desfaz, Ctrl+Y (ou Ctrl+Shift+Z) refaz. (Ctrl+N é do
+ * navegador e não se toma.) Dentro de um campo de texto o Ctrl+Z é do campo — desfaz a letra, não o muro.
+ */
 function useAtalhos() {
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => {
@@ -131,6 +172,13 @@ function useAtalhos() {
       } else if (k === 'o' && !e.shiftKey) {
         e.preventDefault();
         void abrirProjeto();
+      } else if (k === 'z' || k === 'y') {
+        const alvo = e.target as HTMLElement | null;
+        if (alvo && (alvo.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(alvo.tagName))) return;
+        e.preventDefault();
+        const s = useApp.getState();
+        if (k === 'y' || e.shiftKey) s.refazer();
+        else s.desfazer();
       }
     };
     window.addEventListener('keydown', tecla);

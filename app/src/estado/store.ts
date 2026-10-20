@@ -129,6 +129,59 @@ export interface EstadoDoApp {
   dizer: (recado: string | null, ms?: number) => void;
   /** A integração liga as peças das outras frentes aqui (ver ligacoes.ts). */
   ligar: (parcial: Partial<Ligacoes>) => void;
+
+  /** Há passo para desfazer / refazer (o botão do cabeçalho acende por aqui). */
+  podeDesfazer: boolean;
+  podeRefazer: boolean;
+  /** Volta o muro (entradas e pranchas) ao passo anterior. Ctrl+Z. */
+  desfazer: () => void;
+  /** Refaz o passo desfeito. Ctrl+Y ou Ctrl+Shift+Z. */
+  refazer: () => void;
+}
+
+/*
+  DESFAZER (Jose, 20/10: "o A-PORT tem, é bom ter mesmo"). Um passo é uma FOTO do que o usuário decide — as
+  entradas da planilha, as do modelo, as pranchas e os "→" de lista daquela hora; o resto (conta, muro, veredito)
+  se refaz da foto, como num Abrir. Teclas seguidas no MESMO campo (o campo numérico manda a conta a cada tecla:
+  "0,45" chega como 0 → 0,4 → 0,45) e mexidas seguidas nas pranchas (arrastar uma cota) viram um passo só: o
+  passo novo nasce quando muda o campo ou quando a mão para um tempo. Abrir ou começar outro muro zera tudo — o
+  Ctrl+Z não atravessa de um muro para o outro.
+*/
+interface Foto {
+  alteracoes: Alteracoes;
+  extras: Record<string, Valor>;
+  pranchas: PranchasDoProjeto;
+  ajustesDeLista: Record<string, AjusteDeLista>;
+}
+const PASSOS_GUARDADOS = 100;
+/** Até quanto tempo parado a mexida seguinte ainda é o mesmo passo, ms. */
+const MESMO_PASSO_MS = 1200;
+let passados: Foto[] = [];
+let futuros: Foto[] = [];
+let ultimaMexida: { chave: string; t: number } | null = null;
+
+const fotoDe = (s: Pick<EstadoDoApp, 'alteracoes' | 'extras' | 'pranchas' | 'ajustesDeLista'>): Foto => ({
+  alteracoes: s.alteracoes, extras: s.extras, pranchas: s.pranchas, ajustesDeLista: s.ajustesDeLista,
+});
+
+/** Antes de uma mudança: guarda a foto de antes, a não ser que seja a continuação da mexida anterior. */
+function anotarPasso(s: EstadoDoApp, chave: string): Pick<EstadoDoApp, 'podeDesfazer' | 'podeRefazer'> {
+  const agora = Date.now();
+  const continua = ultimaMexida !== null && ultimaMexida.chave === chave && agora - ultimaMexida.t < MESMO_PASSO_MS;
+  ultimaMexida = { chave, t: agora };
+  if (!continua) {
+    passados.push(fotoDe(s));
+    if (passados.length > PASSOS_GUARDADOS) passados.shift();
+  }
+  futuros = [];
+  return { podeDesfazer: passados.length > 0, podeRefazer: false };
+}
+
+function zerarPassos(): Pick<EstadoDoApp, 'podeDesfazer' | 'podeRefazer'> {
+  passados = [];
+  futuros = [];
+  ultimaMexida = null;
+  return { podeDesfazer: false, podeRefazer: false };
 }
 
 /*
@@ -316,19 +369,46 @@ export const useApp = create<EstadoDoApp>()((set, get) => ({
   recado: null,
   ligacoes: SEM_LIGACOES,
 
+  podeDesfazer: false,
+  podeRefazer: false,
+
   definir(nome, valor) {
     const s = get();
     const meta = METAS.get(nome);
     if (!meta) return;
-    if (NOMES_DA_PLANILHA.has(nome)) {
+    const daPlanilha = NOMES_DA_PLANILHA.has(nome);
+    // o mesmo valor de novo (a lista escolhida outra vez) não é passo de desfazer — mas passa pela conta como
+    // sempre: é ele que apaga o "→" do campo
+    const passo = mesmoValor(valorAtual(meta, daPlanilha ? s.alteracoes : s.extras), valor) ? {} : anotarPasso(s, `e:${nome}`);
+    if (daPlanilha) {
       const alteracoes = aplicarValor(s.alteracoes, meta, valor);
       const { mudouNaLista: _, ...conta } = comConta(s.ligacoes, alteracoes, s.extras, s.ajustesDeLista, nome);
-      set({ sujo: true, ...conta });
+      set({ sujo: true, ...conta, ...passo });
     } else {
       const extras = aplicarValor(s.extras, meta, valor);
       const { mudouNaLista: _, ...conta } = comConta(s.ligacoes, s.alteracoes, extras, s.ajustesDeLista, nome);
-      set({ extras, sujo: true, ...conta });
+      set({ extras, sujo: true, ...conta, ...passo });
     }
+  },
+
+  desfazer() {
+    const s = get();
+    const foto = passados.pop();
+    if (!foto) return;
+    futuros.push(fotoDe(s));
+    ultimaMexida = null;
+    const { mudouNaLista: _, ...conta } = comConta(s.ligacoes, foto.alteracoes, foto.extras, foto.ajustesDeLista, null);
+    set({ ...conta, extras: foto.extras, pranchas: foto.pranchas, sujo: true, podeDesfazer: passados.length > 0, podeRefazer: true });
+  },
+
+  refazer() {
+    const s = get();
+    const foto = futuros.pop();
+    if (!foto) return;
+    passados.push(fotoDe(s));
+    ultimaMexida = null;
+    const { mudouNaLista: _, ...conta } = comConta(s.ligacoes, foto.alteracoes, foto.extras, foto.ajustesDeLista, null);
+    set({ ...conta, extras: foto.extras, pranchas: foto.pranchas, sujo: true, podeDesfazer: true, podeRefazer: futuros.length > 0 });
   },
 
   carregar(p, arquivo, opc) {
@@ -347,6 +427,8 @@ export const useApp = create<EstadoDoApp>()((set, get) => ({
       carregamento: s.carregamento + 1,
       selecionado: null,
       ...conta,
+      // outro muro: o Ctrl+Z não volta para o de antes
+      ...zerarPassos(),
     });
   },
 
@@ -367,7 +449,8 @@ export const useApp = create<EstadoDoApp>()((set, get) => ({
     // as mexidas criam objetos novos mesmo sem mudar nada (excluir o que não existe, redigitar o mesmo número):
     // compara o conteúdo (as pranchas não têm desenho nem foto, é texto pequeno) para não acender o • à toa
     if (pranchas === antes || mesmoConteudo(pranchas, antes)) return;
-    set({ pranchas, sujo: true });
+    const passo = anotarPasso(get(), 'pranchas');
+    set({ pranchas, sujo: true, ...passo });
   },
 
   escolherAba(aba) {

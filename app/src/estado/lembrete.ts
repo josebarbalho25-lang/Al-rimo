@@ -15,6 +15,8 @@
 
 export const CHAVES = {
   aba: 'alrimo.aba.v1',
+  /** O ícone do trilho aberto (estado/interface.ts). */
+  secao: 'alrimo.secao.v1',
   grupos: 'alrimo.grupos.v1',
   /** A lista da esquerda recolhida (estado/interface.ts). */
   lista: 'alrimo.lista.v1',
