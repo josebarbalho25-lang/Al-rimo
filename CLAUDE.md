@@ -675,6 +675,20 @@ e dizer ao Jose o que mudou e por quê.
      nosso Vd ≤ Va): com Asw_c = 0 a planilha zera Asw,ef e n_est (Vrd3 = Va), o resumo diz "sem estribos", o app
      não desenha estribo (3D/IFC/quantitativo) e apaga Ø/ramos/s nas Entradas (única regra de campo apagado que lê
      a CONTA: `ATIVA_SE` com `LerConta`). Conta sem número ("—") continua desenhando. 14 de 39 cenários dispensam.
+- **REORGANIZAÇÃO NO MOLDE DO PRÓ-VIGA E DO A-PORT (Jose, 20/10 — antes de empacotar e publicar; em branch
+  separada, etapas conferidas por ele antes de entrar no main):** trilho lateral fixo de ícones (azul-marinho, como o
+  Pró-Viga), na ordem: 1 Início (abrir, salvar, exportar IFC/memorial, topo idêntico ao do Pró-Viga/A-PORT, COM
+  desfazer/refazer — o A-PORT tem, o Al-rimo não) · 2 Configurações · 3 Entradas por figuras (TELA CHEIA, no lugar do
+  modal) · 4 Memória de cálculo (a lista de entradas em resumo vira 2ª coluna que abre e recolhe, só nessa seção) ·
+  5 Quantitativo (ícone próprio) · 6 Gráfica (navegador à esquerda como o do A-PORT — Vistas: 3D, frontal, corte,
+  planta, isométrico, armação e as nomeadas; Pranchas; aba Propriedades —, faixa de ferramentas no topo com abas, onde
+  entram Cota, Texto, Etiqueta, Gráficos, Mostrar e "Enviar para a prancha"; abas das vistas abertas e barra de escala
+  embaixo). 3D é uma vista como as outras. Embaixo do trilho: tema e manual. Barra de estado fica. Só a moldura muda:
+  conta, 3D, vistas, prancha, DXF e IFC não. Etapas: 1 moldura e topo · 2 Entradas e Memória · 3 Gráfica · 4 acabamento.
+  A confirmar: engrenagem em 2º (Pró-Viga) ou embaixo (A-PORT).
+- **SOMBRAS QUE FALTAM (Jose, 20/10, anotado para fazer):** (a) corte lateral: sombra VERTICAL da barra que sobe pelo
+  muro e do ARRANQUE, nas duas versões (Padrão e nó de cachorro) — o que a armação da sapata já faz para as
+  longitudinais (`desenhos/armacaoDaSapata.ts`); (b) planta: sombra das barras nas canaletas. Camada DXF SOMBRAS.
 - **DENTE SEM ARMADURA (Jose, 15/10: "nosso dente não tá armando, é muito detalhe, só anota, depois resolvemos"):** o
   dente da sapata sai no 3D, no corte e na armação sem barra nenhuma. Resolver depois, quando ele pedir.
 - **Revisão adversarial de 15/10 (3 revisores, 16 achados) — CORRIGIDA em 16/10** (`pranchas/__testes__/revisao16.test.ts`

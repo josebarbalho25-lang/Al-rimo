@@ -737,7 +737,13 @@ export function comporFolha(folha: Folha, ctx: ContextoDaFolha): FolhaComposta {
       ({ origem, anotacoes, regioes, chamadas } = pos);
     }
     // a tabela traz o título dela em cima (como as do quadro lateral); o desenho, embaixo com a escala
-    const t = d.tipo === 'papel' ? null : titular(p, item, numeroDoItem(folha, item), item.titulo.trim() || (ctx.tituloAutomatico?.(item) ?? ''), item.x, item.y + h);
+    // o título desce até passar da cota ou do texto mais baixo que o projetista puxou para fora da caixa (a referência
+    // não os conta, para o desenho não pular; mas o título tem de ficar embaixo de tudo o que está desenhado). A
+    // chamada solta fica de fora de propósito: ela não empurra o título (chamadaSolta.test.ts).
+    const baixo = Math.max(item.y + h, ...(anotacoes ?? []).filter((a) => !a.oculta).flatMap((a) => [
+      a.p[1] + a.tam * 0.5, ...(a.linha ? [a.linha[0][1], a.linha[1][1]] : []), ...(a.pontas ? [a.pontas[0][1], a.pontas[1][1]] : []),
+    ]));
+    const t = d.tipo === 'papel' ? null : titular(p, item, numeroDoItem(folha, item), item.titulo.trim() || (ctx.tituloAutomatico?.(item) ?? ''), item.x, baixo);
     const posto: ItemPosto = { id: item.id, caixa: [item.x, item.y, w, h], titulo: t, pendente: false, invade: false };
     if (chamadas?.length) posto.chamadas = chamadas;
     if (anotacoes?.length) posto.anotacoes = anotacoes;

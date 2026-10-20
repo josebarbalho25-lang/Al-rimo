@@ -151,6 +151,18 @@ describe('a folha', () => {
     );
     expect(fora.itens[0].invade).toBe(true);
   });
+
+  it('cota puxada para baixo do desenho: o título desce para baixo dela, e o desenho não pula', () => {
+    const pedidos: Record<string, boolean> = {};
+    const item = { id: 'c', conteudo: { tipo: 'corte' } as PedidoDeVista, escala: 25, x: 60, y: 60, titulo: '' };
+    const antes = comporFolha(folha([item]), ctx(pedidos)).itens[0];
+    const chave = vistaParaPrancha(m, item.conteudo, 25, 'v').anotacoes!.find((a) => a.tipo === 'cota' && a.texto.startsWith('B = '))!.chave;
+    const depois = comporFolha(folha([{ ...item, anotacoes: { [chave]: { afastamento: 400 } } }]), ctx(pedidos)).itens[0];
+    expect(depois.caixa).toEqual(antes.caixa);
+    expect(depois.titulo![1]).toBeGreaterThan(antes.titulo![1] + 5);
+    const cota = depois.anotacoes!.find((a) => a.chave === chave)!;
+    expect(depois.titulo![1]).toBeGreaterThanOrEqual(cota.p[1]);
+  });
 });
 
 describe('vistas sem escala e arquivo', () => {
