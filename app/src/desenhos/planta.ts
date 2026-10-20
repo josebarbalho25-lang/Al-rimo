@@ -11,9 +11,10 @@
   planta da fiada é a que o pedreiro segue para assentar, e é nela que ele precisa ver onde vai o meio bloco, o
   34, o 54. A hachura continua no corte lateral, onde é convenção de desenho.
 */
-import type { Modelo, Vec2 } from '@/modelo/tipos';
+import type { Barra, Modelo, Vec2, Vec3 } from '@/modelo/tipos';
 import { cm, cmCheio } from './formato';
-import { ALVENARIA, contrafortesDoModelo, cruzamentos, secao, solidosDoModelo, type Regiao } from './geometria';
+import { ALVENARIA, contrafortesDoModelo, cruzamentos, faixa, secao, solidosDoModelo, type Regiao } from './geometria';
+import { CAMADA_DA_SOMBRA, FILEIRA, LEGENDA_FORA, T, arrumarEmFileiras, escreverMedidas, grossa, medidasDasPernas, zDoMaiorTrecho, type Pegada } from './sombras';
 import { estiloDaSecao } from './corteLateral';
 import { desenharLegenda, estiloPintado, itensDasTintas, tintaDaPeca, tintasPresentes } from './cores';
 import { cadeia } from './vistaFrontal';
@@ -121,7 +122,14 @@ function plantaNaVista(m: Modelo, fiada: number, o: OpcoesDaVista): Prancha {
     linha += 24;
   }
   pr.cotaH(X(xIni), X(xFim), linha, cmCheio(L_real), { de: [Y(0), Y(0)], textoDaChave: cm(L_real) });
-  const linhaLegenda = linha + 30;
+  pr.silenciar(false);
+  pr.fechar();
+
+  // ── sombras das barras da canaleta, embaixo da cota ───────────────────────────────────────────────────────────
+  const fimDasSombras = aparece('armadura') ? desenharSombrasDaPlanta(pr, m, zBaixo, zc, linha + 4, S) : linha;
+  const linhaLegenda = fimDasSombras + 30;
+  pr.abrir('data-camada="cotas"');
+  pr.silenciar(!aparece('cotas'));
   // espessura do muro, na ponta esquerda
   pr.cotaV(X(xIni) - 18, Y(0), Y(t), `t = ${cm(t)}`, { de: [X(xIni), X(xIni)] });
   // comprimento do contraforte: no primeiro, por fora da ponta esquerda (dentro do desenho cairia em cima do dreno)
@@ -144,6 +152,98 @@ function plantaNaVista(m: Modelo, fiada: number, o: OpcoesDaVista): Prancha {
   // legenda só com os tipos que aparecem NESTA fiada (a 1ª não tem canaleta; a do topo é só canaleta)
   if (!o.semLegendaDeCores && aparece('legenda')) desenharLegenda(pr, X(xIni), linhaLegenda, itensDasTintas(tintasPresentes(cortados.map((q) => q.s))), Math.max(320, X(xFim) - X(xIni)));
   return pr;
+}
+
+interface SombraDaPlanta {
+  barra: Barra;
+  /** As barras iguais na mesma estação (posição, trecho, x; a do contraforte, todas da posição): a quantidade. */
+  n: number;
+  xa: number;
+  xb: number;
+}
+
+/**
+ * As SOMBRAS da planta (Jose, 20/10: "sombra na planta das barras nas canaletas"): cada barra deitada na canaleta da
+ * fiada — a corrida do muro, com as emendas, e a dobrada em L que entra no contraforte — tirada de dentro e posta
+ * solta embaixo da cota do comprimento, no x de verdade, como as longitudinais da armação da sapata: uma por posição e
+ * estação (a em L, uma só para todos os contrafortes, no x do primeiro), as peças da barra emendada em fileiras
+ * seguidas (o traspasse se lê na sobreposição), a perna do L com a
+ * medida da lista de ferros, a legenda do lado oposto ao da perna. Fiada sem canaleta não tem sombra. Volta o y px
+ * do que a sombra mais baixa ocupa (a legenda das cores vem depois).
+ */
+function desenharSombrasDaPlanta(pr: Prancha, m: Modelo, zBaixo: number, zc: number, yCota: number, S: number): number {
+  const naFiada = m.barras.filter((b) => b.papel === 'HORIZ' && b.eixo.every((p) => p[2] >= zBaixo - 1 && p[2] <= zc));
+  const grupos = new Map<string, SombraDaPlanta>();
+  for (const b of naFiada) {
+    const [xa, xb] = faixa(b.eixo, 0);
+    // a dobrada em L é igual em todo contraforte (a de um lado e a do outro são a mesma barra virada): uma sombra só,
+    // na primeira, com a soma — cinco sombras iguais "N8 – 1" só repetiam o que o contraforte já mostra
+    const k = b.contraforte !== undefined ? `${b.posicao}|cf` : `${b.posicao}|${b.trecho}|${Math.round((xa + xb) / 20)}`;
+    const g = grupos.get(k);
+    if (g) g.n++;
+    else grupos.set(k, { barra: b, n: 1, xa, xb });
+  }
+  const lista = [...grupos.values()].sort((a, b) => a.barra.posicao.localeCompare(b.barra.posicao, 'pt-BR', { numeric: true }) || a.xa - b.xa);
+  if (!lista.length) return yCota;
+  // famílias: a corrida do muro emendada (mesma posição e trecho, sem contraforte, x que se sobrepõem)
+  const familias: SombraDaPlanta[][] = [];
+  for (const s of lista) {
+    const fam = s.barra.contraforte === undefined
+      ? familias.find((f) => f[0].barra.contraforte === undefined && f[0].barra.posicao === s.barra.posicao && f[0].barra.trecho === s.barra.trecho &&
+        f.some((q) => Math.min(q.xb, s.xb) - Math.max(q.xa, s.xa) > 1))
+      : undefined;
+    if (fam) fam.push(s);
+    else familias.push([s]);
+  }
+  const X = (x: number) => x * S;
+  const legendaDe = (s: SombraDaPlanta) =>
+    `${s.barra.posicao} – ${s.n} Ø${String(Math.round(s.barra.diametro * 10) / 10).replace('.', ',')} C=${Math.round(s.barra.comprimento / 10)}`;
+  // a forma no lugar de origem: x de verdade, y contado do trecho comprido (a perna do L sai dele)
+  const forma = (s: SombraDaPlanta) => {
+    const pts = s.barra.eixo.map((p): Vec2 => [p[0], p[1]]);
+    const yRef = zDoMaiorTrecho(pts);
+    const tela = (p: Vec3): Pt => [X(p[0]), -(p[1] - yRef) * S];
+    const desenho = s.barra.eixo.map(tela);
+    const medidas = medidasDasPernas(s.barra, tela);
+    const v0 = Math.min(0, ...desenho.map((p) => p[1]), ...medidas.map((q) => q.caixa[1]));
+    const v1 = Math.max(0, ...desenho.map((p) => p[1]), ...medidas.map((q) => q.caixa[1] + q.caixa[3]));
+    // a legenda vai do lado sem perna: embaixo, a não ser que a perna desça
+    const emCima = v1 > 1 && v0 > -1;
+    return { desenho, medidas, v0, v1, emCima };
+  };
+  const formas = new Map(lista.map((s) => [s, forma(s)]));
+  const altura = Math.max(...[...formas.values()].map((f) => f.v1 - f.v0));
+  const passo = FILEIRA + altura;
+  const pegada = (s: SombraDaPlanta): Pegada => {
+    const w = Prancha.largura(legendaDe(s), T);
+    const cx = (X(s.xa) + X(s.xb)) / 2;
+    const [a, b] = [X(s.xa), X(s.xb)];
+    return { lo: Math.min(a, cx - w / 2), hi: Math.max(b, cx + w / 2), loTraco: a <= cx - w / 2, hiTraco: b >= cx + w / 2 };
+  };
+  const fileira = arrumarEmFileiras(familias, pegada);
+  const aco = corDoAcoNoDesenho();
+  // a primeira fileira desce o bastante para a perna que sobe e a legenda de cima não tocarem a cota
+  const y0 = yCota + 3 * T + Math.max(0, -Math.min(...[...formas.values()].map((f) => f.v0)));
+  let fundo = yCota;
+  pr.abrir('data-camada="sombras"');
+  for (const s of lista) {
+    const f = formas.get(s)!;
+    const y = y0 + fileira.get(s)! * passo;
+    const chave = `sombra:planta:${s.barra.posicao}:${s.barra.trecho}:${s.barra.contraforte ?? ''}:${Math.round(s.xa)}`;
+    pr.polilinha(f.desenho.map(([u, v]): Pt => [u, v + y]), { stroke: aco, sw: grossa(s.barra.diametro, S), id: s.barra.id, camada: CAMADA_DA_SOMBRA });
+    escreverMedidas(pr, f.medidas, chave, 0, y);
+    const cx = (X(s.xa) + X(s.xb)) / 2;
+    const yl = f.emCima ? y + f.v0 + LEGENDA_FORA.emCima : y + f.v1 + LEGENDA_FORA.embaixo;
+    pr.texto(cx, yl, legendaDe(s), { tam: T, camada: CAMADA_DA_SOMBRA, chave });
+    const w = Prancha.largura(legendaDe(s), T);
+    const lo = Math.min(X(s.xa), cx - w / 2);
+    const hi = Math.max(X(s.xb), cx + w / 2);
+    // cada fileira fica a uma distância fixa em px da cota: parte com origem própria (x do muro, y da fileira)
+    pr.regiao(chave, [0, y], [lo - 10, y + f.v0 - T - 6, hi - lo + 20, f.v1 - f.v0 + 2 * T + 12]);
+    fundo = Math.max(fundo, y + f.v1 + (f.emCima ? 0 : LEGENDA_FORA.embaixo));
+  }
+  pr.fechar();
+  return fundo;
 }
 
 function ordem(tp: string): number {

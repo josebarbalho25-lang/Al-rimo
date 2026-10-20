@@ -686,9 +686,19 @@ e dizer ao Jose o que mudou e por quê.
   embaixo). 3D é uma vista como as outras. Embaixo do trilho: tema e manual. Barra de estado fica. Só a moldura muda:
   conta, 3D, vistas, prancha, DXF e IFC não. Etapas: 1 moldura e topo · 2 Entradas e Memória · 3 Gráfica · 4 acabamento.
   A confirmar: engrenagem em 2º (Pró-Viga) ou embaixo (A-PORT).
-- **SOMBRAS QUE FALTAM (Jose, 20/10, anotado para fazer):** (a) corte lateral: sombra VERTICAL da barra que sobe pelo
-  muro e do ARRANQUE, nas duas versões (Padrão e nó de cachorro) — o que a armação da sapata já faz para as
-  longitudinais (`desenhos/armacaoDaSapata.ts`); (b) planta: sombra das barras nas canaletas. Camada DXF SOMBRAS.
+- **SOMBRAS NO CORTE E NA PLANTA (Jose, 20/10 — FEITO no mesmo dia):** regra comum em `desenhos/sombras.ts`
+  (fileiras do Pró-Viga, medida de cada perna = a da lista de ferros via `formaDaBarra.trechosNoModelo`, número que
+  procura lugar livre). CORTE (`corteLateral.ts` desenharSombrasDoCorte): espera (Padrão e nó), vertical do muro e as
+  do contraforte, uma por posição + elemento, à ESQUERDA do aterro (à direita as linhas das chamadas cruzavam), na
+  altura de verdade; reta = legenda em pé ao lado; com dobra = medidas nas pernas e legenda embaixo. O nó de cada furo
+  do contraforte (C diferente por furo, um N cada) vai JUNTO numa sombra: "N5 a N8 – 20 Ø10 C=441 a 447" e a perna
+  deitada "100 a 106" — só quando muda a perna DEITADA (a em pé é o traspasse, cada um com a sua cota). PLANTA
+  (`planta.ts` desenharSombrasDaPlanta): HORIZ da canaleta da fiada, embaixo da cota, emenda em fileiras seguidas, a
+  dobrada em L uma sombra só por posição com a soma. Camada 'sombras' (DXF SOMBRAS). Prova: `__testes__/sombras.test.ts`
+  (varre os 65 muros do gabarito × 2 arranques × 1:25/50/100). A conferir com ele: a faixa de sombras do contraforte
+  com nó fica ~2,5 cortes de largura (cada nó tem a largura da sapata); as chamadas da prancha repetem a legenda da
+  sombra (tirar a chamada de quem tem sombra?); a prancha que já tinha um corte vê o muro andar para a direita (a
+  sombra entra na caixa do desenho, à esquerda).
 - **DENTE SEM ARMADURA (Jose, 15/10: "nosso dente não tá armando, é muito detalhe, só anota, depois resolvemos"):** o
   dente da sapata sai no 3D, no corte e na armação sem barra nenhuma. Resolver depois, quando ele pedir.
 - **Revisão adversarial de 15/10 (3 revisores, 16 achados) — CORRIGIDA em 16/10** (`pranchas/__testes__/revisao16.test.ts`

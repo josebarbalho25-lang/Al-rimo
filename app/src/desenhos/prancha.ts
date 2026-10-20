@@ -450,6 +450,11 @@ export class Prancha {
     return Number.isFinite(this.r1) ? this.r1 : this.x1;
   }
 
+  /** O x mais à esquerda do que já foi traçado no lugar de origem (a mesma regra do `direita`). */
+  esquerda(): number {
+    return Number.isFinite(this.r0) ? this.r0 : this.x0;
+  }
+
   /** As partes do desenho com origem própria (RegiaoDoDesenho), na ordem em que nasceram. */
   readonly regioes: RegiaoDoDesenho[] = [];
 

@@ -84,7 +84,60 @@ function retanguloDoEstribo(pts: Vec3[]): FormaDaBarra | null {
   };
 }
 
-export function formaDaBarra(b: Pick<Barra, 'eixo' | 'diametro' | 'fechada' | 'comprimento'> & Pick<Partial<Barra>, 'estribo'>): FormaDaBarra {
+type BarraDaForma = Pick<Barra, 'eixo' | 'diametro' | 'fechada' | 'comprimento'> & Pick<Partial<Barra>, 'estribo'>;
+
+/**
+ * Os trechos da forma no MODELO, mm: de vértice a vértice, com a medida da lista de ferros. É o que a SOMBRA da barra
+ * escreve (desenhos/sombras.ts): a medida de cada perna ao lado da perna desenhada, com o número igual ao da lista.
+ * Barra reta: um trecho só, de ponta a ponta, com o C. Estribo: null (a sombra dele é a da armação, pelo retângulo).
+ */
+export function trechosNoModelo(b: BarraDaForma): { a: Vec3; b: Vec3; cm: number }[] | null {
+  if (b.estribo || b.fechada) return null;
+  const pts = b.eixo;
+  if (pts.length < 2) return null;
+  const v = verticesDaForma(b);
+  if (!v) return [{ a: pts[0], b: pts[pts.length - 1], cm: Math.round(b.comprimento / 10) }];
+  return v.slice(0, -1).map((p, i) => ({ a: p, b: v[i + 1], cm: Math.round(norma(sub(v[i + 1], p)) / 10) }));
+}
+
+/** Os trechos retos que contam (mais de 3φ e 2 cm; na fechada, todos); null = um só (a barra é reta). */
+function trechosDaForma(b: BarraDaForma): Trecho[] | null {
+  const pedacos = pedacosRetos(b.eixo, !!b.fechada);
+  const limiar = Math.max(3 * b.diametro, 20);
+  const trechos = b.fechada ? pedacos : pedacos.filter((t) => t.L >= limiar);
+  return trechos.length <= 1 ? null : trechos;
+}
+
+/** Os vértices da forma aberta no modelo, mm: as pontas livres e o cruzamento dos vizinhos (null = reta). */
+function verticesDaForma(b: BarraDaForma): Vec3[] | null {
+  const trechos = trechosDaForma(b);
+  if (!trechos) return null;
+  const pts = b.eixo;
+  const v: Vec3[] = [trechos[0].a];
+  for (let i = 1; i < trechos.length; i++) {
+    const [p, q] = [trechos[i - 1], trechos[i]];
+    if (dot(p.d, q.d) > -0.99) {
+      v.push(cruzamento(p, q));
+      continue;
+    }
+    // Volta de 180° (o U do nó de cachorro, dois arcos sem reta entre eles): os ramos são paralelos e não se
+    // cruzam. O fundo do U vira trecho — do ramo que desce ao que sobe, no ponto mais fundo do arco —, com a
+    // largura entre os eixos dos ramos, como a cota B da forma do Revit do Jose (15/10)
+    const i0 = pts.indexOf(p.b);
+    const i1 = pts.indexOf(q.a);
+    const arco = i0 >= 0 && i1 >= i0 ? pts.slice(i0, i1 + 1) : [p.b, q.a];
+    const fundo = arco.reduce((m, x) => (dot(sub(x, p.b), p.d) > dot(sub(m, p.b), p.d) ? x : m));
+    const noRamo = (t: Trecho): Vec3 => {
+      const k = dot(sub(fundo, t.a), t.d);
+      return [t.a[0] + k * t.d[0], t.a[1] + k * t.d[1], t.a[2] + k * t.d[2]];
+    };
+    v.push(noRamo(p), noRamo(q));
+  }
+  v.push(trechos[trechos.length - 1].b);
+  return v;
+}
+
+export function formaDaBarra(b: BarraDaForma): FormaDaBarra {
   const fechada = !!b.fechada;
   const reta = (): FormaDaBarra => ({ pontos: [[0, 0], [b.comprimento / 10, 0]], trechos: [Math.round(b.comprimento / 10)], fechada: false });
   const pts = b.eixo;
@@ -94,37 +147,13 @@ export function formaDaBarra(b: Pick<Barra, 'eixo' | 'diametro' | 'fechada' | 'c
     if (r) return r;
   }
 
-  const pedacos = pedacosRetos(pts, fechada);
-  const limiar = Math.max(3 * b.diametro, 20);
-  const trechos = fechada ? pedacos : pedacos.filter((t) => t.L >= limiar);
-  if (trechos.length <= 1) return reta();
+  const trechos = trechosDaForma(b);
+  if (!trechos) return reta();
 
   // vértices: as pontas livres e o cruzamento dos vizinhos
   const v: Vec3[] = [];
   if (fechada) for (let i = 0; i < trechos.length; i++) v.push(cruzamento(trechos[(i + trechos.length - 1) % trechos.length], trechos[i]));
-  else {
-    v.push(trechos[0].a);
-    for (let i = 1; i < trechos.length; i++) {
-      const [p, q] = [trechos[i - 1], trechos[i]];
-      if (dot(p.d, q.d) > -0.99) {
-        v.push(cruzamento(p, q));
-        continue;
-      }
-      // Volta de 180° (o U do nó de cachorro, dois arcos sem reta entre eles): os ramos são paralelos e não se
-      // cruzam. O fundo do U vira trecho — do ramo que desce ao que sobe, no ponto mais fundo do arco —, com a
-      // largura entre os eixos dos ramos, como a cota B da forma do Revit do Jose (15/10)
-      const i0 = pts.indexOf(p.b);
-      const i1 = pts.indexOf(q.a);
-      const arco = i0 >= 0 && i1 >= i0 ? pts.slice(i0, i1 + 1) : [p.b, q.a];
-      const fundo = arco.reduce((m, x) => (dot(sub(x, p.b), p.d) > dot(sub(m, p.b), p.d) ? x : m));
-      const noRamo = (t: Trecho): Vec3 => {
-        const k = dot(sub(fundo, t.a), t.d);
-        return [t.a[0] + k * t.d[0], t.a[1] + k * t.d[1], t.a[2] + k * t.d[2]];
-      };
-      v.push(noRamo(p), noRamo(q));
-    }
-    v.push(trechos[trechos.length - 1].b);
-  }
+  else v.push(...verticesDaForma(b)!);
 
   // o plano: u ao longo do trecho mais comprido, v no plano dos outros
   const longo = trechos.reduce((x, y) => (y.L > x.L ? y : x));

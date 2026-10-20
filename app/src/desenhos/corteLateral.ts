@@ -10,14 +10,16 @@
   - o contraforte seguinte, além do corte, tracejado (está enterrado no aterro, escondido);
   - aterro e solo da frente hachurados (derivados das medidas do modelo: o terreno do 3D é só para ver).
 */
-import type { Barra, Modelo, Vec2 } from '@/modelo/tipos';
+import type { Barra, Modelo, Vec2, Vec3 } from '@/modelo/tipos';
 import { cm, metros } from './formato';
+import { CAMADA_DA_SOMBRA, T, escreverMedidas, grossa, medidasDasPernas } from './sombras';
+import { formaDaBarra, trechosNoModelo } from '@/pranchas/formaDaBarra';
 import {
   ALVENARIA, barraNoPlanoX, contrafortesDoModelo, cruzamentos, faixa, projecao, projetarPontos, secao,
   solidosDoModelo, type Regiao, type Solido,
 } from './geometria';
 import { COR, Prancha, escalaPara, type Estilo, type OpcoesDaVista, type Pt } from './prancha';
-import { ancoraNaBarra, desenharChamadas, desenharEtiquetas, elementoDaBarra, type Chamada } from './chamadas';
+import { ancoraNaBarra, desenharChamadas, desenharEtiquetas, elementoDaBarra, textoDaChamada, type Chamada } from './chamadas';
 import { aparece, corDoAcoNoDesenho, hachuraDe, naVista, pecaAparece } from './graficos';
 
 export interface CortePadrao {
@@ -340,6 +342,9 @@ function corteNaVista(m: Modelo, xCorte: number | undefined, o: OpcoesDaVista): 
   }
   pr.fechar();
 
+  // ── sombras das barras que sobem: à esquerda do desenho, na altura de verdade ──────────────────────────────────
+  if (armadura) desenharSombrasDoCorte(pr, m, br.linhas, tela, S);
+
   // ── chamadas das barras: à direita, além do solo da frente ─────────────────────────────────────────────────────
   if (o.chamadas && aparece('corte', 'chamadas')) desenharChamadas(pr, m, chamadas, U(yPerto) + 24, o.chamadasPostas);
   if (o.etiquetas?.length && aparece('corte', 'chamadas')) desenharEtiquetas(pr, m, o.etiquetas, barrasPorChave, S);
@@ -353,6 +358,138 @@ function corteNaVista(m: Modelo, xCorte: number | undefined, o: OpcoesDaVista): 
   }
   if (m.familia.provisoria && cfs.length) pr.texto(U(yLonge), yTit - 20, 'PROVISÓRIO', { tam: 13, ancora: 'start', negrito: true, cor: COR.especial });
   return pr;
+}
+
+/** As barras de pé no plano do corte que ganham sombra: a vertical do muro, o arranque e as do contraforte. */
+const SOBEM = new Set<Barra['papel']>(['ESPERA', 'VERT_MURO', 'CF_PRINCIPAL', 'CF_CONSTRUTIVA']);
+/** Da borda do desenho à primeira sombra, e de uma sombra à outra, px. */
+const ANTES_DAS_SOMBRAS = 30;
+const ENTRE_SOMBRAS = 18;
+
+/**
+ * As SOMBRAS do corte (Jose, 20/10): cada barra de pé desenhada no corte — a vertical do muro, a espera (Padrão ou nó
+ * de cachorro) e as do contraforte — tirada de dentro da peça e posta solta à ESQUERDA de tudo, além do aterro, NA
+ * MESMA ALTURA (o armador lê onde ela começa e acaba olhando o muro do lado), uma por posição e elemento, lado a lado.
+ * À esquerda porque a coluna das chamadas fica à direita: ali as linhas de chamada atravessavam as sombras. Barra reta: a
+ * legenda corre em pé ao lado dela (a vertical tem a altura do muro: deitada, a legenda alargaria a coluna). Barra
+ * com dobras: as medidas da lista de ferros em cada perna, do lado de fora, e a legenda deitada embaixo da forma. A
+ * legenda é a da chamada ("N1 – 15 Ø10 c/40 C=210": a quantidade e o c/ do ELEMENTO). Cada sombra é uma parte com
+ * origem própria: ela fica a uma distância em px da borda do desenho, que muda com a cota e a escala.
+ */
+/**
+ * Barras de dobra da mesma forma que só mudam numa perna — no contraforte, o nó de cachorro de cada furo corre até a
+ * ponta e cada um tem o seu C (684, 686, 688…), cada um um N: uma sombra por N dava nove, doze sombras com a largura
+ * da sapata, mais largas que o corte. Vão juntas numa sombra só (a mais comprida), com a perna que muda escrita em
+ * faixa ("45 a 63") e a legenda com as posições, a soma e a faixa do C — como a "barra de comprimento variável" da
+ * prancha de armação. Mesmo papel, mesmo Ø, mesmo número de pernas e as outras pernas iguais — e a que muda é
+ * DEITADA (corre ao longo da sapata): a perna em pé que muda é o traspasse, e cada altura tem a sua cota no corte;
+ * juntas, o armador não saberia qual N sobe até onde.
+ */
+interface GrupoDeSombra { barras: Barra[]; varia: number }
+
+function agruparVariaveis(barras: Barra[]): GrupoDeSombra[] {
+  const grupos: (GrupoDeSombra & { trechos: number[] })[] = [];
+  for (const b of barras) {
+    const tr = formaDaBarra(b).trechos;
+    const pernas = trechosNoModelo(b) ?? [];
+    const deitada = (i: number) => !!pernas[i] && Math.abs(pernas[i].b[2] - pernas[i].a[2]) < Math.abs(pernas[i].b[1] - pernas[i].a[1]);
+    const g = tr.length >= 2 ? grupos.find((q) => {
+      const r = q.barras[0];
+      if (r.papel !== b.papel || r.diametro !== b.diametro || elementoDaBarra(r) !== elementoDaBarra(b) || q.trechos.length !== tr.length) return false;
+      const dif = tr.map((c, i) => (c !== q.trechos[i] ? i : -1)).filter((i) => i >= 0);
+      return dif.length === 0 || (dif.length === 1 && deitada(dif[0]) && (q.varia < 0 || q.varia === dif[0]));
+    }) : undefined;
+    if (!g) {
+      grupos.push({ barras: [b], varia: -1, trechos: tr });
+      continue;
+    }
+    const i = tr.findIndex((c, k) => c !== g.trechos[k]);
+    if (i >= 0) g.varia = i;
+    g.barras.push(b);
+  }
+  return grupos;
+}
+
+/** "N5 a N8" quando os N são seguidos; senão a lista ("N5, N7, N9"). */
+function posicoesEmFaixa(ns: string[]): string {
+  const num = (n: string) => Number(n.replace(/\D/g, ''));
+  const o = [...ns].sort((a, b) => num(a) - num(b));
+  const seguidos = o.every((n, i) => i === 0 || num(n) === num(o[i - 1]) + 1);
+  return o.length > 2 && seguidos ? `${o[0]} a ${o[o.length - 1]}` : o.join(', ');
+}
+
+function desenharSombrasDoCorte(pr: Prancha, m: Modelo, linhas: BarrasNoCorte['linhas'], tela: (p: Vec2) => Pt, S: number): void {
+  const uma = new Map<string, Barra>();
+  for (const l of linhas) {
+    if (!SOBEM.has(l.barra.papel)) continue;
+    const k = `${l.barra.posicao}|${elementoDaBarra(l.barra)}`;
+    if (!uma.has(k)) uma.set(k, l.barra);
+  }
+  // o muro antes do contraforte; a espera antes da que sobe nela; depois pelo N
+  const ordemDoPapel = (b: Barra) => ['ESPERA', 'VERT_MURO', 'CF_PRINCIPAL', 'CF_CONSTRUTIVA'].indexOf(b.papel);
+  const barras = [...uma.values()].sort((a, b) =>
+    (elementoDaBarra(a) === 'muro' ? 0 : 1) - (elementoDaBarra(b) === 'muro' ? 0 : 1) || ordemDoPapel(a) - ordemDoPapel(b) ||
+    a.posicao.localeCompare(b.posicao, 'pt-BR', { numeric: true }));
+  if (!barras.length) return;
+  const aco = corDoAcoNoDesenho();
+  // da borda esquerda para fora: a primeira da lista fica mais perto do muro
+  let x = pr.esquerda() - ANTES_DAS_SOMBRAS;
+  pr.abrir('data-camada="sombras"');
+  for (const g of agruparVariaveis(barras)) {
+    // a mais comprida desenha; a legenda e a perna que muda contam todas
+    const b = g.barras.reduce((p, q) => (q.comprimento > p.comprimento ? q : p));
+    const el = elementoDaBarra(b);
+    const chave = `sombra:corte:${b.posicao}:${el}`;
+    let legenda = textoDaChamada(m, b.posicao, el);
+    const variaveis: (string | undefined)[] = [];
+    if (g.barras.length > 1) {
+      const doElemento = (n: string) => m.barras.filter((q) => q.posicao === n && elementoDaBarra(q) === el).length;
+      const cs = g.barras.map((q) => Math.round(q.comprimento / 10));
+      const n = g.barras.reduce((s, q) => s + doElemento(q.posicao), 0);
+      const faixaDe = (vs: number[]) => (Math.min(...vs) === Math.max(...vs) ? String(vs[0]) : `${Math.min(...vs)} a ${Math.max(...vs)}`);
+      legenda = `${posicoesEmFaixa(g.barras.map((q) => q.posicao))} – ${n} Ø${String(b.diametro).replace('.', ',')} C=${faixaDe(cs)}`;
+      if (g.varia >= 0) variaveis[g.varia] = faixaDe(g.barras.map((q) => formaDaBarra(q).trechos[g.varia]));
+    }
+    const wl = Prancha.largura(legenda, T);
+    const naTela = (p: Vec3): Pt => tela([p[1], p[2]]);
+    const pts = projetarPontos(b.eixo, 'X').map(tela);
+    const medidas = medidasDasPernas(b, naTela, variaveis);
+    const us = pts.map((p) => p[0]), vs = pts.map((p) => p[1]);
+    const [u0, u1, v0, v1] = [Math.min(...us), Math.max(...us), Math.min(...vs), Math.max(...vs)];
+    // a caixa de tudo o que a sombra escreve, no lugar de origem (a barra dentro da peça)
+    let [c0, c1, d1] = [u0, u1, v1];
+    for (const q of medidas) {
+      c0 = Math.min(c0, q.caixa[0]);
+      c1 = Math.max(c1, q.caixa[0] + q.caixa[2]);
+      d1 = Math.max(d1, q.caixa[1] + q.caixa[3]);
+    }
+    const reta = medidas.length === 0;
+    // reta: a legenda em pé à esquerda dela; com dobras: deitada, centrada embaixo da forma
+    if (reta) c0 = Math.min(c0, u0 - 5 - 0.85 * T);
+    else {
+      const meio = (u0 + u1) / 2;
+      c0 = Math.min(c0, meio - wl / 2);
+      c1 = Math.max(c1, meio + wl / 2);
+    }
+    const dx = x - c1;
+    pr.polilinha(pts.map(([u, v]): Pt => [u + dx, v]), { stroke: aco, sw: grossa(b.diametro, S), id: b.id, camada: CAMADA_DA_SOMBRA });
+    escreverMedidas(pr, medidas, chave, dx);
+    // em cima e embaixo do que a sombra ocupa: a legenda em pé mais comprida que a barra sobra para os dois lados
+    let [yAlto, yBaixo] = [v0, d1];
+    if (reta) {
+      pr.texto(u0 + dx - 5, (v0 + v1) / 2, legenda, { tam: T, giro: 90, camada: CAMADA_DA_SOMBRA, chave });
+      yAlto = Math.min(v0, (v0 + v1) / 2 - wl / 2);
+      yBaixo = Math.max(d1, (v0 + v1) / 2 + wl / 2);
+    } else {
+      yBaixo = d1 + 6 + 0.85 * T;
+      pr.texto((u0 + u1) / 2 + dx, yBaixo, legenda, { tam: T, camada: CAMADA_DA_SOMBRA, chave });
+    }
+    // a origem é o (0, 0) do corte levado junto com a barra: a cota criada na sombra mede em mm do muro
+    const [o0, o1] = tela([0, 0]);
+    pr.regiao(chave, [o0 + dx, o1], [c0 + dx - 6, yAlto - 6, c1 - c0 + 12, yBaixo - yAlto + 12]);
+    x -= c1 - c0 + ENTRE_SOMBRAS;
+  }
+  pr.fechar();
 }
 
 export function corteLateral(m: Modelo, x?: number): string {

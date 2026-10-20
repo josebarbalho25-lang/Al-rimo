@@ -36,7 +36,6 @@
   como em toda vista (paraPrancha.ts), a anotação não encolhe em 1:50 — o desenho fica do tamanho que a escala der.
 */
 import type { Barra, Modelo, PapelBarra, Vec2, Vec3 } from '@/modelo/tipos';
-import { CORPO_DA_COTA } from '@/pranchas/tipos';
 import { formaDaBarra } from '@/pranchas/formaDaBarra';
 import { cm } from './formato';
 import { cruzamentos, faixa, projecao, projetarPontos, secao, solidosDoModelo, type Solido } from './geometria';
@@ -44,19 +43,10 @@ import { COR, Prancha, escalaPara, type OpcoesDaVista, type Pt } from './prancha
 import { espacamentoDaPosicao, textoDaChamada } from './chamadas';
 import { estiloDaSecao } from './corteLateral';
 import { aparece, corDoAcoNoDesenho, naVista } from './graficos';
+// as fileiras (na junta de controle, as sombras de um trecho ficam na mesma fileira das do vizinho enquanto o vão se
+// enxerga — até 1:50; abaixo disso a de lá desce uma) e a letra: as mesmas do corte e da planta
+import { CAMADA_DA_SOMBRA, FILEIRA, LEGENDA_FORA, T, arrumarEmFileiras, zDoMaiorTrecho, type Pegada } from './sombras';
 
-/** Toda letra da vista: o corpo da cota, o menor que o papel aceita (2,5 mm de maiúscula na prancha). */
-const T = CORPO_DA_COTA;
-/** Da linha da sombra à linha de base da legenda, do lado de fora (o Pró-Viga escreve a 8 cm, com letra de 9). */
-const LEGENDA_FORA = { embaixo: 4 + 0.85 * T, emCima: -(4 + 0.25 * T) };
-/** De uma fileira de sombras à seguinte: o SHADOW_ROW do Pró-Viga (28 com letra de 9) na letra daqui. */
-const FILEIRA = 34;
-/** Folga entre duas sombras lado a lado na mesma fileira (ROW_GAP_H, 20 com letra de 9) quando uma legenda está na
- *  ponta; entre dois traços, só o bastante para o vão aparecer: na junta de controle as barras dos dois trechos
- *  ficam a 2 cobrimentos + a junta uma da outra, e cada trecho é uma sapata — as sombras dele ficam na mesma
- *  fileira das do vizinho enquanto o vão se enxerga (até 1:50); abaixo disso a de lá desce uma fileira. */
-const FOLGA_NA_FILEIRA = 2 * T;
-const FOLGA_ENTRE_TRACOS = 3;
 /** Da cota do comprimento (o que a elevação tem de mais baixo) à primeira fileira de baixo. */
 const ANTES_DAS_SOMBRAS = 3 * T;
 /** Da faixa de estribo mais alta à primeira fileira de cima (NEG_INITIAL_GAP, 30 com letra de 9). */
@@ -66,12 +56,6 @@ const ACIMA_DO_TOCO = 22;
 const PASSO_DA_FAIXA = 32;
 /** Zigue-zague da linha de interrupção (o _breakLine do Pró-Viga), px. */
 const AMPLITUDE = 5;
-/**
- * A camada do traço da sombra: a dela, não a do aço — como no DXF do Pró-Viga (SOMBRA e SOMBRA_EST, à parte da
- * armadura de dentro da peça, com cor própria: o shadowColor de lá). É a anotação 'sombras' da tabela de gráficos
- * (graficos.ts): a cor que a vista der vale para a sombra e não mexe na barra de dentro.
- */
-const CAMADA_DA_SOMBRA = 'sombras';
 
 const bitola = (phi: number): string => `Ø${String(Math.round(phi * 10) / 10).replace('.', ',')}`;
 
@@ -186,45 +170,6 @@ export function sombrasDaSapata(m: Modelo): SombraDaSapata[][] {
 /** A legenda da sombra: o formato das chamadas, sem "c/" (a sombra conta as barras dela, não a posição inteira). */
 export function legendaDaSombra(s: SombraDaSapata): string {
   return `${s.posicao} – ${s.ids.length} ${bitola(s.diametro)} C=${Math.round(s.comprimento / 10)}`;
-}
-
-/** O z do trecho reto mais comprido da barra projetada: é ele que deita na linha da sombra (os ganchos saem dele). */
-function zDoMaiorTrecho(pts: Vec2[]): number {
-  let melhor = 0;
-  let z = pts[0]?.[1] ?? 0;
-  for (let i = 1; i < pts.length; i++) {
-    const L = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-    if (L > melhor) [melhor, z] = [L, (pts[i][1] + pts[i - 1][1]) / 2];
-  }
-  return z;
-}
-
-/** O que a sombra ocupa na fileira, px: de onde a onde, e se cada ponta é o traço (ou a legenda, mais larga). */
-interface Pegada { lo: number; hi: number; loTraco: boolean; hiTraco: boolean }
-
-function cabemLadoALado(p: Pegada, q: Pegada): boolean {
-  const [e, d] = p.lo <= q.lo ? [p, q] : [q, p];
-  return d.lo - e.hi >= (e.hiTraco && d.loTraco ? FOLGA_ENTRE_TRACOS : FOLGA_NA_FILEIRA);
-}
-
-/**
- * A fileira de cada sombra (0 = a mais perto da sapata): a família entra inteira, a peça j na fileira r0 + j, com r0
- * o primeiro em que todas cabem — fileira que ainda não existe conta como vazia, então r0 nunca passa do fim.
- */
-function arrumarEmFileiras(familias: SombraDaSapata[][], pegada: (s: SombraDaSapata) => Pegada): Map<SombraDaSapata, number> {
-  const fileiras: Pegada[][] = [];
-  const out = new Map<SombraDaSapata, number>();
-  const cabe = (r: number, p: Pegada) => !fileiras[r] || fileiras[r].every((q) => cabemLadoALado(p, q));
-  for (const fam of familias) {
-    const ps = fam.map(pegada);
-    let r0 = 0;
-    while (!ps.every((p, j) => cabe(r0 + j, p))) r0++;
-    fam.forEach((s, j) => {
-      (fileiras[r0 + j] ??= []).push(ps[j]);
-      out.set(s, r0 + j);
-    });
-  }
-  return out;
 }
 
 // ── as faixas de estribo ──────────────────────────────────────────────────────────────────────────────────────────
