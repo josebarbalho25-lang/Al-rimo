@@ -32,10 +32,12 @@ import { useInterface } from '@/estado/interface';
 import { TelaDeEntradas } from '@/ui/EntradaPorFiguras';
 import { Chevron } from '@/ui/icones';
 import { JanelaDeGraficos } from '@/ui/JanelaDeGraficos';
+import { useJanelaDeGraficos } from '@/desenhos/useJanelaDeGraficos';
 import { PainelDeEntradas } from '@/ui/PainelDeEntradas';
 import { TelaInicio } from '@/ui/TelaInicio';
 import { PortaDoTermo } from '@/ui/TermoDeUso';
 import { CabecalhoDaSecao, Trilho } from '@/ui/Trilho';
+import { ehCampoDeTexto } from '@/ui/teclado';
 
 /** Faixa da largura do painel ao arrastar, em px de TELA. */
 const LARGURA_MIN = 300;
@@ -55,6 +57,12 @@ export function App() {
 function Casca() {
   useAtalhos();
   const secao = useInterface((s) => s.secao);
+  // A janela de Gráficos de uma vista ou do 3D é da Gráfica: saindo dela, fecha como está (mexer numa vista que não
+  // está à vista não serve). A geral (Configurações) fica.
+  useEffect(() => {
+    const j = useJanelaDeGraficos.getState();
+    if (secao !== 'grafica' && j.alvo && j.alvo.tipo !== 'geral') j.fechar();
+  }, [secao]);
   return (
     <div className="app" data-secao={secao}>
       <Trilho />
@@ -66,7 +74,10 @@ function Casca() {
           {secao === 'entradas' && <TelaDeEntradas />}
           {secao === 'memoria' && <SecaoDaMemoria />}
           {secao === 'quantitativo' && <Palco aba="quantitativo" />}
-          {secao === 'grafica' && <SecaoGrafica />}
+          {/* A Gráfica fica montada, escondida: ir às Entradas mudar um número e voltar acha o 3D na mesma câmera, com
+              as ocultas, a Armadura e o corte como estavam, e a folha no mesmo zoom (antes de 20/10 as Entradas eram
+              uma janela por cima, e o 3D nem saía de baixo). O teclado das vistas só responde à que está à vista. */}
+          <SecaoGrafica escondida={secao !== 'grafica'} />
         </div>
       </div>
       <BarraDeEstado />
@@ -76,10 +87,10 @@ function Casca() {
 }
 
 /** A Gráfica: as abas das vistas e das pranchas sobre o palco (a etapa 3 troca as abas pelo navegador do A-PORT). */
-function SecaoGrafica() {
+function SecaoGrafica({ escondida }: { escondida: boolean }) {
   const aba = useApp((s) => abaDaGrafica(s.aba));
   return (
-    <div className="secao-grafica">
+    <div className="secao-grafica" hidden={escondida}>
       <AbasDoPalco />
       <Palco aba={aba} />
     </div>
@@ -173,8 +184,7 @@ function useAtalhos() {
         e.preventDefault();
         void abrirProjeto();
       } else if (k === 'z' || k === 'y') {
-        const alvo = e.target as HTMLElement | null;
-        if (alvo && (alvo.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(alvo.tagName))) return;
+        if (ehCampoDeTexto(e.target)) return;
         e.preventDefault();
         const s = useApp.getState();
         if (k === 'y' || e.shiftKey) s.refazer();
@@ -185,3 +195,4 @@ function useAtalhos() {
     return () => window.removeEventListener('keydown', tecla);
   }, []);
 }
+

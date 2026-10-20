@@ -139,6 +139,10 @@
   display: flex;
   flex-direction: column;
 }
+/* escondida enquanto se está noutra seção (o display:flex acima venceria o [hidden] do navegador) */
+.secao-grafica[hidden] {
+  display: none;
+}
 .secao-grafica > .abas-vista {
   flex: 0 0 var(--abas-h);
 }

@@ -120,6 +120,80 @@ describe('desfazer e refazer', () => {
   });
 });
 
+describe('o que a revisão de 20/10 achou', () => {
+  it('desfazer até o que está salvo apaga o •; refazer acende de novo', async () => {
+    const app = await abrirApp();
+    const s = () => app.useApp.getState();
+    s().marcarSalvo('Muro.alrimo', 'Muro', app.projetoAtual(s()));
+    expect(s().sujo).toBe(false);
+    s().definir('H_muro', 2.2);
+    expect(s().sujo).toBe(true);
+    s().desfazer();
+    expect(s().sujo).toBe(false);
+    s().refazer();
+    expect(s().sujo).toBe(true);
+  });
+
+  it('muro aberto do disco: desfazer até ele apaga o •', async () => {
+    const app = await abrirApp();
+    const s = () => app.useApp.getState();
+    s().carregar({ id: '0b9f3c1e-6a2d-4c8e-9f10-2a3b4c5d6e7f', titulo: 'X', alteracoes: { H_muro: 2.2 }, extras: {} }, 'X.alrimo');
+    s().definir('H_muro', 2.4);
+    s().desfazer();
+    expect(s().sujo).toBe(false);
+  });
+
+  it('nas pranchas, mexidas separadas por mais que uma rajada são passos separados', async () => {
+    vi.useFakeTimers();
+    const app = await abrirApp();
+    const s = () => app.useApp.getState();
+    s().mudarPranchas((p) => ({ ...p, obra: { ...p.obra, obra: 'O' } }));
+    vi.advanceTimersByTime(100);
+    s().mudarPranchas((p) => ({ ...p, obra: { ...p.obra, obra: 'Ob' } })); // a mesma rajada (digitando)
+    vi.advanceTimersByTime(800);
+    s().mudarPranchas((p) => ({ ...p, obra: { ...p.obra, desenhista: 'D' } }));
+    s().desfazer();
+    expect(s().pranchas.obra.obra).toBe('Ob');
+    expect(s().pranchas.obra.desenhista).not.toBe('D');
+    expect(s().podeDesfazer).toBe(true);
+    s().desfazer();
+    expect(s().pranchas.obra.obra).not.toBe('Ob');
+    expect(s().podeDesfazer).toBe(false);
+  });
+
+  it('a janela de Gráficos: tudo o que uma abertura mexe é um passo; o Cancelar não deixa passo', async () => {
+    vi.useFakeTimers();
+    const app = await abrirApp();
+    const s = () => app.useApp.getState();
+    const antes = s().pranchas;
+    const mexer = (obra: string) => s().mudarPranchas((p) => ({ ...p, obra: { ...p.obra, obra } }), { passo: 'graficos:1' });
+    mexer('cor A');
+    vi.advanceTimersByTime(5000);
+    mexer('cor B');
+    s().desfazer();
+    expect(s().pranchas).toEqual(antes);
+    expect(s().podeDesfazer).toBe(false);
+    // de novo, e agora Cancelar: o "antes" volta e nenhum passo fica
+    s().mudarPranchas((p) => ({ ...p, obra: { ...p.obra, obra: 'cor C' } }), { passo: 'graficos:2' });
+    s().mudarPranchas(() => antes, { passo: 'graficos:2' });
+    expect(s().podeDesfazer).toBe(false);
+    expect(s().pranchas).toEqual(antes);
+  });
+
+  it('o Ctrl+Z é do campo só onde se digita', async () => {
+    const { ehCampoDeTexto } = await import('@/ui/teclado');
+    expect(ehCampoDeTexto({ tagName: 'INPUT', type: 'text' })).toBe(true);
+    expect(ehCampoDeTexto({ tagName: 'INPUT' })).toBe(true);
+    expect(ehCampoDeTexto({ tagName: 'TEXTAREA' })).toBe(true);
+    expect(ehCampoDeTexto({ tagName: 'DIV', isContentEditable: true })).toBe(true);
+    expect(ehCampoDeTexto({ tagName: 'SELECT' })).toBe(false);
+    expect(ehCampoDeTexto({ tagName: 'INPUT', type: 'checkbox' })).toBe(false);
+    expect(ehCampoDeTexto({ tagName: 'INPUT', type: 'range' })).toBe(false);
+    expect(ehCampoDeTexto({ tagName: 'BUTTON' })).toBe(false);
+    expect(ehCampoDeTexto(null)).toBe(false);
+  });
+});
+
 describe('a seção do trilho', () => {
   it('sem seção lembrada, abre na Gráfica; com a Memória aberta antes de 20/10, na Memória', async () => {
     expect((await abrirApp()).useInterface.getState().secao).toBe('grafica');

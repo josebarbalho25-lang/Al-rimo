@@ -122,8 +122,11 @@ export interface EstadoDoApp {
    */
   marcarSalvo: (arquivo: string, titulo: string, gravado: Projeto) => void;
   selecionar: (id: string | null) => void;
-  /** Toda mudança nas pranchas passa aqui: marca o muro como alterado, como uma entrada. */
-  mudarPranchas: (f: (p: PranchasDoProjeto) => PranchasDoProjeto) => void;
+  /**
+   * Toda mudança nas pranchas passa aqui: marca o muro como alterado, como uma entrada. `passo`: as mexidas com a
+   * mesma chave são UM passo de desfazer, sem prazo (a janela de Gráficos aberta: tudo o que ela mexe até fechar).
+   */
+  mudarPranchas: (f: (p: PranchasDoProjeto) => PranchasDoProjeto, o?: { passo?: string }) => void;
   escolherAba: (aba: IdAba) => void;
   /** Recado da barra de estado; vive alguns segundos. Prefixe com RECADO_RUIM a má notícia. */
   dizer: (recado: string | null, ms?: number) => void;
@@ -154,21 +157,42 @@ interface Foto {
   ajustesDeLista: Record<string, AjusteDeLista>;
 }
 const PASSOS_GUARDADOS = 100;
-/** Até quanto tempo parado a mexida seguinte ainda é o mesmo passo, ms. */
+/** Até quanto tempo parado a tecla seguinte no MESMO campo ainda é o mesmo passo, ms. */
 const MESMO_PASSO_MS = 1200;
+/**
+ * Nas pranchas a mexida não diz o que mudou (arrastar, apagar, renomear passam pela mesma porta): só a rajada é um
+ * passo — as teclas de um nome digitado. Mexida separada por mais que isto (soltar um arrasto e apertar Delete
+ * noutro item) é outro passo.
+ */
+const RAJADA_MS = 400;
 let passados: Foto[] = [];
 let futuros: Foto[] = [];
-let ultimaMexida: { chave: string; t: number } | null = null;
+let ultimaMexida: { chave: string; t: number; prazo: number } | null = null;
 
 const fotoDe = (s: Pick<EstadoDoApp, 'alteracoes' | 'extras' | 'pranchas' | 'ajustesDeLista'>): Foto => ({
   alteracoes: s.alteracoes, extras: s.extras, pranchas: s.pranchas, ajustesDeLista: s.ajustesDeLista,
 });
 
-/** Antes de uma mudança: guarda a foto de antes, a não ser que seja a continuação da mexida anterior. */
-function anotarPasso(s: EstadoDoApp, chave: string): Pick<EstadoDoApp, 'podeDesfazer' | 'podeRefazer'> {
+/**
+ * O que está no disco, para o • dizer a verdade depois de desfazer: desfazer até o que foi salvo apaga o •, e o Novo
+ * não pergunta por "alterações" que não existem. null = não se sabe (muro reaberto do navegador com alteração).
+ */
+let assinaturaSalva: string | null = null;
+const assinatura = (s: Pick<EstadoDoApp, 'alteracoes' | 'extras' | 'pranchas'>): string =>
+  JSON.stringify([s.alteracoes, s.extras, s.pranchas], (_k, v: unknown) =>
+    // chaves em ordem: o mesmo muro escrito noutra ordem (o campo apagado e redigitado) é o mesmo muro
+    v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) : v);
+const sujoDepoisDe = (s: Pick<EstadoDoApp, 'alteracoes' | 'extras' | 'pranchas'>): boolean =>
+  assinaturaSalva === null || assinatura(s) !== assinaturaSalva;
+
+/**
+ * Antes de uma mudança: guarda a foto de antes, a não ser que seja a continuação da mexida anterior (mesma chave,
+ * dentro do prazo dela).
+ */
+function anotarPasso(s: EstadoDoApp, chave: string, prazo = MESMO_PASSO_MS): Pick<EstadoDoApp, 'podeDesfazer' | 'podeRefazer'> {
   const agora = Date.now();
-  const continua = ultimaMexida !== null && ultimaMexida.chave === chave && agora - ultimaMexida.t < MESMO_PASSO_MS;
-  ultimaMexida = { chave, t: agora };
+  const continua = ultimaMexida !== null && ultimaMexida.chave === chave && agora - ultimaMexida.t < ultimaMexida.prazo;
+  ultimaMexida = { chave, t: agora, prazo };
   if (!continua) {
     passados.push(fotoDe(s));
     if (passados.length > PASSOS_GUARDADOS) passados.shift();
@@ -351,6 +375,9 @@ function projetoInicial(): Inicio {
 
 const inicio = projetoInicial();
 const { mudouNaLista: inicioMudou, ...contaInicial } = comConta(SEM_LIGACOES, inicio.p.alteracoes, inicio.p.extras, {}, null);
+assinaturaSalva = inicio.sujo || inicioMudou
+  ? null
+  : assinatura({ alteracoes: contaInicial.alteracoes, extras: inicio.p.extras, pranchas: inicio.p.pranchas ?? SEM_PRANCHAS });
 let relogioDoRecado: ReturnType<typeof setTimeout> | undefined;
 
 export const useApp = create<EstadoDoApp>()((set, get) => ({
@@ -398,7 +425,8 @@ export const useApp = create<EstadoDoApp>()((set, get) => ({
     futuros.push(fotoDe(s));
     ultimaMexida = null;
     const { mudouNaLista: _, ...conta } = comConta(s.ligacoes, foto.alteracoes, foto.extras, foto.ajustesDeLista, null);
-    set({ ...conta, extras: foto.extras, pranchas: foto.pranchas, sujo: true, podeDesfazer: passados.length > 0, podeRefazer: true });
+    const sujo = sujoDepoisDe({ alteracoes: conta.alteracoes, extras: foto.extras, pranchas: foto.pranchas });
+    set({ ...conta, extras: foto.extras, pranchas: foto.pranchas, sujo, podeDesfazer: passados.length > 0, podeRefazer: true });
   },
 
   refazer() {
@@ -408,7 +436,8 @@ export const useApp = create<EstadoDoApp>()((set, get) => ({
     passados.push(fotoDe(s));
     ultimaMexida = null;
     const { mudouNaLista: _, ...conta } = comConta(s.ligacoes, foto.alteracoes, foto.extras, foto.ajustesDeLista, null);
-    set({ ...conta, extras: foto.extras, pranchas: foto.pranchas, sujo: true, podeDesfazer: true, podeRefazer: futuros.length > 0 });
+    const sujo = sujoDepoisDe({ alteracoes: conta.alteracoes, extras: foto.extras, pranchas: foto.pranchas });
+    set({ ...conta, extras: foto.extras, pranchas: foto.pranchas, sujo, podeDesfazer: true, podeRefazer: futuros.length > 0 });
   },
 
   carregar(p, arquivo, opc) {
@@ -416,11 +445,13 @@ export const useApp = create<EstadoDoApp>()((set, get) => ({
     // Arquivo com valor que saiu da lista (salvo antes das montagens fechadas): a conta ajusta e o muro fica
     // marcado como alterado — o que está na tela já não é o que está no disco.
     const { mudouNaLista, ...conta } = comConta(s.ligacoes, p.alteracoes, p.extras, {}, null);
+    const sujo = (opc?.sujo ?? false) || mudouNaLista;
+    assinaturaSalva = sujo ? null : assinatura({ alteracoes: conta.alteracoes, extras: p.extras, pranchas: p.pranchas ?? SEM_PRANCHAS });
     set({
       idDoProjeto: p.id,
       titulo: p.titulo,
       arquivo,
-      sujo: (opc?.sujo ?? false) || mudouNaLista,
+      sujo,
       extras: p.extras,
       pranchas: p.pranchas ?? SEM_PRANCHAS,
       contaDoArquivo: opc?.contaDoArquivo ?? null,
@@ -435,6 +466,7 @@ export const useApp = create<EstadoDoApp>()((set, get) => ({
   marcarSalvo(arquivo, titulo, gravado) {
     const s = get();
     const igual = s.alteracoes === gravado.alteracoes && s.extras === gravado.extras && (gravado.pranchas === undefined || s.pranchas === gravado.pranchas);
+    assinaturaSalva = assinatura({ alteracoes: gravado.alteracoes, extras: gravado.extras, pranchas: gravado.pranchas ?? s.pranchas });
     // a identidade é a do arquivo gravado (o "Salvar como" de um muro já salvo grava com uma nova)
     set({ arquivo, titulo, sujo: !igual, contaDoArquivo: null, idDoProjeto: gravado.id });
   },
@@ -443,13 +475,23 @@ export const useApp = create<EstadoDoApp>()((set, get) => ({
     set({ selecionado: id });
   },
 
-  mudarPranchas(f) {
-    const antes = get().pranchas;
+  mudarPranchas(f, o) {
+    const s = get();
+    const antes = s.pranchas;
     const pranchas = f(antes);
     // as mexidas criam objetos novos mesmo sem mudar nada (excluir o que não existe, redigitar o mesmo número):
     // compara o conteúdo (as pranchas não têm desenho nem foto, é texto pequeno) para não acender o • à toa
     if (pranchas === antes || mesmoConteudo(pranchas, antes)) return;
-    const passo = anotarPasso(get(), 'pranchas');
+    const passo = o?.passo ? anotarPasso(s, `p:${o.passo}`, Infinity) : anotarPasso(s, 'pranchas', RAJADA_MS);
+    // o passo voltou ao começo dele (o Cancelar da janela de Gráficos devolve o "antes"): passo vazio não fica
+    const inicio = passados[passados.length - 1];
+    if (inicio && inicio.alteracoes === s.alteracoes && inicio.extras === s.extras && mesmoConteudo(inicio.pranchas, pranchas)) {
+      passados.pop();
+      ultimaMexida = null;
+      const n = { pranchas, podeDesfazer: passados.length > 0 };
+      set({ ...n, sujo: sujoDepoisDe({ ...s, ...n }) });
+      return;
+    }
     set({ pranchas, sujo: true, ...passo });
   },
 

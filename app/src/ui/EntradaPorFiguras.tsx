@@ -193,7 +193,7 @@ function EditorDeCota({
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) aoFechar();
       }}
       onKeyDown={(e) => {
-        if (e.key === 'Escape') e.stopPropagation();   // Esc fecha a caixinha, não a janela inteira
+        if (e.key === 'Escape') e.stopPropagation();   // o Esc é da caixinha: não sobe para quem mais escute
       }}
     >
       <span>{c.curto}</span>
