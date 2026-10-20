@@ -176,6 +176,20 @@ describe('sombras no corte', () => {
     expect(ruins).toEqual([]);
   }, 120000);
 
+  it('a barra de pé com sombra não leva chamada; com as sombras desligadas a chamada volta', () => {
+    for (const [, m] of CORTES) {
+      for (const c of cortesPadrao(m)) {
+        const rotulos = (graficos?: SobreposicaoDaVista) =>
+          desenharCorteLateral(m, c.x, { S: S25, semTitulo: true, prefixo: 'c', chamadas: true, graficos }).chamadas.map((q) => q.rotulo);
+        const comSombra = deCadaUma(m, c.x).map((b) => textoDaChamada(m, b.posicao, elementoDaBarra(b)));
+        const com = rotulos();
+        for (const r of comSombra) expect(com).not.toContain(r);
+        const sem = rotulos({ anotacoes: { sombras: { visivel: false } } });
+        for (const r of comSombra) expect(sem).toContain(r);
+      }
+    }
+  });
+
   it('somem com o "Sombras" desligado e com a armadura escondida', () => {
     const m = CORTES[0][1];
     const x = cortesPadrao(m)[0].x;

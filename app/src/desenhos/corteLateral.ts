@@ -20,7 +20,7 @@ import {
 } from './geometria';
 import { COR, Prancha, escalaPara, type Estilo, type OpcoesDaVista, type Pt } from './prancha';
 import { ancoraNaBarra, desenharChamadas, desenharEtiquetas, elementoDaBarra, textoDaChamada, type Chamada } from './chamadas';
-import { aparece, corDoAcoNoDesenho, hachuraDe, naVista, pecaAparece } from './graficos';
+import { anotacaoVisivel, aparece, corDoAcoNoDesenho, hachuraDe, naVista, pecaAparece } from './graficos';
 
 export interface CortePadrao {
   rotulo: string;
@@ -233,6 +233,9 @@ function corteNaVista(m: Modelo, xCorte: number | undefined, o: OpcoesDaVista): 
     barrasPorChave.set(k, [...(barrasPorChave.get(k) ?? []), pts]);
   };
   const armadura = aparece('corte', 'armadura');
+  // A barra de pé com sombra não leva chamada (Jose, 20/10): a sombra já diz o N, a quantidade, o Ø e o C, e a
+  // chamada repetia a mesma legenda. Com as sombras desligadas a chamada volta — a barra nunca fica sem nome.
+  const temSombra = (b: Barra) => SOBEM.has(b.papel) && anotacaoVisivel('sombras');
   pr.abrir('data-camada="barras"');
   for (const l of armadura ? br.linhas : []) {
     let pts = l.pts;
@@ -248,7 +251,7 @@ function corteNaVista(m: Modelo, xCorte: number | undefined, o: OpcoesDaVista): 
     }
     const tp = pts.map(tela);
     pr.polilinha(l.fechada ? [...tp, tp[0]] : tp, { stroke: corDoAcoNoDesenho(), sw: Math.max(1, l.barra.diametro * S), id: l.barra.id });
-    chamadas.push({ posicao: l.barra.posicao, elemento: elementoDaBarra(l.barra), ancora: ancoraNaBarra(tp) });
+    if (!temSombra(l.barra)) chamadas.push({ posicao: l.barra.posicao, elemento: elementoDaBarra(l.barra), ancora: ancoraNaBarra(tp) });
     // a barra fechada com o lado que fecha: a etiqueta prende em qualquer lado do estribo
     guardar(l.barra, l.fechada ? [...tp, tp[0]] : tp);
   }

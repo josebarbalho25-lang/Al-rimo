@@ -696,9 +696,9 @@ e dizer ao Jose o que mudou e por quê.
   (`planta.ts` desenharSombrasDaPlanta): HORIZ da canaleta da fiada, embaixo da cota, emenda em fileiras seguidas, a
   dobrada em L uma sombra só por posição com a soma. Camada 'sombras' (DXF SOMBRAS). Prova: `__testes__/sombras.test.ts`
   (varre os 65 muros do gabarito × 2 arranques × 1:25/50/100). A conferir com ele: a faixa de sombras do contraforte
-  com nó fica ~2,5 cortes de largura (cada nó tem a largura da sapata); as chamadas da prancha repetem a legenda da
-  sombra (tirar a chamada de quem tem sombra?); a prancha que já tinha um corte vê o muro andar para a direita (a
-  sombra entra na caixa do desenho, à esquerda).
+  com nó fica ~2,5 cortes de largura (cada nó tem a largura da sapata); a prancha que já tinha um corte vê o muro
+  andar para a direita (a sombra entra na caixa do desenho, à esquerda). Decidido (Jose, 20/10, "sim"): a barra de
+  pé com sombra NÃO leva chamada no corte (a sombra já diz tudo); com as sombras desligadas a chamada volta.
 - **DENTE SEM ARMADURA (Jose, 15/10: "nosso dente não tá armando, é muito detalhe, só anota, depois resolvemos"):** o
   dente da sapata sai no 3D, no corte e na armação sem barra nenhuma. Resolver depois, quando ele pedir.
 - **Revisão adversarial de 15/10 (3 revisores, 16 achados) — CORRIGIDA em 16/10** (`pranchas/__testes__/revisao16.test.ts`
