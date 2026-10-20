@@ -208,6 +208,11 @@ e dizer ao Jose o que mudou e por quê.
   arquivo e as imagens; `tools/validar_dxf.py --estrito` (ezdxf) é o critério. Três revisores adversariais + dois
   agentes de correção passaram; pendências do Jose em "PENDÊNCIAS ANOTADAS". Ao mudar dependência do app: `npm
   install` no `app/` do main E reiniciar o servidor da porta 5180 (o Vite guarda o erro de import).
+- **Splash (tela de abertura do instalável):** o do Pró-Viga (`proviga-3d-limpo/splash.html`) é janela 987 × 610
+  (proporção áurea), 3 imagens QUADRADAS de 1024 px girando à esquerda (610 × 610, a cada 4,5 s, transição de 2 s,
+  brilho 78 %), logomarca, nome, versão e barra de carga à direita. Referência ilustrativa do Jose (20/10, 2000 × 1116,
+  "é ilustrativa, salva de referência"): `dados/produto/splash/referencia_ilustrativa_01.jpg`. Nas que forem geradas:
+  barra a cada 40 (um furo sim, outro não), não em todo furo, e a canaleta da cinta no topo — engenheiro repara.
 - **Depois das pranchas: empacotar e vender** seguindo o Pró-Viga (`proviga-3d-limpo`: Electron, tela de ativação,
   `licenca.js`, contrato no instalador, gerar-icone a partir do SVG). GitHub: o Jose disse para deixar o push para
   depois (14/10); em 16/10 pediu "commit e merge no repo" — main subido (a2c57c5). Os outros ramos já estão no main,
@@ -685,7 +690,18 @@ e dizer ao Jose o que mudou e por quê.
   entram Cota, Texto, Etiqueta, Gráficos, Mostrar e "Enviar para a prancha"; abas das vistas abertas e barra de escala
   embaixo). 3D é uma vista como as outras. Embaixo do trilho: tema e manual. Barra de estado fica. Só a moldura muda:
   conta, 3D, vistas, prancha, DXF e IFC não. Etapas: 1 moldura e topo · 2 Entradas e Memória · 3 Gráfica · 4 acabamento.
-  A confirmar: engrenagem em 2º (Pró-Viga) ou embaixo (A-PORT).
+  A confirmar: engrenagem em 2º (Pró-Viga) ou embaixo (A-PORT). Protótipo clicável das 6 telas (20/10, para ele
+  aprovar antes do código): https://claude.ai/artifact/Wjo63e7W4gEk9PZCpzfryd
+  ETAPA 1 FEITA e JUNTADA ao main (20/10, o Jose olhou na 5183 e aprovou). Trilho (`ui/Trilho.tsx`), seção
+  em `estado/interface.ts` (lembrada; a aba Memória/Quantitativo de antes vira a seção), Início (`ui/TelaInicio.tsx`),
+  Configurações e Entradas viraram tela (o modal saiu), lista de entradas só na Memória, Gráfica com as abas de hoje
+  e MONTADA escondida (o 3D não perde câmera/corte/Armadura na ida às Entradas), desfazer/refazer no store (passo =
+  foto de alteracoes/extras/pranchas/"→"; teclas no mesmo campo < 1,2 s e rajada nas pranchas < 0,4 s viram um passo;
+  a janela de Gráficos = um passo, Cancelar não deixa passo; o • compara com o salvo). Cópia separada para obra grande
+  na tela: git worktree em `.claude/worktrees/<nome>` com `app/node_modules` como JUNÇÃO para o do main (`mklink /J`)
+  e servidor noutra porta — ⚠️ remover a junção (`cmd /c rmdir`) ANTES de apagar a cópia, senão apaga as bibliotecas
+  do main. Etapa 2 já saiu quase toda junto; PRÓXIMA: a 3 (o navegador lateral do A-PORT na Gráfica, que o Jose sentiu
+  falta ao olhar — vistas e pranchas em árvore + Propriedades, faixa de ferramentas no topo), depois a 4 (acabamento).
 - **SOMBRAS NO CORTE E NA PLANTA (Jose, 20/10 — FEITO no mesmo dia):** regra comum em `desenhos/sombras.ts`
   (fileiras do Pró-Viga, medida de cada perna = a da lista de ferros via `formaDaBarra.trechosNoModelo`, número que
   procura lugar livre). CORTE (`corteLateral.ts` desenharSombrasDoCorte): espera (Padrão e nó), vertical do muro e as
