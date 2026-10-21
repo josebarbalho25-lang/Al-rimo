@@ -669,10 +669,17 @@ e dizer ao Jose o que mudou e por quê.
   (4. não ditado.)
   6. FEITO 14/10 — drenagem no 3D (barbacãs de volta, dreno de fundo, areia e brita).
   5. FEITO 14/10 — modo prancha (PDF e DXF).
-  Do item 3 há um começo de 12/10 na branch `formula-els-painel` (B e C da LN em linha própria no gerador,
-  `tools/contrafortes.py`); nunca entrou no main.
+  ESTADO DO ITEM 3 (conferido no código em 21/10): a parte das FIGURAS está feita (14/10, 95bb020: desenho no alto,
+  figura no pé, o meio livre). FALTA quebrar a fórmula longa do estádio II (x_II, I_II) em pedaços, uma linha por
+  termo com o valor, e a linha grande só somando. Do começo de 12/10 na branch `formula-els-painel` (B e C da LN em
+  linha própria em `tools/contrafortes.py`, 21 linhas) a branch está 60+ commits atrás: REFAZER a partir do main, não
+  juntar a branch velha. Jose (21/10): fica para depois do navegador da Gráfica (etapa 3 da moldura).
+- **REGRA DO CADERNO (Jose, 21/10):** todo pendente que muda de estado (feito, pela metade, adiado) se anota AQUI na
+  hora, conferido no código, e o caderno sobe no GitHub (main) junto — a sessão seguinte (outra máquina, nuvem) só
+  sabe o que estiver aqui.
 - **Anotado do Jose (12/10, noite — fazer depois, ele avisa quando):**
-  1. Barra horizontal do painel (a da canaleta) no contraforte: hoje é traspasse + L; trocar por barra dobrada em U de
+  1. NÃO FEITO (conferido em 21/10: `modulacao/barras.ts` ainda faz traspasse + L; Jose: depois do navegador da
+     Gráfica). Barra horizontal do painel (a da canaleta) no contraforte: hoje é traspasse + L; trocar por barra dobrada em U de
      um contraforte ao outro, vários U em sequência, cada barra engastada duas vezes ("é mais fácil dobrar a barra em U
      do que fazer um traspasse e depois um L").
   2. Estribos desenhados quadrados: desenhar com as dobras reais da barra (raio de dobra, ganchos).
