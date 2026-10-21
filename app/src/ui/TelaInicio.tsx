@@ -17,11 +17,11 @@ import { useInterface } from '@/estado/interface';
 import { TITULO_DO_EXEMPLO } from '@/estado/novo';
 import { useApp } from '@/estado/store';
 import { IconeAbrir, IconeExemplo, IconeNovo, IconeSalvar, type Icone } from './icones';
+import { trazer } from './grafica/comandos';
 
 export function TelaInicio() {
   const temIfc = useApp((s) => !!s.ligacoes.exportarIfc && !!s.modelo);
   const temImpressao = useApp((s) => !!s.ligacoes.imprimirMemoria && !!s.resultado);
-  const escolherAba = useApp((s) => s.escolherAba);
   const irPara = useInterface((s) => s.irPara);
   const abrirPorFiguras = useInterface((s) => s.abrirPorFiguras);
   return (
@@ -46,7 +46,7 @@ export function TelaInicio() {
             rotulo="Pranchas"
             formato=".pdf · .dxf"
             aoClicar={() => {
-              escolherAba('pranchas');
+              trazer({ aba: 'pranchas', id: null });
               irPara('grafica');
             }}
           />

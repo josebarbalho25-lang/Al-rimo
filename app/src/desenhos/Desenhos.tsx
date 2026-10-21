@@ -31,7 +31,7 @@
   Exportar (SVG e PNG) sai do SVG autorado, nunca da tela: as cores e a legenda vão iguais em qualquer tema, zoom ou
   seleção.
 */
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from 'react';
 import type { Modelo } from '@/modelo/tipos';
 import { metros } from './formato';
 import { cortesPadrao } from './corteLateral';
@@ -46,7 +46,9 @@ import { useApp } from '@/estado/store';
 import { usePranchasUi } from '@/pranchas/ui';
 import { ESCALAS, rotuloDaEscala } from '@/pranchas/formatos';
 import { PX_POR_MM, type PedidoDeVista, type VistaDoProjeto, type VistaParaPrancha } from '@/pranchas/tipos';
-import { duplicarVista, excluirVista, itemDaVista, naVistaComoItem, naVistaDoProjeto, novaVista, ondeEstaAVista, renomearVista, vistasDoTipo } from '@/pranchas/vistas';
+import { NOMES_DO_CONTEUDO, duplicarVista, excluirVista, itemDaVista, naVistaComoItem, naVistaDoProjeto, novaVista, ondeEstaAVista, renomearVista, vistasDoTipo } from '@/pranchas/vistas';
+import { estiloDosCampos, Linha, TextoConfirmado } from '@/pranchas/campos';
+import { BotaoDaFaixa, GrupoDaFaixa, ICONES, NoEncaixe, useNaGrafica } from '@/ui/grafica/Encaixes';
 import { posicionarVetor, type ItemPosto } from '@/pranchas/folha';
 import { barraNaTela, useEdicaoDeAnotacoes, type DesenhoEditavel } from '@/pranchas/EdicaoDeAnotacoes';
 
@@ -397,135 +399,194 @@ export function Desenhos({ modelo, vista: tipoFixo, selecionado = null, onSeleci
   const corteEscolhido = cortes.find((q) => Math.abs(q.x - xC) < 0.5);
   const naFolha = onde(vista.id);
 
+  // dentro da Gráfica (etapa 3 da moldura) os botões vão para a faixa, os parâmetros para as Propriedades e a escala
+  // para o rodapé (ui/grafica/Encaixes.tsx); a lista das vistas é o navegador. Sozinho, tudo fica na barra de cima.
+  const naGrafica = useNaGrafica();
+  const campo = (rotulo: string, controle: ReactNode, chave?: string) =>
+    naGrafica ? (
+      <Linha key={chave ?? rotulo} rotulo={rotulo}>{controle}</Linha>
+    ) : (
+      <label key={chave ?? rotulo} style={s.campo}>
+        <span style={s.rotulo}>{rotulo}</span>
+        {controle}
+      </label>
+    );
+
+  const parametros: ReactNode[] = [];
+  if (c.tipo === 'corte') {
+    parametros.push(campo('Posição', (
+      <select className="campo" style={s.lista} value={corteEscolhido ? String(corteEscolhido.x) : ''}
+        onChange={(e) => e.target.value && mudarConteudo<Extract<PedidoDeVista, { tipo: 'corte' }>>((q) => ({ ...q, x: Number(e.target.value) }))}>
+        {!corteEscolhido && <option value="">—</option>}
+        {cortes.map((q) => <option key={q.rotulo} value={String(q.x)}>{q.rotulo}</option>)}
+      </select>
+    )));
+    parametros.push(campo('x', (
+      <span style={s.campo}>
+        {deslizante(xC, (x) => mudarConteudo<Extract<PedidoDeVista, { tipo: 'corte' }>>((q) => ({ ...q, x })))}
+        <span style={s.valor}>{metros(xC)} m</span>
+      </span>
+    )));
+  }
+  if (c.tipo === 'planta') {
+    parametros.push(campo('Fiada', (
+      <select className="campo" style={s.lista} value={fiada}
+        onChange={(e) => mudarConteudo<Extract<PedidoDeVista, { tipo: 'planta' }>>((q) => ({ ...q, fiada: Number(e.target.value) }))}>
+        {Array.from({ length: modelo.dims.n_fiadas }, (_, i) => <option key={i} value={i}>{`${i + 1}ª`}</option>)}
+      </select>
+    )));
+  }
+  if (c.tipo === 'iso') {
+    parametros.push(campo('Lado', (
+      <select className="campo" style={s.lista} value={c.vista ?? 'frente-direita'}
+        onChange={(e) => mudarConteudo<Extract<PedidoDeVista, { tipo: 'iso' }>>((q) => ({ ...q, vista: e.target.value as VistaIso }))}>
+        {VISTAS_ISO.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}
+      </select>
+    )));
+    parametros.push(naGrafica ? (
+      campo('Corte', (
+        <input type="checkbox" checked={isoCortado} aria-label="Corte"
+          onChange={(e) => mudarConteudo<Extract<PedidoDeVista, { tipo: 'iso' }>>((q) => ({ ...q, corteX: e.target.checked ? xI : null }))} />
+      ))
+    ) : (
+      <label key="corte-iso" style={s.campo}>
+        <input type="checkbox" checked={isoCortado}
+          onChange={(e) => mudarConteudo<Extract<PedidoDeVista, { tipo: 'iso' }>>((q) => ({ ...q, corteX: e.target.checked ? xI : null }))} />
+        <span style={s.rotulo}>Corte</span>
+      </label>
+    ));
+    if (isoCortado) {
+      parametros.push(campo('x', (
+        <span style={s.campo}>
+          {deslizante(xI, (x) => mudarConteudo<Extract<PedidoDeVista, { tipo: 'iso' }>>((q) => ({ ...q, corteX: x })))}
+          <span style={s.valor}>{metros(xI)} m</span>
+        </span>
+      ), 'x-iso'));
+    }
+  }
+  const seletorDaEscala = vista.escala !== null && (
+    <select className="campo" style={s.lista} value={String(vista.escala)} aria-label="Escala" onChange={(e) => mudarVista((v) => ({ ...v, escala: Number(e.target.value) }))}>
+      {ESCALAS.map((x) => <option key={x} value={x}>{rotuloDaEscala(x)}</option>)}
+    </select>
+  );
+  const abrirGraficos = () => useJanelaDeGraficos.getState().abrir({ tipo: 'vista', id: vista.id, tipoDaVista: aba });
+
+  // os grupos de botões: na faixa da Gráfica, cada um na aba dele; sozinho, em fila na barra
+  const grupos = (
+    <>
+      {/* o isométrico não tem escala: nada para cotar nele */}
+      <GrupoDaFaixa faixa="anotacao" nome="Anotar">
+        <BotaoDaFaixa nome="Cota" dica="Cota  ·  D" desenho={ICONES.cota} ligado={edicao.ferramenta === 'cota'} desligado={!edicao.podeAnotar} aoClicar={() => edicao.armar(edicao.ferramenta === 'cota' ? null : 'cota')} />
+        <BotaoDaFaixa nome="Texto" dica="Texto  ·  T" desenho={ICONES.texto} ligado={edicao.ferramenta === 'texto'} desligado={!edicao.podeAnotar} aoClicar={() => edicao.armar(edicao.ferramenta === 'texto' ? null : 'texto')} />
+        <BotaoDaFaixa nome="Etiqueta" dica="Etiqueta  ·  I" desenho={ICONES.etiqueta} ligado={edicao.ferramenta === 'etiqueta'} desligado={!edicao.podeEtiquetar} aoClicar={() => edicao.armar(edicao.ferramenta === 'etiqueta' ? null : 'etiqueta')} />
+      </GrupoDaFaixa>
+      <GrupoDaFaixa faixa="vista" nome="Visibilidade">
+        <MenuMostrar
+          vista={aba} estiloDoBotao={s.botao} ocultos={vista.graficos?.ocultos ?? []}
+          aoMudar={(item, mostra) => mudarVista((v) => ({ ...v, graficos: comItemDaVista(v.graficos, item, mostra) }))}
+        />
+        {/* a sobreposição de gráficos DESTA vista (a geral fica na engrenagem) */}
+        <BotaoDaFaixa nome="Gráficos" dica="Gráficos desta vista" desenho={ICONES.graficos} aoClicar={abrirGraficos} />
+        <BotaoDaFaixa nome="Enquadrar" dica="Enquadrar  ·  duplo clique" desenho={ICONES.enquadrar} aoClicar={enquadrar} />
+      </GrupoDaFaixa>
+      {/* a vista vai para a folha ativa da aba Pranchas — uma vez: já colocada, a barra diz em qual folha está */}
+      <GrupoDaFaixa faixa="prancha" nome="Vista">
+        <BotaoDaFaixa nome="Prancha" dica={naFolha ? `Na folha ${String(naFolha.numero).padStart(2, '0')}` : 'Enviar para a prancha'} desenho={ICONES.enviar} aoClicar={enviar} />
+      </GrupoDaFaixa>
+      <GrupoDaFaixa faixa="exportar" nome="Vista">
+        <BotaoDaFaixa nome="SVG" dica="Baixar a vista em SVG" desenho={ICONES.vetor} desligado={!desenho} aoClicar={baixarSvg} />
+        <BotaoDaFaixa nome="PNG" dica="Baixar a vista em PNG" desenho={ICONES.imagem} desligado={!desenho} aoClicar={() => void baixarPng()} />
+      </GrupoDaFaixa>
+    </>
+  );
+
   return (
     <div style={s.raiz} data-frente="desenhos">
-      <div style={s.barra}>
-        {!tipoFixo && (
-          <div className="cad-escolha" role="tablist">
-            {ABAS.map(([id, nome]) => (
-              <button key={id} type="button" role="tab" aria-selected={aba === id} className={aba === id ? 'on' : undefined} style={s.botao} onClick={() => setAba(id)}>
-                {nome}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <label style={s.campo}>
-          <span style={s.rotulo}>Vista</span>
-          {renomeando !== null ? (
-            <input
-              className="campo" style={s.nomeDaVista} autoFocus aria-label="Nome da vista" value={renomeando}
-              onChange={(e) => setRenomeando(e.target.value)}
-              onBlur={confirmarNome}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') confirmarNome();
-                if (e.key === 'Escape') setRenomeando(null);
-              }}
-            />
-          ) : (
-            <select
-              className="campo" style={s.lista} value={vista.id} aria-label="Vista"
-              onChange={(e) => (e.target.value === NOVA ? criarNova() : escolher(aba, e.target.value))}
-            >
-              {vistas.map((v) => {
-                const ja = onde(v.id);
-                return <option key={v.id} value={v.id}>{v.nome}{ja ? ` · folha ${String(ja.numero).padStart(2, '0')}` : ''}</option>;
-              })}
-              <option value={NOVA}>Nova vista</option>
-            </select>
-          )}
-        </label>
-        <div className="cad-escolha">
-          <button type="button" style={s.botao} onClick={duplicar}>Duplicar</button>
-          <button type="button" style={s.botao} onClick={() => setRenomeando(vista.nome)}>Renomear</button>
-          <button type="button" style={s.botao} onClick={excluir} disabled={!gravada}>Excluir</button>
-        </div>
-
-        {c.tipo === 'corte' && (
-          <>
-            <label style={s.campo}>
-              <span style={s.rotulo}>Posição</span>
-              <select className="campo" style={s.lista} value={corteEscolhido ? String(corteEscolhido.x) : ''}
-                onChange={(e) => e.target.value && mudarConteudo<Extract<PedidoDeVista, { tipo: 'corte' }>>((q) => ({ ...q, x: Number(e.target.value) }))}>
-                {!corteEscolhido && <option value="">—</option>}
-                {cortes.map((q) => <option key={q.rotulo} value={String(q.x)}>{q.rotulo}</option>)}
-              </select>
-            </label>
-            <label style={s.campo}>
-              <span style={s.rotulo}>x</span>
-              {deslizante(xC, (x) => mudarConteudo<Extract<PedidoDeVista, { tipo: 'corte' }>>((q) => ({ ...q, x })))}
-              <span style={s.valor}>{metros(xC)} m</span>
-            </label>
-          </>
-        )}
-
-        {c.tipo === 'planta' && (
-          <label style={s.campo}>
-            <span style={s.rotulo}>Fiada</span>
-            <select className="campo" style={s.lista} value={fiada}
-              onChange={(e) => mudarConteudo<Extract<PedidoDeVista, { tipo: 'planta' }>>((q) => ({ ...q, fiada: Number(e.target.value) }))}>
-              {Array.from({ length: modelo.dims.n_fiadas }, (_, i) => <option key={i} value={i}>{`${i + 1}ª`}</option>)}
-            </select>
-          </label>
-        )}
-
-        {c.tipo === 'iso' && (
-          <>
-            <label style={s.campo}>
-              <span style={s.rotulo}>Lado</span>
-              <select className="campo" style={s.lista} value={c.vista ?? 'frente-direita'}
-                onChange={(e) => mudarConteudo<Extract<PedidoDeVista, { tipo: 'iso' }>>((q) => ({ ...q, vista: e.target.value as VistaIso }))}>
-                {VISTAS_ISO.map(([id, nome]) => <option key={id} value={id}>{nome}</option>)}
-              </select>
-            </label>
-            <label style={s.campo}>
-              <input type="checkbox" checked={isoCortado}
-                onChange={(e) => mudarConteudo<Extract<PedidoDeVista, { tipo: 'iso' }>>((q) => ({ ...q, corteX: e.target.checked ? xI : null }))} />
-              <span style={s.rotulo}>Corte</span>
-            </label>
-            {isoCortado && (
+      {naGrafica ? (
+        <>
+          {grupos}
+          <NoEncaixe em="propriedades">
+            <div className="propriedades-grupo" data-propriedades="vista">
+              <span style={estiloDosCampos.tituloDoGrupo}>{NOMES_DO_CONTEUDO[aba]}</span>
+              <Linha rotulo="Nome">
+                <TextoConfirmado valor={vista.nome} aoConfirmar={(nome) => mudarPranchas((p) => renomearVista(p, vista.id, nome))} />
+              </Linha>
+              {parametros}
+              {seletorDaEscala && <Linha rotulo="Escala">{seletorDaEscala}</Linha>}
+              <Linha rotulo="Título">
+                <TextoConfirmado valor={vista.titulo} sugestao="automático" aoConfirmar={(titulo) => mudarVista((v) => ({ ...v, titulo }))} />
+              </Linha>
+              <Linha rotulo="Na folha"><span>{naFolha ? String(naFolha.numero).padStart(2, '0') : '—'}</span></Linha>
+              <Linha rotulo="Gráficos">
+                <button type="button" className="btn-caixa" onClick={abrirGraficos}>Sobrepor…</button>
+              </Linha>
+            </div>
+          </NoEncaixe>
+          <NoEncaixe em="rodape">
+            {seletorDaEscala && (
               <label style={s.campo}>
-                <span style={s.rotulo}>x</span>
-                {deslizante(xI, (x) => mudarConteudo<Extract<PedidoDeVista, { tipo: 'iso' }>>((q) => ({ ...q, corteX: x })))}
-                <span style={s.valor}>{metros(xI)} m</span>
+                <span style={s.rotulo}>Escala</span>
+                {seletorDaEscala}
               </label>
             )}
-          </>
-        )}
+            <button type="button" className="btn-icone" title="Enquadrar  ·  duplo clique" aria-label="Enquadrar" onClick={enquadrar}>
+              {ICONES.enquadrar({ tamanho: 16 })}
+            </button>
+            <span style={{ flex: 1 }} />
+            {edicao.dica && <span style={s.rotulo} data-dica-da-ferramenta>{edicao.dica}</span>}
+          </NoEncaixe>
+        </>
+      ) : (
+        <div style={s.barra}>
+          {!tipoFixo && (
+            <div className="cad-escolha" role="tablist">
+              {ABAS.map(([id, nome]) => (
+                <button key={id} type="button" role="tab" aria-selected={aba === id} className={aba === id ? 'on' : undefined} style={s.botao} onClick={() => setAba(id)}>
+                  {nome}
+                </button>
+              ))}
+            </div>
+          )}
 
-        {vista.escala !== null && (
           <label style={s.campo}>
-            <span style={s.rotulo}>Escala</span>
-            <select className="campo" style={s.lista} value={String(vista.escala)} onChange={(e) => mudarVista((v) => ({ ...v, escala: Number(e.target.value) }))}>
-              {ESCALAS.map((x) => <option key={x} value={x}>{rotuloDaEscala(x)}</option>)}
-            </select>
+            <span style={s.rotulo}>Vista</span>
+            {renomeando !== null ? (
+              <input
+                className="campo" style={s.nomeDaVista} autoFocus aria-label="Nome da vista" value={renomeando}
+                onChange={(e) => setRenomeando(e.target.value)}
+                onBlur={confirmarNome}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') confirmarNome();
+                  if (e.key === 'Escape') setRenomeando(null);
+                }}
+              />
+            ) : (
+              <select
+                className="campo" style={s.lista} value={vista.id} aria-label="Vista"
+                onChange={(e) => (e.target.value === NOVA ? criarNova() : escolher(aba, e.target.value))}
+              >
+                {vistas.map((v) => {
+                  const ja = onde(v.id);
+                  return <option key={v.id} value={v.id}>{v.nome}{ja ? ` · folha ${String(ja.numero).padStart(2, '0')}` : ''}</option>;
+                })}
+                <option value={NOVA}>Nova vista</option>
+              </select>
+            )}
           </label>
-        )}
+          <div className="cad-escolha">
+            <button type="button" style={s.botao} onClick={duplicar}>Duplicar</button>
+            <button type="button" style={s.botao} onClick={() => setRenomeando(vista.nome)}>Renomear</button>
+            <button type="button" style={s.botao} onClick={excluir} disabled={!gravada}>Excluir</button>
+          </div>
 
-        <span style={{ flex: 1 }} />
-        {edicao.dica && <span style={s.rotulo} data-dica-da-ferramenta>{edicao.dica}</span>}
-        {/* o isométrico não tem escala: nada para cotar nele */}
-        <div className="cad-escolha">
-          <button type="button" style={s.botao} className={edicao.ferramenta === 'cota' ? 'on' : undefined} disabled={!edicao.podeAnotar} title="Cota  ·  D" onClick={() => edicao.armar(edicao.ferramenta === 'cota' ? null : 'cota')}>Cota</button>
-          <button type="button" style={s.botao} className={edicao.ferramenta === 'texto' ? 'on' : undefined} disabled={!edicao.podeAnotar} title="Texto  ·  T" onClick={() => edicao.armar(edicao.ferramenta === 'texto' ? null : 'texto')}>Texto</button>
-          <button type="button" style={s.botao} className={edicao.ferramenta === 'etiqueta' ? 'on' : undefined} disabled={!edicao.podeEtiquetar} title="Etiqueta  ·  I" onClick={() => edicao.armar(edicao.ferramenta === 'etiqueta' ? null : 'etiqueta')}>Etiqueta</button>
+          {parametros}
+          {seletorDaEscala && campo('Escala', seletorDaEscala)}
+
+          <span style={{ flex: 1 }} />
+          {edicao.dica && <span style={s.rotulo} data-dica-da-ferramenta>{edicao.dica}</span>}
+          {grupos}
         </div>
-        <div className="cad-escolha">
-          <MenuMostrar
-            vista={aba} estiloDoBotao={s.botao} ocultos={vista.graficos?.ocultos ?? []}
-            aoMudar={(item, mostra) => mudarVista((v) => ({ ...v, graficos: comItemDaVista(v.graficos, item, mostra) }))}
-          />
-          {/* a sobreposição de gráficos DESTA vista (a geral fica na engrenagem) */}
-          <button type="button" style={s.botao} onClick={() => useJanelaDeGraficos.getState().abrir({ tipo: 'vista', id: vista.id, tipoDaVista: aba })}>Gráficos</button>
-          <button type="button" style={s.botao} onClick={enquadrar}>Enquadrar</button>
-          <button type="button" style={s.botao} onClick={baixarSvg} disabled={!desenho}>SVG</button>
-          <button type="button" style={s.botao} onClick={baixarPng} disabled={!desenho}>PNG</button>
-          {/* a vista vai para a folha ativa da aba Pranchas — uma vez: já colocada, a barra diz em qual folha está */}
-          <button type="button" style={s.botao} onClick={enviar} title={naFolha ? `Na folha ${String(naFolha.numero).padStart(2, '0')}` : 'Enviar para a prancha'}>
-            Prancha
-          </button>
-        </div>
-      </div>
+      )}
 
       <div
         ref={folhaRef} className="prancheta prancheta-cores" style={s.folha} tabIndex={0}

@@ -20,6 +20,10 @@ export const CHAVES = {
   grupos: 'alrimo.grupos.v1',
   /** A lista da esquerda recolhida (estado/interface.ts). */
   lista: 'alrimo.lista.v1',
+  /** A aba da faixa de ferramentas da Gráfica (estado/grafica.ts). */
+  faixa: 'alrimo.faixa.v1',
+  /** O navegador da Gráfica recolhido (estado/grafica.ts). */
+  navegador: 'alrimo.navegador.v1',
   /** Largura do painel em px na escala 100% (ver lembrarLarguraDoPainel). */
   largura: 'alrimo.largura.v2',
   ultimoProjeto: 'alrimo.ultimo.v1',
