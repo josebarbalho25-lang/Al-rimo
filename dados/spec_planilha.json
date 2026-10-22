@@ -8671,48 +8671,44 @@
     },
     {
      "ref": "A24",
-     "v": "x supondo LN na mesa (b = bm)"
+     "v": "B = n·As"
     },
     {
      "ref": "B24",
-     "v": "=IFERROR((-n_els*As_barra+SQRT((n_els*As_barra)^2+2*bm_els*n_els*As_barra*d_util))/bm_els,\"—\")",
-     "nome": "x_rect",
+     "v": "=IFERROR(n_els*As_barra,\"—\")",
+     "nome": "lnB_els",
      "tipo": "resultado"
     },
     {
      "ref": "C24",
-     "v": "cm"
+     "v": "cm²"
     },
     {
      "ref": "D24",
-     "v": "bm·x²/2 − n·As·(d − x) = 0."
+     "v": "LN: b·x²/2 + B·x − C = 0 → x = (−B + √(B² + 2·b·C))/b."
     },
     {
      "ref": "A25",
-     "v": "x supondo LN na alma (T)"
+     "v": "C = n·As·d"
     },
     {
      "ref": "B25",
-     "v": "=IFERROR((-((bm_els-bw_els)*hf_bl+n_els*As_barra)+SQRT(((bm_els-bw_els)*hf_bl+n_els*As_barra)^2+2*bw_els*((bm_els-bw_els)*hf_bl^2/2+n_els*As_barra*d_util)))/bw_els,\"—\")",
-     "nome": "x_T",
+     "v": "=IFERROR(n_els*As_barra*d_util,\"—\")",
+     "nome": "lnC_els",
      "tipo": "resultado"
     },
     {
      "ref": "C25",
-     "v": "cm"
-    },
-    {
-     "ref": "D25",
-     "v": "bw·x²/2 + (bm − bw)·hf·(x − hf/2) − n·As·(d − x) = 0."
+     "v": "cm³"
     },
     {
      "ref": "A26",
-     "v": "x adotado"
+     "v": "x supondo LN na mesa (b = bm)"
     },
     {
      "ref": "B26",
-     "v": "=IFERROR(IF(x_rect<=hf_bl,x_rect,x_T),\"—\")",
-     "nome": "xII",
+     "v": "=IFERROR((-lnB_els+SQRT(lnB_els^2+2*bm_els*lnC_els))/bm_els,\"—\")",
+     "nome": "x_rect",
      "tipo": "resultado"
     },
     {
@@ -8721,66 +8717,62 @@
     },
     {
      "ref": "D26",
-     "v": "Se x ≤ hf vale a hipótese da mesa (caso usual)."
+     "v": "bm·x²/2 − n·As·(d − x) = 0."
     },
     {
      "ref": "A27",
-     "v": "III"
+     "v": "B com a LN na alma = (bm − bw)·hf + B"
     },
     {
      "ref": "B27",
-     "v": "=IFERROR(IF(x_rect<=hf_bl,bm_els*xII^3/3+n_els*As_barra*(d_util-xII)^2,bw_els*xII^3/3+(bm_els-bw_els)*hf_bl^3/12+(bm_els-bw_els)*hf_bl*(xII-hf_bl/2)^2+n_els*As_barra*(d_util-xII)^2),\"—\")",
-     "nome": "III_",
+     "v": "=IFERROR((bm_els-bw_els)*hf_bl+lnB_els,\"—\")",
+     "nome": "lnBw_els",
      "tipo": "resultado"
     },
     {
      "ref": "C27",
-     "v": "cm⁴"
-    },
-    {
-     "ref": "D27",
-     "v": "Seção fissurada."
-    },
-    {
-     "ref": "E27",
-     "v": "NBR 16868-1 9.2.3"
+     "v": "cm²"
     },
     {
      "ref": "A28",
-     "v": "(Mr/Ma)³"
+     "v": "C com a LN na alma = (bm − bw)·hf²/2 + C"
     },
     {
      "ref": "B28",
-     "v": "=IFERROR(IF(Ma_>0,MIN(1,Mr_/Ma_)^3,1),\"—\")",
-     "nome": "br_3",
+     "v": "=IFERROR((bm_els-bw_els)*hf_bl^2/2+lnC_els,\"—\")",
+     "nome": "lnCw_els",
      "tipo": "resultado"
     },
     {
+     "ref": "C28",
+     "v": "cm³"
+    },
+    {
      "ref": "A29",
-     "v": "Ieq (Branson) ≤ Im"
+     "v": "x supondo LN na alma (T)"
     },
     {
      "ref": "B29",
-     "v": "=IFERROR(IF(Ma_<=Mr_,Im_,MIN(Im_,br_3*Im_+(1-br_3)*III_)),\"—\")",
-     "nome": "Ieq_",
+     "v": "=IFERROR((-lnBw_els+SQRT(lnBw_els^2+2*bw_els*lnCw_els))/bw_els,\"—\")",
+     "nome": "x_T",
      "tipo": "resultado"
     },
     {
      "ref": "C29",
-     "v": "cm⁴"
+     "v": "cm"
     },
     {
-     "ref": "E29",
-     "v": "NBR 16868-1 9.2.3 (Branson, 1965)"
+     "ref": "D29",
+     "v": "bw·x²/2 + (bm − bw)·hf·(x − hf/2) − n·As·(d − x) = 0."
     },
     {
      "ref": "A30",
-     "v": "heq (retângulo bm × heq, para o Ftool)"
+     "v": "x adotado"
     },
     {
      "ref": "B30",
-     "v": "=IFERROR((12*Ieq_/bm_els)^(1/3),\"—\")",
-     "nome": "heq_",
+     "v": "=IFERROR(IF(x_rect<=hf_bl,x_rect,x_T),\"—\")",
+     "nome": "xII",
      "tipo": "resultado"
     },
     {
@@ -8788,159 +8780,277 @@
      "v": "cm"
     },
     {
+     "ref": "D30",
+     "v": "Se x ≤ hf vale a hipótese da mesa (caso usual)."
+    },
+    {
      "ref": "A31",
-     "v": "σs = n·Ma·(d − x)/III"
+     "v": "III da alvenaria comprimida = b·x³/3"
     },
     {
      "ref": "B31",
+     "v": "=IFERROR(IF(x_rect<=hf_bl,bm_els,bw_els)*xII^3/3,\"—\")",
+     "nome": "IIc_els",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C31",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "D31",
+     "v": "b = bm com a LN na mesa; bw com a LN na alma."
+    },
+    {
+     "ref": "A32",
+     "v": "III das abas da mesa"
+    },
+    {
+     "ref": "B32",
+     "v": "=IFERROR(IF(x_rect<=hf_bl,0,(bm_els-bw_els)*hf_bl^3/12+(bm_els-bw_els)*hf_bl*(xII-hf_bl/2)^2),\"—\")",
+     "nome": "IIf_els",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C32",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "D32",
+     "v": "Só com a LN na alma: (bm − bw)·hf³/12 + (bm − bw)·hf·(x − hf/2)²."
+    },
+    {
+     "ref": "A33",
+     "v": "III da barra = n·As·(d − x)²"
+    },
+    {
+     "ref": "B33",
+     "v": "=IFERROR(n_els*As_barra*(d_util-xII)^2,\"—\")",
+     "nome": "IIs_els",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C33",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "A34",
+     "v": "III"
+    },
+    {
+     "ref": "B34",
+     "v": "=IFERROR(IIc_els+IIf_els+IIs_els,\"—\")",
+     "nome": "III_",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C34",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "D34",
+     "v": "Seção fissurada: alvenaria comprimida + abas + barra."
+    },
+    {
+     "ref": "E34",
+     "v": "NBR 16868-1 9.2.3"
+    },
+    {
+     "ref": "A35",
+     "v": "(Mr/Ma)³"
+    },
+    {
+     "ref": "B35",
+     "v": "=IFERROR(IF(Ma_>0,MIN(1,Mr_/Ma_)^3,1),\"—\")",
+     "nome": "br_3",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "A36",
+     "v": "Ieq (Branson) ≤ Im"
+    },
+    {
+     "ref": "B36",
+     "v": "=IFERROR(IF(Ma_<=Mr_,Im_,MIN(Im_,br_3*Im_+(1-br_3)*III_)),\"—\")",
+     "nome": "Ieq_",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C36",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "E36",
+     "v": "NBR 16868-1 9.2.3 (Branson, 1965)"
+    },
+    {
+     "ref": "A37",
+     "v": "heq (retângulo bm × heq, para o Ftool)"
+    },
+    {
+     "ref": "B37",
+     "v": "=IFERROR((12*Ieq_/bm_els)^(1/3),\"—\")",
+     "nome": "heq_",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C37",
+     "v": "cm"
+    },
+    {
+     "ref": "A38",
+     "v": "σs = n·Ma·(d − x)/III"
+    },
+    {
+     "ref": "B38",
      "v": "=IFERROR(n_els*Ma_*(d_util-xII)/III_,\"—\")",
      "nome": "sig_s_els",
      "tipo": "resultado"
     },
     {
-     "ref": "C31",
+     "ref": "C38",
      "v": "kN/cm²"
     },
     {
-     "ref": "D31",
+     "ref": "D38",
      "v": "Tensão no aço em serviço."
     },
     {
-     "ref": "E31",
+     "ref": "E38",
      "v": "Estádio II"
     },
     {
-     "ref": "A33",
+     "ref": "A40",
      "v": "Deslocamento no topo"
     },
     {
-     "ref": "A34",
+     "ref": "A41",
      "v": "S = Σ V·a²(3hs − a)/6 + Σ V·a²/2·(hm − hs)"
     },
     {
-     "ref": "B34",
+     "ref": "B41",
      "v": "=IFERROR(SUM('Solo e Empuxo'!M44:M83)+SUM('Solo e Empuxo'!N44:N83)*(H_muro-H_solo),\"—\")",
      "nome": "sum_d",
      "tipo": "resultado"
     },
     {
-     "ref": "C34",
+     "ref": "C41",
      "v": "kN·m³/m"
     },
     {
-     "ref": "D34",
+     "ref": "D41",
      "v": "Carga real do perfil. Flecha no nível do solo + rotação × trecho de muro acima do solo."
     },
     {
-     "ref": "A35",
+     "ref": "A42",
      "v": "δ0 = (Ma/Mk)·Σ·bm/(Em·Ieq)"
     },
     {
-     "ref": "B35",
+     "ref": "B42",
      "v": "=IFERROR(psi_els*sum_d*bm_els/100/(Em_*1000*Ieq_/100000000)*1000,\"—\")",
      "nome": "delta0",
      "tipo": "resultado"
     },
     {
-     "ref": "C35",
+     "ref": "C42",
      "v": "mm"
     },
     {
-     "ref": "D35",
+     "ref": "D42",
      "v": "Flecha imediata no topo."
     },
     {
-     "ref": "A36",
+     "ref": "A43",
      "v": "αf = Δξ/(1 + 50ρ'), ρ' = 0"
     },
     {
-     "ref": "B36",
+     "ref": "B43",
      "v": "=IFERROR(dxi/(1+50*0),\"—\")",
      "nome": "alfa_f",
      "tipo": "resultado"
     },
     {
-     "ref": "D36",
+     "ref": "D43",
      "v": "Sem armadura comprimida."
     },
     {
-     "ref": "E36",
+     "ref": "E43",
      "v": "NBR 16868-1 9.2.4"
     },
     {
-     "ref": "A37",
+     "ref": "A44",
      "v": "δ∞ = δ0·(1 + αf)"
     },
     {
-     "ref": "B37",
+     "ref": "B44",
      "v": "=IFERROR(delta0*(1+alfa_f),\"—\")",
      "nome": "delta_",
      "tipo": "resultado"
     },
     {
-     "ref": "C37",
+     "ref": "C44",
      "v": "mm"
     },
     {
-     "ref": "D37",
+     "ref": "D44",
      "v": "Flecha final."
     },
     {
-     "ref": "A38",
+     "ref": "A45",
      "v": "δadm = vão/limite"
     },
     {
-     "ref": "B38",
+     "ref": "B45",
      "v": "=IFERROR(IF(vao_ref=\"2h\",2,1)*H_muro*1000/div_adm,\"—\")",
      "nome": "dadm_",
      "tipo": "resultado"
     },
     {
-     "ref": "C38",
+     "ref": "C45",
      "v": "mm"
     },
     {
-     "ref": "D38",
+     "ref": "D45",
      "v": "Critério adotado: 2L/250 no balanço (L = altura do muro: a flecha é a do topo do muro)."
     },
     {
-     "ref": "A40",
+     "ref": "A47",
      "v": "Verificações"
     },
     {
-     "ref": "A41",
+     "ref": "A48",
      "v": "Resumo"
     },
     {
-     "ref": "B41",
+     "ref": "B48",
      "v": "=IFERROR(IF(s_adot>0,IF(delta_<=dadm_,IF(Ma_<=Mr_,\"OK — não fissura\",\"OK — fissura na base, δ ok\"),\"NÃO OK — δ∞ > δadm\"),\"— (sem espaçamento de barras válido)\"),\"—\")",
      "nome": "res_els",
      "tipo": "resultado"
     },
     {
-     "ref": "D41",
+     "ref": "D48",
      "v": "Usado na aba Muro em balanço."
     },
     {
-     "ref": "A42",
+     "ref": "A49",
      "v": "Fissuração na base"
     },
     {
-     "ref": "B42",
+     "ref": "B49",
      "v": "=IFERROR(IF(s_adot>0,IF(Ma_<=Mr_,\"Estádio I — não fissura\",\"Estádio II — fissura (Ma/Mr = \"&FIXED(Ma_/Mr_,1)&\")\"),\"— (sem espaçamento de barras válido)\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A43",
+     "ref": "A50",
      "v": "δ∞ ≤ δadm"
     },
     {
-     "ref": "B43",
+     "ref": "B50",
      "v": "=IFERROR(IF(s_adot>0,IF(delta_<=dadm_,\"OK (\"&TEXT(delta_/dadm_,\"0%\")&\")\",\"NÃO OK (\"&TEXT(delta_/dadm_,\"0%\")&\")\"),\"— (sem espaçamento de barras válido)\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A45",
+     "ref": "A52",
      "v": "Limite (critério adotado): vão/250, com vão 2L no balanço — comparado com a flecha final δ∞ (a favor da segurança)."
     }
    ],
@@ -10464,40 +10574,44 @@
     },
     {
      "ref": "A111",
-     "v": "x supondo LN na mesa"
+     "v": "B = n·As"
     },
     {
      "ref": "B111",
-     "v": "=IFERROR((-n_cfe*As_cfe+SQRT((n_cfe*As_cfe)^2+2*b2_cf*n_cfe*As_cfe*d_cf))/b2_cf,\"—\")",
-     "nome": "x2r_cf",
+     "v": "=IFERROR(n_cfe*As_cfe,\"—\")",
+     "nome": "lnB_cf",
      "tipo": "resultado"
     },
     {
      "ref": "C111",
-     "v": "cm"
+     "v": "cm²"
+    },
+    {
+     "ref": "D111",
+     "v": "LN: b·x²/2 + B·x − C = 0 → x = (−B + √(B² + 2·b·C))/b."
     },
     {
      "ref": "A112",
-     "v": "x supondo LN na alma (T)"
+     "v": "C = n·As·d"
     },
     {
      "ref": "B112",
-     "v": "=IFERROR(IF(cf_T=1,(-((bm_cf-bw_cf)*hf_cf+n_cfe*As_cfe)+SQRT(((bm_cf-bw_cf)*hf_cf+n_cfe*As_cfe)^2+2*bw_cf*((bm_cf-bw_cf)*hf_cf^2/2+n_cfe*As_cfe*d_cf)))/bw_cf,x2r_cf),\"—\")",
-     "nome": "x2t_cf",
+     "v": "=IFERROR(n_cfe*As_cfe*d_cf,\"—\")",
+     "nome": "lnC_cf",
      "tipo": "resultado"
     },
     {
      "ref": "C112",
-     "v": "cm"
+     "v": "cm³"
     },
     {
      "ref": "A113",
-     "v": "x adotado (estádio II)"
+     "v": "x supondo LN na mesa"
     },
     {
      "ref": "B113",
-     "v": "=IFERROR(IF(OR(cf_T=0,x2r_cf<=hf_cf),x2r_cf,x2t_cf),\"—\")",
-     "nome": "x2_cf",
+     "v": "=IFERROR((-lnB_cf+SQRT(lnB_cf^2+2*b2_cf*lnC_cf))/b2_cf,\"—\")",
+     "nome": "x2r_cf",
      "tipo": "resultado"
     },
     {
@@ -10506,44 +10620,44 @@
     },
     {
      "ref": "A114",
-     "v": "III"
+     "v": "B com a LN na alma = (bm − bw)·hf + B"
     },
     {
      "ref": "B114",
-     "v": "=IFERROR(IF(OR(cf_T=0,x2r_cf<=hf_cf),b2_cf*x2_cf^3/3,bw_cf*x2_cf^3/3+(bm_cf-bw_cf)*hf_cf^3/12+(bm_cf-bw_cf)*hf_cf*(x2_cf-hf_cf/2)^2)+n_cfe*As_cfe*(d_cf-x2_cf)^2,\"—\")",
-     "nome": "III_cf",
+     "v": "=IFERROR((bm_cf-bw_cf)*hf_cf+lnB_cf,\"—\")",
+     "nome": "lnBw_cf",
      "tipo": "resultado"
     },
     {
      "ref": "C114",
-     "v": "cm⁴"
+     "v": "cm²"
     },
     {
      "ref": "D114",
-     "v": "Armadura comprimida (construtivas) desprezada (a favor da segurança)."
+     "v": "Seção retangular (aparente): bm = bw e hf = 0, igual ao B."
     },
     {
      "ref": "A115",
-     "v": "Ieq (Branson) ≤ Ig"
+     "v": "C com a LN na alma = (bm − bw)·hf²/2 + C"
     },
     {
      "ref": "B115",
-     "v": "=IFERROR(IF(Ma_cf<=Mr_cf,Ig_cf,MIN(Ig_cf,(Mr_cf/Ma_cf)^3*Ig_cf+(1-(Mr_cf/Ma_cf)^3)*III_cf)),\"—\")",
-     "nome": "Ieq_cf",
+     "v": "=IFERROR((bm_cf-bw_cf)*hf_cf^2/2+lnC_cf,\"—\")",
+     "nome": "lnCw_cf",
      "tipo": "resultado"
     },
     {
      "ref": "C115",
-     "v": "cm⁴"
+     "v": "cm³"
     },
     {
      "ref": "A116",
-     "v": "heq (retângulo b × heq, para o Ftool)"
+     "v": "x supondo LN na alma (T)"
     },
     {
      "ref": "B116",
-     "v": "=IFERROR((12*Ieq_cf/b2_cf)^(1/3),\"—\")",
-     "nome": "heq_cf",
+     "v": "=IFERROR(IF(cf_T=1,(-lnBw_cf+SQRT(lnBw_cf^2+2*bw_cf*lnCw_cf))/bw_cf,x2r_cf),\"—\")",
+     "nome": "x2t_cf",
      "tipo": "resultado"
     },
     {
@@ -10552,492 +10666,520 @@
     },
     {
      "ref": "A117",
-     "v": "σs = n·Ma·(d − x)/III"
+     "v": "x adotado (estádio II)"
     },
     {
      "ref": "B117",
-     "v": "=IFERROR(n_cfe*Ma_cf*(d_cf-x2_cf)/III_cf,\"—\")",
+     "v": "=IFERROR(IF(OR(cf_T=0,x2r_cf<=hf_cf),x2r_cf,x2t_cf),\"—\")",
+     "nome": "x2_cf",
      "tipo": "resultado"
     },
     {
      "ref": "C117",
-     "v": "kN/cm²"
+     "v": "cm"
     },
     {
      "ref": "A118",
-     "v": "δ0 = (Ma/Mk)·Σ·largura/(Em·Ieq)"
+     "v": "III da alvenaria comprimida = b·x³/3"
     },
     {
      "ref": "B118",
+     "v": "=IFERROR(IF(OR(cf_T=0,x2r_cf<=hf_cf),b2_cf,bw_cf)*x2_cf^3/3,\"—\")",
+     "nome": "IIc_cf",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C118",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "D118",
+     "v": "b da compressão com a LN na mesa (ou seção retangular); bw com a LN na alma."
+    },
+    {
+     "ref": "A119",
+     "v": "III das abas da mesa"
+    },
+    {
+     "ref": "B119",
+     "v": "=IFERROR(IF(OR(cf_T=0,x2r_cf<=hf_cf),0,(bm_cf-bw_cf)*hf_cf^3/12+(bm_cf-bw_cf)*hf_cf*(x2_cf-hf_cf/2)^2),\"—\")",
+     "nome": "IIf_cf",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C119",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "D119",
+     "v": "Só com a LN na alma: (bm − bw)·hf³/12 + (bm − bw)·hf·(x − hf/2)²."
+    },
+    {
+     "ref": "A120",
+     "v": "III da barra = n·As·(d − x)²"
+    },
+    {
+     "ref": "B120",
+     "v": "=IFERROR(n_cfe*As_cfe*(d_cf-x2_cf)^2,\"—\")",
+     "nome": "IIs_cf",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C120",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "D120",
+     "v": "Armadura comprimida (construtivas) desprezada (a favor da segurança)."
+    },
+    {
+     "ref": "A121",
+     "v": "III"
+    },
+    {
+     "ref": "B121",
+     "v": "=IFERROR(IIc_cf+IIf_cf+IIs_cf,\"—\")",
+     "nome": "III_cf",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C121",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "D121",
+     "v": "Alvenaria comprimida + abas + barra."
+    },
+    {
+     "ref": "A122",
+     "v": "Ieq (Branson) ≤ Ig"
+    },
+    {
+     "ref": "B122",
+     "v": "=IFERROR(IF(Ma_cf<=Mr_cf,Ig_cf,MIN(Ig_cf,(Mr_cf/Ma_cf)^3*Ig_cf+(1-(Mr_cf/Ma_cf)^3)*III_cf)),\"—\")",
+     "nome": "Ieq_cf",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C122",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "A123",
+     "v": "heq (retângulo b × heq, para o Ftool)"
+    },
+    {
+     "ref": "B123",
+     "v": "=IFERROR((12*Ieq_cf/b2_cf)^(1/3),\"—\")",
+     "nome": "heq_cf",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C123",
+     "v": "cm"
+    },
+    {
+     "ref": "A124",
+     "v": "σs = n·Ma·(d − x)/III"
+    },
+    {
+     "ref": "B124",
+     "v": "=IFERROR(n_cfe*Ma_cf*(d_cf-x2_cf)/III_cf,\"—\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C124",
+     "v": "kN/cm²"
+    },
+    {
+     "ref": "A125",
+     "v": "δ0 = (Ma/Mk)·Σ·largura/(Em·Ieq)"
+    },
+    {
+     "ref": "B125",
      "v": "=IFERROR(psi_els*sum_d*binf/(Em_cf*1000*Ieq_cf/100000000)*1000,\"—\")",
      "nome": "d0_cf",
      "tipo": "resultado"
     },
     {
-     "ref": "C118",
+     "ref": "C125",
      "v": "mm"
     },
     {
-     "ref": "D118",
+     "ref": "D125",
      "v": "Mesmo perfil de carga da aba Solo e Empuxo (igual ao Ftool)."
     },
     {
-     "ref": "A119",
+     "ref": "A126",
      "v": "δ∞ = δ0·(1 + Δξ)"
     },
     {
-     "ref": "B119",
+     "ref": "B126",
      "v": "=IFERROR(d0_cf*(1+dxi),\"—\")",
      "nome": "dinf_cf",
      "tipo": "resultado"
     },
     {
-     "ref": "C119",
+     "ref": "C126",
      "v": "mm"
     },
     {
-     "ref": "D119",
+     "ref": "D126",
      "v": "ρ' = 0 (a favor da segurança)."
     },
     {
-     "ref": "A120",
+     "ref": "A127",
      "v": "δadm"
     },
     {
-     "ref": "B120",
+     "ref": "B127",
      "v": "=IFERROR(dadm_,\"—\")",
      "nome": "dadm_cf",
      "tipo": "resultado"
     },
     {
-     "ref": "C120",
+     "ref": "C127",
      "v": "mm"
     },
     {
-     "ref": "D120",
+     "ref": "D127",
      "v": "Balanço: 2L/250 (Entradas; critério adotado)."
     },
     {
-     "ref": "A122",
+     "ref": "A129",
      "v": "8. Painel entre contrafortes — momentos (Libânio)"
     },
     {
-     "ref": "A123",
+     "ref": "A130",
      "v": "Vinculação"
     },
     {
-     "ref": "B123",
+     "ref": "B130",
      "v": "=IFERROR(\"Base engastada (sapata corrida), topo livre, laterais \"&IF(LEFT(lat_pan,4)=\"Apoi\",\"apoiadas (Tipo 21 / 9)\",\"engastadas (Tipo 22 / 10)\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A124",
+     "ref": "A131",
      "v": "l (vão entre contrafortes)"
     },
     {
-     "ref": "B124",
+     "ref": "B131",
      "v": "=IFERROR(l_cf_adot,\"—\")",
      "nome": "l_p",
      "tipo": "resultado"
     },
     {
-     "ref": "C124",
+     "ref": "C131",
      "v": "m"
     },
     {
-     "ref": "A125",
+     "ref": "A132",
      "v": "h"
     },
     {
-     "ref": "B125",
+     "ref": "B132",
      "v": "=IFERROR(H_muro,\"—\")",
      "nome": "h_p",
      "tipo": "resultado"
     },
     {
-     "ref": "C125",
+     "ref": "C132",
      "v": "m"
     },
     {
-     "ref": "D125",
+     "ref": "D132",
      "v": "Altura do muro (a placa vai até o topo do muro, borda livre)."
     },
     {
-     "ref": "A126",
+     "ref": "A133",
      "v": "γ = h/l"
     },
     {
-     "ref": "B126",
+     "ref": "B133",
      "v": "=IFERROR(h_p/l_p,\"—\")",
      "nome": "gam_p",
      "tipo": "resultado"
     },
     {
-     "ref": "D126",
+     "ref": "D133",
      "v": "Tabela vai de 0,30 a 2,00."
     },
     {
-     "ref": "A127",
+     "ref": "A134",
      "v": "γ usado (limitado à tabela)"
     },
     {
-     "ref": "B127",
+     "ref": "B134",
      "v": "=IFERROR(MIN(2,MAX(0.3,gam_p)),\"—\")",
      "nome": "gam_c",
      "tipo": "resultado"
     },
     {
-     "ref": "A128",
+     "ref": "A135",
      "v": "l de referência = menor vão"
     },
     {
-     "ref": "B128",
+     "ref": "B135",
      "v": "=IFERROR(MIN(h_p,l_p),\"—\")",
      "nome": "lref_p",
      "tipo": "resultado"
     },
     {
-     "ref": "C128",
+     "ref": "C135",
      "v": "m"
     },
     {
-     "ref": "A129",
+     "ref": "A136",
      "v": "Parcela triangular (σh,base − σh,topo)"
     },
     {
-     "ref": "B129",
+     "ref": "B136",
      "v": "=IFERROR(MAX(0,sh_base-sh_topo),\"—\")",
      "nome": "p_tri",
      "tipo": "resultado"
     },
     {
-     "ref": "C129",
+     "ref": "C136",
      "v": "kPa"
     },
     {
-     "ref": "D129",
+     "ref": "D136",
      "v": "Característica. Perfil tratado como linear entre topo e base. Com solo abaixo do topo do muro, o triângulo vai de 0 no topo do muro a este valor na base (dedução, a favor da segurança)."
     },
     {
-     "ref": "A130",
+     "ref": "A137",
      "v": "Parcela uniforme (σh,topo)"
     },
     {
-     "ref": "B130",
+     "ref": "B137",
      "v": "=IFERROR(sh_topo,\"—\")",
      "nome": "p_uni",
      "tipo": "resultado"
     },
     {
-     "ref": "C130",
+     "ref": "C137",
      "v": "kPa"
     },
     {
-     "ref": "D130",
+     "ref": "D137",
      "v": "Sobrecarga etc. (no topo do solo; aplicada na altura toda da placa)."
     },
     {
-     "ref": "A131",
+     "ref": "A138",
      "v": "linha da tabela"
     },
     {
-     "ref": "B131",
+     "ref": "B138",
      "v": "=IFERROR(MATCH(gam_c,lib_g,1),\"—\")",
      "nome": "i_g",
      "tipo": "resultado"
     },
     {
-     "ref": "A132",
+     "ref": "A139",
      "v": "t (interpolação)"
     },
     {
-     "ref": "B132",
+     "ref": "B139",
      "v": "=IFERROR(IF(i_g>=35,0,(gam_c-INDEX(lib_g,i_g))/(INDEX(lib_g,i_g+1)-INDEX(lib_g,i_g))),\"—\")",
      "nome": "t_g",
      "tipo": "resultado"
     },
     {
-     "ref": "A133",
+     "ref": "A140",
      "v": "Coeficiente"
     },
     {
-     "ref": "B133",
+     "ref": "B140",
      "v": "Triangular"
     },
     {
-     "ref": "C133",
+     "ref": "C140",
      "v": "Uniforme"
     },
     {
-     "ref": "A134",
+     "ref": "A141",
      "v": "μx"
     },
     {
-     "ref": "B134",
+     "ref": "B141",
      "v": "=IFERROR(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),i_g,1)+t_g*(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),MIN(35,i_g+1),1)-INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),i_g,1)),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C134",
+     "ref": "C141",
      "v": "=IFERROR(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),i_g,1)+t_g*(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),MIN(35,i_g+1),1)-INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),i_g,1)),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A135",
+     "ref": "A142",
      "v": "μ'x"
     },
     {
-     "ref": "B135",
+     "ref": "B142",
      "v": "=IFERROR(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),i_g,2)+t_g*(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),MIN(35,i_g+1),2)-INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),i_g,2)),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C135",
+     "ref": "C142",
      "v": "=IFERROR(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),i_g,2)+t_g*(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),MIN(35,i_g+1),2)-INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),i_g,2)),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A136",
+     "ref": "A143",
      "v": "μy"
     },
     {
-     "ref": "B136",
+     "ref": "B143",
      "v": "=IFERROR(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),i_g,3)+t_g*(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),MIN(35,i_g+1),3)-INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),i_g,3)),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C136",
+     "ref": "C143",
      "v": "=IFERROR(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),i_g,3)+t_g*(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),MIN(35,i_g+1),3)-INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),i_g,3)),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A137",
+     "ref": "A144",
      "v": "μyb"
     },
     {
-     "ref": "B137",
+     "ref": "B144",
      "v": "=IFERROR(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),i_g,4)+t_g*(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),MIN(35,i_g+1),4)-INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),i_g,4)),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C137",
+     "ref": "C144",
      "v": "=IFERROR(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),i_g,4)+t_g*(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),MIN(35,i_g+1),4)-INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),i_g,4)),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A138",
+     "ref": "A145",
      "v": "μ'y"
     },
     {
-     "ref": "B138",
+     "ref": "B145",
      "v": "=IFERROR(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),i_g,5)+t_g*(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),MIN(35,i_g+1),5)-INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),i_g,5)),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C138",
+     "ref": "C145",
      "v": "=IFERROR(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),i_g,5)+t_g*(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),MIN(35,i_g+1),5)-INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),i_g,5)),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A139",
+     "ref": "A146",
      "v": "μ'yb"
     },
     {
-     "ref": "B139",
+     "ref": "B146",
      "v": "=IFERROR(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),i_g,6)+t_g*(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),MIN(35,i_g+1),6)-INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),i_g,6)),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C139",
+     "ref": "C146",
      "v": "=IFERROR(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),i_g,6)+t_g*(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),MIN(35,i_g+1),6)-INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),i_g,6)),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A140",
+     "ref": "A147",
      "v": "α"
     },
     {
-     "ref": "B140",
+     "ref": "B147",
      "v": "=IFERROR(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),i_g,7)+t_g*(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),MIN(35,i_g+1),7)-INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),i_g,7)),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C140",
+     "ref": "C147",
      "v": "=IFERROR(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),i_g,7)+t_g*(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),MIN(35,i_g+1),7)-INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),i_g,7)),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A141",
+     "ref": "A148",
      "v": "αB"
     },
     {
-     "ref": "B141",
+     "ref": "B148",
      "v": "=IFERROR(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),i_g,8)+t_g*(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),MIN(35,i_g+1),8)-INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_TA,lib_TE),i_g,8)),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C141",
+     "ref": "C148",
      "v": "=IFERROR(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),i_g,8)+t_g*(INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),MIN(35,i_g+1),8)-INDEX(CHOOSE(IF(LEFT(lat_pan,4)=\"Apoi\",1,2),lib_UA,lib_UE),i_g,8)),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A142",
+     "ref": "A149",
      "v": "Mdx — horizontal, vão (← μy)"
     },
     {
-     "ref": "B142",
-     "v": "=IFERROR(gama_f*(B136*p_tri+C136*p_uni)*lref_p^2,\"—\")",
+     "ref": "B149",
+     "v": "=IFERROR(gama_f*(B143*p_tri+C143*p_uni)*lref_p^2,\"—\")",
      "nome": "Mdx_p",
      "tipo": "resultado"
     },
     {
-     "ref": "C142",
+     "ref": "C149",
      "v": "kN·cm/m"
     },
     {
-     "ref": "A143",
+     "ref": "A150",
      "v": "Mdxb — horizontal, borda livre (← μyb)"
     },
     {
-     "ref": "B143",
-     "v": "=IFERROR(gama_f*(B137*p_tri+C137*p_uni)*lref_p^2,\"—\")",
+     "ref": "B150",
+     "v": "=IFERROR(gama_f*(B144*p_tri+C144*p_uni)*lref_p^2,\"—\")",
      "nome": "Mdxb_p",
      "tipo": "resultado"
     },
     {
-     "ref": "C143",
+     "ref": "C150",
      "v": "kN·cm/m"
     },
     {
-     "ref": "A144",
+     "ref": "A151",
      "v": "Mdy — vertical, vão (← μx)"
     },
     {
-     "ref": "B144",
-     "v": "=IFERROR(gama_f*(B134*p_tri+C134*p_uni)*lref_p^2,\"—\")",
+     "ref": "B151",
+     "v": "=IFERROR(gama_f*(B141*p_tri+C141*p_uni)*lref_p^2,\"—\")",
      "nome": "Mdy_p",
      "tipo": "resultado"
     },
     {
-     "ref": "C144",
+     "ref": "C151",
      "v": "kN·cm/m"
     },
     {
-     "ref": "D144",
+     "ref": "D151",
      "v": "traciona a face externa"
     },
     {
-     "ref": "A145",
+     "ref": "A152",
      "v": "Mdyei — vertical, engaste da base (← μ'x)"
     },
     {
-     "ref": "B145",
-     "v": "=IFERROR(gama_f*(B135*p_tri+C135*p_uni)*lref_p^2,\"—\")",
+     "ref": "B152",
+     "v": "=IFERROR(gama_f*(B142*p_tri+C142*p_uni)*lref_p^2,\"—\")",
      "nome": "Mdyei_p",
      "tipo": "resultado"
     },
     {
-     "ref": "C145",
-     "v": "kN·cm/m"
-    },
-    {
-     "ref": "D145",
-     "v": "traciona a face do solo"
-    },
-    {
-     "ref": "A146",
-     "v": "Mdxe — horizontal, engaste lateral (← μ'y)"
-    },
-    {
-     "ref": "B146",
-     "v": "=IFERROR(gama_f*(B138*p_tri+C138*p_uni)*lref_p^2,\"—\")",
-     "nome": "Mdxe_p",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "C146",
-     "v": "kN·cm/m"
-    },
-    {
-     "ref": "D146",
-     "v": "Só com laterais engastadas — traciona a face do solo junto ao contraforte."
-    },
-    {
-     "ref": "A147",
-     "v": "Mdxeb — horizontal, engaste lateral na borda (← μ'yb)"
-    },
-    {
-     "ref": "B147",
-     "v": "=IFERROR(gama_f*(B139*p_tri+C139*p_uni)*lref_p^2,\"—\")",
-     "nome": "Mdxeb_p",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "C147",
-     "v": "kN·cm/m"
-    },
-    {
-     "ref": "A149",
-     "v": "9. Painel — flexão vertical (barras nos furos)"
-    },
-    {
-     "ref": "A150",
-     "v": "fpk do painel"
-    },
-    {
-     "ref": "B150",
-     "v": "=IFERROR(IF(gr_tot=\"Sim\",fpk_chei,IF(LEFT(fpk_ref,4)=\"Líqu\",fpk_oco/r_liq,fpk_oco)),\"—\")",
-     "nome": "fpk_pn",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "C150",
-     "v": "MPa"
-    },
-    {
-     "ref": "D150",
-     "v": "Seção I → fpk líquido ou bruto (Entradas: área de referência); grauteamento total → seção cheia, fpk*."
-    },
-    {
-     "ref": "A151",
-     "v": "Kfd vertical = K·0,7·fpk/γm"
-    },
-    {
-     "ref": "B151",
-     "v": "=IFERROR(K_pv*0.7*fpk_pn/gama_m,\"—\")",
-     "nome": "Kfd_pv",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "C151",
-     "v": "MPa"
-    },
-    {
-     "ref": "A152",
-     "v": "d vertical"
-    },
-    {
-     "ref": "B152",
-     "v": "=IFERROR(IF(LEFT(pos_pv,1)=\"2\",t_bloco-c_pv,t_bloco/2),\"—\")",
-     "nome": "d_pv",
-     "tipo": "resultado"
-    },
-    {
      "ref": "C152",
-     "v": "cm"
+     "v": "kN·cm/m"
     },
     {
      "ref": "D152",
-     "v": "2 barras a c das faces → d = t − c; 1 barra centralizada → t/2."
+     "v": "traciona a face do solo"
     },
     {
      "ref": "A153",
-     "v": "Momento para a barra do lado do solo"
+     "v": "Mdxe — horizontal, engaste lateral (← μ'y)"
     },
     {
      "ref": "B153",
-     "v": "=IFERROR(IF(LEFT(pos_pv,1)=\"2\",Mdyei_p,MAX(Mdyei_p,Mdy_p)),\"—\")",
-     "nome": "M_pvs",
+     "v": "=IFERROR(gama_f*(B145*p_tri+C145*p_uni)*lref_p^2,\"—\")",
+     "nome": "Mdxe_p",
      "tipo": "resultado"
     },
     {
@@ -11045,13 +11187,17 @@
      "v": "kN·cm/m"
     },
     {
+     "ref": "D153",
+     "v": "Só com laterais engastadas — traciona a face do solo junto ao contraforte."
+    },
+    {
      "ref": "A154",
-     "v": "Momento para a barra do lado externo"
+     "v": "Mdxeb — horizontal, engaste lateral na borda (← μ'yb)"
     },
     {
      "ref": "B154",
-     "v": "=IFERROR(Mdy_p,\"—\")",
-     "nome": "M_pve",
+     "v": "=IFERROR(gama_f*(B146*p_tri+C146*p_uni)*lref_p^2,\"—\")",
+     "nome": "Mdxeb_p",
      "tipo": "resultado"
     },
     {
@@ -11059,275 +11205,95 @@
      "v": "kN·cm/m"
     },
     {
-     "ref": "A155",
-     "v": "Espaçamento dos furos"
-    },
-    {
-     "ref": "B155",
-     "v": "=IFERROR(m_mod,\"—\")",
-     "nome": "s_furo",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "C155",
-     "v": "cm"
-    },
-    {
-     "ref": "D155",
-     "v": "29 → 15; 39 → 20. Faixas = múltiplos disso."
-    },
-    {
      "ref": "A156",
-     "v": "Arranjos (faixa bm = múltiplo do espaçamento dos furos; barra do lado do solo, momento da base)"
+     "v": "9. Painel — flexão vertical (barras nos furos)"
     },
     {
      "ref": "A157",
-     "v": "bm (cm)"
+     "v": "fpk do painel"
     },
     {
      "ref": "B157",
-     "v": "Md (kN·cm)"
-    },
-    {
-     "ref": "C157",
-     "v": "As com fyd (cm²)"
-    },
-    {
-     "ref": "D157",
-     "v": "As,mín (cm²)"
-    },
-    {
-     "ref": "E157",
-     "v": "Ø sugerido (mm)"
-    },
-    {
-     "ref": "F157",
-     "v": "Ø das Entradas atende?"
-    },
-    {
-     "ref": "A158",
-     "v": "=IFERROR(Graute*1,\"—\")",
+     "v": "=IFERROR(IF(gr_tot=\"Sim\",fpk_chei,IF(LEFT(fpk_ref,4)=\"Líqu\",fpk_oco/r_liq,fpk_oco)),\"—\")",
+     "nome": "fpk_pn",
      "tipo": "resultado"
     },
     {
+     "ref": "C157",
+     "v": "MPa"
+    },
+    {
+     "ref": "D157",
+     "v": "Seção I → fpk líquido ou bruto (Entradas: área de referência); grauteamento total → seção cheia, fpk*."
+    },
+    {
+     "ref": "A158",
+     "v": "Kfd vertical = K·0,7·fpk/γm"
+    },
+    {
      "ref": "B158",
-     "v": "=IFERROR(M_pvs*A158/100,\"—\")",
+     "v": "=IFERROR(K_pv*0.7*fpk_pn/gama_m,\"—\")",
+     "nome": "Kfd_pv",
      "tipo": "resultado"
     },
     {
      "ref": "C158",
-     "v": "=IFERROR(B158/(fyk_/gama_s/10*MIN(d_pv-0.4*1.25*d_pv*(1-SQRT(1-B158/(0.5*A158*d_pv^2*Kfd_pv/10))),0.95*d_pv)),\"não resiste\")",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "D158",
-     "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*A158*d_pv,0.001*A158*t_bloco),\"—\")",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "E158",
-     "v": "=IFERROR(INDEX({6.3,8,10,12.5,16,20},MATCH(1,L158:Q158,0)),\"> Ø20\")",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "F158",
-     "v": "=IFERROR(IF(ISNUMBER(C158),IF(PI()*phi_pv^2/400>=MAX(C158,D158)-0.0005,\"OK\",\"não\"),\"—\"),\"—\")",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "L158",
-     "v": "=IF(ISNUMBER(C158),IF(PI()*6.3^2/400>=MAX(C158,D158)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "M158",
-     "v": "=IF(ISNUMBER(C158),IF(PI()*8^2/400>=MAX(C158,D158)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "N158",
-     "v": "=IF(ISNUMBER(C158),IF(PI()*10^2/400>=MAX(C158,D158)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "O158",
-     "v": "=IF(ISNUMBER(C158),IF(PI()*12.5^2/400>=MAX(C158,D158)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "P158",
-     "v": "=IF(ISNUMBER(C158),IF(PI()*16^2/400>=MAX(C158,D158)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "Q158",
-     "v": "=IF(ISNUMBER(C158),IF(PI()*20^2/400>=MAX(C158,D158)-0.0005,1,0),0)"
+     "v": "MPa"
     },
     {
      "ref": "A159",
-     "v": "=IFERROR(Graute*2,\"—\")",
-     "tipo": "resultado"
+     "v": "d vertical"
     },
     {
      "ref": "B159",
-     "v": "=IFERROR(M_pvs*A159/100,\"—\")",
+     "v": "=IFERROR(IF(LEFT(pos_pv,1)=\"2\",t_bloco-c_pv,t_bloco/2),\"—\")",
+     "nome": "d_pv",
      "tipo": "resultado"
     },
     {
      "ref": "C159",
-     "v": "=IFERROR(B159/(fyk_/gama_s/10*MIN(d_pv-0.4*1.25*d_pv*(1-SQRT(1-B159/(0.5*A159*d_pv^2*Kfd_pv/10))),0.95*d_pv)),\"não resiste\")",
-     "tipo": "resultado"
+     "v": "cm"
     },
     {
      "ref": "D159",
-     "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*A159*d_pv,0.001*A159*t_bloco),\"—\")",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "E159",
-     "v": "=IFERROR(INDEX({6.3,8,10,12.5,16,20},MATCH(1,L159:Q159,0)),\"> Ø20\")",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "F159",
-     "v": "=IFERROR(IF(ISNUMBER(C159),IF(PI()*phi_pv^2/400>=MAX(C159,D159)-0.0005,\"OK\",\"não\"),\"—\"),\"—\")",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "L159",
-     "v": "=IF(ISNUMBER(C159),IF(PI()*6.3^2/400>=MAX(C159,D159)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "M159",
-     "v": "=IF(ISNUMBER(C159),IF(PI()*8^2/400>=MAX(C159,D159)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "N159",
-     "v": "=IF(ISNUMBER(C159),IF(PI()*10^2/400>=MAX(C159,D159)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "O159",
-     "v": "=IF(ISNUMBER(C159),IF(PI()*12.5^2/400>=MAX(C159,D159)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "P159",
-     "v": "=IF(ISNUMBER(C159),IF(PI()*16^2/400>=MAX(C159,D159)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "Q159",
-     "v": "=IF(ISNUMBER(C159),IF(PI()*20^2/400>=MAX(C159,D159)-0.0005,1,0),0)"
+     "v": "2 barras a c das faces → d = t − c; 1 barra centralizada → t/2."
     },
     {
      "ref": "A160",
-     "v": "=IFERROR(Graute*3,\"—\")",
-     "tipo": "resultado"
+     "v": "Momento para a barra do lado do solo"
     },
     {
      "ref": "B160",
-     "v": "=IFERROR(M_pvs*A160/100,\"—\")",
+     "v": "=IFERROR(IF(LEFT(pos_pv,1)=\"2\",Mdyei_p,MAX(Mdyei_p,Mdy_p)),\"—\")",
+     "nome": "M_pvs",
      "tipo": "resultado"
     },
     {
      "ref": "C160",
-     "v": "=IFERROR(B160/(fyk_/gama_s/10*MIN(d_pv-0.4*1.25*d_pv*(1-SQRT(1-B160/(0.5*A160*d_pv^2*Kfd_pv/10))),0.95*d_pv)),\"não resiste\")",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "D160",
-     "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*A160*d_pv,0.001*A160*t_bloco),\"—\")",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "E160",
-     "v": "=IFERROR(INDEX({6.3,8,10,12.5,16,20},MATCH(1,L160:Q160,0)),\"> Ø20\")",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "F160",
-     "v": "=IFERROR(IF(ISNUMBER(C160),IF(PI()*phi_pv^2/400>=MAX(C160,D160)-0.0005,\"OK\",\"não\"),\"—\"),\"—\")",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "L160",
-     "v": "=IF(ISNUMBER(C160),IF(PI()*6.3^2/400>=MAX(C160,D160)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "M160",
-     "v": "=IF(ISNUMBER(C160),IF(PI()*8^2/400>=MAX(C160,D160)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "N160",
-     "v": "=IF(ISNUMBER(C160),IF(PI()*10^2/400>=MAX(C160,D160)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "O160",
-     "v": "=IF(ISNUMBER(C160),IF(PI()*12.5^2/400>=MAX(C160,D160)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "P160",
-     "v": "=IF(ISNUMBER(C160),IF(PI()*16^2/400>=MAX(C160,D160)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "Q160",
-     "v": "=IF(ISNUMBER(C160),IF(PI()*20^2/400>=MAX(C160,D160)-0.0005,1,0),0)"
+     "v": "kN·cm/m"
     },
     {
      "ref": "A161",
-     "v": "=IFERROR(Graute*4,\"—\")",
-     "tipo": "resultado"
+     "v": "Momento para a barra do lado externo"
     },
     {
      "ref": "B161",
-     "v": "=IFERROR(M_pvs*A161/100,\"—\")",
+     "v": "=IFERROR(Mdy_p,\"—\")",
+     "nome": "M_pve",
      "tipo": "resultado"
     },
     {
      "ref": "C161",
-     "v": "=IFERROR(B161/(fyk_/gama_s/10*MIN(d_pv-0.4*1.25*d_pv*(1-SQRT(1-B161/(0.5*A161*d_pv^2*Kfd_pv/10))),0.95*d_pv)),\"não resiste\")",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "D161",
-     "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*A161*d_pv,0.001*A161*t_bloco),\"—\")",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "E161",
-     "v": "=IFERROR(INDEX({6.3,8,10,12.5,16,20},MATCH(1,L161:Q161,0)),\"> Ø20\")",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "F161",
-     "v": "=IFERROR(IF(ISNUMBER(C161),IF(PI()*phi_pv^2/400>=MAX(C161,D161)-0.0005,\"OK\",\"não\"),\"—\"),\"—\")",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "L161",
-     "v": "=IF(ISNUMBER(C161),IF(PI()*6.3^2/400>=MAX(C161,D161)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "M161",
-     "v": "=IF(ISNUMBER(C161),IF(PI()*8^2/400>=MAX(C161,D161)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "N161",
-     "v": "=IF(ISNUMBER(C161),IF(PI()*10^2/400>=MAX(C161,D161)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "O161",
-     "v": "=IF(ISNUMBER(C161),IF(PI()*12.5^2/400>=MAX(C161,D161)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "P161",
-     "v": "=IF(ISNUMBER(C161),IF(PI()*16^2/400>=MAX(C161,D161)-0.0005,1,0),0)"
-    },
-    {
-     "ref": "Q161",
-     "v": "=IF(ISNUMBER(C161),IF(PI()*20^2/400>=MAX(C161,D161)-0.0005,1,0),0)"
+     "v": "kN·cm/m"
     },
     {
      "ref": "A162",
-     "v": "Espaçamento vertical adotado"
+     "v": "Espaçamento dos furos"
     },
     {
      "ref": "B162",
-     "v": "=IFERROR(IF(ISNUMBER(s_pv_dir),ROUNDDOWN(s_pv_dir/Graute,0)*Graute,SUMPRODUCT(MAX((F158:F161=\"OK\")*(A158:A161<=6*t_bloco)*A158:A161))),\"—\")",
-     "nome": "s_pv",
+     "v": "=IFERROR(m_mod,\"—\")",
+     "nome": "s_furo",
      "tipo": "resultado"
     },
     {
@@ -11336,964 +11302,1125 @@
     },
     {
      "ref": "D162",
-     "v": "Entradas (ajustado para baixo ao múltiplo dos furos) ou automático (maior faixa em que o Ø das Entradas atende)."
+     "v": "29 → 15; 39 → 20. Faixas = múltiplos disso."
     },
     {
      "ref": "A163",
+     "v": "Arranjos (faixa bm = múltiplo do espaçamento dos furos; barra do lado do solo, momento da base)"
+    },
+    {
+     "ref": "A164",
+     "v": "bm (cm)"
+    },
+    {
+     "ref": "B164",
+     "v": "Md (kN·cm)"
+    },
+    {
+     "ref": "C164",
+     "v": "As com fyd (cm²)"
+    },
+    {
+     "ref": "D164",
+     "v": "As,mín (cm²)"
+    },
+    {
+     "ref": "E164",
+     "v": "Ø sugerido (mm)"
+    },
+    {
+     "ref": "F164",
+     "v": "Ø das Entradas atende?"
+    },
+    {
+     "ref": "A165",
+     "v": "=IFERROR(Graute*1,\"—\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "B165",
+     "v": "=IFERROR(M_pvs*A165/100,\"—\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C165",
+     "v": "=IFERROR(B165/(fyk_/gama_s/10*MIN(d_pv-0.4*1.25*d_pv*(1-SQRT(1-B165/(0.5*A165*d_pv^2*Kfd_pv/10))),0.95*d_pv)),\"não resiste\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "D165",
+     "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*A165*d_pv,0.001*A165*t_bloco),\"—\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "E165",
+     "v": "=IFERROR(INDEX({6.3,8,10,12.5,16,20},MATCH(1,L165:Q165,0)),\"> Ø20\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "F165",
+     "v": "=IFERROR(IF(ISNUMBER(C165),IF(PI()*phi_pv^2/400>=MAX(C165,D165)-0.0005,\"OK\",\"não\"),\"—\"),\"—\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "L165",
+     "v": "=IF(ISNUMBER(C165),IF(PI()*6.3^2/400>=MAX(C165,D165)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "M165",
+     "v": "=IF(ISNUMBER(C165),IF(PI()*8^2/400>=MAX(C165,D165)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "N165",
+     "v": "=IF(ISNUMBER(C165),IF(PI()*10^2/400>=MAX(C165,D165)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "O165",
+     "v": "=IF(ISNUMBER(C165),IF(PI()*12.5^2/400>=MAX(C165,D165)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "P165",
+     "v": "=IF(ISNUMBER(C165),IF(PI()*16^2/400>=MAX(C165,D165)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "Q165",
+     "v": "=IF(ISNUMBER(C165),IF(PI()*20^2/400>=MAX(C165,D165)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "A166",
+     "v": "=IFERROR(Graute*2,\"—\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "B166",
+     "v": "=IFERROR(M_pvs*A166/100,\"—\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C166",
+     "v": "=IFERROR(B166/(fyk_/gama_s/10*MIN(d_pv-0.4*1.25*d_pv*(1-SQRT(1-B166/(0.5*A166*d_pv^2*Kfd_pv/10))),0.95*d_pv)),\"não resiste\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "D166",
+     "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*A166*d_pv,0.001*A166*t_bloco),\"—\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "E166",
+     "v": "=IFERROR(INDEX({6.3,8,10,12.5,16,20},MATCH(1,L166:Q166,0)),\"> Ø20\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "F166",
+     "v": "=IFERROR(IF(ISNUMBER(C166),IF(PI()*phi_pv^2/400>=MAX(C166,D166)-0.0005,\"OK\",\"não\"),\"—\"),\"—\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "L166",
+     "v": "=IF(ISNUMBER(C166),IF(PI()*6.3^2/400>=MAX(C166,D166)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "M166",
+     "v": "=IF(ISNUMBER(C166),IF(PI()*8^2/400>=MAX(C166,D166)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "N166",
+     "v": "=IF(ISNUMBER(C166),IF(PI()*10^2/400>=MAX(C166,D166)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "O166",
+     "v": "=IF(ISNUMBER(C166),IF(PI()*12.5^2/400>=MAX(C166,D166)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "P166",
+     "v": "=IF(ISNUMBER(C166),IF(PI()*16^2/400>=MAX(C166,D166)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "Q166",
+     "v": "=IF(ISNUMBER(C166),IF(PI()*20^2/400>=MAX(C166,D166)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "A167",
+     "v": "=IFERROR(Graute*3,\"—\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "B167",
+     "v": "=IFERROR(M_pvs*A167/100,\"—\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C167",
+     "v": "=IFERROR(B167/(fyk_/gama_s/10*MIN(d_pv-0.4*1.25*d_pv*(1-SQRT(1-B167/(0.5*A167*d_pv^2*Kfd_pv/10))),0.95*d_pv)),\"não resiste\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "D167",
+     "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*A167*d_pv,0.001*A167*t_bloco),\"—\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "E167",
+     "v": "=IFERROR(INDEX({6.3,8,10,12.5,16,20},MATCH(1,L167:Q167,0)),\"> Ø20\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "F167",
+     "v": "=IFERROR(IF(ISNUMBER(C167),IF(PI()*phi_pv^2/400>=MAX(C167,D167)-0.0005,\"OK\",\"não\"),\"—\"),\"—\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "L167",
+     "v": "=IF(ISNUMBER(C167),IF(PI()*6.3^2/400>=MAX(C167,D167)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "M167",
+     "v": "=IF(ISNUMBER(C167),IF(PI()*8^2/400>=MAX(C167,D167)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "N167",
+     "v": "=IF(ISNUMBER(C167),IF(PI()*10^2/400>=MAX(C167,D167)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "O167",
+     "v": "=IF(ISNUMBER(C167),IF(PI()*12.5^2/400>=MAX(C167,D167)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "P167",
+     "v": "=IF(ISNUMBER(C167),IF(PI()*16^2/400>=MAX(C167,D167)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "Q167",
+     "v": "=IF(ISNUMBER(C167),IF(PI()*20^2/400>=MAX(C167,D167)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "A168",
+     "v": "=IFERROR(Graute*4,\"—\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "B168",
+     "v": "=IFERROR(M_pvs*A168/100,\"—\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C168",
+     "v": "=IFERROR(B168/(fyk_/gama_s/10*MIN(d_pv-0.4*1.25*d_pv*(1-SQRT(1-B168/(0.5*A168*d_pv^2*Kfd_pv/10))),0.95*d_pv)),\"não resiste\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "D168",
+     "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*A168*d_pv,0.001*A168*t_bloco),\"—\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "E168",
+     "v": "=IFERROR(INDEX({6.3,8,10,12.5,16,20},MATCH(1,L168:Q168,0)),\"> Ø20\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "F168",
+     "v": "=IFERROR(IF(ISNUMBER(C168),IF(PI()*phi_pv^2/400>=MAX(C168,D168)-0.0005,\"OK\",\"não\"),\"—\"),\"—\")",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "L168",
+     "v": "=IF(ISNUMBER(C168),IF(PI()*6.3^2/400>=MAX(C168,D168)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "M168",
+     "v": "=IF(ISNUMBER(C168),IF(PI()*8^2/400>=MAX(C168,D168)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "N168",
+     "v": "=IF(ISNUMBER(C168),IF(PI()*10^2/400>=MAX(C168,D168)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "O168",
+     "v": "=IF(ISNUMBER(C168),IF(PI()*12.5^2/400>=MAX(C168,D168)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "P168",
+     "v": "=IF(ISNUMBER(C168),IF(PI()*16^2/400>=MAX(C168,D168)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "Q168",
+     "v": "=IF(ISNUMBER(C168),IF(PI()*20^2/400>=MAX(C168,D168)-0.0005,1,0),0)"
+    },
+    {
+     "ref": "A169",
+     "v": "Espaçamento vertical adotado"
+    },
+    {
+     "ref": "B169",
+     "v": "=IFERROR(IF(ISNUMBER(s_pv_dir),ROUNDDOWN(s_pv_dir/Graute,0)*Graute,SUMPRODUCT(MAX((F165:F168=\"OK\")*(A165:A168<=6*t_bloco)*A165:A168))),\"—\")",
+     "nome": "s_pv",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C169",
+     "v": "cm"
+    },
+    {
+     "ref": "D169",
+     "v": "Entradas (ajustado para baixo ao múltiplo dos furos) ou automático (maior faixa em que o Ø das Entradas atende)."
+    },
+    {
+     "ref": "A170",
      "v": "Md da faixa — lado do solo"
     },
     {
-     "ref": "B163",
+     "ref": "B170",
      "v": "=IFERROR(M_pvs*s_pv/100,\"—\")",
      "nome": "Md_pvs",
      "tipo": "resultado"
     },
     {
-     "ref": "C163",
+     "ref": "C170",
      "v": "kN·cm"
     },
     {
-     "ref": "A164",
+     "ref": "A171",
      "v": "x"
     },
     {
-     "ref": "B164",
+     "ref": "B171",
      "v": "=IFERROR(1.25*d_pv*(1-SQRT(1-Md_pvs/(0.5*s_pv*d_pv^2*Kfd_pv/10))),\"não resiste\")",
      "nome": "x_pv",
      "tipo": "resultado"
     },
     {
-     "ref": "C164",
+     "ref": "C171",
      "v": "cm"
     },
     {
-     "ref": "A165",
+     "ref": "A172",
      "v": "fsd da barra vertical"
     },
     {
-     "ref": "B165",
+     "ref": "B172",
      "v": "=IFERROR(fyk_/gama_s,\"—\")",
      "nome": "fsd_pv",
      "tipo": "resultado"
     },
     {
-     "ref": "C165",
+     "ref": "C172",
      "v": "MPa"
     },
     {
-     "ref": "A166",
+     "ref": "A173",
      "v": "As lado do solo"
     },
     {
-     "ref": "B166",
+     "ref": "B173",
      "v": "=IFERROR(Md_pvs/(fsd_pv/10*MIN(d_pv-0.4*x_pv,0.95*d_pv)),\"não resiste\")",
      "nome": "As_pvs",
      "tipo": "resultado"
     },
     {
-     "ref": "C166",
+     "ref": "C173",
      "v": "cm²"
     },
     {
-     "ref": "A167",
+     "ref": "A174",
      "v": "As lado externo (vão)"
     },
     {
-     "ref": "B167",
+     "ref": "B174",
      "v": "=IFERROR(M_pve*s_pv/100/(fsd_pv/10*MIN(d_pv-0.4*1.25*d_pv*(1-SQRT(1-M_pve*s_pv/100/(0.5*s_pv*d_pv^2*Kfd_pv/10))),0.95*d_pv)),\"—\")",
      "nome": "As_pve",
      "tipo": "resultado"
     },
     {
-     "ref": "C167",
+     "ref": "C174",
      "v": "cm²"
     },
     {
-     "ref": "D167",
+     "ref": "D174",
      "v": "Só com 2 barras por furo."
     },
     {
-     "ref": "A168",
+     "ref": "A175",
      "v": "As,mín da faixa"
     },
     {
-     "ref": "B168",
+     "ref": "B175",
      "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*s_pv*d_pv,0.001*s_pv*t_bloco),\"—\")",
      "nome": "As_pvm",
      "tipo": "resultado"
     },
     {
-     "ref": "C168",
+     "ref": "C175",
      "v": "cm²"
     },
     {
-     "ref": "A169",
+     "ref": "A176",
      "v": "Área da barra vertical"
     },
     {
-     "ref": "B169",
+     "ref": "B176",
      "v": "=IFERROR(PI()*phi_pv^2/400,\"—\")",
      "nome": "a_pv",
      "tipo": "resultado"
     },
     {
-     "ref": "C169",
+     "ref": "C176",
      "v": "cm²"
     },
     {
-     "ref": "A170",
+     "ref": "A177",
      "v": "Barras por furo"
     },
     {
-     "ref": "B170",
+     "ref": "B177",
      "v": "=IFERROR(IF(LEFT(pos_pv,1)=\"2\",2,1),\"—\")",
      "nome": "nb_pv",
      "tipo": "resultado"
     },
     {
-     "ref": "A172",
+     "ref": "A179",
      "v": "10. Painel — flexão horizontal (barras nas canaletas)"
     },
     {
-     "ref": "A173",
+     "ref": "A180",
      "v": "K horizontal"
     },
     {
-     "ref": "B173",
+     "ref": "B180",
      "v": "=IFERROR(IF(ISNUMBER(K_ph),K_ph,IF(gr_tot=\"Sim\",1,0.5)),\"—\")",
      "nome": "K_ph_us",
      "tipo": "resultado"
     },
     {
-     "ref": "D173",
+     "ref": "D180",
      "v": "Entradas ou, em branco: 0,5 com a seção horizontal não toda grauteada (manual ABCP); 1,0 com grauteamento total."
     },
     {
-     "ref": "E173",
+     "ref": "E180",
      "v": "Manual ABCP"
     },
     {
-     "ref": "A174",
+     "ref": "A181",
      "v": "Kfd horizontal = K·0,7·fpk/γm"
     },
     {
-     "ref": "B174",
+     "ref": "B181",
      "v": "=IFERROR(K_ph_us*0.7*fpk_pn/gama_m,\"—\")",
      "nome": "Kfd_ph",
      "tipo": "resultado"
     },
     {
-     "ref": "C174",
+     "ref": "C181",
      "v": "MPa"
     },
     {
-     "ref": "E174",
+     "ref": "E181",
      "v": "Manual ABCP"
     },
     {
-     "ref": "A175",
+     "ref": "A182",
      "v": "d horizontal"
     },
     {
-     "ref": "B175",
+     "ref": "B182",
      "v": "=IFERROR(IF(LEFT(pos_ph,4)=\"Cent\",t_bloco/2,t_bloco-c_pv),\"—\")",
      "nome": "d_ph",
      "tipo": "resultado"
     },
     {
-     "ref": "C175",
+     "ref": "C182",
      "v": "cm"
     },
     {
-     "ref": "D175",
+     "ref": "D182",
      "v": "Centralizada na canaleta → d = t/2; encostada na face externa → d = t − c."
     },
     {
-     "ref": "A176",
+     "ref": "A183",
      "v": "Momento horizontal de cálculo"
     },
     {
-     "ref": "B176",
+     "ref": "B183",
      "v": "=IFERROR(IF(LEFT(pos_ph,4)=\"Cent\",MAX(Mdx_p,Mdxe_p),Mdx_p),\"—\")",
      "nome": "M_ph",
      "tipo": "resultado"
     },
     {
-     "ref": "C176",
+     "ref": "C183",
      "v": "kN·cm/m"
     },
     {
-     "ref": "D176",
+     "ref": "D183",
      "v": "Barra centralizada atende os dois sinais (vão e engaste lateral)."
     },
     {
-     "ref": "A177",
+     "ref": "A184",
      "v": "Arranjos (faixa bm = espaçamento das canaletas; última coluna = As com a barra encostada na face, d = t − c)"
     },
     {
-     "ref": "A178",
+     "ref": "A185",
      "v": "bm (cm)"
     },
     {
-     "ref": "B178",
+     "ref": "B185",
      "v": "Md (kN·cm)"
     },
     {
-     "ref": "C178",
+     "ref": "C185",
      "v": "As com fyd (cm²)"
     },
     {
-     "ref": "D178",
+     "ref": "D185",
      "v": "As,mín (cm²)"
     },
     {
-     "ref": "E178",
+     "ref": "E185",
      "v": "Ø sugerido (mm)"
     },
     {
-     "ref": "F178",
+     "ref": "F185",
      "v": "Ø das Entradas atende?"
     },
     {
-     "ref": "G178",
+     "ref": "G185",
      "v": "As com d = t − c, fyd (cm²)"
     },
     {
-     "ref": "A179",
+     "ref": "A186",
      "v": "=IFERROR(20,\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "B179",
-     "v": "=IFERROR(M_ph*A179/100,\"—\")",
+     "ref": "B186",
+     "v": "=IFERROR(M_ph*A186/100,\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C179",
-     "v": "=IFERROR(B179/(fyk_/gama_s/10*MIN(d_ph-0.4*1.25*d_ph*(1-SQRT(1-B179/(0.5*A179*d_ph^2*Kfd_ph/10))),0.95*d_ph)),\"não resiste\")",
+     "ref": "C186",
+     "v": "=IFERROR(B186/(fyk_/gama_s/10*MIN(d_ph-0.4*1.25*d_ph*(1-SQRT(1-B186/(0.5*A186*d_ph^2*Kfd_ph/10))),0.95*d_ph)),\"não resiste\")",
      "tipo": "resultado"
     },
     {
-     "ref": "D179",
-     "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*A179*d_ph,0.001*A179*t_bloco),\"—\")",
+     "ref": "D186",
+     "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*A186*d_ph,0.001*A186*t_bloco),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "E179",
-     "v": "=IFERROR(INDEX({6.3,8,10,12.5,16,20},MATCH(1,L179:Q179,0)),\"> Ø20\")",
+     "ref": "E186",
+     "v": "=IFERROR(INDEX({6.3,8,10,12.5,16,20},MATCH(1,L186:Q186,0)),\"> Ø20\")",
      "tipo": "resultado"
     },
     {
-     "ref": "F179",
-     "v": "=IFERROR(IF(ISNUMBER(C179),IF(PI()*phi_ph^2/400>=MAX(C179,D179)-0.0005,\"OK\",\"não\"),\"—\"),\"—\")",
+     "ref": "F186",
+     "v": "=IFERROR(IF(ISNUMBER(C186),IF(PI()*phi_ph^2/400>=MAX(C186,D186)-0.0005,\"OK\",\"não\"),\"—\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "G179",
-     "v": "=IFERROR(B179/(fyk_/gama_s/10*MIN((t_bloco-c_pv)-0.4*1.25*(t_bloco-c_pv)*(1-SQRT(1-B179/(0.5*A179*(t_bloco-c_pv)^2*Kfd_ph/10))),0.95*(t_bloco-c_pv))),\"—\")",
+     "ref": "G186",
+     "v": "=IFERROR(B186/(fyk_/gama_s/10*MIN((t_bloco-c_pv)-0.4*1.25*(t_bloco-c_pv)*(1-SQRT(1-B186/(0.5*A186*(t_bloco-c_pv)^2*Kfd_ph/10))),0.95*(t_bloco-c_pv))),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "L179",
-     "v": "=IF(ISNUMBER(C179),IF(PI()*6.3^2/400>=MAX(C179,D179)-0.0005,1,0),0)"
+     "ref": "L186",
+     "v": "=IF(ISNUMBER(C186),IF(PI()*6.3^2/400>=MAX(C186,D186)-0.0005,1,0),0)"
     },
     {
-     "ref": "M179",
-     "v": "=IF(ISNUMBER(C179),IF(PI()*8^2/400>=MAX(C179,D179)-0.0005,1,0),0)"
+     "ref": "M186",
+     "v": "=IF(ISNUMBER(C186),IF(PI()*8^2/400>=MAX(C186,D186)-0.0005,1,0),0)"
     },
     {
-     "ref": "N179",
-     "v": "=IF(ISNUMBER(C179),IF(PI()*10^2/400>=MAX(C179,D179)-0.0005,1,0),0)"
+     "ref": "N186",
+     "v": "=IF(ISNUMBER(C186),IF(PI()*10^2/400>=MAX(C186,D186)-0.0005,1,0),0)"
     },
     {
-     "ref": "O179",
-     "v": "=IF(ISNUMBER(C179),IF(PI()*12.5^2/400>=MAX(C179,D179)-0.0005,1,0),0)"
+     "ref": "O186",
+     "v": "=IF(ISNUMBER(C186),IF(PI()*12.5^2/400>=MAX(C186,D186)-0.0005,1,0),0)"
     },
     {
-     "ref": "P179",
-     "v": "=IF(ISNUMBER(C179),IF(PI()*16^2/400>=MAX(C179,D179)-0.0005,1,0),0)"
+     "ref": "P186",
+     "v": "=IF(ISNUMBER(C186),IF(PI()*16^2/400>=MAX(C186,D186)-0.0005,1,0),0)"
     },
     {
-     "ref": "Q179",
-     "v": "=IF(ISNUMBER(C179),IF(PI()*20^2/400>=MAX(C179,D179)-0.0005,1,0),0)"
+     "ref": "Q186",
+     "v": "=IF(ISNUMBER(C186),IF(PI()*20^2/400>=MAX(C186,D186)-0.0005,1,0),0)"
     },
     {
-     "ref": "A180",
+     "ref": "A187",
      "v": "=IFERROR(40,\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "B180",
-     "v": "=IFERROR(M_ph*A180/100,\"—\")",
+     "ref": "B187",
+     "v": "=IFERROR(M_ph*A187/100,\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C180",
-     "v": "=IFERROR(B180/(fyk_/gama_s/10*MIN(d_ph-0.4*1.25*d_ph*(1-SQRT(1-B180/(0.5*A180*d_ph^2*Kfd_ph/10))),0.95*d_ph)),\"não resiste\")",
+     "ref": "C187",
+     "v": "=IFERROR(B187/(fyk_/gama_s/10*MIN(d_ph-0.4*1.25*d_ph*(1-SQRT(1-B187/(0.5*A187*d_ph^2*Kfd_ph/10))),0.95*d_ph)),\"não resiste\")",
      "tipo": "resultado"
     },
     {
-     "ref": "D180",
-     "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*A180*d_ph,0.001*A180*t_bloco),\"—\")",
+     "ref": "D187",
+     "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*A187*d_ph,0.001*A187*t_bloco),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "E180",
-     "v": "=IFERROR(INDEX({6.3,8,10,12.5,16,20},MATCH(1,L180:Q180,0)),\"> Ø20\")",
+     "ref": "E187",
+     "v": "=IFERROR(INDEX({6.3,8,10,12.5,16,20},MATCH(1,L187:Q187,0)),\"> Ø20\")",
      "tipo": "resultado"
     },
     {
-     "ref": "F180",
-     "v": "=IFERROR(IF(ISNUMBER(C180),IF(PI()*phi_ph^2/400>=MAX(C180,D180)-0.0005,\"OK\",\"não\"),\"—\"),\"—\")",
+     "ref": "F187",
+     "v": "=IFERROR(IF(ISNUMBER(C187),IF(PI()*phi_ph^2/400>=MAX(C187,D187)-0.0005,\"OK\",\"não\"),\"—\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "G180",
-     "v": "=IFERROR(B180/(fyk_/gama_s/10*MIN((t_bloco-c_pv)-0.4*1.25*(t_bloco-c_pv)*(1-SQRT(1-B180/(0.5*A180*(t_bloco-c_pv)^2*Kfd_ph/10))),0.95*(t_bloco-c_pv))),\"—\")",
+     "ref": "G187",
+     "v": "=IFERROR(B187/(fyk_/gama_s/10*MIN((t_bloco-c_pv)-0.4*1.25*(t_bloco-c_pv)*(1-SQRT(1-B187/(0.5*A187*(t_bloco-c_pv)^2*Kfd_ph/10))),0.95*(t_bloco-c_pv))),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "L180",
-     "v": "=IF(ISNUMBER(C180),IF(PI()*6.3^2/400>=MAX(C180,D180)-0.0005,1,0),0)"
+     "ref": "L187",
+     "v": "=IF(ISNUMBER(C187),IF(PI()*6.3^2/400>=MAX(C187,D187)-0.0005,1,0),0)"
     },
     {
-     "ref": "M180",
-     "v": "=IF(ISNUMBER(C180),IF(PI()*8^2/400>=MAX(C180,D180)-0.0005,1,0),0)"
+     "ref": "M187",
+     "v": "=IF(ISNUMBER(C187),IF(PI()*8^2/400>=MAX(C187,D187)-0.0005,1,0),0)"
     },
     {
-     "ref": "N180",
-     "v": "=IF(ISNUMBER(C180),IF(PI()*10^2/400>=MAX(C180,D180)-0.0005,1,0),0)"
+     "ref": "N187",
+     "v": "=IF(ISNUMBER(C187),IF(PI()*10^2/400>=MAX(C187,D187)-0.0005,1,0),0)"
     },
     {
-     "ref": "O180",
-     "v": "=IF(ISNUMBER(C180),IF(PI()*12.5^2/400>=MAX(C180,D180)-0.0005,1,0),0)"
+     "ref": "O187",
+     "v": "=IF(ISNUMBER(C187),IF(PI()*12.5^2/400>=MAX(C187,D187)-0.0005,1,0),0)"
     },
     {
-     "ref": "P180",
-     "v": "=IF(ISNUMBER(C180),IF(PI()*16^2/400>=MAX(C180,D180)-0.0005,1,0),0)"
+     "ref": "P187",
+     "v": "=IF(ISNUMBER(C187),IF(PI()*16^2/400>=MAX(C187,D187)-0.0005,1,0),0)"
     },
     {
-     "ref": "Q180",
-     "v": "=IF(ISNUMBER(C180),IF(PI()*20^2/400>=MAX(C180,D180)-0.0005,1,0),0)"
+     "ref": "Q187",
+     "v": "=IF(ISNUMBER(C187),IF(PI()*20^2/400>=MAX(C187,D187)-0.0005,1,0),0)"
     },
     {
-     "ref": "A181",
+     "ref": "A188",
      "v": "=IFERROR(60,\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "B181",
-     "v": "=IFERROR(M_ph*A181/100,\"—\")",
+     "ref": "B188",
+     "v": "=IFERROR(M_ph*A188/100,\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C181",
-     "v": "=IFERROR(B181/(fyk_/gama_s/10*MIN(d_ph-0.4*1.25*d_ph*(1-SQRT(1-B181/(0.5*A181*d_ph^2*Kfd_ph/10))),0.95*d_ph)),\"não resiste\")",
+     "ref": "C188",
+     "v": "=IFERROR(B188/(fyk_/gama_s/10*MIN(d_ph-0.4*1.25*d_ph*(1-SQRT(1-B188/(0.5*A188*d_ph^2*Kfd_ph/10))),0.95*d_ph)),\"não resiste\")",
      "tipo": "resultado"
     },
     {
-     "ref": "D181",
-     "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*A181*d_ph,0.001*A181*t_bloco),\"—\")",
+     "ref": "D188",
+     "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*A188*d_ph,0.001*A188*t_bloco),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "E181",
-     "v": "=IFERROR(INDEX({6.3,8,10,12.5,16,20},MATCH(1,L181:Q181,0)),\"> Ø20\")",
+     "ref": "E188",
+     "v": "=IFERROR(INDEX({6.3,8,10,12.5,16,20},MATCH(1,L188:Q188,0)),\"> Ø20\")",
      "tipo": "resultado"
     },
     {
-     "ref": "F181",
-     "v": "=IFERROR(IF(ISNUMBER(C181),IF(PI()*phi_ph^2/400>=MAX(C181,D181)-0.0005,\"OK\",\"não\"),\"—\"),\"—\")",
+     "ref": "F188",
+     "v": "=IFERROR(IF(ISNUMBER(C188),IF(PI()*phi_ph^2/400>=MAX(C188,D188)-0.0005,\"OK\",\"não\"),\"—\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "G181",
-     "v": "=IFERROR(B181/(fyk_/gama_s/10*MIN((t_bloco-c_pv)-0.4*1.25*(t_bloco-c_pv)*(1-SQRT(1-B181/(0.5*A181*(t_bloco-c_pv)^2*Kfd_ph/10))),0.95*(t_bloco-c_pv))),\"—\")",
+     "ref": "G188",
+     "v": "=IFERROR(B188/(fyk_/gama_s/10*MIN((t_bloco-c_pv)-0.4*1.25*(t_bloco-c_pv)*(1-SQRT(1-B188/(0.5*A188*(t_bloco-c_pv)^2*Kfd_ph/10))),0.95*(t_bloco-c_pv))),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "L181",
-     "v": "=IF(ISNUMBER(C181),IF(PI()*6.3^2/400>=MAX(C181,D181)-0.0005,1,0),0)"
+     "ref": "L188",
+     "v": "=IF(ISNUMBER(C188),IF(PI()*6.3^2/400>=MAX(C188,D188)-0.0005,1,0),0)"
     },
     {
-     "ref": "M181",
-     "v": "=IF(ISNUMBER(C181),IF(PI()*8^2/400>=MAX(C181,D181)-0.0005,1,0),0)"
+     "ref": "M188",
+     "v": "=IF(ISNUMBER(C188),IF(PI()*8^2/400>=MAX(C188,D188)-0.0005,1,0),0)"
     },
     {
-     "ref": "N181",
-     "v": "=IF(ISNUMBER(C181),IF(PI()*10^2/400>=MAX(C181,D181)-0.0005,1,0),0)"
+     "ref": "N188",
+     "v": "=IF(ISNUMBER(C188),IF(PI()*10^2/400>=MAX(C188,D188)-0.0005,1,0),0)"
     },
     {
-     "ref": "O181",
-     "v": "=IF(ISNUMBER(C181),IF(PI()*12.5^2/400>=MAX(C181,D181)-0.0005,1,0),0)"
+     "ref": "O188",
+     "v": "=IF(ISNUMBER(C188),IF(PI()*12.5^2/400>=MAX(C188,D188)-0.0005,1,0),0)"
     },
     {
-     "ref": "P181",
-     "v": "=IF(ISNUMBER(C181),IF(PI()*16^2/400>=MAX(C181,D181)-0.0005,1,0),0)"
+     "ref": "P188",
+     "v": "=IF(ISNUMBER(C188),IF(PI()*16^2/400>=MAX(C188,D188)-0.0005,1,0),0)"
     },
     {
-     "ref": "Q181",
-     "v": "=IF(ISNUMBER(C181),IF(PI()*20^2/400>=MAX(C181,D181)-0.0005,1,0),0)"
+     "ref": "Q188",
+     "v": "=IF(ISNUMBER(C188),IF(PI()*20^2/400>=MAX(C188,D188)-0.0005,1,0),0)"
     },
     {
-     "ref": "A182",
+     "ref": "A189",
      "v": "=IFERROR(80,\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "B182",
-     "v": "=IFERROR(M_ph*A182/100,\"—\")",
+     "ref": "B189",
+     "v": "=IFERROR(M_ph*A189/100,\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C182",
-     "v": "=IFERROR(B182/(fyk_/gama_s/10*MIN(d_ph-0.4*1.25*d_ph*(1-SQRT(1-B182/(0.5*A182*d_ph^2*Kfd_ph/10))),0.95*d_ph)),\"não resiste\")",
+     "ref": "C189",
+     "v": "=IFERROR(B189/(fyk_/gama_s/10*MIN(d_ph-0.4*1.25*d_ph*(1-SQRT(1-B189/(0.5*A189*d_ph^2*Kfd_ph/10))),0.95*d_ph)),\"não resiste\")",
      "tipo": "resultado"
     },
     {
-     "ref": "D182",
-     "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*A182*d_ph,0.001*A182*t_bloco),\"—\")",
+     "ref": "D189",
+     "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*A189*d_ph,0.001*A189*t_bloco),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "E182",
-     "v": "=IFERROR(INDEX({6.3,8,10,12.5,16,20},MATCH(1,L182:Q182,0)),\"> Ø20\")",
+     "ref": "E189",
+     "v": "=IFERROR(INDEX({6.3,8,10,12.5,16,20},MATCH(1,L189:Q189,0)),\"> Ø20\")",
      "tipo": "resultado"
     },
     {
-     "ref": "F182",
-     "v": "=IFERROR(IF(ISNUMBER(C182),IF(PI()*phi_ph^2/400>=MAX(C182,D182)-0.0005,\"OK\",\"não\"),\"—\"),\"—\")",
+     "ref": "F189",
+     "v": "=IFERROR(IF(ISNUMBER(C189),IF(PI()*phi_ph^2/400>=MAX(C189,D189)-0.0005,\"OK\",\"não\"),\"—\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "G182",
-     "v": "=IFERROR(B182/(fyk_/gama_s/10*MIN((t_bloco-c_pv)-0.4*1.25*(t_bloco-c_pv)*(1-SQRT(1-B182/(0.5*A182*(t_bloco-c_pv)^2*Kfd_ph/10))),0.95*(t_bloco-c_pv))),\"—\")",
+     "ref": "G189",
+     "v": "=IFERROR(B189/(fyk_/gama_s/10*MIN((t_bloco-c_pv)-0.4*1.25*(t_bloco-c_pv)*(1-SQRT(1-B189/(0.5*A189*(t_bloco-c_pv)^2*Kfd_ph/10))),0.95*(t_bloco-c_pv))),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "L182",
-     "v": "=IF(ISNUMBER(C182),IF(PI()*6.3^2/400>=MAX(C182,D182)-0.0005,1,0),0)"
+     "ref": "L189",
+     "v": "=IF(ISNUMBER(C189),IF(PI()*6.3^2/400>=MAX(C189,D189)-0.0005,1,0),0)"
     },
     {
-     "ref": "M182",
-     "v": "=IF(ISNUMBER(C182),IF(PI()*8^2/400>=MAX(C182,D182)-0.0005,1,0),0)"
+     "ref": "M189",
+     "v": "=IF(ISNUMBER(C189),IF(PI()*8^2/400>=MAX(C189,D189)-0.0005,1,0),0)"
     },
     {
-     "ref": "N182",
-     "v": "=IF(ISNUMBER(C182),IF(PI()*10^2/400>=MAX(C182,D182)-0.0005,1,0),0)"
+     "ref": "N189",
+     "v": "=IF(ISNUMBER(C189),IF(PI()*10^2/400>=MAX(C189,D189)-0.0005,1,0),0)"
     },
     {
-     "ref": "O182",
-     "v": "=IF(ISNUMBER(C182),IF(PI()*12.5^2/400>=MAX(C182,D182)-0.0005,1,0),0)"
+     "ref": "O189",
+     "v": "=IF(ISNUMBER(C189),IF(PI()*12.5^2/400>=MAX(C189,D189)-0.0005,1,0),0)"
     },
     {
-     "ref": "P182",
-     "v": "=IF(ISNUMBER(C182),IF(PI()*16^2/400>=MAX(C182,D182)-0.0005,1,0),0)"
+     "ref": "P189",
+     "v": "=IF(ISNUMBER(C189),IF(PI()*16^2/400>=MAX(C189,D189)-0.0005,1,0),0)"
     },
     {
-     "ref": "Q182",
-     "v": "=IF(ISNUMBER(C182),IF(PI()*20^2/400>=MAX(C182,D182)-0.0005,1,0),0)"
+     "ref": "Q189",
+     "v": "=IF(ISNUMBER(C189),IF(PI()*20^2/400>=MAX(C189,D189)-0.0005,1,0),0)"
     },
     {
-     "ref": "A183",
+     "ref": "A190",
      "v": "Espaçamento das canaletas adotado"
     },
     {
-     "ref": "B183",
-     "v": "=IFERROR(IF(ISNUMBER(s_ph_dir),s_ph_dir,SUMPRODUCT(MAX((F179:F182=\"OK\")*A179:A182))),\"—\")",
+     "ref": "B190",
+     "v": "=IFERROR(IF(ISNUMBER(s_ph_dir),s_ph_dir,SUMPRODUCT(MAX((F186:F189=\"OK\")*A186:A189))),\"—\")",
      "nome": "s_ph",
      "tipo": "resultado"
     },
     {
-     "ref": "C183",
+     "ref": "C190",
      "v": "cm"
     },
     {
-     "ref": "D183",
+     "ref": "D190",
      "v": "Entradas ou automático."
     },
     {
-     "ref": "A184",
+     "ref": "A191",
      "v": "Md da faixa"
     },
     {
-     "ref": "B184",
+     "ref": "B191",
      "v": "=IFERROR(M_ph*s_ph/100,\"—\")",
      "nome": "Md_ph",
      "tipo": "resultado"
     },
     {
-     "ref": "C184",
+     "ref": "C191",
      "v": "kN·cm"
     },
     {
-     "ref": "A185",
+     "ref": "A192",
      "v": "x"
     },
     {
-     "ref": "B185",
+     "ref": "B192",
      "v": "=IFERROR(1.25*d_ph*(1-SQRT(1-Md_ph/(0.5*s_ph*d_ph^2*Kfd_ph/10))),\"não resiste\")",
      "nome": "x_ph",
      "tipo": "resultado"
     },
     {
-     "ref": "C185",
+     "ref": "C192",
      "v": "cm"
     },
     {
-     "ref": "A186",
+     "ref": "A193",
      "v": "fsd da barra horizontal"
     },
     {
-     "ref": "B186",
+     "ref": "B193",
      "v": "=IFERROR(fyk_/gama_s,\"—\")",
      "nome": "fsd_ph",
      "tipo": "resultado"
     },
     {
-     "ref": "C186",
+     "ref": "C193",
      "v": "MPa"
     },
     {
-     "ref": "A187",
+     "ref": "A194",
      "v": "As horizontal"
     },
     {
-     "ref": "B187",
+     "ref": "B194",
      "v": "=IFERROR(Md_ph/(fsd_ph/10*MIN(d_ph-0.4*x_ph,0.95*d_ph)),\"não resiste\")",
      "nome": "As_phc",
      "tipo": "resultado"
     },
     {
-     "ref": "C187",
+     "ref": "C194",
      "v": "cm²"
     },
     {
-     "ref": "A188",
+     "ref": "A195",
      "v": "As,mín da faixa"
     },
     {
-     "ref": "B188",
+     "ref": "B195",
      "v": "=IFERROR(IF(LEFT(AsMin_crit,4)=\"Viga\",0.0015*s_ph*d_ph,0.001*s_ph*t_bloco),\"—\")",
      "nome": "As_phm",
      "tipo": "resultado"
     },
     {
-     "ref": "C188",
+     "ref": "C195",
      "v": "cm²"
     },
     {
-     "ref": "A189",
+     "ref": "A196",
      "v": "Área da barra horizontal"
     },
     {
-     "ref": "B189",
+     "ref": "B196",
      "v": "=IFERROR(PI()*phi_ph^2/400,\"—\")",
      "nome": "a_ph",
      "tipo": "resultado"
     },
     {
-     "ref": "C189",
+     "ref": "C196",
      "v": "cm²"
     },
     {
-     "ref": "A190",
+     "ref": "A197",
      "v": "Precisa de barra do lado do solo junto ao contraforte?"
     },
     {
-     "ref": "B190",
+     "ref": "B197",
      "v": "=IFERROR(IF(AND(LEFT(pos_ph,4)<>\"Cent\",Mdxe_p>0),\"SIM — laterais engastadas com barra encostada na face externa: Mdxe traciona a face do solo. Usar barra centralizada ou 2 barras na canaleta\",\"Não\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A192",
+     "ref": "A199",
      "v": "11. Painel não armado entre barras e canaletas"
     },
     {
-     "ref": "A193",
+     "ref": "A200",
      "v": "l = espaçamento vertical"
     },
     {
-     "ref": "B193",
+     "ref": "B200",
      "v": "=IFERROR(s_pv/100,\"—\")",
      "nome": "l_sp",
      "tipo": "resultado"
     },
     {
-     "ref": "C193",
+     "ref": "C200",
      "v": "m"
     },
     {
-     "ref": "A194",
+     "ref": "A201",
      "v": "h = espaçamento das canaletas"
     },
     {
-     "ref": "B194",
+     "ref": "B201",
      "v": "=IFERROR(MIN(s_ph/100,H_muro),\"—\")",
      "nome": "h_sp",
      "tipo": "resultado"
     },
     {
-     "ref": "C194",
+     "ref": "C201",
      "v": "m"
     },
     {
-     "ref": "D194",
+     "ref": "D201",
      "v": "No máximo a altura do muro."
     },
     {
-     "ref": "A195",
+     "ref": "A202",
      "v": "Existe painel não armado?"
     },
     {
-     "ref": "B195",
+     "ref": "B202",
      "v": "=IFERROR(IF(OR(s_pv<=s_furo,s_ph<=20),\"Não — barra em todos os furos ou canaleta em toda fiada\",\"Sim\"),\"—\")",
      "nome": "tem_sp",
      "tipo": "resultado"
     },
     {
-     "ref": "A196",
+     "ref": "A203",
      "v": "z do topo do subpainel de baixo"
     },
     {
-     "ref": "B196",
+     "ref": "B203",
      "v": "=IFERROR(MAX(0,H_solo-h_sp),\"—\")",
      "nome": "z_sp",
      "tipo": "resultado"
     },
     {
-     "ref": "C196",
+     "ref": "C203",
      "v": "m"
     },
     {
-     "ref": "D196",
+     "ref": "D203",
      "v": "A partir do topo do solo; 0 se o subpainel passa do solo (a favor da segurança)."
     },
     {
-     "ref": "A197",
+     "ref": "A204",
      "v": "σh no topo do subpainel"
     },
     {
-     "ref": "B197",
+     "ref": "B204",
      "v": "=IFERROR(INDEX('Solo e Empuxo'!$G$44:$G$84,INT(z_sp/H_solo*40)+1)+(z_sp/H_solo*40-INT(z_sp/H_solo*40))*(INDEX('Solo e Empuxo'!$G$44:$G$84,MIN(INT(z_sp/H_solo*40)+2,41))-INDEX('Solo e Empuxo'!$G$44:$G$84,INT(z_sp/H_solo*40)+1)),\"—\")",
      "nome": "sp_t2",
      "tipo": "resultado"
     },
     {
-     "ref": "C197",
+     "ref": "C204",
      "v": "kPa"
     },
     {
-     "ref": "A198",
+     "ref": "A205",
      "v": "fd = γf·σh médio"
     },
     {
-     "ref": "B198",
+     "ref": "B205",
      "v": "=IFERROR(gama_f*(sp_t2+sh_base)/2,\"—\")",
      "nome": "fd_sp",
      "tipo": "resultado"
     },
     {
-     "ref": "C198",
+     "ref": "C205",
      "v": "kN/m²"
     },
     {
-     "ref": "A199",
+     "ref": "A206",
      "v": "h/l (limitado 0,3–3,0)"
     },
     {
-     "ref": "B199",
+     "ref": "B206",
      "v": "=IFERROR(MIN(3,MAX(0.3,h_sp/l_sp)),\"—\")",
      "nome": "hl_sp",
      "tipo": "resultado"
     },
     {
-     "ref": "A200",
+     "ref": "A207",
      "v": "μ (limitado 0,3–1,0)"
     },
     {
-     "ref": "B200",
+     "ref": "B207",
      "v": "=IFERROR(MIN(1,MAX(0.3,mu_pan)),\"—\")",
      "nome": "mu_sp",
      "tipo": "resultado"
     },
     {
-     "ref": "A201",
+     "ref": "A208",
      "v": "j"
     },
     {
-     "ref": "B201",
+     "ref": "B208",
      "v": "=IFERROR(MATCH(hl_sp,hl_row,1),\"—\")",
      "nome": "j_sp",
      "tipo": "resultado"
     },
     {
-     "ref": "A202",
+     "ref": "A209",
      "v": "i"
     },
     {
-     "ref": "B202",
+     "ref": "B209",
      "v": "=IFERROR(MATCH(mu_sp,mu_col,-1),\"—\")",
      "nome": "i_sp",
      "tipo": "resultado"
     },
     {
-     "ref": "A203",
+     "ref": "A210",
      "v": "tx"
     },
     {
-     "ref": "B203",
+     "ref": "B210",
      "v": "=IFERROR(IF(j_sp>=11,0,(hl_sp-INDEX(hl_row,j_sp))/(INDEX(hl_row,j_sp+1)-INDEX(hl_row,j_sp))),\"—\")",
      "nome": "tx_sp",
      "tipo": "resultado"
     },
     {
-     "ref": "A204",
+     "ref": "A211",
      "v": "ty"
     },
     {
-     "ref": "B204",
+     "ref": "B211",
      "v": "=IFERROR(IF(i_sp>=9,0,(INDEX(mu_col,i_sp)-mu_sp)/(INDEX(mu_col,i_sp)-INDEX(mu_col,i_sp+1))),\"—\")",
      "nome": "ty_sp",
      "tipo": "resultado"
     },
     {
-     "ref": "A205",
+     "ref": "A212",
      "v": "βf (caso 13)"
     },
     {
-     "ref": "B205",
+     "ref": "B212",
      "v": "=IFERROR((1-ty_sp)*((1-tx_sp)*INDEX(tabela_13,i_sp,j_sp)+tx_sp*INDEX(tabela_13,i_sp,MIN(11,j_sp+1)))+ty_sp*((1-tx_sp)*INDEX(tabela_13,MIN(9,i_sp+1),j_sp)+tx_sp*INDEX(tabela_13,MIN(9,i_sp+1),MIN(11,j_sp+1))),\"—\")",
      "nome": "bf_sp",
      "tipo": "resultado"
     },
     {
-     "ref": "E205",
+     "ref": "E212",
      "v": "NBR 16868-1 E.4.2 (Tab. E.1)"
     },
     {
-     "ref": "A206",
+     "ref": "A213",
      "v": "Md,par = βf·fd·l²"
     },
     {
-     "ref": "B206",
+     "ref": "B213",
      "v": "=IFERROR(bf_sp*fd_sp*l_sp^2*100,\"—\")",
      "nome": "Mpar_sp",
      "tipo": "resultado"
     },
     {
-     "ref": "C206",
+     "ref": "C213",
      "v": "kN·cm/m"
     },
     {
-     "ref": "A207",
+     "ref": "A214",
      "v": "Md,nor = μ·Md,par"
     },
     {
-     "ref": "B207",
+     "ref": "B214",
      "v": "=IFERROR(mu_pan*Mpar_sp,\"—\")",
      "nome": "Mnor_sp",
      "tipo": "resultado"
     },
     {
-     "ref": "C207",
+     "ref": "C214",
      "v": "kN·cm/m"
     },
     {
-     "ref": "A208",
+     "ref": "A215",
      "v": "σtd,par = Md,par/W"
     },
     {
-     "ref": "B208",
+     "ref": "B215",
      "v": "=IFERROR(Mpar_sp/(100*t_bloco^2/6)*10,\"—\")",
      "nome": "st_psp",
      "tipo": "resultado"
     },
     {
-     "ref": "C208",
+     "ref": "C215",
      "v": "MPa"
     },
     {
-     "ref": "A209",
+     "ref": "A216",
      "v": "ftd,par = ftk∥/γm"
     },
     {
-     "ref": "B209",
+     "ref": "B216",
      "v": "=IFERROR(ftk_par/gama_m,\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C209",
+     "ref": "C216",
      "v": "MPa"
     },
     {
-     "ref": "A210",
+     "ref": "A217",
      "v": "σtd,nor = Md,nor/W"
     },
     {
-     "ref": "B210",
+     "ref": "B217",
      "v": "=IFERROR(Mnor_sp/(100*t_bloco^2/6)*10,\"—\")",
      "nome": "st_nsp",
      "tipo": "resultado"
     },
     {
-     "ref": "C210",
+     "ref": "C217",
      "v": "MPa"
     },
     {
-     "ref": "A211",
+     "ref": "A218",
      "v": "ftd,nor = ftk⊥/γm"
     },
     {
-     "ref": "B211",
+     "ref": "B218",
      "v": "=IFERROR(ftk_nor/gama_m,\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C211",
+     "ref": "C218",
      "v": "MPa"
     },
     {
-     "ref": "A213",
+     "ref": "A220",
      "v": "12. Painel — ELS nas duas direções"
     },
     {
-     "ref": "A214",
+     "ref": "A221",
      "v": "Em do painel = (Em/fpk)·fpk"
     },
     {
-     "ref": "B214",
+     "ref": "B221",
      "v": "=IFERROR(Em_coef*fpk_pn,\"—\")",
      "nome": "Em_pn",
      "tipo": "resultado"
     },
     {
-     "ref": "C214",
+     "ref": "C221",
      "v": "MPa"
     },
     {
-     "ref": "D214",
+     "ref": "D221",
      "v": "Seção I ↔ fpk líquido ou bruto; seção cheia ↔ fpk*."
     },
     {
-     "ref": "A215",
+     "ref": "A222",
      "v": "n = Es/Em"
     },
     {
-     "ref": "B215",
+     "ref": "B222",
      "v": "=IFERROR(210000/Em_pn,\"—\")",
      "nome": "n_pn",
      "tipo": "resultado"
     },
     {
-     "ref": "A216",
+     "ref": "A223",
      "v": "VERTICAL — bm"
     },
     {
-     "ref": "B216",
+     "ref": "B223",
      "v": "=IFERROR(s_pv,\"—\")",
      "nome": "bm_ev",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "C216",
-     "v": "cm"
-    },
-    {
-     "ref": "A217",
-     "v": "Furos grauteados na faixa"
-    },
-    {
-     "ref": "B217",
-     "v": "=IFERROR(MAX(1,INT(bm_ev/Graute+0.5)),\"—\")",
-     "nome": "n_alm_v",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "D217",
-     "v": "Faixa de uma barra (bm = s, múltiplo do graute a cada X): s/X furos grauteados, cada um uma alma."
-    },
-    {
-     "ref": "A218",
-     "v": "bw (furo grauteado + septos)"
-    },
-    {
-     "ref": "B218",
-     "v": "=IFERROR(IF(gr_tot=\"Sim\",bm_ev,MIN(bm_ev,n_alm_v*IF(ISNUMBER(bwv_dir),bwv_dir,(L_bloco-3*hf_bl)/2+2*hf_bl))),\"—\")",
-     "nome": "bw_ev",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "C218",
-     "v": "cm"
-    },
-    {
-     "ref": "D218",
-     "v": "Uma alma por furo grauteado da faixa; grauteamento total → seção cheia."
-    },
-    {
-     "ref": "A219",
-     "v": "As1 / As2 (d' = c)"
-    },
-    {
-     "ref": "B219",
-     "v": "=IFERROR(FIXED(a_pv,3)&\" / \"&FIXED(IF(nb_pv=2,a_pv,0),3),\"—\")",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "C219",
-     "v": "cm²"
-    },
-    {
-     "ref": "A220",
-     "v": "Ma = (Ma/Mk)·Mdyei/γf·bm"
-    },
-    {
-     "ref": "B220",
-     "v": "=IFERROR(psi_els*Mdyei_p/gama_f*bm_ev/100,\"—\")",
-     "nome": "Ma_ev",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "C220",
-     "v": "kN·cm"
-    },
-    {
-     "ref": "A221",
-     "v": "Im"
-    },
-    {
-     "ref": "B221",
-     "v": "=IFERROR(bm_ev*t_bloco^3/12-(bm_ev-bw_ev)*(t_bloco-2*hf_bl)^3/12,\"—\")",
-     "nome": "Im_ev",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "C221",
-     "v": "cm⁴"
-    },
-    {
-     "ref": "A222",
-     "v": "Mr = ftk⊥·Im/(h/2)"
-    },
-    {
-     "ref": "B222",
-     "v": "=IFERROR(ftk_nor/10*Im_ev/(t_bloco/2),\"—\")",
-     "nome": "Mr_ev",
-     "tipo": "resultado"
-    },
-    {
-     "ref": "C222",
-     "v": "kN·cm"
-    },
-    {
-     "ref": "A223",
-     "v": "x com As2 tracionada (n)"
-    },
-    {
-     "ref": "B223",
-     "v": "=IFERROR(IF((-(n_pn*a_pv+n_pn*IF(nb_pv=2,a_pv,0))+SQRT((n_pn*a_pv+n_pn*IF(nb_pv=2,a_pv,0))^2-4*bm_ev/2*(-n_pn*a_pv*d_pv-n_pn*IF(nb_pv=2,a_pv,0)*c_pv)))/(2*bm_ev/2)<=hf_bl,(-(n_pn*a_pv+n_pn*IF(nb_pv=2,a_pv,0))+SQRT((n_pn*a_pv+n_pn*IF(nb_pv=2,a_pv,0))^2-4*bm_ev/2*(-n_pn*a_pv*d_pv-n_pn*IF(nb_pv=2,a_pv,0)*c_pv)))/(2*bm_ev/2),(-((bm_ev-bw_ev)*hf_bl+n_pn*a_pv+n_pn*IF(nb_pv=2,a_pv,0))+SQRT(((bm_ev-bw_ev)*hf_bl+n_pn*a_pv+n_pn*IF(nb_pv=2,a_pv,0))^2-4*bw_ev/2*(-(bm_ev-bw_ev)*hf_bl^2/2-n_pn*a_pv*d_pv-n_pn*IF(nb_pv=2,a_pv,0)*c_pv)))/(2*bw_ev/2)),\"—\")",
-     "nome": "x1_ev",
      "tipo": "resultado"
     },
     {
@@ -12302,174 +12429,173 @@
     },
     {
      "ref": "A224",
-     "v": "x adotado"
+     "v": "Furos grauteados na faixa"
     },
     {
      "ref": "B224",
-     "v": "=IFERROR(IF(OR(IF(nb_pv=2,a_pv,0)=0,x1_ev<=c_pv),x1_ev,IF((-(n_pn*a_pv+(n_pn-1)*IF(nb_pv=2,a_pv,0))+SQRT((n_pn*a_pv+(n_pn-1)*IF(nb_pv=2,a_pv,0))^2-4*bm_ev/2*(-n_pn*a_pv*d_pv-(n_pn-1)*IF(nb_pv=2,a_pv,0)*c_pv)))/(2*bm_ev/2)<=hf_bl,(-(n_pn*a_pv+(n_pn-1)*IF(nb_pv=2,a_pv,0))+SQRT((n_pn*a_pv+(n_pn-1)*IF(nb_pv=2,a_pv,0))^2-4*bm_ev/2*(-n_pn*a_pv*d_pv-(n_pn-1)*IF(nb_pv=2,a_pv,0)*c_pv)))/(2*bm_ev/2),(-((bm_ev-bw_ev)*hf_bl+n_pn*a_pv+(n_pn-1)*IF(nb_pv=2,a_pv,0))+SQRT(((bm_ev-bw_ev)*hf_bl+n_pn*a_pv+(n_pn-1)*IF(nb_pv=2,a_pv,0))^2-4*bw_ev/2*(-(bm_ev-bw_ev)*hf_bl^2/2-n_pn*a_pv*d_pv-(n_pn-1)*IF(nb_pv=2,a_pv,0)*c_pv)))/(2*bw_ev/2))),\"—\")",
-     "nome": "x_ev",
+     "v": "=IFERROR(MAX(1,INT(bm_ev/Graute+0.5)),\"—\")",
+     "nome": "n_alm_v",
      "tipo": "resultado"
-    },
-    {
-     "ref": "C224",
-     "v": "cm"
     },
     {
      "ref": "D224",
-     "v": "Se x < d', a 2ª barra está tracionada (entra com n)."
+     "v": "Faixa de uma barra (bm = s, múltiplo do graute a cada X): s/X furos grauteados, cada um uma alma."
     },
     {
      "ref": "A225",
-     "v": "n da 2ª barra"
+     "v": "bw (furo grauteado + septos)"
     },
     {
      "ref": "B225",
-     "v": "=IFERROR(IF(x_ev<=c_pv,n_pn,n_pn-1),\"—\")",
-     "nome": "n2_ev",
+     "v": "=IFERROR(IF(gr_tot=\"Sim\",bm_ev,MIN(bm_ev,n_alm_v*IF(ISNUMBER(bwv_dir),bwv_dir,(L_bloco-3*hf_bl)/2+2*hf_bl))),\"—\")",
+     "nome": "bw_ev",
      "tipo": "resultado"
     },
     {
+     "ref": "C225",
+     "v": "cm"
+    },
+    {
      "ref": "D225",
-     "v": "2ª barra tracionada: n; comprimida: n − 1."
+     "v": "Uma alma por furo grauteado da faixa; grauteamento total → seção cheia."
     },
     {
      "ref": "A226",
-     "v": "III"
+     "v": "As1 / As2 (d' = c)"
     },
     {
      "ref": "B226",
-     "v": "=IFERROR(IF(x_ev<=hf_bl,bm_ev*x_ev^3/3,bw_ev*x_ev^3/3+(bm_ev-bw_ev)*hf_bl^3/12+(bm_ev-bw_ev)*hf_bl*(x_ev-hf_bl/2)^2)+n2_ev*IF(nb_pv=2,a_pv,0)*(x_ev-c_pv)^2+n_pn*a_pv*(d_pv-x_ev)^2,\"—\")",
-     "nome": "III_ev",
+     "v": "=IFERROR(FIXED(a_pv,3)&\" / \"&FIXED(IF(nb_pv=2,a_pv,0),3),\"—\")",
      "tipo": "resultado"
     },
     {
      "ref": "C226",
-     "v": "cm⁴"
+     "v": "cm²"
     },
     {
      "ref": "A227",
-     "v": "Ieq (Branson) ≤ Im"
+     "v": "Ma = (Ma/Mk)·Mdyei/γf·bm"
     },
     {
      "ref": "B227",
-     "v": "=IFERROR(IF(Ma_ev<=Mr_ev,Im_ev,MIN(Im_ev,(Mr_ev/Ma_ev)^3*Im_ev+(1-(Mr_ev/Ma_ev)^3)*III_ev)),\"—\")",
-     "nome": "Ieq_ev",
+     "v": "=IFERROR(psi_els*Mdyei_p/gama_f*bm_ev/100,\"—\")",
+     "nome": "Ma_ev",
      "tipo": "resultado"
     },
     {
      "ref": "C227",
-     "v": "cm⁴"
+     "v": "kN·cm"
     },
     {
      "ref": "A228",
-     "v": "heq = (12·Ieq/bm)^(1/3)"
+     "v": "Im"
     },
     {
      "ref": "B228",
-     "v": "=IFERROR((12*Ieq_ev/bm_ev)^(1/3),\"—\")",
-     "nome": "heq_ev",
+     "v": "=IFERROR(bm_ev*t_bloco^3/12-(bm_ev-bw_ev)*(t_bloco-2*hf_bl)^3/12,\"—\")",
+     "nome": "Im_ev",
      "tipo": "resultado"
     },
     {
      "ref": "C228",
-     "v": "cm"
+     "v": "cm⁴"
     },
     {
      "ref": "A229",
-     "v": "HORIZONTAL — bm"
+     "v": "Mr = ftk⊥·Im/(h/2)"
     },
     {
      "ref": "B229",
-     "v": "=IFERROR(s_ph,\"—\")",
-     "nome": "bm_eh",
+     "v": "=IFERROR(ftk_nor/10*Im_ev/(t_bloco/2),\"—\")",
+     "nome": "Mr_ev",
      "tipo": "resultado"
     },
     {
      "ref": "C229",
-     "v": "cm"
+     "v": "kN·cm"
     },
     {
      "ref": "A230",
-     "v": "bw (canaleta grauteada)"
+     "v": "B (2ª barra tracionada) = n·As1 + n2·As2"
     },
     {
      "ref": "B230",
-     "v": "=IFERROR(IF(gr_tot=\"Sim\",bm_eh,MIN(bm_eh,bwh_els)),\"—\")",
-     "nome": "bw_eh",
+     "v": "=IFERROR(n_pn*a_pv+n_pn*IF(nb_pv=2,a_pv,0),\"—\")",
+     "nome": "lnB1_ev",
      "tipo": "resultado"
     },
     {
      "ref": "C230",
-     "v": "cm"
+     "v": "cm²"
     },
     {
      "ref": "D230",
-     "v": "Todos os furos grauteados → seção cheia. Nos parciais a seção horizontal continua só com a canaleta (furo grauteado não corre na horizontal)."
+     "v": "LN: b·x²/2 + B·x − C = 0 → x = (−B + √(B² + 2·b·C))/b."
     },
     {
      "ref": "A231",
-     "v": "Ma = (Ma/Mk)·M/γf·bm"
+     "v": "C (2ª barra tracionada) = n·As1·d + n2·As2·d'"
     },
     {
      "ref": "B231",
-     "v": "=IFERROR(psi_els*M_ph/gama_f*bm_eh/100,\"—\")",
-     "nome": "Ma_eh",
+     "v": "=IFERROR(n_pn*a_pv*d_pv+n_pn*IF(nb_pv=2,a_pv,0)*c_pv,\"—\")",
+     "nome": "lnC1_ev",
      "tipo": "resultado"
     },
     {
      "ref": "C231",
-     "v": "kN·cm"
+     "v": "cm³"
     },
     {
      "ref": "A232",
-     "v": "Im"
+     "v": "x supondo LN na mesa"
     },
     {
      "ref": "B232",
-     "v": "=IFERROR(bm_eh*t_bloco^3/12-(bm_eh-bw_eh)*(t_bloco-2*hf_bl)^3/12,\"—\")",
-     "nome": "Im_eh",
+     "v": "=IFERROR((-lnB1_ev+SQRT(lnB1_ev^2+2*bm_ev*lnC1_ev))/bm_ev,\"—\")",
+     "nome": "xr1_ev",
      "tipo": "resultado"
     },
     {
      "ref": "C232",
-     "v": "cm⁴"
+     "v": "cm"
     },
     {
      "ref": "A233",
-     "v": "Mr = ftk∥·Im/(h/2)"
+     "v": "B com a LN na alma = (bm − bw)·hf + B"
     },
     {
      "ref": "B233",
-     "v": "=IFERROR(ftk_par/10*Im_eh/(t_bloco/2),\"—\")",
-     "nome": "Mr_eh",
+     "v": "=IFERROR((bm_ev-bw_ev)*hf_bl+lnB1_ev,\"—\")",
+     "nome": "lnBw1_ev",
      "tipo": "resultado"
     },
     {
      "ref": "C233",
-     "v": "kN·cm"
+     "v": "cm²"
     },
     {
      "ref": "A234",
-     "v": "x com As2 tracionada (n)"
+     "v": "C com a LN na alma = (bm − bw)·hf²/2 + C"
     },
     {
      "ref": "B234",
-     "v": "=IFERROR(IF((-(n_pn*a_ph+n_pn*0)+SQRT((n_pn*a_ph+n_pn*0)^2-4*bm_eh/2*(-n_pn*a_ph*d_ph-n_pn*0*c_pv)))/(2*bm_eh/2)<=hf_bl,(-(n_pn*a_ph+n_pn*0)+SQRT((n_pn*a_ph+n_pn*0)^2-4*bm_eh/2*(-n_pn*a_ph*d_ph-n_pn*0*c_pv)))/(2*bm_eh/2),(-((bm_eh-bw_eh)*hf_bl+n_pn*a_ph+n_pn*0)+SQRT(((bm_eh-bw_eh)*hf_bl+n_pn*a_ph+n_pn*0)^2-4*bw_eh/2*(-(bm_eh-bw_eh)*hf_bl^2/2-n_pn*a_ph*d_ph-n_pn*0*c_pv)))/(2*bw_eh/2)),\"—\")",
-     "nome": "x1_eh",
+     "v": "=IFERROR((bm_ev-bw_ev)*hf_bl^2/2+lnC1_ev,\"—\")",
+     "nome": "lnCw1_ev",
      "tipo": "resultado"
     },
     {
      "ref": "C234",
-     "v": "cm"
+     "v": "cm³"
     },
     {
      "ref": "A235",
-     "v": "x adotado"
+     "v": "x supondo LN na alma (T)"
     },
     {
      "ref": "B235",
-     "v": "=IFERROR(IF(OR(0=0,x1_eh<=c_pv),x1_eh,IF((-(n_pn*a_ph+(n_pn-1)*0)+SQRT((n_pn*a_ph+(n_pn-1)*0)^2-4*bm_eh/2*(-n_pn*a_ph*d_ph-(n_pn-1)*0*c_pv)))/(2*bm_eh/2)<=hf_bl,(-(n_pn*a_ph+(n_pn-1)*0)+SQRT((n_pn*a_ph+(n_pn-1)*0)^2-4*bm_eh/2*(-n_pn*a_ph*d_ph-(n_pn-1)*0*c_pv)))/(2*bm_eh/2),(-((bm_eh-bw_eh)*hf_bl+n_pn*a_ph+(n_pn-1)*0)+SQRT(((bm_eh-bw_eh)*hf_bl+n_pn*a_ph+(n_pn-1)*0)^2-4*bw_eh/2*(-(bm_eh-bw_eh)*hf_bl^2/2-n_pn*a_ph*d_ph-(n_pn-1)*0*c_pv)))/(2*bw_eh/2))),\"—\")",
-     "nome": "x_eh",
+     "v": "=IFERROR((-lnBw1_ev+SQRT(lnBw1_ev^2+2*bw_ev*lnCw1_ev))/bw_ev,\"—\")",
+     "nome": "xt1_ev",
      "tipo": "resultado"
     },
     {
@@ -12477,59 +12603,59 @@
      "v": "cm"
     },
     {
-     "ref": "D235",
-     "v": "Se x < d', a 2ª barra está tracionada (entra com n)."
-    },
-    {
      "ref": "A236",
-     "v": "n da 2ª barra"
+     "v": "x com As2 tracionada (n)"
     },
     {
      "ref": "B236",
-     "v": "=IFERROR(IF(x_eh<=c_pv,n_pn,n_pn-1),\"—\")",
-     "nome": "n2_eh",
+     "v": "=IFERROR(IF(xr1_ev<=hf_bl,xr1_ev,xt1_ev),\"—\")",
+     "nome": "x1_ev",
      "tipo": "resultado"
     },
     {
-     "ref": "D236",
-     "v": "2ª barra tracionada: n; comprimida: n − 1."
+     "ref": "C236",
+     "v": "cm"
     },
     {
      "ref": "A237",
-     "v": "III"
+     "v": "B (2ª barra comprimida) = n·As1 + n2·As2"
     },
     {
      "ref": "B237",
-     "v": "=IFERROR(IF(x_eh<=hf_bl,bm_eh*x_eh^3/3,bw_eh*x_eh^3/3+(bm_eh-bw_eh)*hf_bl^3/12+(bm_eh-bw_eh)*hf_bl*(x_eh-hf_bl/2)^2)+n2_eh*0*(x_eh-c_pv)^2+n_pn*a_ph*(d_ph-x_eh)^2,\"—\")",
-     "nome": "III_eh",
+     "v": "=IFERROR(n_pn*a_pv+(n_pn-1)*IF(nb_pv=2,a_pv,0),\"—\")",
+     "nome": "lnB2_ev",
      "tipo": "resultado"
     },
     {
      "ref": "C237",
-     "v": "cm⁴"
+     "v": "cm²"
+    },
+    {
+     "ref": "D237",
+     "v": "LN: b·x²/2 + B·x − C = 0 → x = (−B + √(B² + 2·b·C))/b."
     },
     {
      "ref": "A238",
-     "v": "Ieq (Branson) ≤ Im"
+     "v": "C (2ª barra comprimida) = n·As1·d + n2·As2·d'"
     },
     {
      "ref": "B238",
-     "v": "=IFERROR(IF(Ma_eh<=Mr_eh,Im_eh,MIN(Im_eh,(Mr_eh/Ma_eh)^3*Im_eh+(1-(Mr_eh/Ma_eh)^3)*III_eh)),\"—\")",
-     "nome": "Ieq_eh",
+     "v": "=IFERROR(n_pn*a_pv*d_pv+(n_pn-1)*IF(nb_pv=2,a_pv,0)*c_pv,\"—\")",
+     "nome": "lnC2_ev",
      "tipo": "resultado"
     },
     {
      "ref": "C238",
-     "v": "cm⁴"
+     "v": "cm³"
     },
     {
      "ref": "A239",
-     "v": "heq = (12·Ieq/bm)^(1/3)"
+     "v": "x supondo LN na mesa"
     },
     {
      "ref": "B239",
-     "v": "=IFERROR((12*Ieq_eh/bm_eh)^(1/3),\"—\")",
-     "nome": "heq_eh",
+     "v": "=IFERROR((-lnB2_ev+SQRT(lnB2_ev^2+2*bm_ev*lnC2_ev))/bm_ev,\"—\")",
+     "nome": "xr2_ev",
      "tipo": "resultado"
     },
     {
@@ -12538,532 +12664,992 @@
     },
     {
      "ref": "A240",
-     "v": "Carga de serviço × α (triangular + uniforme)"
+     "v": "B com a LN na alma = (bm − bw)·hf + B"
     },
     {
      "ref": "B240",
-     "v": "=IFERROR(psi_els*(B140*p_tri+C140*p_uni),\"—\")",
-     "nome": "ap_c",
+     "v": "=IFERROR((bm_ev-bw_ev)*hf_bl+lnB2_ev,\"—\")",
+     "nome": "lnBw2_ev",
      "tipo": "resultado"
     },
     {
      "ref": "C240",
-     "v": "kN/m²"
-    },
-    {
-     "ref": "D240",
-     "v": "α·p de cada parcela, somados."
+     "v": "cm²"
     },
     {
      "ref": "A241",
-     "v": "Carga de serviço × αB (borda livre)"
+     "v": "C com a LN na alma = (bm − bw)·hf²/2 + C"
     },
     {
      "ref": "B241",
-     "v": "=IFERROR(psi_els*(B141*p_tri+C141*p_uni),\"—\")",
-     "nome": "apB_c",
+     "v": "=IFERROR((bm_ev-bw_ev)*hf_bl^2/2+lnC2_ev,\"—\")",
+     "nome": "lnCw2_ev",
      "tipo": "resultado"
     },
     {
      "ref": "C241",
-     "v": "kN/m²"
+     "v": "cm³"
     },
     {
      "ref": "A242",
-     "v": "δ0 com heq vertical"
+     "v": "x supondo LN na alma (T)"
     },
     {
      "ref": "B242",
+     "v": "=IFERROR((-lnBw2_ev+SQRT(lnBw2_ev^2+2*bw_ev*lnCw2_ev))/bw_ev,\"—\")",
+     "nome": "xt2_ev",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C242",
+     "v": "cm"
+    },
+    {
+     "ref": "A243",
+     "v": "x adotado"
+    },
+    {
+     "ref": "B243",
+     "v": "=IFERROR(IF(OR(IF(nb_pv=2,a_pv,0)=0,x1_ev<=c_pv),x1_ev,IF(xr2_ev<=hf_bl,xr2_ev,xt2_ev)),\"—\")",
+     "nome": "x_ev",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C243",
+     "v": "cm"
+    },
+    {
+     "ref": "D243",
+     "v": "Se x < d', a 2ª barra está tracionada (entra com n)."
+    },
+    {
+     "ref": "A244",
+     "v": "n da 2ª barra"
+    },
+    {
+     "ref": "B244",
+     "v": "=IFERROR(IF(x_ev<=c_pv,n_pn,n_pn-1),\"—\")",
+     "nome": "n2_ev",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "D244",
+     "v": "2ª barra tracionada: n; comprimida: n − 1."
+    },
+    {
+     "ref": "A245",
+     "v": "III da alvenaria comprimida = b·x³/3"
+    },
+    {
+     "ref": "B245",
+     "v": "=IFERROR(IF(x_ev<=hf_bl,bm_ev,bw_ev)*x_ev^3/3,\"—\")",
+     "nome": "IIc_ev",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C245",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "D245",
+     "v": "b = bm com a LN na mesa; bw com a LN na alma."
+    },
+    {
+     "ref": "A246",
+     "v": "III das abas da mesa"
+    },
+    {
+     "ref": "B246",
+     "v": "=IFERROR(IF(x_ev<=hf_bl,0,(bm_ev-bw_ev)*hf_bl^3/12+(bm_ev-bw_ev)*hf_bl*(x_ev-hf_bl/2)^2),\"—\")",
+     "nome": "IIf_ev",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C246",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "D246",
+     "v": "Só com a LN na alma: (bm − bw)·hf³/12 + (bm − bw)·hf·(x − hf/2)²."
+    },
+    {
+     "ref": "A247",
+     "v": "III da 2ª barra = n2·As2·(x − d')²"
+    },
+    {
+     "ref": "B247",
+     "v": "=IFERROR(n2_ev*IF(nb_pv=2,a_pv,0)*(x_ev-c_pv)^2,\"—\")",
+     "nome": "IIs2_ev",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C247",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "A248",
+     "v": "III da barra tracionada = n·As1·(d − x)²"
+    },
+    {
+     "ref": "B248",
+     "v": "=IFERROR(n_pn*a_pv*(d_pv-x_ev)^2,\"—\")",
+     "nome": "IIs1_ev",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C248",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "A249",
+     "v": "III"
+    },
+    {
+     "ref": "B249",
+     "v": "=IFERROR(IIc_ev+IIf_ev+IIs2_ev+IIs1_ev,\"—\")",
+     "nome": "III_ev",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C249",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "D249",
+     "v": "Alvenaria comprimida + abas + barras."
+    },
+    {
+     "ref": "A250",
+     "v": "Ieq (Branson) ≤ Im"
+    },
+    {
+     "ref": "B250",
+     "v": "=IFERROR(IF(Ma_ev<=Mr_ev,Im_ev,MIN(Im_ev,(Mr_ev/Ma_ev)^3*Im_ev+(1-(Mr_ev/Ma_ev)^3)*III_ev)),\"—\")",
+     "nome": "Ieq_ev",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C250",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "A251",
+     "v": "heq = (12·Ieq/bm)^(1/3)"
+    },
+    {
+     "ref": "B251",
+     "v": "=IFERROR((12*Ieq_ev/bm_ev)^(1/3),\"—\")",
+     "nome": "heq_ev",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C251",
+     "v": "cm"
+    },
+    {
+     "ref": "A252",
+     "v": "HORIZONTAL — bm"
+    },
+    {
+     "ref": "B252",
+     "v": "=IFERROR(s_ph,\"—\")",
+     "nome": "bm_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C252",
+     "v": "cm"
+    },
+    {
+     "ref": "A253",
+     "v": "bw (canaleta grauteada)"
+    },
+    {
+     "ref": "B253",
+     "v": "=IFERROR(IF(gr_tot=\"Sim\",bm_eh,MIN(bm_eh,bwh_els)),\"—\")",
+     "nome": "bw_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C253",
+     "v": "cm"
+    },
+    {
+     "ref": "D253",
+     "v": "Todos os furos grauteados → seção cheia. Nos parciais a seção horizontal continua só com a canaleta (furo grauteado não corre na horizontal)."
+    },
+    {
+     "ref": "A254",
+     "v": "Ma = (Ma/Mk)·M/γf·bm"
+    },
+    {
+     "ref": "B254",
+     "v": "=IFERROR(psi_els*M_ph/gama_f*bm_eh/100,\"—\")",
+     "nome": "Ma_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C254",
+     "v": "kN·cm"
+    },
+    {
+     "ref": "A255",
+     "v": "Im"
+    },
+    {
+     "ref": "B255",
+     "v": "=IFERROR(bm_eh*t_bloco^3/12-(bm_eh-bw_eh)*(t_bloco-2*hf_bl)^3/12,\"—\")",
+     "nome": "Im_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C255",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "A256",
+     "v": "Mr = ftk∥·Im/(h/2)"
+    },
+    {
+     "ref": "B256",
+     "v": "=IFERROR(ftk_par/10*Im_eh/(t_bloco/2),\"—\")",
+     "nome": "Mr_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C256",
+     "v": "kN·cm"
+    },
+    {
+     "ref": "A257",
+     "v": "B = n·As1"
+    },
+    {
+     "ref": "B257",
+     "v": "=IFERROR(n_pn*a_ph,\"—\")",
+     "nome": "lnB_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C257",
+     "v": "cm²"
+    },
+    {
+     "ref": "D257",
+     "v": "LN: b·x²/2 + B·x − C = 0 → x = (−B + √(B² + 2·b·C))/b."
+    },
+    {
+     "ref": "A258",
+     "v": "C = n·As1·d"
+    },
+    {
+     "ref": "B258",
+     "v": "=IFERROR(n_pn*a_ph*d_ph,\"—\")",
+     "nome": "lnC_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C258",
+     "v": "cm³"
+    },
+    {
+     "ref": "A259",
+     "v": "x supondo LN na mesa"
+    },
+    {
+     "ref": "B259",
+     "v": "=IFERROR((-lnB_eh+SQRT(lnB_eh^2+2*bm_eh*lnC_eh))/bm_eh,\"—\")",
+     "nome": "xr_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C259",
+     "v": "cm"
+    },
+    {
+     "ref": "A260",
+     "v": "B com a LN na alma = (bm − bw)·hf + B"
+    },
+    {
+     "ref": "B260",
+     "v": "=IFERROR((bm_eh-bw_eh)*hf_bl+lnB_eh,\"—\")",
+     "nome": "lnBw_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C260",
+     "v": "cm²"
+    },
+    {
+     "ref": "A261",
+     "v": "C com a LN na alma = (bm − bw)·hf²/2 + C"
+    },
+    {
+     "ref": "B261",
+     "v": "=IFERROR((bm_eh-bw_eh)*hf_bl^2/2+lnC_eh,\"—\")",
+     "nome": "lnCw_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C261",
+     "v": "cm³"
+    },
+    {
+     "ref": "A262",
+     "v": "x supondo LN na alma (T)"
+    },
+    {
+     "ref": "B262",
+     "v": "=IFERROR((-lnBw_eh+SQRT(lnBw_eh^2+2*bw_eh*lnCw_eh))/bw_eh,\"—\")",
+     "nome": "xt_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C262",
+     "v": "cm"
+    },
+    {
+     "ref": "A263",
+     "v": "x adotado"
+    },
+    {
+     "ref": "B263",
+     "v": "=IFERROR(IF(xr_eh<=hf_bl,xr_eh,xt_eh),\"—\")",
+     "nome": "x_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C263",
+     "v": "cm"
+    },
+    {
+     "ref": "D263",
+     "v": "Se x ≤ hf vale a hipótese da mesa."
+    },
+    {
+     "ref": "A264",
+     "v": "III da alvenaria comprimida = b·x³/3"
+    },
+    {
+     "ref": "B264",
+     "v": "=IFERROR(IF(x_eh<=hf_bl,bm_eh,bw_eh)*x_eh^3/3,\"—\")",
+     "nome": "IIc_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C264",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "D264",
+     "v": "b = bm com a LN na mesa; bw com a LN na alma."
+    },
+    {
+     "ref": "A265",
+     "v": "III das abas da mesa"
+    },
+    {
+     "ref": "B265",
+     "v": "=IFERROR(IF(x_eh<=hf_bl,0,(bm_eh-bw_eh)*hf_bl^3/12+(bm_eh-bw_eh)*hf_bl*(x_eh-hf_bl/2)^2),\"—\")",
+     "nome": "IIf_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C265",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "D265",
+     "v": "Só com a LN na alma: (bm − bw)·hf³/12 + (bm − bw)·hf·(x − hf/2)²."
+    },
+    {
+     "ref": "A266",
+     "v": "III da barra tracionada = n·As1·(d − x)²"
+    },
+    {
+     "ref": "B266",
+     "v": "=IFERROR(n_pn*a_ph*(d_ph-x_eh)^2,\"—\")",
+     "nome": "IIs1_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C266",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "A267",
+     "v": "III"
+    },
+    {
+     "ref": "B267",
+     "v": "=IFERROR(IIc_eh+IIf_eh+IIs1_eh,\"—\")",
+     "nome": "III_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C267",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "D267",
+     "v": "Alvenaria comprimida + abas + barras."
+    },
+    {
+     "ref": "A268",
+     "v": "Ieq (Branson) ≤ Im"
+    },
+    {
+     "ref": "B268",
+     "v": "=IFERROR(IF(Ma_eh<=Mr_eh,Im_eh,MIN(Im_eh,(Mr_eh/Ma_eh)^3*Im_eh+(1-(Mr_eh/Ma_eh)^3)*III_eh)),\"—\")",
+     "nome": "Ieq_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C268",
+     "v": "cm⁴"
+    },
+    {
+     "ref": "A269",
+     "v": "heq = (12·Ieq/bm)^(1/3)"
+    },
+    {
+     "ref": "B269",
+     "v": "=IFERROR((12*Ieq_eh/bm_eh)^(1/3),\"—\")",
+     "nome": "heq_eh",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C269",
+     "v": "cm"
+    },
+    {
+     "ref": "A270",
+     "v": "Carga de serviço × α (triangular + uniforme)"
+    },
+    {
+     "ref": "B270",
+     "v": "=IFERROR(psi_els*(B147*p_tri+C147*p_uni),\"—\")",
+     "nome": "ap_c",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C270",
+     "v": "kN/m²"
+    },
+    {
+     "ref": "D270",
+     "v": "α·p de cada parcela, somados."
+    },
+    {
+     "ref": "A271",
+     "v": "Carga de serviço × αB (borda livre)"
+    },
+    {
+     "ref": "B271",
+     "v": "=IFERROR(psi_els*(B148*p_tri+C148*p_uni),\"—\")",
+     "nome": "apB_c",
+     "tipo": "resultado"
+    },
+    {
+     "ref": "C271",
+     "v": "kN/m²"
+    },
+    {
+     "ref": "A272",
+     "v": "δ0 com heq vertical"
+    },
+    {
+     "ref": "B272",
      "v": "=IFERROR(ap_c/100*lref_p^4/(Em_pn*1000*(heq_ev/100)^3)*1000,\"—\")",
      "nome": "d0_ev",
      "tipo": "resultado"
     },
     {
-     "ref": "C242",
+     "ref": "C272",
      "v": "mm"
     },
     {
-     "ref": "A243",
+     "ref": "A273",
      "v": "δb0 com heq vertical"
     },
     {
-     "ref": "B243",
+     "ref": "B273",
      "v": "=IFERROR(apB_c/100*lref_p^4/(Em_pn*1000*(heq_ev/100)^3)*1000,\"—\")",
      "nome": "db0_ev",
      "tipo": "resultado"
     },
     {
-     "ref": "C243",
+     "ref": "C273",
      "v": "mm"
     },
     {
-     "ref": "A244",
+     "ref": "A274",
      "v": "δ0 com heq horizontal"
     },
     {
-     "ref": "B244",
+     "ref": "B274",
      "v": "=IFERROR(ap_c/100*lref_p^4/(Em_pn*1000*(heq_eh/100)^3)*1000,\"—\")",
      "nome": "d0_eh",
      "tipo": "resultado"
     },
     {
-     "ref": "C244",
+     "ref": "C274",
      "v": "mm"
     },
     {
-     "ref": "A245",
+     "ref": "A275",
      "v": "δb0 com heq horizontal"
     },
     {
-     "ref": "B245",
+     "ref": "B275",
      "v": "=IFERROR(apB_c/100*lref_p^4/(Em_pn*1000*(heq_eh/100)^3)*1000,\"—\")",
      "nome": "db0_eh",
      "tipo": "resultado"
     },
     {
-     "ref": "C245",
+     "ref": "C275",
      "v": "mm"
     },
     {
-     "ref": "A246",
+     "ref": "A276",
      "v": "δ∞ = (1 + Δξ)·maior δ"
     },
     {
-     "ref": "B246",
+     "ref": "B276",
      "v": "=IFERROR(IF(AND(ISNUMBER(d0_ev),ISNUMBER(db0_ev),ISNUMBER(d0_eh),ISNUMBER(db0_eh)),(1+dxi)*MAX(d0_ev,db0_ev,d0_eh,db0_eh),\"—\"),\"—\")",
      "nome": "dinf_p",
      "tipo": "resultado"
     },
     {
-     "ref": "C246",
+     "ref": "C276",
      "v": "mm"
     },
     {
-     "ref": "D246",
+     "ref": "D276",
      "v": "A placa tem uma flecha só; vale a direção mais crítica (menor heq), a favor da segurança."
     },
     {
-     "ref": "E246",
+     "ref": "E276",
      "v": "NBR 16868-1 9.2.4"
     },
     {
-     "ref": "A247",
+     "ref": "A277",
      "v": "δadm = menor vão/limite"
     },
     {
-     "ref": "B247",
+     "ref": "B277",
      "v": "=IFERROR(lref_p*1000/div_adm,\"—\")",
      "nome": "dadm_p",
      "tipo": "resultado"
     },
     {
-     "ref": "C247",
+     "ref": "C277",
      "v": "mm"
     },
     {
-     "ref": "A248",
+     "ref": "A278",
      "v": "Ábaco NBR (borda superior livre): h/t"
     },
     {
-     "ref": "B248",
+     "ref": "B278",
      "v": "=IFERROR(H_muro*100/t_bloco,\"—\")",
      "nome": "ht_ab",
      "tipo": "resultado"
     },
     {
-     "ref": "A249",
+     "ref": "A279",
      "v": "l/t"
     },
     {
-     "ref": "B249",
+     "ref": "B279",
      "v": "=IFERROR(l_cf_adot*100/t_bloco,\"—\")",
      "nome": "lt_ab",
      "tipo": "resultado"
     },
     {
-     "ref": "A250",
+     "ref": "A280",
      "v": "h/t limite (leitura do gráfico)"
     },
     {
-     "ref": "B250",
+     "ref": "B280",
      "v": "=IFERROR(IF(lt_ab<=40,80,IF(lt_ab<=55,60-(lt_ab-40)*40/15,IF(lt_ab<=120,20-(lt_ab-55)*5/65,\"fora do ábaco\"))),\"—\")",
      "nome": "htl_ab",
      "tipo": "resultado"
     },
     {
-     "ref": "D250",
+     "ref": "D280",
      "v": "Engaste da base tratado como apoio."
     },
     {
-     "ref": "E250",
+     "ref": "E280",
      "v": "NBR 16868-1 E.5.1 (Fig. E.1)"
     },
     {
-     "ref": "A252",
+     "ref": "A282",
      "v": "13. Cargas para a sapata corrida (dimensionamento na aba Fundação)"
     },
     {
-     "ref": "A253",
+     "ref": "A283",
      "v": "Ângulo das charneiras a partir da base"
     },
     {
-     "ref": "B253",
+     "ref": "B283",
      "v": "=IFERROR(IF(LEFT(lat_pan,4)=\"Apoi\",60,45),\"—\")",
      "nome": "th_ch",
      "tipo": "resultado"
     },
     {
-     "ref": "C253",
+     "ref": "C283",
      "v": "°"
     },
     {
-     "ref": "D253",
+     "ref": "D283",
      "v": "Base engastada + laterais apoiadas → 60°; laterais engastadas → 45°."
     },
     {
-     "ref": "E253",
+     "ref": "E283",
      "v": "NBR 6118 14.7.6.1"
     },
     {
-     "ref": "A254",
+     "ref": "A284",
      "v": "Altura da região que vai para a base"
     },
     {
-     "ref": "B254",
+     "ref": "B284",
      "v": "=IFERROR(MIN(l_p*TAN(RADIANS(th_ch))/2,h_p),\"—\")",
      "nome": "a_ch",
      "tipo": "resultado"
     },
     {
-     "ref": "C254",
+     "ref": "C284",
      "v": "m"
     },
     {
-     "ref": "A255",
+     "ref": "A285",
      "v": "Força horizontal na sapata por vão (característica)"
     },
     {
-     "ref": "B255",
+     "ref": "B285",
      "v": "=IFERROR(sh_base*l_p*a_ch-(2/TAN(RADIANS(th_ch))*sh_base+(sh_base-sh_topo)/h_p*l_p)*a_ch^2/2+2/TAN(RADIANS(th_ch))*(sh_base-sh_topo)/h_p*a_ch^3/3,\"—\")",
      "nome": "F_ch",
      "tipo": "resultado"
     },
     {
-     "ref": "C255",
+     "ref": "C285",
      "v": "kN"
     },
     {
-     "ref": "A256",
+     "ref": "A286",
      "v": "Força total no painel"
     },
     {
-     "ref": "B256",
+     "ref": "B286",
      "v": "=IFERROR(l_p*h_p*(sh_base+sh_topo)/2,\"—\")",
      "nome": "F_tot",
      "tipo": "resultado"
     },
     {
-     "ref": "C256",
+     "ref": "C286",
      "v": "kN"
     },
     {
-     "ref": "D256",
+     "ref": "D286",
      "v": "Com a carga do modelo do painel (seção 8)."
     },
     {
-     "ref": "A257",
+     "ref": "A287",
      "v": "Para cada contraforte (lateral)"
     },
     {
-     "ref": "B257",
+     "ref": "B287",
      "v": "=IFERROR((F_tot-F_ch)/2,\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C257",
+     "ref": "C287",
      "v": "kN"
     },
     {
-     "ref": "D257",
+     "ref": "D287",
      "v": "O contraforte foi calculado com 100% da área: a soma passa de 100%, a favor da segurança."
     },
     {
-     "ref": "A258",
+     "ref": "A288",
      "v": "Pico na sapata (meio do vão)"
     },
     {
-     "ref": "B258",
+     "ref": "B288",
      "v": "=IFERROR(sh_base*a_ch-(sh_base-sh_topo)/h_p*a_ch^2/2,\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C258",
+     "ref": "C288",
      "v": "kN/m"
     },
     {
-     "ref": "D258",
+     "ref": "D288",
      "v": "Distribuição de 0 junto ao contraforte até o pico."
     },
     {
-     "ref": "A259",
+     "ref": "A289",
      "v": "Média na sapata"
     },
     {
-     "ref": "B259",
+     "ref": "B289",
      "v": "=IFERROR(F_ch/l_p,\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C259",
+     "ref": "C289",
      "v": "kN/m"
     },
     {
-     "ref": "A260",
+     "ref": "A290",
      "v": "Momento da base do painel (engaste na sapata)"
     },
     {
-     "ref": "B260",
+     "ref": "B290",
      "v": "=IFERROR(Mdyei_p,\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "C260",
+     "ref": "C290",
      "v": "kN·cm/m"
     },
     {
-     "ref": "D260",
+     "ref": "D290",
      "v": "De cálculo. Vira momento/torção na sapata corrida."
     },
     {
-     "ref": "A261",
+     "ref": "A291",
      "v": "Md e Vd na base do contraforte"
     },
     {
-     "ref": "B261",
+     "ref": "B291",
      "v": "=IFERROR(FIXED(Md_cf,2)&\" kN·m  /  \"&FIXED(Vd_cf,2)&\" kN\",\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A263",
+     "ref": "A293",
      "v": "14. Detalhamento (resumo)"
     },
     {
-     "ref": "A264",
+     "ref": "A294",
      "v": "Contraforte"
     },
     {
-     "ref": "B264",
+     "ref": "B294",
      "v": "=IFERROR(n_cf&\"Ø\"&IF(phi_cf=INT(phi_cf),FIXED(phi_cf,0),FIXED(phi_cf,1))&\" na ponta (d = \"&FIXED(d_cf,1)&\" cm) + \"&n_cc&\"Ø\"&IF(phi_cc=INT(phi_cc),FIXED(phi_cc,0),FIXED(phi_cc,1))&\" construtivas; \"&IF(Asw_c=0,\"sem estribos (dispensa pela conta)\",\"estribos Ø\"&IF(phi_est=INT(phi_est),FIXED(phi_est,0),FIXED(phi_est,1))&\" c/\"&FIXED(s_est,0)&\" (\"&ramos_est&\" ramos) nas juntas\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A265",
+     "ref": "A295",
      "v": "Painel — vertical"
     },
     {
-     "ref": "B265",
+     "ref": "B295",
      "v": "=IFERROR(IF(nb_pv=2,\"Ø\"&IF(phi_pv=INT(phi_pv),FIXED(phi_pv,0),FIXED(phi_pv,1))&\" c/\"&FIXED(s_pv,0)&\" em CADA face (2 barras por furo, a \"&IF(c_pv=INT(c_pv),FIXED(c_pv,0),FIXED(c_pv,1))&\" cm das faces)\",\"Ø\"&IF(phi_pv=INT(phi_pv),FIXED(phi_pv,0),FIXED(phi_pv,1))&\" c/\"&FIXED(s_pv,0)&\" centralizada\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A266",
+     "ref": "A296",
      "v": "Painel — horizontal"
     },
     {
-     "ref": "B266",
+     "ref": "B296",
      "v": "=IFERROR(\"Ø\"&IF(phi_ph=INT(phi_ph),FIXED(phi_ph,0),FIXED(phi_ph,1))&\" c/\"&FIXED(s_ph,0)&\" em canaleta grauteada, \"&IF(LEFT(pos_ph,4)=\"Cent\",\"centralizada\",\"encostada na face externa\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A268",
+     "ref": "A298",
      "v": "15. Verificações"
     },
     {
-     "ref": "A269",
+     "ref": "A299",
      "v": "Esbeltez λ ≤ 30 (armada)"
     },
     {
-     "ref": "B269",
+     "ref": "B299",
      "v": "=IFERROR(IF(lam_cf<=30,\"OK (\"&FIXED(lam_cf,1)&\")\",\"NÃO OK (\"&FIXED(lam_cf,1)&\")\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A270",
+     "ref": "A300",
      "v": "hf ≤ 0,5d (largura colaborante)"
     },
     {
-     "ref": "B270",
+     "ref": "B300",
      "v": "=IFERROR(IF(cf_T=0,\"— (retangular)\",IF(hf_cf<=0.5*d_cf,\"OK\",\"NÃO OK\")),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A271",
+     "ref": "A301",
      "v": "Contraforte: seção resiste"
     },
     {
-     "ref": "B271",
+     "ref": "B301",
      "v": "=IFERROR(IF(ISNUMBER(x_cf),\"OK\",\"NÃO OK — aumentar o contraforte ou o fpk\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A272",
+     "ref": "A302",
      "v": "Contraforte: ductilidade x/d ≤ 0,45"
     },
     {
-     "ref": "B272",
+     "ref": "B302",
      "v": "=IFERROR(IF(ISNUMBER(xd_cf),IF(xd_cf<=0.45,\"OK (\"&FIXED(xd_cf,3)&\")\",\"NÃO OK\"),\"NÃO OK\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A273",
+     "ref": "A303",
      "v": "Contraforte: As,ef ≥ As de cálculo"
     },
     {
-     "ref": "B273",
+     "ref": "B303",
      "v": "=IFERROR(IF(As_cfe>=As_cfc-0.005,\"OK (\"&FIXED(As_cfe,2)&\" ≥ \"&FIXED(As_cfc,2)&\")\",\"NÃO OK\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A274",
+     "ref": "A304",
      "v": "Contraforte: As ≤ As,máx do furo"
     },
     {
-     "ref": "B274",
+     "ref": "B304",
      "v": "=IFERROR(IF(As_cfx2<=As_cfx,\"OK (\"&FIXED(As_cfx2,2)&\" ≤ \"&FIXED(As_cfx,2)&\")\",\"NÃO OK — distribuir em mais furos ou aumentar Ø/graute\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A275",
+     "ref": "A305",
      "v": "Contraforte: bielas Vd ≤ Vrd2"
     },
     {
-     "ref": "B275",
+     "ref": "B305",
      "v": "=IFERROR(IF(Vd_cf<=Vrd2_cf,\"OK (\"&FIXED(Vd_cf,1)&\" ≤ \"&FIXED(Vrd2_cf,1)&\")\",\"NÃO OK — aumentar a seção\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A276",
+     "ref": "A306",
      "v": "Contraforte: estribos"
     },
     {
-     "ref": "B276",
+     "ref": "B306",
      "v": "=IFERROR(IF(Asw_c=0,\"Dispensa pela conta (Vd ≤ Va)\",IF(Asw_e>=Asw_c-0.005,\"OK (\"&FIXED(Asw_e,2)&\" ≥ \"&FIXED(Asw_c,2)&\" cm²/m)\",\"NÃO OK — aumentar Ø, ramos ou reduzir s\")),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A277",
+     "ref": "A307",
      "v": "Estribo cabe na junta (Ø ≤ 6,3 mm)"
     },
     {
-     "ref": "B277",
+     "ref": "B307",
      "v": "=IFERROR(IF(Asw_c=0,\"— (sem estribo)\",IF(phi_est<=6.3,\"OK\",\"NÃO OK — Ø > 6,3 não cabe na junta de assentamento\")),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A278",
+     "ref": "A308",
      "v": "Contraforte: ELS δ∞ ≤ δadm"
     },
     {
-     "ref": "B278",
+     "ref": "B308",
      "v": "=IFERROR(IF(dinf_cf<=dadm_cf,\"OK (\"&FIXED(dinf_cf,1)&\" ≤ \"&FIXED(dadm_cf,1)&\" mm)\",\"NÃO OK\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A279",
+     "ref": "A309",
      "v": "Painel: γ dentro da tabela (0,30–2,00)"
     },
     {
-     "ref": "B279",
+     "ref": "B309",
      "v": "=IFERROR(IF(AND(gam_p>=0.3,gam_p<=2),\"OK\",\"NÃO OK — fora da tabela: mudar espaçamento dos contrafortes\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A280",
+     "ref": "A310",
      "v": "Painel vertical: barra do lado do solo"
     },
     {
-     "ref": "B280",
+     "ref": "B310",
      "v": "=IFERROR(IF(ISNUMBER(As_pvs),IF(a_pv>=MAX(As_pvs,As_pvm)-0.0005,\"OK\",\"NÃO OK\"),\"NÃO OK — não resiste\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A281",
+     "ref": "A311",
      "v": "Painel vertical: barra do lado externo"
     },
     {
-     "ref": "B281",
+     "ref": "B311",
      "v": "=IFERROR(IF(nb_pv=1,\"— (1 barra centralizada)\",IF(ISNUMBER(As_pve),IF(a_pv>=MAX(As_pve,As_pvm)-0.0005,\"OK\",\"NÃO OK\"),\"NÃO OK\")),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A282",
+     "ref": "A312",
      "v": "Painel vertical: As ≤ As,máx do furo"
     },
     {
-     "ref": "B282",
+     "ref": "B312",
      "v": "=IFERROR(IF(nb_pv*a_pv*f_trasp<=pAs_max*Ag_furo,\"OK\",\"NÃO OK\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A283",
+     "ref": "A313",
      "v": "Painel horizontal: barra na canaleta"
     },
     {
-     "ref": "B283",
+     "ref": "B313",
      "v": "=IFERROR(IF(ISNUMBER(As_phc),IF(a_ph>=MAX(As_phc,As_phm)-0.0005,\"OK (\"&FIXED(a_ph,2)&\" ≥ \"&FIXED(MAX(As_phc,As_phm),2)&\")\",\"NÃO OK\"),\"NÃO OK — não resiste\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A284",
+     "ref": "A314",
      "v": "Painel não armado: σtd,par ≤ ftd,par"
     },
     {
-     "ref": "B284",
+     "ref": "B314",
      "v": "=IFERROR(IF(LEFT(tem_sp,3)=\"Não\",\"— não se aplica\",IF(st_psp<=ftk_par/gama_m,\"OK (\"&TEXT(st_psp/(ftk_par/gama_m),\"0%\")&\")\",\"NÃO OK\")),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A285",
+     "ref": "A315",
      "v": "Painel não armado: σtd,nor ≤ ftd,nor"
     },
     {
-     "ref": "B285",
+     "ref": "B315",
      "v": "=IFERROR(IF(LEFT(tem_sp,3)=\"Não\",\"— não se aplica\",IF(st_nsp<=ftk_nor/gama_m,\"OK (\"&TEXT(st_nsp/(ftk_nor/gama_m),\"0%\")&\")\",\"NÃO OK\")),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A286",
+     "ref": "A316",
      "v": "Painel não armado: dimensões-limite"
     },
     {
-     "ref": "B286",
+     "ref": "B316",
      "v": "=IFERROR(IF(LEFT(tem_sp,3)=\"Não\",\"— não se aplica\",IF(AND(MAX(l_sp,h_sp)<=50*t_bloco/100,l_sp*h_sp<=2025*(t_bloco/100)^2),\"OK\",\"NÃO OK\")),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A287",
+     "ref": "A317",
      "v": "Painel: ELS δ∞ ≤ δadm"
     },
     {
-     "ref": "B287",
+     "ref": "B317",
      "v": "=IFERROR(IF(dinf_p<=dadm_p,\"OK (\"&FIXED(dinf_p,1)&\" ≤ \"&FIXED(dadm_p,1)&\" mm)\",\"NÃO OK\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A288",
+     "ref": "A318",
      "v": "Painel: ábaco simplificado da NBR"
     },
     {
-     "ref": "B288",
+     "ref": "B318",
      "v": "=IFERROR(IF(ISNUMBER(htl_ab),IF(ht_ab<=htl_ab,\"OK (h/t \"&FIXED(ht_ab,1)&\" ≤ \"&FIXED(htl_ab,0)&\")\",\"NÃO OK pelo ábaco — vale o cálculo da flecha acima\"),\"fora do ábaco\"),\"—\")",
      "tipo": "resultado"
     },
     {
-     "ref": "A289",
+     "ref": "A319",
      "v": "POSIÇÃO DAS BARRAS DO PAINEL"
     },
     {
-     "ref": "B289",
+     "ref": "B319",
      "v": "=IFERROR(IF(nb_pv=2,\"ATENÇÃO — verticais: uma barra encostada em CADA face (a \"&IF(c_pv=INT(c_pv),FIXED(c_pv,0),FIXED(c_pv,1))&\" cm), não centralizar. Horizontais: \"&IF(LEFT(pos_ph,4)=\"Cent\",\"centralizadas na canaleta.\",\"encostadas na face externa.\"),\"Verticais centralizadas.\"),\"—\")",
      "tipo": "resultado"
     }
@@ -26629,47 +27215,68 @@
   "Mr_": [
    "ELS!$B$21"
   ],
-  "x_rect": [
+  "lnB_els": [
    "ELS!$B$24"
   ],
-  "x_T": [
+  "lnC_els": [
    "ELS!$B$25"
   ],
-  "xII": [
+  "x_rect": [
    "ELS!$B$26"
   ],
-  "III_": [
+  "lnBw_els": [
    "ELS!$B$27"
   ],
-  "br_3": [
+  "lnCw_els": [
    "ELS!$B$28"
   ],
-  "Ieq_": [
+  "x_T": [
    "ELS!$B$29"
   ],
-  "heq_": [
+  "xII": [
    "ELS!$B$30"
   ],
-  "sig_s_els": [
+  "IIc_els": [
    "ELS!$B$31"
   ],
-  "sum_d": [
+  "IIf_els": [
+   "ELS!$B$32"
+  ],
+  "IIs_els": [
+   "ELS!$B$33"
+  ],
+  "III_": [
    "ELS!$B$34"
   ],
-  "delta0": [
+  "br_3": [
    "ELS!$B$35"
   ],
-  "alfa_f": [
+  "Ieq_": [
    "ELS!$B$36"
   ],
-  "delta_": [
+  "heq_": [
    "ELS!$B$37"
   ],
-  "dadm_": [
+  "sig_s_els": [
    "ELS!$B$38"
   ],
-  "res_els": [
+  "sum_d": [
    "ELS!$B$41"
+  ],
+  "delta0": [
+   "ELS!$B$42"
+  ],
+  "alfa_f": [
+   "ELS!$B$43"
+  ],
+  "delta_": [
+   "ELS!$B$44"
+  ],
+  "dadm_": [
+   "ELS!$B$45"
+  ],
+  "res_els": [
+   "ELS!$B$48"
   ],
   "delta_le": [
    "Referências!$A$105:$A$109"
@@ -26944,326 +27551,416 @@
   "b2_cf": [
    "Contrafortes!$B$110"
   ],
-  "x2r_cf": [
+  "lnB_cf": [
    "Contrafortes!$B$111"
   ],
-  "x2t_cf": [
+  "lnC_cf": [
    "Contrafortes!$B$112"
   ],
-  "x2_cf": [
+  "x2r_cf": [
    "Contrafortes!$B$113"
   ],
-  "III_cf": [
+  "lnBw_cf": [
    "Contrafortes!$B$114"
   ],
-  "Ieq_cf": [
+  "lnCw_cf": [
    "Contrafortes!$B$115"
   ],
-  "heq_cf": [
+  "x2t_cf": [
    "Contrafortes!$B$116"
   ],
-  "d0_cf": [
+  "x2_cf": [
+   "Contrafortes!$B$117"
+  ],
+  "IIc_cf": [
    "Contrafortes!$B$118"
   ],
-  "dinf_cf": [
+  "IIf_cf": [
    "Contrafortes!$B$119"
   ],
-  "dadm_cf": [
+  "IIs_cf": [
    "Contrafortes!$B$120"
   ],
-  "l_p": [
-   "Contrafortes!$B$124"
+  "III_cf": [
+   "Contrafortes!$B$121"
   ],
-  "h_p": [
+  "Ieq_cf": [
+   "Contrafortes!$B$122"
+  ],
+  "heq_cf": [
+   "Contrafortes!$B$123"
+  ],
+  "d0_cf": [
    "Contrafortes!$B$125"
   ],
-  "gam_p": [
+  "dinf_cf": [
    "Contrafortes!$B$126"
   ],
-  "gam_c": [
+  "dadm_cf": [
    "Contrafortes!$B$127"
   ],
-  "lref_p": [
-   "Contrafortes!$B$128"
-  ],
-  "p_tri": [
-   "Contrafortes!$B$129"
-  ],
-  "p_uni": [
-   "Contrafortes!$B$130"
-  ],
-  "i_g": [
+  "l_p": [
    "Contrafortes!$B$131"
   ],
-  "t_g": [
+  "h_p": [
    "Contrafortes!$B$132"
   ],
+  "gam_p": [
+   "Contrafortes!$B$133"
+  ],
+  "gam_c": [
+   "Contrafortes!$B$134"
+  ],
+  "lref_p": [
+   "Contrafortes!$B$135"
+  ],
+  "p_tri": [
+   "Contrafortes!$B$136"
+  ],
+  "p_uni": [
+   "Contrafortes!$B$137"
+  ],
+  "i_g": [
+   "Contrafortes!$B$138"
+  ],
+  "t_g": [
+   "Contrafortes!$B$139"
+  ],
   "Mdx_p": [
-   "Contrafortes!$B$142"
+   "Contrafortes!$B$149"
   ],
   "Mdxb_p": [
-   "Contrafortes!$B$143"
-  ],
-  "Mdy_p": [
-   "Contrafortes!$B$144"
-  ],
-  "Mdyei_p": [
-   "Contrafortes!$B$145"
-  ],
-  "Mdxe_p": [
-   "Contrafortes!$B$146"
-  ],
-  "Mdxeb_p": [
-   "Contrafortes!$B$147"
-  ],
-  "fpk_pn": [
    "Contrafortes!$B$150"
   ],
-  "Kfd_pv": [
+  "Mdy_p": [
    "Contrafortes!$B$151"
   ],
-  "d_pv": [
+  "Mdyei_p": [
    "Contrafortes!$B$152"
   ],
-  "M_pvs": [
+  "Mdxe_p": [
    "Contrafortes!$B$153"
   ],
-  "M_pve": [
+  "Mdxeb_p": [
    "Contrafortes!$B$154"
   ],
-  "s_furo": [
-   "Contrafortes!$B$155"
+  "fpk_pn": [
+   "Contrafortes!$B$157"
   ],
-  "s_pv": [
+  "Kfd_pv": [
+   "Contrafortes!$B$158"
+  ],
+  "d_pv": [
+   "Contrafortes!$B$159"
+  ],
+  "M_pvs": [
+   "Contrafortes!$B$160"
+  ],
+  "M_pve": [
+   "Contrafortes!$B$161"
+  ],
+  "s_furo": [
    "Contrafortes!$B$162"
   ],
-  "Md_pvs": [
-   "Contrafortes!$B$163"
-  ],
-  "x_pv": [
-   "Contrafortes!$B$164"
-  ],
-  "fsd_pv": [
-   "Contrafortes!$B$165"
-  ],
-  "As_pvs": [
-   "Contrafortes!$B$166"
-  ],
-  "As_pve": [
-   "Contrafortes!$B$167"
-  ],
-  "As_pvm": [
-   "Contrafortes!$B$168"
-  ],
-  "a_pv": [
+  "s_pv": [
    "Contrafortes!$B$169"
   ],
-  "nb_pv": [
+  "Md_pvs": [
    "Contrafortes!$B$170"
   ],
-  "K_ph_us": [
+  "x_pv": [
+   "Contrafortes!$B$171"
+  ],
+  "fsd_pv": [
+   "Contrafortes!$B$172"
+  ],
+  "As_pvs": [
    "Contrafortes!$B$173"
   ],
-  "Kfd_ph": [
+  "As_pve": [
    "Contrafortes!$B$174"
   ],
-  "d_ph": [
+  "As_pvm": [
    "Contrafortes!$B$175"
   ],
-  "M_ph": [
+  "a_pv": [
    "Contrafortes!$B$176"
   ],
-  "s_ph": [
+  "nb_pv": [
+   "Contrafortes!$B$177"
+  ],
+  "K_ph_us": [
+   "Contrafortes!$B$180"
+  ],
+  "Kfd_ph": [
+   "Contrafortes!$B$181"
+  ],
+  "d_ph": [
+   "Contrafortes!$B$182"
+  ],
+  "M_ph": [
    "Contrafortes!$B$183"
   ],
+  "s_ph": [
+   "Contrafortes!$B$190"
+  ],
   "Md_ph": [
-   "Contrafortes!$B$184"
+   "Contrafortes!$B$191"
   ],
   "x_ph": [
-   "Contrafortes!$B$185"
+   "Contrafortes!$B$192"
   ],
   "fsd_ph": [
-   "Contrafortes!$B$186"
-  ],
-  "As_phc": [
-   "Contrafortes!$B$187"
-  ],
-  "As_phm": [
-   "Contrafortes!$B$188"
-  ],
-  "a_ph": [
-   "Contrafortes!$B$189"
-  ],
-  "l_sp": [
    "Contrafortes!$B$193"
   ],
-  "h_sp": [
+  "As_phc": [
    "Contrafortes!$B$194"
   ],
-  "tem_sp": [
+  "As_phm": [
    "Contrafortes!$B$195"
   ],
-  "z_sp": [
+  "a_ph": [
    "Contrafortes!$B$196"
   ],
-  "sp_t2": [
-   "Contrafortes!$B$197"
-  ],
-  "fd_sp": [
-   "Contrafortes!$B$198"
-  ],
-  "hl_sp": [
-   "Contrafortes!$B$199"
-  ],
-  "mu_sp": [
+  "l_sp": [
    "Contrafortes!$B$200"
   ],
-  "j_sp": [
+  "h_sp": [
    "Contrafortes!$B$201"
   ],
-  "i_sp": [
+  "tem_sp": [
    "Contrafortes!$B$202"
   ],
-  "tx_sp": [
+  "z_sp": [
    "Contrafortes!$B$203"
   ],
-  "ty_sp": [
+  "sp_t2": [
    "Contrafortes!$B$204"
   ],
-  "bf_sp": [
+  "fd_sp": [
    "Contrafortes!$B$205"
   ],
-  "Mpar_sp": [
+  "hl_sp": [
    "Contrafortes!$B$206"
   ],
-  "Mnor_sp": [
+  "mu_sp": [
    "Contrafortes!$B$207"
   ],
-  "st_psp": [
+  "j_sp": [
    "Contrafortes!$B$208"
   ],
-  "st_nsp": [
+  "i_sp": [
+   "Contrafortes!$B$209"
+  ],
+  "tx_sp": [
    "Contrafortes!$B$210"
   ],
-  "Em_pn": [
+  "ty_sp": [
+   "Contrafortes!$B$211"
+  ],
+  "bf_sp": [
+   "Contrafortes!$B$212"
+  ],
+  "Mpar_sp": [
+   "Contrafortes!$B$213"
+  ],
+  "Mnor_sp": [
    "Contrafortes!$B$214"
   ],
-  "n_pn": [
+  "st_psp": [
    "Contrafortes!$B$215"
   ],
-  "bm_ev": [
-   "Contrafortes!$B$216"
-  ],
-  "n_alm_v": [
+  "st_nsp": [
    "Contrafortes!$B$217"
   ],
-  "bw_ev": [
-   "Contrafortes!$B$218"
-  ],
-  "Ma_ev": [
-   "Contrafortes!$B$220"
-  ],
-  "Im_ev": [
+  "Em_pn": [
    "Contrafortes!$B$221"
   ],
-  "Mr_ev": [
+  "n_pn": [
    "Contrafortes!$B$222"
   ],
-  "x1_ev": [
+  "bm_ev": [
    "Contrafortes!$B$223"
   ],
-  "x_ev": [
+  "n_alm_v": [
    "Contrafortes!$B$224"
   ],
-  "n2_ev": [
+  "bw_ev": [
    "Contrafortes!$B$225"
   ],
-  "III_ev": [
-   "Contrafortes!$B$226"
-  ],
-  "Ieq_ev": [
+  "Ma_ev": [
    "Contrafortes!$B$227"
   ],
-  "heq_ev": [
+  "Im_ev": [
    "Contrafortes!$B$228"
   ],
-  "bm_eh": [
+  "Mr_ev": [
    "Contrafortes!$B$229"
   ],
-  "bw_eh": [
+  "lnB1_ev": [
    "Contrafortes!$B$230"
   ],
-  "Ma_eh": [
+  "lnC1_ev": [
    "Contrafortes!$B$231"
   ],
-  "Im_eh": [
+  "xr1_ev": [
    "Contrafortes!$B$232"
   ],
-  "Mr_eh": [
+  "lnBw1_ev": [
    "Contrafortes!$B$233"
   ],
-  "x1_eh": [
+  "lnCw1_ev": [
    "Contrafortes!$B$234"
   ],
-  "x_eh": [
+  "xt1_ev": [
    "Contrafortes!$B$235"
   ],
-  "n2_eh": [
+  "x1_ev": [
    "Contrafortes!$B$236"
   ],
-  "III_eh": [
+  "lnB2_ev": [
    "Contrafortes!$B$237"
   ],
-  "Ieq_eh": [
+  "lnC2_ev": [
    "Contrafortes!$B$238"
   ],
-  "heq_eh": [
+  "xr2_ev": [
    "Contrafortes!$B$239"
   ],
-  "ap_c": [
+  "lnBw2_ev": [
    "Contrafortes!$B$240"
   ],
-  "apB_c": [
+  "lnCw2_ev": [
    "Contrafortes!$B$241"
   ],
-  "d0_ev": [
+  "xt2_ev": [
    "Contrafortes!$B$242"
   ],
-  "db0_ev": [
+  "x_ev": [
    "Contrafortes!$B$243"
   ],
-  "d0_eh": [
+  "n2_ev": [
    "Contrafortes!$B$244"
   ],
-  "db0_eh": [
+  "IIc_ev": [
    "Contrafortes!$B$245"
   ],
-  "dinf_p": [
+  "IIf_ev": [
    "Contrafortes!$B$246"
   ],
-  "dadm_p": [
+  "IIs2_ev": [
    "Contrafortes!$B$247"
   ],
-  "ht_ab": [
+  "IIs1_ev": [
    "Contrafortes!$B$248"
   ],
-  "lt_ab": [
+  "III_ev": [
    "Contrafortes!$B$249"
   ],
-  "htl_ab": [
+  "Ieq_ev": [
    "Contrafortes!$B$250"
   ],
-  "th_ch": [
+  "heq_ev": [
+   "Contrafortes!$B$251"
+  ],
+  "bm_eh": [
+   "Contrafortes!$B$252"
+  ],
+  "bw_eh": [
    "Contrafortes!$B$253"
   ],
-  "a_ch": [
+  "Ma_eh": [
    "Contrafortes!$B$254"
   ],
-  "F_ch": [
+  "Im_eh": [
    "Contrafortes!$B$255"
   ],
-  "F_tot": [
+  "Mr_eh": [
    "Contrafortes!$B$256"
+  ],
+  "lnB_eh": [
+   "Contrafortes!$B$257"
+  ],
+  "lnC_eh": [
+   "Contrafortes!$B$258"
+  ],
+  "xr_eh": [
+   "Contrafortes!$B$259"
+  ],
+  "lnBw_eh": [
+   "Contrafortes!$B$260"
+  ],
+  "lnCw_eh": [
+   "Contrafortes!$B$261"
+  ],
+  "xt_eh": [
+   "Contrafortes!$B$262"
+  ],
+  "x_eh": [
+   "Contrafortes!$B$263"
+  ],
+  "IIc_eh": [
+   "Contrafortes!$B$264"
+  ],
+  "IIf_eh": [
+   "Contrafortes!$B$265"
+  ],
+  "IIs1_eh": [
+   "Contrafortes!$B$266"
+  ],
+  "III_eh": [
+   "Contrafortes!$B$267"
+  ],
+  "Ieq_eh": [
+   "Contrafortes!$B$268"
+  ],
+  "heq_eh": [
+   "Contrafortes!$B$269"
+  ],
+  "ap_c": [
+   "Contrafortes!$B$270"
+  ],
+  "apB_c": [
+   "Contrafortes!$B$271"
+  ],
+  "d0_ev": [
+   "Contrafortes!$B$272"
+  ],
+  "db0_ev": [
+   "Contrafortes!$B$273"
+  ],
+  "d0_eh": [
+   "Contrafortes!$B$274"
+  ],
+  "db0_eh": [
+   "Contrafortes!$B$275"
+  ],
+  "dinf_p": [
+   "Contrafortes!$B$276"
+  ],
+  "dadm_p": [
+   "Contrafortes!$B$277"
+  ],
+  "ht_ab": [
+   "Contrafortes!$B$278"
+  ],
+  "lt_ab": [
+   "Contrafortes!$B$279"
+  ],
+  "htl_ab": [
+   "Contrafortes!$B$280"
+  ],
+  "th_ch": [
+   "Contrafortes!$B$283"
+  ],
+  "a_ch": [
+   "Contrafortes!$B$284"
+  ],
+  "F_ch": [
+   "Contrafortes!$B$285"
+  ],
+  "F_tot": [
+   "Contrafortes!$B$286"
   ],
   "cls_fund": [
    "Fundação!$B$5"

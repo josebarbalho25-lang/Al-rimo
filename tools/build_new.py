@@ -994,10 +994,19 @@ line(L_, r, 'Im = bm·h³/12 − (bm − bw)·(h − 2hf)³/12', '=bm_els*t_bloc
 line(L_, r, 'Mr = (ftk + σsg)·Im/yt', '=(ftk_nor+sig_sg)/10*Im_/(t_bloco/2)', 'kN·cm', 'yt = h/2 (seção simétrica).', 'key', '0.0', 'Mr_', 'NBR 16868-1 9.2.3'); r += 1
 r += 1
 section(L_, r, 'Estádio II'); r += 1
-line(L_, r, 'x supondo LN na mesa (b = bm)', '=(-n_els*As_barra+SQRT((n_els*As_barra)^2+2*bm_els*n_els*As_barra*d_util))/bm_els', 'cm', 'bm·x²/2 − n·As·(d − x) = 0.', 'res', '0.00', 'x_rect'); r += 1
-line(L_, r, 'x supondo LN na alma (T)', '=(-((bm_els-bw_els)*hf_bl+n_els*As_barra)+SQRT(((bm_els-bw_els)*hf_bl+n_els*As_barra)^2+2*bw_els*((bm_els-bw_els)*hf_bl^2/2+n_els*As_barra*d_util)))/bw_els', 'cm', 'bw·x²/2 + (bm − bw)·hf·(x − hf/2) − n·As·(d − x) = 0.', 'res', '0.00', 'x_T'); r += 1
+# LN e III em pedaços (Jose, 14/10: a conta inteira numa linha só ficava grande demais na memória): B e C da equação
+# do 2º grau em linha própria, x = (−B + √(B² + 2·b·C))/b; III = alvenaria comprimida + abas da mesa + barra.
+line(L_, r, 'B = n·As', '=n_els*As_barra', 'cm²', 'LN: b·x²/2 + B·x − C = 0 → x = (−B + √(B² + 2·b·C))/b.', 'res', '0.00', 'lnB_els'); r += 1
+line(L_, r, 'C = n·As·d', '=n_els*As_barra*d_util', 'cm³', '', 'res', '0.00', 'lnC_els'); r += 1
+line(L_, r, 'x supondo LN na mesa (b = bm)', '=(-lnB_els+SQRT(lnB_els^2+2*bm_els*lnC_els))/bm_els', 'cm', 'bm·x²/2 − n·As·(d − x) = 0.', 'res', '0.00', 'x_rect'); r += 1
+line(L_, r, 'B com a LN na alma = (bm − bw)·hf + B', '=(bm_els-bw_els)*hf_bl+lnB_els', 'cm²', '', 'res', '0.00', 'lnBw_els'); r += 1
+line(L_, r, 'C com a LN na alma = (bm − bw)·hf²/2 + C', '=(bm_els-bw_els)*hf_bl^2/2+lnC_els', 'cm³', '', 'res', '0.00', 'lnCw_els'); r += 1
+line(L_, r, 'x supondo LN na alma (T)', '=(-lnBw_els+SQRT(lnBw_els^2+2*bw_els*lnCw_els))/bw_els', 'cm', 'bw·x²/2 + (bm − bw)·hf·(x − hf/2) − n·As·(d − x) = 0.', 'res', '0.00', 'x_T'); r += 1
 line(L_, r, 'x adotado', '=IF(x_rect<=hf_bl,x_rect,x_T)', 'cm', 'Se x ≤ hf vale a hipótese da mesa (caso usual).', 'key', '0.00', 'xII'); r += 1
-line(L_, r, 'III', '=IF(x_rect<=hf_bl,bm_els*xII^3/3+n_els*As_barra*(d_util-xII)^2,bw_els*xII^3/3+(bm_els-bw_els)*hf_bl^3/12+(bm_els-bw_els)*hf_bl*(xII-hf_bl/2)^2+n_els*As_barra*(d_util-xII)^2)', 'cm⁴', 'Seção fissurada.', 'res', '0', 'III_', 'NBR 16868-1 9.2.3'); r += 1
+line(L_, r, 'III da alvenaria comprimida = b·x³/3', '=IF(x_rect<=hf_bl,bm_els,bw_els)*xII^3/3', 'cm⁴', 'b = bm com a LN na mesa; bw com a LN na alma.', 'res', '0', 'IIc_els'); r += 1
+line(L_, r, 'III das abas da mesa', '=IF(x_rect<=hf_bl,0,(bm_els-bw_els)*hf_bl^3/12+(bm_els-bw_els)*hf_bl*(xII-hf_bl/2)^2)', 'cm⁴', 'Só com a LN na alma: (bm − bw)·hf³/12 + (bm − bw)·hf·(x − hf/2)².', 'res', '0', 'IIf_els'); r += 1
+line(L_, r, 'III da barra = n·As·(d − x)²', '=n_els*As_barra*(d_util-xII)^2', 'cm⁴', '', 'res', '0', 'IIs_els'); r += 1
+line(L_, r, 'III', '=IIc_els+IIf_els+IIs_els', 'cm⁴', 'Seção fissurada: alvenaria comprimida + abas + barra.', 'res', '0', 'III_', 'NBR 16868-1 9.2.3'); r += 1
 line(L_, r, '(Mr/Ma)³', '=IF(Ma_>0,MIN(1,Mr_/Ma_)^3,1)', '', '', 'res', '0.00000', 'br_3'); r += 1
 line(L_, r, 'Ieq (Branson) ≤ Im', '=IF(Ma_<=Mr_,Im_,MIN(Im_,br_3*Im_+(1-br_3)*III_))', 'cm⁴', '', 'key', '0', 'Ieq_', 'NBR 16868-1 9.2.3 (Branson, 1965)'); r += 1
 line(L_, r, 'heq (retângulo bm × heq, para o Ftool)', '=(12*Ieq_/bm_els)^(1/3)', 'cm', '', 'res', '0.00', 'heq_'); r += 1

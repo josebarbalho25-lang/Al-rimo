@@ -257,10 +257,18 @@ Lc('Ig', '=IF(cf_T=1,(bm_cf-bw_cf)*hf_cf^3/12+(bm_cf-bw_cf)*hf_cf*(y_cfg-hf_cf/2
 Lc('Mr = ftk·Ig/yt (yt = h − yCG)', '=ftk_nor/10*Ig_cf/(h_cf-y_cfg)', 'kN·cm', '', 'key', '0.0', 'Mr_cf')
 Lc('Ma = (Ma/Mk)·Mk', '=psi_els*Mk_cf*100', 'kN·cm', '', 'key', '0.0', 'Ma_cf')
 Lc('b da compressão no estádio II', '=IF(cf_T=1,bm_cf,bw_cf)', 'cm', '', 'res', '0.0', 'b2_cf')
-Lc('x supondo LN na mesa', '=(-n_cfe*As_cfe+SQRT((n_cfe*As_cfe)^2+2*b2_cf*n_cfe*As_cfe*d_cf))/b2_cf', 'cm', '', 'res', '0.00', 'x2r_cf')
-Lc('x supondo LN na alma (T)', '=IF(cf_T=1,(-((bm_cf-bw_cf)*hf_cf+n_cfe*As_cfe)+SQRT(((bm_cf-bw_cf)*hf_cf+n_cfe*As_cfe)^2+2*bw_cf*((bm_cf-bw_cf)*hf_cf^2/2+n_cfe*As_cfe*d_cf)))/bw_cf,x2r_cf)', 'cm', '', 'res', '0.00', 'x2t_cf')
+# LN e III em pedaços, como no balanço (aba ELS): B e C em linha própria; III = alvenaria + abas + barra
+Lc('B = n·As', '=n_cfe*As_cfe', 'cm²', 'LN: b·x²/2 + B·x − C = 0 → x = (−B + √(B² + 2·b·C))/b.', 'res', '0.00', 'lnB_cf')
+Lc('C = n·As·d', '=n_cfe*As_cfe*d_cf', 'cm³', '', 'res', '0.00', 'lnC_cf')
+Lc('x supondo LN na mesa', '=(-lnB_cf+SQRT(lnB_cf^2+2*b2_cf*lnC_cf))/b2_cf', 'cm', '', 'res', '0.00', 'x2r_cf')
+Lc('B com a LN na alma = (bm − bw)·hf + B', '=(bm_cf-bw_cf)*hf_cf+lnB_cf', 'cm²', 'Seção retangular (aparente): bm = bw e hf = 0, igual ao B.', 'res', '0.00', 'lnBw_cf')
+Lc('C com a LN na alma = (bm − bw)·hf²/2 + C', '=(bm_cf-bw_cf)*hf_cf^2/2+lnC_cf', 'cm³', '', 'res', '0.00', 'lnCw_cf')
+Lc('x supondo LN na alma (T)', '=IF(cf_T=1,(-lnBw_cf+SQRT(lnBw_cf^2+2*bw_cf*lnCw_cf))/bw_cf,x2r_cf)', 'cm', '', 'res', '0.00', 'x2t_cf')
 Lc('x adotado (estádio II)', '=IF(OR(cf_T=0,x2r_cf<=hf_cf),x2r_cf,x2t_cf)', 'cm', '', 'res', '0.00', 'x2_cf')
-Lc('III', '=IF(OR(cf_T=0,x2r_cf<=hf_cf),b2_cf*x2_cf^3/3,bw_cf*x2_cf^3/3+(bm_cf-bw_cf)*hf_cf^3/12+(bm_cf-bw_cf)*hf_cf*(x2_cf-hf_cf/2)^2)+n_cfe*As_cfe*(d_cf-x2_cf)^2', 'cm⁴', 'Armadura comprimida (construtivas) desprezada (a favor da segurança).', 'res', '0', 'III_cf')
+Lc('III da alvenaria comprimida = b·x³/3', '=IF(OR(cf_T=0,x2r_cf<=hf_cf),b2_cf,bw_cf)*x2_cf^3/3', 'cm⁴', 'b da compressão com a LN na mesa (ou seção retangular); bw com a LN na alma.', 'res', '0', 'IIc_cf')
+Lc('III das abas da mesa', '=IF(OR(cf_T=0,x2r_cf<=hf_cf),0,(bm_cf-bw_cf)*hf_cf^3/12+(bm_cf-bw_cf)*hf_cf*(x2_cf-hf_cf/2)^2)', 'cm⁴', 'Só com a LN na alma: (bm − bw)·hf³/12 + (bm − bw)·hf·(x − hf/2)².', 'res', '0', 'IIf_cf')
+Lc('III da barra = n·As·(d − x)²', '=n_cfe*As_cfe*(d_cf-x2_cf)^2', 'cm⁴', 'Armadura comprimida (construtivas) desprezada (a favor da segurança).', 'res', '0', 'IIs_cf')
+Lc('III', '=IIc_cf+IIf_cf+IIs_cf', 'cm⁴', 'Alvenaria comprimida + abas + barra.', 'res', '0', 'III_cf')
 Lc('Ieq (Branson) ≤ Ig', '=IF(Ma_cf<=Mr_cf,Ig_cf,MIN(Ig_cf,(Mr_cf/Ma_cf)^3*Ig_cf+(1-(Mr_cf/Ma_cf)^3)*III_cf))', 'cm⁴', '', 'key', '0', 'Ieq_cf')
 Lc('heq (retângulo b × heq, para o Ftool)', '=(12*Ieq_cf/b2_cf)^(1/3)', 'cm', '', 'key', '0.00', 'heq_cf')
 Lc('σs = n·Ma·(d − x)/III', '=n_cfe*Ma_cf*(d_cf-x2_cf)/III_cf', 'kN/cm²', '', 'res', '0.00')
@@ -415,20 +423,42 @@ Lc("As1 / As2 (d' = c)", '=FIXED(a_pv,3)&" / "&FIXED(IF(nb_pv=2,a_pv,0),3)', 'cm
 Lc('Ma = (Ma/Mk)·Mdyei/γf·bm', '=psi_els*Mdyei_p/gama_f*bm_ev/100', 'kN·cm', '', 'res', '0.0', 'Ma_ev')
 Lc('Im', '=bm_ev*t_bloco^3/12-(bm_ev-bw_ev)*(t_bloco-2*hf_bl)^3/12', 'cm⁴', '', 'res', '0', 'Im_ev')
 Lc('Mr = ftk⊥·Im/(h/2)', '=ftk_nor/10*Im_ev/(t_bloco/2)', 'kN·cm', '', 'res', '0.0', 'Mr_ev')
-def xq(bm, bw, hf, As1, d, As2, dl, n, n2, T):
-    if T:
-        A_ = f'{bw}/2'; B_ = f'(({bm}-{bw})*{hf}+{n}*{As1}+{n2}*{As2})'; C_ = f'(-({bm}-{bw})*{hf}^2/2-{n}*{As1}*{d}-{n2}*{As2}*{dl})'
-    else:
-        A_ = f'{bm}/2'; B_ = f'({n}*{As1}+{n2}*{As2})'; C_ = f'(-{n}*{As1}*{d}-{n2}*{As2}*{dl})'
-    return f'(-{B_}+SQRT({B_}^2-4*{A_}*{C_}))/(2*{A_})'
+def ln_hipotese(tag, k, bm, bw, As1, d, As2, dl, n2, hip):
+    """Uma hipótese da LN no estádio II, em pedaços (a conta inteira numa linha só ficava grande demais na memória):
+    B e C da equação do 2º grau, x com a LN na mesa, B e C com a LN na alma (T), x na alma. x = (−B + √(B² + 2·b·C))/b.
+    k = '' (sem 2ª barra: hipótese única), '1' (2ª barra tracionada, n2 = n) ou '2' (comprimida, n2 = n − 1)."""
+    B, C, Bw, Cw = f'lnB{k}_{tag}', f'lnC{k}_{tag}', f'lnBw{k}_{tag}', f'lnCw{k}_{tag}'
+    dois = As2 != '0'
+    q = f' ({hip})' if hip else ''
+    Lc(f'B{q} = n·As1' + (' + n2·As2' if dois else ''), f'=n_pn*{As1}' + (f'+{n2}*{As2}' if dois else ''), 'cm²',
+       'LN: b·x²/2 + B·x − C = 0 → x = (−B + √(B² + 2·b·C))/b.', 'res', '0.00', B)
+    Lc(f'C{q} = n·As1·d' + (" + n2·As2·d'" if dois else ''), f'=n_pn*{As1}*{d}' + (f'+{n2}*{As2}*{dl}' if dois else ''), 'cm³',
+       '', 'res', '0.00', C)
+    Lc('x supondo LN na mesa', f'=(-{B}+SQRT({B}^2+2*{bm}*{C}))/{bm}', 'cm', '', 'res', '0.000', f'xr{k}_{tag}')
+    Lc('B com a LN na alma = (bm − bw)·hf + B', f'=({bm}-{bw})*hf_bl+{B}', 'cm²', '', 'res', '0.00', Bw)
+    Lc('C com a LN na alma = (bm − bw)·hf²/2 + C', f'=({bm}-{bw})*hf_bl^2/2+{C}', 'cm³', '', 'res', '0.00', Cw)
+    Lc('x supondo LN na alma (T)', f'=(-{Bw}+SQRT({Bw}^2+2*{bw}*{Cw}))/{bw}', 'cm', '', 'res', '0.000', f'xt{k}_{tag}')
 def els_block(tag, bm, bw, As1, d, As2, dl, Ma, Mr, Im):
-    # LN: 1º supõe As2 tracionada (n); se x > d', As2 comprimida (n − 1)
-    xr1 = xq(bm, bw, 'hf_bl', As1, d, As2, dl, 'n_pn', 'n_pn', False); xt1 = xq(bm, bw, 'hf_bl', As1, d, As2, dl, 'n_pn', 'n_pn', True)
-    Lc('x com As2 tracionada (n)', f'=IF({xr1}<=hf_bl,{xr1},{xt1})', 'cm', '', 'res', '0.000', f'x1_{tag}')
-    xr2 = xq(bm, bw, 'hf_bl', As1, d, As2, dl, 'n_pn', '(n_pn-1)', False); xt2 = xq(bm, bw, 'hf_bl', As1, d, As2, dl, 'n_pn', '(n_pn-1)', True)
-    Lc('x adotado', f'=IF(OR({As2}=0,x1_{tag}<={dl}),x1_{tag},IF({xr2}<=hf_bl,{xr2},{xt2}))', 'cm', "Se x < d', a 2ª barra está tracionada (entra com n).", 'key', '0.00', f'x_{tag}')
-    Lc('n da 2ª barra', f'=IF(x_{tag}<={dl},n_pn,n_pn-1)', '', '2ª barra tracionada: n; comprimida: n − 1.', 'res', '0.00', f'n2_{tag}')
-    Lc('III', f'=IF(x_{tag}<=hf_bl,{bm}*x_{tag}^3/3,{bw}*x_{tag}^3/3+({bm}-{bw})*hf_bl^3/12+({bm}-{bw})*hf_bl*(x_{tag}-hf_bl/2)^2)+n2_{tag}*{As2}*(x_{tag}-{dl})^2+n_pn*{As1}*({d}-x_{tag})^2', 'cm⁴', '', 'res', '0', f'III_{tag}')
+    # LN: 1º supõe As2 tracionada (n); se x > d', As2 comprimida (n − 1). Sem 2ª barra (horizontal), hipótese única.
+    dois = As2 != '0'
+    if dois:
+        ln_hipotese(tag, '1', bm, bw, As1, d, As2, dl, 'n_pn', '2ª barra tracionada')
+        Lc('x com As2 tracionada (n)', f'=IF(xr1_{tag}<=hf_bl,xr1_{tag},xt1_{tag})', 'cm', '', 'res', '0.000', f'x1_{tag}')
+        ln_hipotese(tag, '2', bm, bw, As1, d, As2, dl, '(n_pn-1)', '2ª barra comprimida')
+        Lc('x adotado', f'=IF(OR({As2}=0,x1_{tag}<={dl}),x1_{tag},IF(xr2_{tag}<=hf_bl,xr2_{tag},xt2_{tag}))', 'cm', "Se x < d', a 2ª barra está tracionada (entra com n).", 'key', '0.00', f'x_{tag}')
+        Lc('n da 2ª barra', f'=IF(x_{tag}<={dl},n_pn,n_pn-1)', '', '2ª barra tracionada: n; comprimida: n − 1.', 'res', '0.00', f'n2_{tag}')
+    else:
+        ln_hipotese(tag, '', bm, bw, As1, d, As2, dl, None, '')
+        Lc('x adotado', f'=IF(xr_{tag}<=hf_bl,xr_{tag},xt_{tag})', 'cm', 'Se x ≤ hf vale a hipótese da mesa.', 'key', '0.00', f'x_{tag}')
+    Lc('III da alvenaria comprimida = b·x³/3', f'=IF(x_{tag}<=hf_bl,{bm},{bw})*x_{tag}^3/3', 'cm⁴', 'b = bm com a LN na mesa; bw com a LN na alma.', 'res', '0', f'IIc_{tag}')
+    Lc('III das abas da mesa', f'=IF(x_{tag}<=hf_bl,0,({bm}-{bw})*hf_bl^3/12+({bm}-{bw})*hf_bl*(x_{tag}-hf_bl/2)^2)', 'cm⁴', 'Só com a LN na alma: (bm − bw)·hf³/12 + (bm − bw)·hf·(x − hf/2)².', 'res', '0', f'IIf_{tag}')
+    partes = [f'IIc_{tag}', f'IIf_{tag}']
+    if dois:
+        Lc("III da 2ª barra = n2·As2·(x − d')²", f'=n2_{tag}*{As2}*(x_{tag}-{dl})^2', 'cm⁴', '', 'res', '0', f'IIs2_{tag}')
+        partes.append(f'IIs2_{tag}')
+    Lc('III da barra tracionada = n·As1·(d − x)²', f'=n_pn*{As1}*({d}-x_{tag})^2', 'cm⁴', '', 'res', '0', f'IIs1_{tag}')
+    partes.append(f'IIs1_{tag}')
+    Lc('III', '=' + '+'.join(partes), 'cm⁴', 'Alvenaria comprimida + abas + barras.', 'res', '0', f'III_{tag}')
     Lc('Ieq (Branson) ≤ Im', f'=IF({Ma}<={Mr},{Im},MIN({Im},({Mr}/{Ma})^3*{Im}+(1-({Mr}/{Ma})^3)*III_{tag}))', 'cm⁴', '', 'res', '0', f'Ieq_{tag}')
     Lc('heq = (12·Ieq/bm)^(1/3)', f'=(12*Ieq_{tag}/{bm})^(1/3)', 'cm', '', 'key', '0.00', f'heq_{tag}')
 els_block('ev', 'bm_ev', 'bw_ev', 'a_pv', 'd_pv', 'IF(nb_pv=2,a_pv,0)', 'c_pv', 'Ma_ev', 'Mr_ev', 'Im_ev')

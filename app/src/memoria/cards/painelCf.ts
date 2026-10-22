@@ -27,7 +27,7 @@
 import dados from '@/motor/planilha.gerada.json';
 import type { PlanilhaExportada } from '@/motor/tipos';
 import type { AutorDeCards, Card, Expr, Passo, Ref } from '../tipos';
-import { arredBaixo, avaliar, cbrt, celulasDoIntervalo, cte, div, inteiro, max, min, mul, neg, nome, par, pi, pot, raiz, soma, sub } from '../expr';
+import { arredBaixo, cbrt, celulasDoIntervalo, cte, div, inteiro, max, min, mul, neg, nome, par, pi, pot, raiz, soma, sub } from '../expr';
 import { memoriaDe, secao, type Memoria, type PedidoDeVerificacao } from '../passo';
 import { desenhoDasSecoesDoPainel } from '../desenhoDaSecaoI';
 
@@ -110,9 +110,29 @@ export const SIMBOLOS_PAINELCF: Readonly<Record<string, string>> = {
   'I_{m,h}': 'momento de inércia bruto da seção I, flexão horizontal',
   'M_{r,v}': 'momento de fissuração, flexão vertical',
   'M_{r,h}': 'momento de fissuração, flexão horizontal',
+  // LN em pedaços: na vertical, 1 = 2ª barra (se houver) tracionada, n; 2 = comprimida, n − 1; w = LN na alma
+  'B_{1,v}': 'coef. B da LN vertical, 2ª barra (se houver) tracionada: n',
+  'C_{1,v}': 'coef. C da LN vertical, 2ª barra (se houver) tracionada: n',
+  'B_{1w,v}': 'coef. B da LN vertical na alma, 2ª barra (se houver) tracionada',
+  'C_{1w,v}': 'coef. C da LN vertical na alma, 2ª barra (se houver) tracionada',
+  'B_{2,v}': 'coef. B da LN vertical com a 2ª barra comprimida: n − 1',
+  'C_{2,v}': 'coef. C da LN vertical com a 2ª barra comprimida: n − 1',
+  'B_{2w,v}': 'coef. B da LN vertical na alma, 2ª barra comprimida',
+  'C_{2w,v}': 'coef. C da LN vertical na alma, 2ª barra comprimida',
+  'B_{II,h}': 'coef. B da linha neutra no estádio II, flexão horizontal',
+  'C_{II,h}': 'coef. C da linha neutra no estádio II, flexão horizontal',
+  'B_{IIw,h}': 'coef. B da LN horizontal com a LN na alma da seção I',
+  'C_{IIw,h}': 'coef. C da LN horizontal com a LN na alma da seção I',
   'x_{1,v}': 'linha neutra no estádio II com a 2ª barra tracionada, vertical',
   'x_{II,v}': 'linha neutra no estádio II, flexão vertical',
   'x_{II,h}': 'linha neutra no estádio II, flexão horizontal',
+  'I_{alv,v}': 'inércia da alvenaria comprimida (b × x) no estádio II, vertical',
+  'I_{alv,h}': 'inércia da alvenaria comprimida (b × x) no estádio II, horizontal',
+  'I_{abas,v}': 'inércia das abas da mesa comprimida no estádio II, vertical',
+  'I_{abas,h}': 'inércia das abas da mesa comprimida no estádio II, horizontal',
+  'I_{s1,v}': 'inércia da barra tracionada (n·As1) no estádio II, vertical',
+  'I_{s1,h}': 'inércia da barra tracionada (n·As1) no estádio II, horizontal',
+  'I_{s2,v}': 'inércia da 2ª barra (n2·As2) no estádio II, vertical',
   'I_{II,v}': 'momento de inércia no estádio II, flexão vertical',
   'I_{II,h}': 'momento de inércia no estádio II, flexão horizontal',
   'I_{eq,v}': 'momento de inércia equivalente (Branson), flexão vertical',
@@ -224,44 +244,48 @@ function fsdExpr(m: Memoria): Expr {
 }
 
 /*
-  Linha neutra no estádio II da seção I (NBR 16868-1 9.2.3), raiz da equação do 2º grau já arrumada:
-    retângulo (LN na mesa): x = [−B + √(B² + 2·bm·C)]/bm,  B = n·As1 + n2·As2,  C = n·As1·d + n2·As2·d'
-    T (LN na alma):         x = [−B + √(B² + 2·bw·C)]/bw,  B = (bm − bw)·hf + ...,  C = (bm − bw)·hf²/2 + ...
-  É a mesma conta da planilha ((−B + √(B² − 4AC))/2A com A = bm/2 ou bw/2): só os sinais e o 4·A/2 arrumados.
+  Linha neutra no estádio II da seção I (NBR 16868-1 9.2.3), EM PEDAÇOS como a planilha (Jose, 14/10: a conta inteira
+  numa linha só ficava grande demais) — b·x²/2 + B·x − C = 0, com B e C publicados em linha própria:
+    LN na mesa (b = bm): B = n·As1 + n2·As2,      C = n·As1·d + n2·As2·d',     x = [−B + √(B² + 2·bm·C)]/bm
+    LN na alma (b = bw): Bw = (bm − bw)·hf + B,   Cw = (bm − bw)·hf²/2 + C,    x = [−Bw + √(Bw² + 2·bw·Cw)]/bw
+  Uma chamada = uma hipótese (els_block/ln_hipotese de tools/contrafortes.py): `k` é o pedaço do nome ('1' e '2' na
+  vertical, com a 2ª barra tracionada e comprimida; '' na horizontal) e `ix` o índice do símbolo (B_{1,v}, B_{II,h}).
 */
 interface SecaoI {
   bm: Expr; bw: Expr; hf: Expr; n: Expr; as1: Expr; d: Expr;
   /** 2ª barra (a do lado comprimido no vão): ausente quando a planilha usa As2 = 0. */
   b2?: { as2: Expr; n2: Expr; dl: Expr };
 }
-function linhaNeutraII(s: SecaoI, naMesa: boolean): Expr {
-  const B0 = s.b2 ? soma(mul(s.n, s.as1), mul(s.b2.n2, s.b2.as2)) : mul(s.n, s.as1);
-  const C0 = s.b2 ? soma(mul(s.n, s.as1, s.d), mul(s.b2.n2, s.b2.as2, s.b2.dl)) : mul(s.n, s.as1, s.d);
-  if (naMesa) return div(soma(neg(B0), raiz(soma(pot(B0, 2), mul(cte(2, 0), s.bm, C0)))), s.bm);
-  const B = soma(mul(par(sub(s.bm, s.bw)), s.hf), B0);
-  const C = soma(div(mul(par(sub(s.bm, s.bw)), pot(s.hf, 2)), cte(2, 0)), C0);
-  return div(soma(neg(B), raiz(soma(pot(B, 2), mul(cte(2, 0), s.bw, C)))), s.bw);
+/** Alma da largura da mesa (todos os furos grauteados, canaleta da largura da faixa): seção retangular cheia. */
+function secaoCheia(m: Memoria, e: string): boolean {
+  const bm = m.valor(`bm_${e}`);
+  return bm !== null && bm === m.valor(`bw_${e}`);
 }
-/** As duas formas, primeiro a que a planilha escolheu: IF(x_retângulo ≤ hf; retângulo; T). */
-function linhaNeutraEscolhida(m: Memoria, s: SecaoI): Expr[] {
-  const ret = linhaNeutraII(s, true);
-  const t = linhaNeutraII(s, false);
-  return avaliar(ret, m.r) <= (m.valor('hf_bl') ?? 0) ? [ret, t] : [t, ret];
-}
-
-/** III da seção I fissurada: alvenaria comprimida (mesa ou T) + 2ª barra + barra tracionada. */
-function inerciaII(s: SecaoI, x: Expr, naMesa: boolean): Expr {
-  const comprimido = naMesa
-    ? div(mul(s.bm, pot(x, 3)), cte(3, 0))
-    : soma(
-        div(mul(s.bw, pot(x, 3)), cte(3, 0)),
-        div(mul(par(sub(s.bm, s.bw)), pot(s.hf, 3)), cte(12, 0)),
-        mul(par(sub(s.bm, s.bw)), s.hf, pot(sub(x, div(s.hf, cte(2, 0))), 2)),
-      );
-  const partes = [comprimido];
-  if (s.b2) partes.push(mul(s.b2.n2, s.b2.as2, pot(sub(x, s.b2.dl), 2)));
-  partes.push(mul(s.n, s.as1, pot(sub(s.d, x), 2)));
-  return soma(...partes);
+function linhaNeutraEmPedacos(m: Memoria, e: string, s: string, k: string, ix: string, S: SecaoI): { passos: Passo[]; x: Expr } {
+  const nm = (base: string) => `${base}${k}_${e}`;
+  const B = m.g(nm('lnB'), `B_{${ix},${s}}`, 2, 'cm²');
+  const C = m.g(nm('lnC'), `C_{${ix},${s}}`, 2, 'cm³');
+  const Bw = m.g(nm('lnBw'), `B_{${ix}w,${s}}`, 2, 'cm²');
+  const Cw = m.g(nm('lnCw'), `C_{${ix}w,${s}}`, 2, 'cm³');
+  // IF(xr ≤ hf; xr; xt): a hipótese da mesa vale enquanto a LN não passa da parede do bloco. Seção cheia (bw = bm):
+  // na alma dá o mesmo número da mesa (Bw = B, Cw = C) — a linha fica a da mesa, sem as abas de largura zero
+  const xr = m.valor(nm('xr'));
+  const naMesa = secaoCheia(m, e) || (xr !== null && xr <= (m.valor('hf_bl') ?? 0));
+  const abas = par(sub(S.bm, S.bw));
+  const x = naMesa
+    ? div(soma(neg(B), raiz(soma(pot(B, 2), mul(cte(2, 0), S.bm, C)))), S.bm)
+    : div(soma(neg(Bw), raiz(soma(pot(Bw, 2), mul(cte(2, 0), S.bw, Cw)))), S.bw);
+  // sem x (faixa sem barra: a planilha deixou "—"), B e C não levam a lugar nenhum: a hipótese não aparece
+  if ((naMesa ? xr : m.valor(nm('xt'))) === null) return { passos: [], x };
+  const passos = [
+    m.passo(nm('lnB'), `B_{${ix},${s}}`, S.b2 ? soma(mul(S.n, S.as1), mul(S.b2.n2, S.b2.as2)) : mul(S.n, S.as1), { casas: 2, unidade: 'cm²' }),
+    m.passo(nm('lnC'), `C_{${ix},${s}}`, S.b2 ? soma(mul(S.n, S.as1, S.d), mul(S.b2.n2, S.b2.as2, S.b2.dl)) : mul(S.n, S.as1, S.d), {
+      casas: 2, unidade: 'cm³',
+    }),
+    !naMesa && m.passo(nm('lnBw'), `B_{${ix}w,${s}}`, soma(mul(abas, S.hf), B), { casas: 2, unidade: 'cm²' }),
+    !naMesa && m.passo(nm('lnCw'), `C_{${ix}w,${s}}`, soma(div(mul(abas, pot(S.hf, 2)), cte(2, 0)), C), { casas: 2, unidade: 'cm³' }),
+  ].filter((p): p is Passo => !!p);
+  return { passos, x };
 }
 
 // ───────────────────────────── Libânio: tabela e interpolação ─────────────────────────────
@@ -751,14 +775,27 @@ function secaoDaDirecao(m: Memoria, D: Direcao) {
   const Ieq = m.g(id('Ieq'), `I_{eq,${s}}`, 0, 'cm⁴');
   const c = m.valor('c_pv') ?? 0;
 
-  // 2ª barra tracionada (entra com n) enquanto x ≤ d' = c; se a LN passar dela, comprimida (n − 1)
+  // 2ª barra tracionada (entra com n) enquanto x ≤ d' = c; se a LN passar dela, comprimida (n − 1). Só a vertical tem
+  // as duas hipóteses na planilha (x1_ev e a 2ª); a horizontal não tem 2ª barra: hipótese única
+  const vertical = e === 'ev';
   const as2 = D.segunda && (m.valor('a_pv') ?? 0) !== 0;        // IF(nb_pv=2;a_pv;0) = 0 → OR(As2=0;...) verdadeiro
-  const x1 = m.valor(id('x1'));
-  const tracionada = !as2 || (x1 !== null && x1 <= c);
+  const x1 = vertical ? m.valor(id('x1')) : null;
+  // sem x1 (faixa sem barra) não há 2ª hipótese a contar: a linha do x sai "—" e o card não a mostra
+  const tracionada = !as2 || x1 === null || x1 <= c;
   const secaoI = (n2: Expr): SecaoI => ({ bm, bw, hf, n, as1: D.as1, d: D.d, ...(as2 ? { b2: { as2: D.as1, n2, dl: cp } } : {}) });
+  const h1 = linhaNeutraEmPedacos(m, e, s, vertical ? '1' : '', vertical ? '1' : 'II', secaoI(n));
+  const h2 = tracionada ? null : linhaNeutraEmPedacos(m, e, s, '2', '2', secaoI(sub(n, cte(1, 0))));
   const xv = m.valor(id('x'));
   const n2III = xv !== null && xv <= c ? n : sub(n, cte(1, 0));  // n2 = IF(x ≤ c; n; n − 1)
-  const naMesa = xv !== null && xv <= (m.valor('hf_bl') ?? 0);
+  // III: IF(x ≤ hf; mesa; T) — na seção cheia as duas dão o mesmo (abas de largura zero)
+  const naMesa = secaoCheia(m, e) || (xv !== null && xv <= (m.valor('hf_bl') ?? 0));
+  const abas = par(sub(bm, bw));
+  const Ialv = m.g(id('IIc'), `I_{alv,${s}}`, 0, 'cm⁴');
+  const Iabas = m.g(id('IIf'), `I_{abas,${s}}`, 0, 'cm⁴');
+  const Is2 = m.g(id('IIs2'), `I_{s2,${s}}`, 0, 'cm⁴');
+  const Is1 = m.g(id('IIs1'), `I_{s1,${s}}`, 0, 'cm⁴');
+  // a 2ª barra só entra com As2 ≠ 0; as abas, só com a LN na alma (fora disso a célula é zero e a linha não aparece)
+  const partesIII = [Ialv, ...(naMesa ? [] : [Iabas]), ...(as2 ? [Is2] : []), Is1];
   const MaV = m.valor(id('Ma')), MrV = m.valor(id('Mr'));
   const estadioI = MaV !== null && MrV !== null && MaV <= MrV;
   const r3 = pot(par(div(Mr, Ma)), 3);
@@ -773,9 +810,18 @@ function secaoDaDirecao(m: Memoria, D: Direcao) {
       div(mul(par(sub(bm, bw)), pot(sub(t, mul(cte(2, 0), hf)), 3)), cte(12, 0)),
     ), { casas: 0, unidade: 'cm⁴' }),
     m.passo(id('Mr'), `M_{r,${s}}`, div(mul(D.ftk, Im), mul(cte(0.5, 1), t)), { casas: 1, unidade: 'kN·cm', ref: NBR('9.2.3') }),
-    !tracionada && m.passo(id('x1'), `x_{1,${s}}`, linhaNeutraEscolhida(m, secaoI(n)), { casas: 3, unidade: 'cm' }),
-    m.passo(id('x'), `x_{II,${s}}`, linhaNeutraEscolhida(m, secaoI(tracionada ? n : sub(n, cte(1, 0)))), { casas: 2, unidade: 'cm' }),
-    m.passo(id('III'), `I_{II,${s}}`, inerciaII(secaoI(n2III), x, naMesa), { casas: 0, unidade: 'cm⁴' }),
+    ...h1.passos,
+    !tracionada && m.passo(id('x1'), `x_{1,${s}}`, h1.x, { casas: 3, unidade: 'cm' }),
+    ...(h2 ? h2.passos : []),
+    m.passo(id('x'), `x_{II,${s}}`, (h2 ?? h1).x, { casas: 2, unidade: 'cm' }),
+    m.passo(id('IIc'), `I_{alv,${s}}`, div(mul(naMesa ? bm : bw, pot(x, 3)), cte(3, 0)), { casas: 0, unidade: 'cm⁴' }),
+    !naMesa && m.passo(id('IIf'), `I_{abas,${s}}`, soma(
+      div(mul(abas, pot(hf, 3)), cte(12, 0)),
+      mul(abas, hf, pot(sub(x, div(hf, cte(2, 0))), 2)),
+    ), { casas: 0, unidade: 'cm⁴' }),
+    as2 && m.passo(id('IIs2'), `I_{s2,${s}}`, mul(n2III, D.as1, pot(sub(x, cp), 2)), { casas: 0, unidade: 'cm⁴' }),
+    m.passo(id('IIs1'), `I_{s1,${s}}`, mul(n, D.as1, pot(sub(D.d, x), 2)), { casas: 0, unidade: 'cm⁴' }),
+    m.passo(id('III'), `I_{II,${s}}`, soma(...partesIII), { casas: 0, unidade: 'cm⁴' }),
     m.passo(id('Ieq'), `I_{eq,${s}}`, estadioI ? Im : [branson, min(Im, branson)], { casas: 0, unidade: 'cm⁴', ref: NBR('9.2.3') }),
     m.passo(id('heq'), `h_{eq,${s}}`, cbrt(div(mul(cte(12, 0), Ieq), bm)), { casas: 2, unidade: 'cm', ref: CRITERIO }),
   ], NBR('9.2.3'));
