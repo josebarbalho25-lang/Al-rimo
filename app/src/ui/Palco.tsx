@@ -26,7 +26,7 @@ import {
 import type { IdAba } from '@/estado/ligacoes';
 import { ABAS, useApp } from '@/estado/store';
 
-const ICONE: Record<IdAba, Icone> = {
+export const ICONE_DA_ABA: Record<IdAba, Icone> = {
   '3d': Icone3D,
   frontal: IconeFrontal,
   corte: IconeCorteDoMuro,
@@ -51,7 +51,7 @@ export function AbasDoPalco() {
   return (
     <div className="abas-vista" role="tablist">
       {ABAS_DA_GRAFICA.map(({ id, nome }) => {
-        const I = ICONE[id];
+        const I = ICONE_DA_ABA[id];
         return (
           <div
             key={id}
@@ -82,7 +82,7 @@ export function Palco({ aba }: { aba: IdAba }) {
   const resultado = useApp((s) => s.resultado);
   const selecionado = useApp((s) => s.selecionado);
   const selecionar = useApp((s) => s.selecionar);
-  const Vazio = ICONE[aba];
+  const Vazio = ICONE_DA_ABA[aba];
 
   return (
     <main className="palco" role="tabpanel">

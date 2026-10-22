@@ -38,6 +38,7 @@ import { estiloDosCampos, Linha, Numero, Texto, TextoConfirmado } from './campos
 import { TIPOS_2D, acharVista, excluirVista, novaVista, ondeEstaAVista, pranchasComVistas, renomearVista, vistasDoTipo } from './vistas';
 import type { IdDaTabela } from './tabelaDaFolha';
 import { usePranchasUi } from './ui';
+import { BotaoDaFaixa, GrupoDaFaixa, ICONES, NoEncaixe, useNaGrafica } from '@/ui/grafica/Encaixes';
 import { useGraficos } from '@/desenhos/useGraficos';
 import { naVista, type TipoDeVista } from '@/desenhos/graficos';
 import { useJanelaDeGraficos } from '@/desenhos/useJanelaDeGraficos';
@@ -137,6 +138,9 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
   const ativa = usePranchasUi((st) => st.ativa);
   const setAtiva = usePranchasUi((st) => st.definirAtiva);
   const [sel, setSel] = useState<Selecao>(null);
+  // dentro da Gráfica (etapa 3 da moldura) os botões vão para a faixa, o painel para as Propriedades e o zoom para o
+  // rodapé; sozinha, a tela segue com a barra e o painel dela
+  const naGrafica = useNaGrafica();
   const [zoom, setZoom] = useState(1);
   const [arrasto, setArrasto] = useState<Arrasto | null>(null);
   /** O desenho em que se entrou (duplo clique): as anotações dele ficam editáveis, os outros ficam mais claros. */
@@ -555,17 +559,8 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
     if (window.confirm(`Excluir a vista "${v.nome}"?`)) mudar((p) => excluirVista(p, v.id));
   };
 
-  return (
-    <div style={s.raiz} data-frente="pranchas">
-      <aside style={s.lado}>
-        <div style={s.folhas}>
-          {pranchas.folhas.map((f, i) => (
-            <button key={f.id} type="button" style={{ ...s.chip, ...(f === folha ? s.chipOn : null) }} onClick={() => { setAtiva(f.id); setSel(null); }} title={f.conteudo || undefined}>
-              {String(i + 1).padStart(2, '0')}{f.conteudo ? ` · ${f.conteudo}` : ''}
-            </button>
-          ))}
-          <button type="button" style={s.chip} onClick={adicionarFolha} title="Nova folha" aria-label="Nova folha">+</button>
-        </div>
+  const painelDoLado = (
+    <>
 
         {folha && !sel && (
           <div style={s.grupo}>
@@ -763,10 +758,9 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
             )}
           </div>
         )}
-      </aside>
-
-      <div style={s.palco}>
-        <div style={s.barra}>
+    </>
+  );
+  const adicionarNaFolha = (
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 'none' }}>
             <span style={{ ...s.rotulo, overflow: 'visible' }}>Adicionar</span>
             <select
@@ -795,6 +789,50 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
               </optgroup>
             </select>
           </label>
+  );
+  const ferramentas = (
+    <>
+      {/* as ferramentas valem dentro do desenho (duplo clique nele): é a vista dele que se anota */}
+      <BotaoDaFaixa nome="Cota" dica="Cota  ·  D" desenho={ICONES.cota} ligado={edicao.ferramenta === 'cota'} desligado={!ativo || !edicao.podeAnotar} aoClicar={() => edicao.armar(edicao.ferramenta === 'cota' ? null : 'cota')} />
+      <BotaoDaFaixa nome="Texto" dica="Texto  ·  T" desenho={ICONES.texto} ligado={edicao.ferramenta === 'texto'} desligado={!ativo || !edicao.podeAnotar} aoClicar={() => edicao.armar(edicao.ferramenta === 'texto' ? null : 'texto')} />
+      <BotaoDaFaixa nome="Etiqueta" dica="Etiqueta  ·  I" desenho={ICONES.etiqueta} ligado={edicao.ferramenta === 'etiqueta'} desligado={!ativo || !edicao.podeEtiquetar} aoClicar={() => edicao.armar(edicao.ferramenta === 'etiqueta' ? null : 'etiqueta')} />
+      <BotaoDaFaixa nome="Sair" dica="Sair do desenho  ·  Esc" desenho={ICONES.sair} desligado={!ativo} aoClicar={sair} />
+    </>
+  );
+  const zoomDaMesa = (
+    <div className="cad-escolha">
+      <button type="button" style={s.botao} onClick={() => setZoom((z) => Math.max(ZOOM_MIN, z / 1.25))} title="Diminuir" aria-label="Diminuir">−</button>
+      <button type="button" style={s.botao} onClick={() => setZoom(1)}>Ajustar</button>
+      <button type="button" style={s.botao} onClick={() => setZoom((z) => Math.min(ZOOM_MAX, z * 1.25))} title="Aumentar" aria-label="Aumentar">+</button>
+    </div>
+  );
+  return (
+    <div style={s.raiz} data-frente="pranchas">
+      {naGrafica ? (
+        // na Gráfica as folhas estão no navegador; o painel do que está escolhido vai para as Propriedades
+        <NoEncaixe em="propriedades">
+          <div className="propriedades-grupo" data-propriedades="prancha">
+            {painelDoLado}
+          </div>
+        </NoEncaixe>
+      ) : (
+      <aside style={s.lado}>
+        <div style={s.folhas}>
+          {pranchas.folhas.map((f, i) => (
+            <button key={f.id} type="button" style={{ ...s.chip, ...(f === folha ? s.chipOn : null) }} onClick={() => { setAtiva(f.id); setSel(null); }} title={f.conteudo || undefined}>
+              {String(i + 1).padStart(2, '0')}{f.conteudo ? ` · ${f.conteudo}` : ''}
+            </button>
+          ))}
+          <button type="button" style={s.chip} onClick={adicionarFolha} title="Nova folha" aria-label="Nova folha">+</button>
+        </div>
+        {painelDoLado}
+      </aside>
+      )}
+
+      <div style={s.palco}>
+        {!naGrafica && (
+        <div style={s.barra}>
+          {adicionarNaFolha}
           <span style={{ flex: 1 }} />
           {edicao.dica && (
             <span style={{ ...s.rotulo, overflow: 'visible' }} data-dica-da-ferramenta>{edicao.dica}</span>
@@ -820,6 +858,27 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
             </button>
           </div>
         </div>
+        )}
+        {naGrafica && (
+          <>
+            <GrupoDaFaixa faixa="prancha" nome="Adicionar">
+              {adicionarNaFolha}
+            </GrupoDaFaixa>
+            <GrupoDaFaixa faixa="anotacao" nome="Anotar">
+              {ferramentas}
+            </GrupoDaFaixa>
+            <GrupoDaFaixa faixa="exportar" nome="Pranchas">
+              <BotaoDaFaixa nome="PDF" dica="Imprimir as pranchas em PDF" desenho={ICONES.pdf} desligado={!pranchas.folhas.length || exportando} aoClicar={() => void exportar((c) => imprimirPranchas(c))} />
+              <BotaoDaFaixa nome="DXF" dica="Baixar as pranchas em DXF (.zip)" desenho={ICONES.dxf} desligado={!pranchas.folhas.length || exportando} aoClicar={() => void exportar(baixarDxf)} />
+            </GrupoDaFaixa>
+            <NoEncaixe em="rodape">
+              <span style={s.rotulo}>Zoom</span>
+              {zoomDaMesa}
+              <span style={{ flex: 1 }} />
+              {edicao.dica && <span style={{ ...s.rotulo, overflow: 'visible' }} data-dica-da-ferramenta>{edicao.dica}</span>}
+            </NoEncaixe>
+          </>
+        )}
 
         <div
           ref={mesaRef} style={s.mesa} tabIndex={0} onPointerDownCapture={panear}

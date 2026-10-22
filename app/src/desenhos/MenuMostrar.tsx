@@ -6,6 +6,7 @@
 */
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { ITENS_DA_VISTA, rotuloDoItem, type ItemDaVista, type TipoDeVista } from './graficos';
+import { ICONES, useNaGrafica } from '@/ui/grafica/Encaixes';
 
 const s = {
   ancora: { position: 'relative', display: 'inline-flex' } as CSSProperties,
@@ -24,6 +25,8 @@ export function MenuMostrar({ vista, ocultos, aoMudar, estiloDoBotao }: {
   estiloDoBotao?: CSSProperties;
 }) {
   const [aberto, setAberto] = useState(false);
+  // na faixa da Gráfica o botão é o grande (ícone e nome) e o menu abre para a direita, embaixo dele
+  const naFaixa = useNaGrafica();
   const caixa = useRef<HTMLDivElement>(null);
 
   // fecha clicando fora, como o menu do 3D
@@ -39,11 +42,18 @@ export function MenuMostrar({ vista, ocultos, aoMudar, estiloDoBotao }: {
   const algum = ITENS_DA_VISTA[vista].some((i) => ocultos.includes(i));
   return (
     <div style={s.ancora} ref={caixa}>
-      <button type="button" style={estiloDoBotao} className={algum ? 'on' : undefined} aria-expanded={aberto} onClick={() => setAberto((a) => !a)}>
-        Mostrar
-      </button>
+      {naFaixa ? (
+        <button type="button" className={`faixa-botao${algum ? ' on' : ''}`} title="O que aparece nesta vista" aria-expanded={aberto} onClick={() => setAberto((a) => !a)}>
+          {ICONES.mostrar({ tamanho: 22 })}
+          <span>Mostrar</span>
+        </button>
+      ) : (
+        <button type="button" style={estiloDoBotao} className={algum ? 'on' : undefined} aria-expanded={aberto} onClick={() => setAberto((a) => !a)}>
+          Mostrar
+        </button>
+      )}
       {aberto && (
-        <div style={s.menu} role="menu">
+        <div style={naFaixa ? { ...s.menu, right: 'auto', left: 0 } : s.menu} role="menu">
           {ITENS_DA_VISTA[vista].map((item) => (
             <label key={item} style={s.linha}>
               <input type="checkbox" checked={!ocultos.includes(item)} onChange={(e) => aoMudar(item, e.target.checked)} />

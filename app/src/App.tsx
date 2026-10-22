@@ -27,7 +27,8 @@ import { useApp } from '@/estado/store';
 import { usePreferencias } from '@/estilo/preferenciasDaInterface';
 import { BarraDeEstado } from '@/ui/BarraDeEstado';
 import { TelaDeConfiguracoes } from '@/ui/Configuracoes';
-import { AbasDoPalco, Palco, abaDaGrafica } from '@/ui/Palco';
+import { Palco } from '@/ui/Palco';
+import { SecaoGrafica } from '@/ui/grafica/SecaoGrafica';
 import { useInterface } from '@/estado/interface';
 import { TelaDeEntradas } from '@/ui/EntradaPorFiguras';
 import { Chevron } from '@/ui/icones';
@@ -82,17 +83,6 @@ function Casca() {
       </div>
       <BarraDeEstado />
       <JanelaDeGraficos />
-    </div>
-  );
-}
-
-/** A Gráfica: as abas das vistas e das pranchas sobre o palco (a etapa 3 troca as abas pelo navegador do A-PORT). */
-function SecaoGrafica({ escondida }: { escondida: boolean }) {
-  const aba = useApp((s) => abaDaGrafica(s.aba));
-  return (
-    <div className="secao-grafica" hidden={escondida}>
-      <AbasDoPalco />
-      <Palco aba={aba} />
     </div>
   );
 }
