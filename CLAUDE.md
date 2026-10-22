@@ -709,7 +709,7 @@ e dizer ao Jose o que mudou e por quê.
   e servidor noutra porta — ⚠️ remover a junção (`cmd /c rmdir`) ANTES de apagar a cópia, senão apaga as bibliotecas
   do main. Etapa 2 já saiu quase toda junto; PRÓXIMA: a 3 (o navegador lateral do A-PORT na Gráfica, que o Jose sentiu
   falta ao olhar — vistas e pranchas em árvore + Propriedades, faixa de ferramentas no topo), depois a 4 (acabamento).
-  ETAPA 3 FEITA na branch `moldura-etapa-3` (21/10, na nuvem; PR para o Jose conferir antes do main): `ui/grafica/`
+  ETAPA 3 FEITA e JUNTADA ao main (21/10 na nuvem, PR #3; o Jose mandou juntar em 22/10 depois de instalar no notebook em C:\Claude\Al-rimo Notebook): `ui/grafica/`
   (SecaoGrafica, Navegador, Encaixes, comandos) e `estado/grafica.ts`. FAIXA no topo da Gráfica com 4 abas (Anotação:
   Anotar; Vista: Vistas — Nova/Duplicar/Renomear/Excluir — e Visibilidade — Mostrar/Gráficos/Enquadrar; Prancha:
   Folhas — Nova/Renomear/Excluir — Adicionar e Enviar; Exportar: SVG/PNG da vista, PDF/DXF das pranchas). NAVEGADOR à
