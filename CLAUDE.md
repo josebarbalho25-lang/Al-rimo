@@ -687,10 +687,13 @@ e dizer ao Jose o que mudou e por quê.
      meio as pernas dos dois vãos ficam encostadas, φ/2 de cada lado do eixo, e no da ponta a perna fica no mesmo
      lugar (φ/2 para dentro do vão): todo U do trecho é a MESMA barra (uma posição na lista de ferros, rótulo
      "Horizontal na canaleta (U)"). Sem emenda (vão ≤ 4 m: o U fica bem abaixo dos 12 m). Ø = o da canaleta da fiada.
-     A corrida reta com traspasse ficou só no balanço. A perna reta (da dobra à ponta) é conferida contra o ℓb RETO no
-     graute (`lbphi_gr`·φ, aba Fundação seção 10; As,calc/As,ef = 1); mais curta → aviso CANALETA_U_PERNA (não muda a
-     quantidade). Com o contraforte do exemplo (19·59, Ø12,5) a perna dá ~43 cm contra ℓb 55 cm: o aviso sai em quase
-     todo muro — A CONFIRMAR com o Jose (aceitar a dobra como parte da ancoragem, α 0,7 do gancho, ou só avisar).
+     A corrida reta com traspasse ficou só no balanço. ANCORAGEM DA PERNA (decisão do Jose, 22/10: "dobra conta como
+     gancho (α 0,7)"): a perna reta (da dobra à ponta) é conferida contra ℓb,nec = α·ℓb ≥ ℓb,mín = máx(0,3·ℓb; 10φ;
+     100 mm), α = 0,7 — NBR 6118 9.4.2.5, a dobra de 90° no pino da Tab. 9.1 como gancho; ℓb = o reto no graute
+     (`lbphi_gr`·φ, aba Fundação seção 10), As,calc/As,ef = 1 (`armaduras.ts` ancoragemDaPernaDoU, ALFA_GANCHO).
+     Mais curta → aviso CANALETA_U_PERNA com a conta escrita ("ℓb,nec = α·ℓb = 0,7 × 54,6 = 38,2 cm… NBR 6118
+     9.4.2.5"; não muda a quantidade). Com o exemplo (19·59, Ø12,5, perna 42,8) e o 14·54 da aula 12.3 passa; o 14·34
+     (perna ~20 cm) avisa. Antes (21/10) era contra o ℓb reto e avisava em quase todo muro.
      Desenhos: corte do contraforte mostra as duas pernas (folga φ/2 no plano do corte), planta com uma sombra só por
      posição (perna, base, perna cotadas), 3D/IFC/quantitativo pela polilinha. Conferido: nenhuma barra atravessa
      bloco/canaleta (barrasEmPecaSolida, com o T de graute), o U em todos os cenários do gabarito × variações.

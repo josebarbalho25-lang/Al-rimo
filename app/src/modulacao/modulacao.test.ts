@@ -262,11 +262,13 @@ function barrasEmUDosVaos(m: Modelo, r: Resultado): string[] {
         let L = 0;
         for (let j = 1; j < e.length; j++) L += Math.hypot(e[j][0] - e[j - 1][0], e[j][1] - e[j - 1][1], e[j][2] - e[j - 1][2]);
         if (b.comprimento < L - 0.01 || b.comprimento > L * 1.01) out.push(`${b.id}: comprimento ${b.comprimento} × polilinha ${L}`);
-        // perna reta (da dobra à ponta) × ℓb no graute: mais curta, só com o aviso
+        // perna reta (da dobra à ponta) × ℓb,nec com a dobra como gancho (NBR 6118 9.4.2.5: α = 0,7 ≥ ℓb,mín): mais
+        // curta, só com o aviso
         const perna = Math.abs(yPonta - yb) - R;
-        const lb = lbphi !== null ? Math.ceil((lbphi * phi) / 10) * 10 : null;
-        const curta = lb !== null && perna < lb - 0.5;
-        if (curta !== curtas.has(b.id)) out.push(`${b.id}: perna ${perna} × ℓb ${lb} e o aviso ${curtas.has(b.id) ? 'dado' : 'faltando'}`);
+        const lb = lbphi !== null ? lbphi * phi : null;
+        const nec = lb !== null ? Math.max(0.7 * lb, 0.3 * lb, 10 * phi, 100) : null;
+        const curta = nec !== null && perna < nec - 0.5;
+        if (curta !== curtas.has(b.id)) out.push(`${b.id}: perna ${perna} × ℓb,nec ${nec} e o aviso ${curtas.has(b.id) ? 'dado' : 'faltando'}`);
         const forma = `${phi}|${Math.round(b.comprimento)}`;
         (porFio.get(forma) ?? porFio.set(forma, new Set()).get(forma)!).add(b.posicao);
         if (us.some((q) => q.posicao !== b.posicao)) out.push(`${b.id}: U diferentes na mesma fiada`);
@@ -1023,14 +1025,22 @@ describe('barra em U da canaleta entre contrafortes (Jose, 21/10)', () => {
       }
     }
   });
-  it('perna reta mais curta que o ℓb no graute (contraforte curto): avisa, com os U da conta', () => {
-    // aula 12.3 em concreto 14×39, contraforte de 54: da canaleta do muro à ponta sobram ~40 cm para o Ø12,5 (ℓb ~55)
+  it('a dobra conta como gancho (Jose, 22/10: α = 0,7, NBR 6118 9.4.2.5): só o contraforte curto avisa', () => {
+    // aula 12.3 em concreto 14×39, contraforte de 54: da canaleta do muro à ponta sobram ~40 cm para o Ø12,5 — passa
+    // o 0,7·ℓb (sem a dobra contar como gancho, avisava contra o ℓb reto)
     const r = resultadoDoGabarito('aula123');
     const m = gerarModelo(r, padroesDoModelo());
-    const aviso = m.avisos.find((a) => a.codigo === 'CANALETA_U_PERNA');
-    expect(aviso).toBeDefined();
-    expect(aviso!.texto).toMatch(/perna reta no contraforte de [\d,]+ cm, menor que o ℓb no graute \(\d+ cm\)/);
+    expect(m.avisos.find((a) => a.codigo === 'CANALETA_U_PERNA')).toBeUndefined();
     expect(barrasEmUDosVaos(m, r)).toEqual([]);
+    // o mesmo muro com o contraforte de 34: ~20 cm de perna não chegam nem no 0,7·ℓb
+    const r34 = trocar(r, { tenr_: 34, tenr_adot: 34 });
+    const m34 = gerarModelo(r34, padroesDoModelo());
+    const aviso = m34.avisos.find((a) => a.codigo === 'CANALETA_U_PERNA');
+    expect(aviso).toBeDefined();
+    expect(aviso!.texto).toMatch(
+      /perna reta no contraforte de [\d,]+ cm, menor que ℓb,nec = α·ℓb = 0,7 × [\d,]+ = [\d,]+ cm no graute \(dobra como gancho, α = 0,7, NBR 6118 9\.4\.2\.5\)/,
+    );
+    expect(barrasEmUDosVaos(m34, r34)).toEqual([]);
   });
 });
 

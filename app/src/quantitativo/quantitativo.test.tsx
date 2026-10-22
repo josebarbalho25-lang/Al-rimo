@@ -176,7 +176,7 @@ describe('quantificar — variações', () => {
       { codigo: 'BALANCO_ALEM_DO_CF', texto: 'Balanço além do contraforte de ponta não desenhado' },
       { codigo: 'CANALETA_SEM_ESPACAMENTO', texto: 'Canaletas intermediárias: só a cinta do topo' },
       // a perna do U mais curta que o ℓb é aviso de projeto: a quantidade é a desenhada
-      { codigo: 'CANALETA_U_PERNA', texto: 'Barra em U da canaleta: perna reta no contraforte de 40,3 cm, menor que o ℓb no graute (55 cm)' },
+      { codigo: 'CANALETA_U_PERNA', texto: 'Barra em U da canaleta: perna reta no contraforte de 20,3 cm, menor que ℓb,nec = α·ℓb = 0,7 × 54,6 = 38,2 cm no graute (dobra como gancho, α = 0,7, NBR 6118 9.4.2.5)' },
       { codigo: 'D_GEOMETRICO_CF', texto: 'Contraforte: barra a 10 cm da face' },
     ];
     expect(quantificar(m).avisos).toEqual(m.avisos.slice(0, 3).map((a) => a.texto));

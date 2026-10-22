@@ -498,14 +498,21 @@ export function horizontais(ctx: Ctx, tr: TrechoModulado, fiadas: FiadaMontada[]
   }
 }
 
+/** α da ancoragem com gancho (NBR 6118 9.4.2.5): a dobra de 90° da perna do U conta como gancho (Jose, 22/10). */
+export const ALFA_GANCHO = 0.7;
+
 /**
- * ℓb da barra reta no graute (mm), a ancoragem da perna do U no contraforte: o ℓb em diâmetros do graute (aba
- * Fundação, seção 10: fbd = 2,25·0,21·fgk^(2/3)/1,4; fgk 20 → 43,7φ), As,calc/As,ef = 1 (a favor, a canaleta não tem
- * As de cálculo por barra). null = sem a conta.
+ * Ancoragem da perna do U no contraforte, mm (NBR 6118 9.4.2.5): ℓb,nec = α·ℓb ≥ ℓb,mín = máx(0,3·ℓb; 10φ; 100 mm),
+ * com α = 0,7 — a dobra de 90° no pino da Tab. 9.1 conta como gancho (Jose, 22/10: "dobra conta como gancho") —
+ * e As,calc/As,ef = 1 (a favor: a canaleta não tem As de cálculo por barra). ℓb = o da barra reta no graute (aba
+ * Fundação, seção 10: fbd = 2,25·0,21·fgk^(2/3)/1,4; fgk 20 → 43,7φ). null = sem a conta.
  */
-export function lbNoGraute(ctx: Ctx, phi: number): number | null {
+export function ancoragemDaPernaDoU(ctx: Ctx, phi: number): { lb: number; nec: number; peloMinimo: boolean } | null {
   const { lbphi_gr } = ctx.p;
-  return lbphi_gr !== null && lbphi_gr > 0 ? Math.ceil((lbphi_gr * phi) / 10) * 10 : null;
+  if (lbphi_gr === null || !(lbphi_gr > 0)) return null;
+  const lb = lbphi_gr * phi;
+  const minimo = Math.max(0.3 * lb, 10 * phi, 100);
+  return { lb, nec: Math.max(ALFA_GANCHO * lb, minimo), peloMinimo: minimo > ALFA_GANCHO * lb };
 }
 
 /**
@@ -518,32 +525,37 @@ export function lbNoGraute(ctx: Ctx, phi: number): number | null {
  * todo U do trecho é a MESMA barra (uma posição só na lista de ferros). A parede da canaleta do muro é quebrada no
  * encontro e o graute vira um T (canaletas.ts).
  * Ø: o da barra da canaleta do muro na fiada (a planilha não dimensiona a canaleta do contraforte). A perna reta (da
- * dobra à ponta) é conferida contra o ℓb no graute: mais curta avisa (contraforte curto).
+ * dobra à ponta) é conferida contra o ℓb,nec com a dobra como gancho (ancoragemDaPernaDoU): mais curta avisa
+ * (contraforte curto).
  */
 function barrasEmU(ctx: Ctx, tr: TrechoModulado, fiadas: FiadaMontada[], canaleta: boolean[]): void {
   const { mod, p } = ctx;
   const t = mod.cat.t;
   const yPonta = p.enterrado ? mod.tenr - COB_PONTA : t - (mod.tenr - COB_PONTA);
   const nos = tr.nos;
-  const curtas: { id: string; perna: number; lb: number }[] = [];
+  const curtas: { id: string; perna: number; lb: number; nec: number; peloMinimo: boolean }[] = [];
   for (const f of fiadas) {
     if (!canaleta[f.i]) continue;
     const { phi, y, z } = barraDaCanaletaDoMuro(ctx, f);
     const perna = Math.abs(yPonta - y) - raioDoEixo(phi);
-    const lb = lbNoGraute(ctx, phi);
+    const anc = ancoragemDaPernaDoU(ctx, phi);
     for (let k = 0; k + 1 < nos.length; k++) {
       const xa = nos[k].xc + phi / 2;
       const xb = nos[k + 1].xc - phi / 2;
       const id = `T${tr.indice}.H.f${pad(f.i, 2)}.U${pad(k + 1, 2)}`;
       ctx.barras.push(dobrada(id, 'HORIZ', phi, [[xa, yPonta, z], [xa, y, z], [xb, y, z], [xb, yPonta, z]], tr.indice));
-      if (lb !== null && perna < lb - 0.5) curtas.push({ id, perna, lb });
+      if (anc !== null && perna < anc.nec - 0.5) curtas.push({ id, perna, ...anc });
     }
   }
   if (curtas.length) {
-    const pior = curtas.reduce((a, b) => (b.perna / b.lb < a.perna / a.lb ? b : a));
+    const pior = curtas.reduce((a, b) => (b.perna / b.nec < a.perna / a.nec ? b : a));
+    const conta = pior.peloMinimo
+      ? `ℓb,mín = ${br(pior.nec / 10, 1)} cm`
+      : `ℓb,nec = α·ℓb = ${br(ALFA_GANCHO, 1)} × ${br(pior.lb / 10, 1)} = ${br(pior.nec / 10, 1)} cm`;
     ctx.avisos.push({
       codigo: 'CANALETA_U_PERNA',
-      texto: `Barra em U da canaleta: perna reta no contraforte de ${br(pior.perna / 10, 1)} cm, menor que o ℓb no graute (${br(pior.lb / 10, 0)} cm)`,
+      texto: `Barra em U da canaleta: perna reta no contraforte de ${br(pior.perna / 10, 1)} cm, menor que ${conta} no graute `
+        + `(dobra como gancho, α = ${br(ALFA_GANCHO, 1)}, NBR 6118 9.4.2.5)`,
       ids: curtas.map((c) => c.id),
     });
   }
