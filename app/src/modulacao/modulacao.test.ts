@@ -198,86 +198,82 @@ function barrasForaDoGraute(m: Modelo): string[] {
 }
 
 /**
- * Barra da canaleta do contraforte (Jose, 09/10 — Detalhe 1): uma por contraforte em cada fiada de canaleta, Ø da
- * barra da canaleta do muro, da ponta do contraforte (cobrimento 3 cm) até a canaleta do muro, dobrada em L e
- * encostada na barra do muro (ao lado ou por cima), com a perna = ℓb da conta (mesmo Ø da vertical) ou 30φ.
- * Mesma forma ⇒ mesma posição, também espelhada (a ponta direita é a esquerda virada).
+ * Barra da canaleta com contrafortes (Jose, 21/10 — no lugar da corrida com traspasse e do L de cada contraforte): em
+ * cada fiada de canaleta e em cada vão, UM U — a base na canaleta do muro, de um contraforte ao outro, e as duas pernas
+ * nas canaletas dos contrafortes até a ponta deles (cobrimento 3 cm), φ/2 ao lado do eixo, para dentro do vão (no
+ * contraforte do meio as dos dois vãos encostam). Plana, sem emenda, Ø da canaleta da fiada, o comprimento da polilinha
+ * e o graute mínimo em volta da perna no canal do contraforte. Todo U do trecho é a mesma barra: uma posição só. Perna
+ * reta mais curta que o ℓb no graute: com o aviso.
  */
-function canaletasDosContrafortes(m: Modelo, r: Resultado): string[] {
+function barrasEmUDosVaos(m: Modelo, r: Resultado): string[] {
   const out: string[] = [];
   const t = m.familia.t;
+  const horiz = m.barras.filter((b) => b.papel === 'HORIZ');
+  if (!m.dims.contrafortes.length) return horiz.filter((b) => b.eixo.length !== 2).map((b) => `${b.id}: barra dobrada no balanço`);
+  for (const b of horiz) {
+    if (b.contraforte !== undefined) out.push(`${b.id}: barra de canaleta presa a um contraforte`);
+    if (b.eixo.length === 2) out.push(`${b.id}: corrida reta num muro com contrafortes`);
+  }
   const fiadasC = [...new Set(m.pecas.filter((p) => p.grupo === 'muro' && CANALETAS.has(p.tipo)).map((p) => p.fiada!))];
-  const doCf = m.barras.filter((b) => b.papel === 'HORIZ' && b.contraforte !== undefined);
-  if (!m.dims.contrafortes.length) return doCf.length ? ['barra de canaleta de contraforte num muro sem contraforte'] : [];
   const cfPecas = m.pecas.filter((p) => p.grupo === 'contraforte' && ALVENARIA.has(p.tipo)).map((p) => caixa(m, p));
   const enterrado = cfPecas.some((c) => c.max[1] > t + 0.5);
   const tenr = enterrado ? Math.max(...cfPecas.map((c) => c.max[1])) : t - Math.min(...cfPecas.map((c) => c.min[1]));
   const yPonta = enterrado ? tenr - 30 : t - tenr + 30;
-  const lb = r.num('lb_adot');
-  const phiV = r.num('phi_v');
-  const curtas = new Set(m.avisos.filter((a) => a.codigo === 'CANALETA_CF_PERNA').flatMap((a) => a.ids ?? []));
   const parede = CATALOGO[m.familia.nome].canaleta.parede;
-  const posPorForma = new Map<string, Set<string>>();
-  m.dims.contrafortes.forEach((c, k) => {
+  const lbphi = r.num('lbphi_gr');
+  const curtas = new Set(m.avisos.filter((a) => a.codigo === 'CANALETA_U_PERNA').flatMap((a) => a.ids ?? []));
+  m.dims.trechos.forEach((_, kk) => {
+    const k = kk + 1;
+    const cfs = m.dims.contrafortes.filter((c) => c.trecho === k).sort((a, b) => a.x - b.x);
+    // mesma forma (Ø e comprimento) ⇒ mesma posição: o U de todos os vãos da fiada é a mesma barra (a cinta centralizada
+    // e a canaleta da conta encostada a c_p, com o mesmo Ø, têm pernas diferentes: duas barras)
+    const porFio = new Map<string, Set<string>>();
     for (const i of fiadasC) {
-      const bs = doCf.filter((b) => b.contraforte === k + 1 && Math.floor(b.eixo[0][2] / 200) === i);
-      if (bs.length !== 1) {
-        out.push(`C${k + 1} fiada ${i}: ${bs.length} barras de canaleta`);
+      const us = horiz.filter((b) => b.trecho === k && Math.floor(b.eixo[0][2] / 200) === i).sort((a, b) => a.eixo[0][0] - b.eixo[0][0]);
+      if (us.length !== cfs.length - 1) {
+        out.push(`T${k} fiada ${i}: ${us.length} U para ${cfs.length - 1} vãos`);
         continue;
       }
-      const b = bs[0];
-      const e = b.eixo;
-      const [a, z] = [e[0], e[0][2]];
-      const fim = e[e.length - 1];
-      const antes = e[e.length - 2];
-      // barras do muro da fiada que a perna alcança; a da dobra é onde ela encosta
-      const xa = Math.min(a[0], fim[0]);
-      const xb = Math.max(a[0], fim[0]);
-      const muro = m.barras.filter((q) => q.papel === 'HORIZ' && q.contraforte === undefined && q.trecho === c.trecho
-        && Math.floor(q.eixo[0][2] / 200) === i && Math.min(q.eixo[0][0], q.eixo[1][0]) < xb && Math.max(q.eixo[0][0], q.eixo[1][0]) > xa);
-      const naDobra = muro.find((q) => Math.min(q.eixo[0][0], q.eixo[1][0]) <= antes[0] + 1e-6 && Math.max(q.eixo[0][0], q.eixo[1][0]) >= antes[0] - 1e-6);
-      if (!naDobra) {
-        out.push(`${b.id}: sem barra do muro na dobra`);
-        continue;
-      }
-      if (muro.some((q) => q.diametro !== b.diametro)) out.push(`${b.id}: Ø ${b.diametro} ≠ Ø da canaleta do muro`);
-      if (Math.abs(a[0] - c.x) > 1e-6 || Math.abs(a[1] - yPonta) > 1e-6) out.push(`${b.id}: não começa na ponta do contraforte`);
-      if (e.some((q) => Math.abs(q[2] - z) > 1e-6)) out.push(`${b.id}: não é plana`);
-      // perna: reta, ao longo de X, para dentro do trecho, encostada na barra do muro
-      if (Math.abs(fim[1] - antes[1]) > 1e-6) out.push(`${b.id}: perna fora de X`);
-      const perna = Math.abs(fim[0] - antes[0]);
-      const esperada = lb !== null && phiV !== null && Math.abs(b.diametro - phiV) < 1e-9 ? lb * 10 : 30 * b.diametro;
-      if (Math.abs(perna - esperada) > 0.01 && !curtas.has(b.id)) out.push(`${b.id}: perna ${perna} ≠ ${esperada}`);
-      const contato = (b.diametro + naDobra.diametro) / 2;
-      const dist = Math.hypot(naDobra.eixo[0][1] - fim[1], naDobra.eixo[0][2] - fim[2]);
-      if (Math.abs(dist - contato) > 0.01) out.push(`${b.id}: perna a ${dist} da barra do muro (encostada = ${contato})`);
-      const bate = muro.filter((q) => Math.hypot(q.eixo[0][1] - fim[1], q.eixo[0][2] - fim[2]) < contato - 0.01);
-      if (bate.length) out.push(`${b.id}: perna dentro de ${bate.map((q) => q.id).join(', ')}`);
-      // ao lado da barra do muro, o graute mínimo dos dois lados; por cima dela, herda o y dela
-      const aoLado = Math.abs(naDobra.eixo[0][1] - fim[1]) > 0.01;
-      if (aoLado && (fim[1] - b.diametro / 2 < parede + 15 - 1e-6 || fim[1] + b.diametro / 2 > t - parede - 15 + 1e-6)) out.push(`${b.id}: perna sem graute`);
-      // comprimento desenvolvido: o da polilinha com a dobra de arco (a polilinha é corda, um pouco menor)
-      let L = 0;
-      for (let j = 1; j < e.length; j++) L += Math.hypot(e[j][0] - e[j - 1][0], e[j][1] - e[j - 1][1], e[j][2] - e[j - 1][2]);
-      if (b.comprimento < L - 0.01 || b.comprimento > L * 1.01) out.push(`${b.id}: comprimento ${b.comprimento} × polilinha ${L}`);
-      const forma = `${b.diametro}|${Math.round(b.comprimento)}`;
-      (posPorForma.get(forma) ?? posPorForma.set(forma, new Set()).get(forma)!).add(b.posicao);
+      us.forEach((b, v) => {
+        const e = b.eixo;
+        const phi = b.diametro;
+        const R = (phi >= 20 ? 4.5 : 3) * phi;   // pino 5φ (8φ a partir de Ø20) + φ/2, no eixo
+        const [ini, fim] = [e[0], e[e.length - 1]];
+        if (us.some((q) => q.diametro !== phi)) out.push(`${b.id}: Ø diferente na mesma fiada`);
+        if (e.some((q) => Math.abs(q[2] - ini[2]) > 1e-6)) out.push(`${b.id}: não é plana`);
+        // as pernas: na ponta dos dois contrafortes do vão, φ/2 para dentro do vão
+        if (Math.abs(ini[0] - (cfs[v].x + phi / 2)) > 0.05 || Math.abs(ini[1] - yPonta) > 0.05) out.push(`${b.id}: 1ª perna fora da ponta de C(${cfs[v].x})`);
+        if (Math.abs(fim[0] - (cfs[v + 1].x - phi / 2)) > 0.05 || Math.abs(fim[1] - yPonta) > 0.05) out.push(`${b.id}: 2ª perna fora da ponta de C(${cfs[v + 1].x})`);
+        // a base: o trecho reto ao longo de X, entre as duas dobras (no y da barra da canaleta da conta: centralizada ou
+        // encostada a c_p da face — o lugar é o da planilha, como era o da corrida)
+        let base: [Vec3, Vec3] | null = null;
+        for (let j = 1; j < e.length; j++) {
+          const [p, q] = [e[j - 1], e[j]];
+          if (Math.abs(q[1] - p[1]) < 0.05 && Math.abs(q[0] - p[0]) > 1 && (!base || Math.abs(q[0] - p[0]) > Math.abs(base[1][0] - base[0][0]))) base = [p, q];
+        }
+        if (!base || Math.abs(Math.abs(base[1][0] - base[0][0]) - (fim[0] - ini[0] - 2 * R)) > 0.1) {
+          out.push(`${b.id}: base fora de X`);
+          return;
+        }
+        const yb = base[0][1];
+        // as pernas no canal do contraforte (encostadas, φ/2 de cada lado do eixo), com o graute mínimo dos dois lados
+        if (phi > t / 2 - parede - 15 + 1e-6) out.push(`${b.id}: perna sem graute no canal do contraforte`);
+        // comprimento desenvolvido: o da polilinha com as dobras de arco (a polilinha é corda, um pouco menor)
+        let L = 0;
+        for (let j = 1; j < e.length; j++) L += Math.hypot(e[j][0] - e[j - 1][0], e[j][1] - e[j - 1][1], e[j][2] - e[j - 1][2]);
+        if (b.comprimento < L - 0.01 || b.comprimento > L * 1.01) out.push(`${b.id}: comprimento ${b.comprimento} × polilinha ${L}`);
+        // perna reta (da dobra à ponta) × ℓb no graute: mais curta, só com o aviso
+        const perna = Math.abs(yPonta - yb) - R;
+        const lb = lbphi !== null ? Math.ceil((lbphi * phi) / 10) * 10 : null;
+        const curta = lb !== null && perna < lb - 0.5;
+        if (curta !== curtas.has(b.id)) out.push(`${b.id}: perna ${perna} × ℓb ${lb} e o aviso ${curtas.has(b.id) ? 'dado' : 'faltando'}`);
+        const forma = `${phi}|${Math.round(b.comprimento)}`;
+        (porFio.get(forma) ?? porFio.set(forma, new Set()).get(forma)!).add(b.posicao);
+        if (us.some((q) => q.posicao !== b.posicao)) out.push(`${b.id}: U diferentes na mesma fiada`);
+      });
     }
+    for (const [forma, ps] of porFio) if (ps.size > 1) out.push(`T${k} U ${forma}: em ${ps.size} posições (${[...ps].join(', ')})`);
   });
-  if (doCf.length !== m.dims.contrafortes.length * fiadasC.length) out.push(`${doCf.length} barras de canaleta de contraforte`);
-  // duas pernas no mesmo lugar (vão curto: a da ponta direita volta contra a do vizinho)
-  const pernas = doCf.map((b) => {
-    const [u, v] = [b.eixo[b.eixo.length - 2], b.eixo[b.eixo.length - 1]];
-    return { b, x0: Math.min(u[0], v[0]), x1: Math.max(u[0], v[0]), y: v[1], z: v[2] };
-  });
-  for (let i = 0; i < pernas.length; i++) {
-    for (let j = i + 1; j < pernas.length; j++) {
-      const [a, c] = [pernas[i], pernas[j]];
-      const perto = Math.hypot(a.y - c.y, a.z - c.z) < (a.b.diametro + c.b.diametro) / 2 - 0.01;
-      if (perto && a.x0 < c.x1 - 0.01 && c.x0 < a.x1 - 0.01) out.push(`${a.b.id} × ${c.b.id}: pernas sobrepostas`);
-    }
-  }
-  for (const [f, ps] of posPorForma) if (ps.size > 1) out.push(`barra ${f} em ${ps.size} posições (${[...ps].join(', ')})`);
   return out;
 }
 
@@ -299,7 +295,7 @@ function conferirTudo(m: Modelo, r: Resultado, nome: string): void {
   expect(sobreposicoes(m), `${nome}: blocos sobrepostos`).toEqual([]);
   expect(juntasAPrumo(m), `${nome}: junta a prumo`).toEqual([]);
   expect(barrasForaDoGraute(m), `${nome}: barra fora do graute`).toEqual([]);
-  expect(canaletasDosContrafortes(m, r), `${nome}: barra da canaleta do contraforte`).toEqual([]);
+  expect(barrasEmUDosVaos(m, r), `${nome}: barra em U da canaleta`).toEqual([]);
 
   // graute do furo = área do furo da peça × altura; no inteiro e no meio, área = a do bloco desenhado (decisão do Jose,
   // 09/10): a do Revit (volume da família) na 14x39 e na 19x39 — e NÃO o Ag da conta
@@ -809,11 +805,11 @@ describe('canaleta como a obra deixa: fundo furado onde sobe a barra, T de graut
     }
   }, 120_000);
 
-  it('as conferências têm dente: com as canaletas inteiras, a barra vertical fura o fundo e a barra em L a parede do muro', () => {
+  it('as conferências têm dente: com as canaletas inteiras, a barra vertical fura o fundo e a perna do U a parede do muro', () => {
     const m = gerarModelo(resultadoDoGabarito('aula123'), padroesDoModelo());
     const achados = barrasEmPecaSolida(semRecortes(m));
     expect(achados.some((a) => /\.V\.\d+ × T1\.M\.f\d+/.test(a)), 'vertical × fundo').toBe(true);
-    expect(achados.some((a) => /\.CF\d+\.H\.f\d+ × T1\.M\.f\d+/.test(a)), 'barra em L × parede').toBe(true);
+    expect(achados.some((a) => /\.H\.f\d+\.U\d+ × T1\.M\.f\d+/.test(a)), 'perna do U × parede').toBe(true);
     expect(grauteEmPecaSolida(semRecortes(m)).some((a) => a.includes('.gT')), 'graute do T × parede').toBe(true);
   });
 
@@ -997,31 +993,44 @@ describe('barbacã nunca acima do aterro', () => {
   });
 });
 
-describe('barra da canaleta do contraforte (Jose, 09/10)', () => {
-  it('vão curto: as pernas não se atropelam (encurtam, com aviso)', () => {
+describe('barra em U da canaleta entre contrafortes (Jose, 21/10)', () => {
+  it('vão curto (0,40 e 0,60): o U cabe inteiro, sem emenda nem perna encurtada', () => {
     const base = trocar(resultadoDoGabarito('aula123'), { t_bloco: 19, L_bloco: 39, eenr: 19, Ag_furo: 170, hf_bl: 3.5 });
     for (const vao of [0.4, 0.6]) {
       const r = trocar(base, { l_cf: vao, l_cf_adot: vao });
       const m = gerarModelo(r, { L_total: 3 });
       expect(m.dims.contrafortes[1].x - m.dims.contrafortes[0].x).toBe(vao * 1000);
-      expect(canaletasDosContrafortes(m, r), `vão ${vao}`).toEqual([]);
-      if (vao === 0.4) expect(m.avisos.map((a) => a.codigo)).toContain('CANALETA_CF_PERNA');
+      expect(barrasEmUDosVaos(m, r), `vão ${vao}`).toEqual([]);
     }
   });
-  it('a ponta direita é a esquerda espelhada: uma posição só na lista de ferros', () => {
+  it('um U por vão em cada fiada de canaleta, todos a mesma barra (uma posição só), pernas para o lado da haste', () => {
+    for (const [c, extras] of [['aula123', { L_total: 6 }], ['sorteio23', padroesDoModelo()]] as const) {
+      const r = resultadoDoGabarito(c);
+      const m = gerarModelo(r, extras);
+      const us = m.barras.filter((b) => b.papel === 'HORIZ');
+      const fiada = (b: (typeof us)[number]) => Math.floor(b.eixo[0][2] / 200);
+      const topo = Math.max(...us.map(fiada));
+      const daCinta = us.filter((b) => fiada(b) === topo);
+      const vaos = m.dims.trechos.reduce((s, _, k) => s + m.dims.contrafortes.filter((cf) => cf.trecho === k + 1).length - 1, 0);
+      expect(daCinta.length, c).toBe(vaos);
+      expect(new Set(daCinta.map((b) => b.posicao)).size, c).toBe(1);
+      // enterrado: as pernas sobem em +Y, para o solo; aparente (sorteio23): descem em −Y, para a frente
+      const t = m.familia.t;
+      const enterrado = m.pecas.some((p) => p.grupo === 'contraforte' && caixa(m, p).max[1] > t + 0.5);
+      for (const b of daCinta) {
+        expect(b.eixo[0][1] > t, `${c} ${b.id}`).toBe(enterrado);
+        expect(b.eixo[b.eixo.length - 1][1] > t, `${c} ${b.id}`).toBe(enterrado);
+      }
+    }
+  });
+  it('perna reta mais curta que o ℓb no graute (contraforte curto): avisa, com os U da conta', () => {
+    // aula 12.3 em concreto 14×39, contraforte de 54: da canaleta do muro à ponta sobram ~40 cm para o Ø12,5 (ℓb ~55)
     const r = resultadoDoGabarito('aula123');
-    const m = gerarModelo(r, { L_total: 6 });
-    const cf = m.barras.filter((b) => b.papel === 'HORIZ' && b.contraforte !== undefined);
-    const fiada = (b: (typeof cf)[number]) => Math.floor(b.eixo[0][2] / 200);
-    const topo = Math.max(...cf.map(fiada));
-    const daCinta = cf.filter((b) => fiada(b) === topo);
-    const n = m.dims.contrafortes.length;
-    expect(daCinta.length).toBe(n);
-    // pernas para dentro do muro: a 1ª para +X, a última para −X
-    const dx = (b: (typeof cf)[number]) => b.eixo[b.eixo.length - 1][0] - b.eixo[0][0];
-    expect(dx(daCinta.find((b) => b.contraforte === 1)!)).toBeGreaterThan(0);
-    expect(dx(daCinta.find((b) => b.contraforte === n)!)).toBeLessThan(0);
-    expect(new Set(daCinta.map((b) => b.posicao)).size).toBe(1);
+    const m = gerarModelo(r, padroesDoModelo());
+    const aviso = m.avisos.find((a) => a.codigo === 'CANALETA_U_PERNA');
+    expect(aviso).toBeDefined();
+    expect(aviso!.texto).toMatch(/perna reta no contraforte de [\d,]+ cm, menor que o ℓb no graute \(\d+ cm\)/);
+    expect(barrasEmUDosVaos(m, r)).toEqual([]);
   });
 });
 

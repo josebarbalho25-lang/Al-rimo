@@ -57,12 +57,12 @@ export interface ResumoPorBitola {
 }
 
 /**
- * Rótulo da barra na lista. O papel sozinho não basta: HORIZ COM `contraforte` é a barra da canaleta do contraforte,
- * dobrada em L dentro da canaleta do muro (modelo/tipos.ts) — com o mesmo rótulo da corrida reta do muro, quem corta
- * e dobra leria duas barras diferentes como a mesma coisa.
+ * Rótulo da barra na lista. O papel sozinho não basta: HORIZ dobrada é o U da canaleta de um contraforte ao outro
+ * (modulacao/armaduras.ts, barrasEmU) — com o mesmo rótulo da corrida reta, quem corta e dobra leria duas barras
+ * diferentes como a mesma coisa.
  */
-export function rotuloDaBarra(b: Pick<Barra, 'papel' | 'contraforte'>): string {
-  if (b.papel === 'HORIZ' && b.contraforte !== undefined) return 'Contraforte · canaleta (L)';
+export function rotuloDaBarra(b: Pick<Barra, 'papel' | 'eixo'>): string {
+  if (b.papel === 'HORIZ' && b.eixo.length > 2) return 'Horizontal na canaleta (U)';
   return ROTULO_DO_PAPEL[b.papel] ?? b.papel;
 }
 

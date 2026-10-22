@@ -164,11 +164,11 @@ interface SombraDaPlanta {
 
 /**
  * As SOMBRAS da planta (Jose, 20/10: "sombra na planta das barras nas canaletas"): cada barra deitada na canaleta da
- * fiada — a corrida do muro, com as emendas, e a dobrada em L que entra no contraforte — tirada de dentro e posta
+ * fiada — a corrida reta do balanço, com as emendas, e o U de cada vão entre contrafortes — tirada de dentro e posta
  * solta embaixo da cota do comprimento, no x de verdade, como as longitudinais da armação da sapata: uma por posição e
- * estação (a em L, uma só para todos os contrafortes, no x do primeiro), as peças da barra emendada em fileiras
- * seguidas (o traspasse se lê na sobreposição), a perna do L com a
- * medida da lista de ferros, a legenda do lado oposto ao da perna. Fiada sem canaleta não tem sombra. Volta o y px
+ * estação (a dobrada, uma só para todos os vãos, no x da primeira), as peças da barra emendada em fileiras
+ * seguidas (o traspasse se lê na sobreposição), as pernas do U com a
+ * medida da lista de ferros, a legenda do lado oposto ao das pernas. Fiada sem canaleta não tem sombra. Volta o y px
  * do que a sombra mais baixa ocupa (a legenda das cores vem depois).
  */
 function desenharSombrasDaPlanta(pr: Prancha, m: Modelo, zBaixo: number, zc: number, yCota: number, S: number): number {
@@ -176,20 +176,21 @@ function desenharSombrasDaPlanta(pr: Prancha, m: Modelo, zBaixo: number, zc: num
   const grupos = new Map<string, SombraDaPlanta>();
   for (const b of naFiada) {
     const [xa, xb] = faixa(b.eixo, 0);
-    // a dobrada em L é igual em todo contraforte (a de um lado e a do outro são a mesma barra virada): uma sombra só,
-    // na primeira, com a soma — cinco sombras iguais "N8 – 1" só repetiam o que o contraforte já mostra
-    const k = b.contraforte !== undefined ? `${b.posicao}|cf` : `${b.posicao}|${b.trecho}|${Math.round((xa + xb) / 20)}`;
+    // a dobrada (o U de cada vão) é a mesma barra em todo vão: uma sombra só, na primeira, com a soma — seis sombras
+    // iguais "N8 – 1" só repetiam o que a planta já mostra
+    const k = b.eixo.length > 2 ? `${b.posicao}|dobrada` : `${b.posicao}|${b.trecho}|${Math.round((xa + xb) / 20)}`;
     const g = grupos.get(k);
     if (g) g.n++;
     else grupos.set(k, { barra: b, n: 1, xa, xb });
   }
   const lista = [...grupos.values()].sort((a, b) => a.barra.posicao.localeCompare(b.barra.posicao, 'pt-BR', { numeric: true }) || a.xa - b.xa);
   if (!lista.length) return yCota;
-  // famílias: a corrida do muro emendada (mesma posição e trecho, sem contraforte, x que se sobrepõem)
+  // famílias: a corrida reta emendada (mesma posição e trecho, x que se sobrepõem)
+  const reta = (b: Barra) => b.eixo.length === 2;
   const familias: SombraDaPlanta[][] = [];
   for (const s of lista) {
-    const fam = s.barra.contraforte === undefined
-      ? familias.find((f) => f[0].barra.contraforte === undefined && f[0].barra.posicao === s.barra.posicao && f[0].barra.trecho === s.barra.trecho &&
+    const fam = reta(s.barra)
+      ? familias.find((f) => reta(f[0].barra) && f[0].barra.posicao === s.barra.posicao && f[0].barra.trecho === s.barra.trecho &&
         f.some((q) => Math.min(q.xb, s.xb) - Math.max(q.xa, s.xa) > 1))
       : undefined;
     if (fam) fam.push(s);

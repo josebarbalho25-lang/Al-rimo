@@ -114,9 +114,9 @@ export interface Peca {
 }
 
 /**
- * HORIZ = barra horizontal de canaleta. Sem `contraforte`: a corrida reta da canaleta do muro. COM `contraforte`
- * (acrescentado pela modulação, 09/10): a barra da canaleta do contraforte, que entra na canaleta do muro dobrada em
- * L e deita ao lado da barra dele (Detalhe 1) — o eixo dela não é reto.
+ * HORIZ = barra horizontal de canaleta, sem `contraforte`. No balanço, a corrida reta da canaleta do muro. Com
+ * contrafortes (Jose, 21/10), o U de cada vão: a base na canaleta do muro e as duas pernas nas canaletas dos dois
+ * contrafortes — o eixo dela não é reto (a barra em L de cada contraforte, de 09/10, saiu).
  */
 export type PapelBarra =
   | 'VERT_MURO' | 'ESPERA' | 'HORIZ'
