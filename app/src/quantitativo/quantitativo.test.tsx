@@ -169,16 +169,17 @@ describe('quantificar — variações', () => {
     expect(quantificar(m).avisos).toEqual(['Armadura longitudinal de torção da sapata não desenhada']);
   });
 
-  it('avisos novos da modulação dos gabaritos (estribo com ramos a menos, barra em L deduzida, balanço) também vêm', () => {
+  it('avisos novos da modulação dos gabaritos (estribo com ramos a menos, balanço) também vêm', () => {
     const m = modeloAMao();
     m.avisos = [
       { codigo: 'ESTRIBO_RAMOS', texto: 'Estribo do contraforte com 4 ramos: desenhado fechado, 2 ramos' },
-      { codigo: 'CANALETA_CF', texto: 'Barra da canaleta do contraforte: perna em L = 30φ (dedução)' },
       { codigo: 'BALANCO_ALEM_DO_CF', texto: 'Balanço além do contraforte de ponta não desenhado' },
       { codigo: 'CANALETA_SEM_ESPACAMENTO', texto: 'Canaletas intermediárias: só a cinta do topo' },
+      // a perna do U mais curta que o ℓb é aviso de projeto: a quantidade é a desenhada
+      { codigo: 'CANALETA_U_PERNA', texto: 'Barra em U da canaleta: perna reta no contraforte de 20,3 cm, menor que ℓb,nec = α·ℓb = 0,7 × 54,6 = 38,2 cm no graute (dobra como gancho, α = 0,7, NBR 6118 9.4.2.5)' },
       { codigo: 'D_GEOMETRICO_CF', texto: 'Contraforte: barra a 10 cm da face' },
     ];
-    expect(quantificar(m).avisos).toEqual(m.avisos.slice(0, 4).map((a) => a.texto));
+    expect(quantificar(m).avisos).toEqual(m.avisos.slice(0, 3).map((a) => a.texto));
   });
 
   it('canaleta sobre canaleta: a junta horizontal é só a das duas paredes do U de baixo (o miolo é graute)', () => {
@@ -203,13 +204,13 @@ describe('quantificar — variações', () => {
     expect(quantificar(m).argamassa.horizontal).toBeCloseTo((2 * 390 * 190 * 10 + 2 * 390 * 70 * 10) / 1e9, PERTO);
   });
 
-  it('lista de ferros: a barra em L da canaleta do contraforte não se confunde com a corrida reta do muro', () => {
+  it('lista de ferros: o U da canaleta entre contrafortes não se confunde com a corrida reta', () => {
     const m = modeloAMao();
-    m.barras.push({ id: 'T1.CF1.H.f02', posicao: 'N11', papel: 'HORIZ', diametro: 10, comprimento: 900, trecho: 1, contraforte: 1,
-      eixo: [[95, 560, 470], [95, 160, 470], [135, 120, 470], [600, 120, 470]] });
+    m.barras.push({ id: 'T1.H.f02.U01', posicao: 'N11', papel: 'HORIZ', diametro: 10, comprimento: 2500, trecho: 1,
+      eixo: [[100, 560, 470], [100, 125, 470], [130, 95, 470], [1490, 95, 470], [1520, 125, 470], [1520, 560, 470]] });
     const tab = tabelasDoQuantitativo(quantificar(m)).find((t) => t.id === 'ferros')!;
     expect(tab.linhas.find((l) => l[0] === 'N10')![1]).toBe('Horizontal na canaleta');
-    expect(tab.linhas.find((l) => l[0] === 'N11')![1]).toBe('Contraforte · canaleta (L)');
+    expect(tab.linhas.find((l) => l[0] === 'N11')![1]).toBe('Horizontal na canaleta (U)');
   });
 
   it('junta de controle: peças de trechos diferentes a 10 mm não levam argamassa', () => {
@@ -490,11 +491,11 @@ describe('com a modulação de verdade', () => {
       const q = quantificar(m);
       expect(q.graute.furos, cenario).toBeCloseTo(furos / 1e9, 4);
       expect(q.graute.canaletas, cenario).toBeCloseTo(can / 1e9, 4);
-      // a barra em L tem posição e rótulo próprios, e o aviso de que ela é dedução vai junto para o CSV
-      const emL = q.ferros.filter((f) => f.elemento === 'Contraforte · canaleta (L)');
-      expect(emL.length, cenario).toBeGreaterThan(0);
-      expect(emL.reduce((s, f) => s + f.quantidade, 0), cenario).toBe(m.barras.filter((b) => b.papel === 'HORIZ' && b.contraforte !== undefined).length);
-      expect(q.avisos.some((a) => a.startsWith('Barra da canaleta do contraforte')), cenario).toBe(true);
+      // o U de cada vão tem posição e rótulo próprios, e a soma dá um por vão em cada fiada de canaleta
+      const emU = q.ferros.filter((f) => f.elemento === 'Horizontal na canaleta (U)');
+      expect(emU.length, cenario).toBeGreaterThan(0);
+      expect(emU.reduce((s, f) => s + f.quantidade, 0), cenario).toBe(m.barras.filter((b) => b.papel === 'HORIZ').length);
+      expect(q.ferros.some((f) => f.elemento === 'Horizontal na canaleta'), cenario).toBe(false);
     }
   });
 

@@ -236,7 +236,8 @@ describe('memória com o motor do app × memória com o Excel', () => {
       }
     }
     expect(diferentes).toEqual([]);
-  });
+    // 65 cenários pelo motor e pelo Excel: com a bateria inteira em paralelo passava dos 5 s no notebook (21/10)
+  }, 60_000);
 });
 
 describe('dicionário e glossário', () => {

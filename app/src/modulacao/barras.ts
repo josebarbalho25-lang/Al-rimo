@@ -186,25 +186,33 @@ export function pontaDoNo(familia: Familia['nome'], phi: number): { ponta: numbe
 }
 
 /**
- * Barra dobrada em L num plano horizontal (z de `ponta`): reta de `ponta` até perto de `canto` (o encontro dos dois
- * eixos), dobra 90° com o pino da NBR e segue `perna` em linha reta na direção `dir` (±X ou ±Y). A perna conta só o
- * trecho reto depois da dobra — é ele que fica encostado na barra vizinha e transmite a força.
+ * Barra dobrada a 90° num plano horizontal (z do 1º vértice): `vertices` são os cantos do EIXO (o encontro dos eixos
+ * de dois trechos retos), da ponta à ponta; cada canto vira uma dobra no pino da NBR. Serve ao U da canaleta entre
+ * dois contrafortes (perna, base, perna). Comprimento desenvolvido: os retos menos 2R por dobra, mais o arco (π/2)·R.
  */
-export function emL(id: string, papel: PapelBarra, phi: number, ponta: Vec3, canto: Vec3, dir: [number, number], perna: number, trecho: number, contraforte?: number): BarraNova {
+export function dobrada(id: string, papel: PapelBarra, phi: number, vertices: Vec3[], trecho: number, contraforte?: number): BarraNova {
   const R = raioDoEixo(phi);
-  const L1 = Math.hypot(canto[0] - ponta[0], canto[1] - ponta[1]);
-  const d1: [number, number] = [(canto[0] - ponta[0]) / L1, (canto[1] - ponta[1]) / L1];
-  const z = ponta[2];
-  const ini: [number, number] = [canto[0] - d1[0] * R, canto[1] - d1[1] * R];
-  // centro da dobra: recua R no 1º trecho e anda R para o lado da perna
-  const c: [number, number] = [ini[0] + dir[0] * R, ini[1] + dir[1] * R];
-  const eixo: Vec3[] = [p3(ponta[0], ponta[1], z), p3(ini[0], ini[1], z)];
-  for (let k = 1; k <= SEG_DOBRA; k++) {
-    const f = (k / SEG_DOBRA) * (Math.PI / 2);
-    eixo.push(p3(c[0] - dir[0] * R * Math.cos(f) + d1[0] * R * Math.sin(f), c[1] - dir[1] * R * Math.cos(f) + d1[1] * R * Math.sin(f), z));
+  const z = vertices[0][2];
+  const eixo: Vec3[] = [p3(vertices[0][0], vertices[0][1], z)];
+  let retos = 0;
+  for (let i = 1; i < vertices.length; i++) retos += Math.hypot(vertices[i][0] - vertices[i - 1][0], vertices[i][1] - vertices[i - 1][1]);
+  for (let i = 1; i + 1 < vertices.length; i++) {
+    const [a, v, b] = [vertices[i - 1], vertices[i], vertices[i + 1]];
+    const L1 = Math.hypot(v[0] - a[0], v[1] - a[1]);
+    const L2 = Math.hypot(b[0] - v[0], b[1] - v[1]);
+    const d1: [number, number] = [(v[0] - a[0]) / L1, (v[1] - a[1]) / L1];
+    const d2: [number, number] = [(b[0] - v[0]) / L2, (b[1] - v[1]) / L2];
+    // centro da dobra: recua R no trecho que chega e anda R para o lado do que sai
+    const c: [number, number] = [v[0] - d1[0] * R + d2[0] * R, v[1] - d1[1] * R + d2[1] * R];
+    for (let k = 0; k <= SEG_DOBRA; k++) {
+      const f = (k / SEG_DOBRA) * (Math.PI / 2);
+      eixo.push(p3(c[0] - d2[0] * R * Math.cos(f) + d1[0] * R * Math.sin(f), c[1] - d2[1] * R * Math.cos(f) + d1[1] * R * Math.sin(f), z));
+    }
   }
-  eixo.push(p3(canto[0] + dir[0] * (R + perna), canto[1] + dir[1] * (R + perna), z));
-  const comprimento = L1 - R + (Math.PI / 2) * R + perna;
+  const fim = vertices[vertices.length - 1];
+  eixo.push(p3(fim[0], fim[1], z));
+  const dobras = vertices.length - 2;
+  const comprimento = retos - 2 * R * dobras + (Math.PI / 2) * R * dobras;
   const out: BarraNova = { id, papel, diametro: phi, eixo, comprimento: arred(comprimento), trecho };
   if (contraforte !== undefined) out.contraforte = contraforte;
   return out;

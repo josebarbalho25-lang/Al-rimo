@@ -576,8 +576,8 @@ e dizer ao Jose o que mudou e por quê.
   (Sim) são decisões dele — não reabrir sem fonte (memória feedback_nao_reabrir_sem_fonte). PAINEL APOIADO nos
   contrafortes (Jose, 14/10): fica o Carini — "a gente sabe que vai ter um mínimo negativo ali, mas concreto plastifica";
   medido: apoio engastado ≤ vão apoiado em 2 de 3 casos, +6% no painel 4,0 × 2,6; não reabrir. ÁGUA × DRENAGEM
-  (Jose, 14/10): ficam independentes, sem aviso — o projetista cuida. Revisão FECHADA; e os do curso (M2d, fpk líquida, Δξ, vão 2h, AsMin) seguem a régua. A perna em L da barra da canaleta do contraforte ainda usa o ℓb da sapata (muda com a
-  barra em U, anotação 1 abaixo).
+  (Jose, 14/10): ficam independentes, sem aviso — o projetista cuida. Revisão FECHADA; e os do curso (M2d, fpk líquida, Δξ, vão 2h, AsMin) seguem a régua. A perna em L da barra da canaleta do contraforte usava o ℓb da sapata; com a barra em U
+  (21/10, anotação 1 abaixo) a perna no contraforte é conferida contra o ℓb no graute.
 - **Junção de 14/10:** desenho-peso (dente, desenhos da sapata, graute em grade, peso, traspasse) e sapata-molas (aba
   Sapata sobre molas) juntas no main; o que estava solto no main foi para o stash "main sem commit antes da junção
   14/10" (era subconjunto da desenho-peso, conferido linha a linha; pode ser descartado).
@@ -685,10 +685,25 @@ e dizer ao Jose o que mudou e por quê.
   hora, conferido no código, e o caderno sobe no GitHub (main) junto — a sessão seguinte (outra máquina, nuvem) só
   sabe o que estiver aqui.
 - **Anotado do Jose (12/10, noite — fazer depois, ele avisa quando):**
-  1. NÃO FEITO (conferido em 21/10: `modulacao/barras.ts` ainda faz traspasse + L; Jose: depois do navegador da
-     Gráfica). Barra horizontal do painel (a da canaleta) no contraforte: hoje é traspasse + L; trocar por barra dobrada em U de
-     um contraforte ao outro, vários U em sequência, cada barra engastada duas vezes ("é mais fácil dobrar a barra em U
-     do que fazer um traspasse e depois um L").
+  1. FEITO 21/10 (branch `barra-em-u`, PR para o Jose conferir). Barra horizontal do painel (a da canaleta) no
+     contraforte: era traspasse + L; virou barra dobrada em U de um contraforte ao outro, vários U em sequência, cada
+     barra engastada duas vezes ("é mais fácil dobrar a barra em U do que fazer um traspasse e depois um L"). Como ficou
+     (`modulacao/armaduras.ts` barrasEmU; `barras.ts` dobrada, no lugar do emL): em cada fiada de canaleta (as da conta
+     e a cinta) e em cada vão, um U — base na canaleta do muro (no y da conta: centralizada ou encostada a c_p), pernas
+     nas canaletas dos dois contrafortes ATÉ A PONTA deles (cobrimento 3 cm), dobra no pino da NBR; no contraforte do
+     meio as pernas dos dois vãos ficam encostadas, φ/2 de cada lado do eixo, e no da ponta a perna fica no mesmo
+     lugar (φ/2 para dentro do vão): todo U do trecho é a MESMA barra (uma posição na lista de ferros, rótulo
+     "Horizontal na canaleta (U)"). Sem emenda (vão ≤ 4 m: o U fica bem abaixo dos 12 m). Ø = o da canaleta da fiada.
+     A corrida reta com traspasse ficou só no balanço. ANCORAGEM DA PERNA (decisão do Jose, 22/10: "dobra conta como
+     gancho (α 0,7)"): a perna reta (da dobra à ponta) é conferida contra ℓb,nec = α·ℓb ≥ ℓb,mín = máx(0,3·ℓb; 10φ;
+     100 mm), α = 0,7 — NBR 6118 9.4.2.5, a dobra de 90° no pino da Tab. 9.1 como gancho; ℓb = o reto no graute
+     (`lbphi_gr`·φ, aba Fundação seção 10), As,calc/As,ef = 1 (`armaduras.ts` ancoragemDaPernaDoU, ALFA_GANCHO).
+     Mais curta → aviso CANALETA_U_PERNA com a conta escrita ("ℓb,nec = α·ℓb = 0,7 × 54,6 = 38,2 cm… NBR 6118
+     9.4.2.5"; não muda a quantidade). Com o exemplo (19·59, Ø12,5, perna 42,8) e o 14·54 da aula 12.3 passa; o 14·34
+     (perna ~20 cm) avisa. Antes (21/10) era contra o ℓb reto e avisava em quase todo muro.
+     Desenhos: corte do contraforte mostra as duas pernas (folga φ/2 no plano do corte), planta com uma sombra só por
+     posição (perna, base, perna cotadas), 3D/IFC/quantitativo pela polilinha. Conferido: nenhuma barra atravessa
+     bloco/canaleta (barrasEmPecaSolida, com o T de graute), o U em todos os cenários do gabarito × variações.
   2. Estribos desenhados quadrados: desenhar com as dobras reais da barra (raio de dobra, ganchos).
   3. ~~Estribo só quando a conta pede~~ FEITO 13/10 (planilha 05 do Carini: "Dispensa Estribos" se fvd ≥ τvd = o
      nosso Vd ≤ Va): com Asw_c = 0 a planilha zera Asw,ef e n_est (Vrd3 = Va), o resumo diz "sem estribos", o app

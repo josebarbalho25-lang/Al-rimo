@@ -3,8 +3,8 @@
   contraforte (o T de graute).
 
   POR QUÊ: a canaleta comprada é um U fechado embaixo. Desenhada inteira, a barra vertical que sobe pelo furo
-  grauteado atravessava o fundo dela, e a barra em L do contraforte atravessava a parede do U do muro e a junta
-  muro × haste (revisão do IFC com o muro real, 09/10 noite). Na obra:
+  grauteado atravessava o fundo dela, e a barra em L do contraforte (hoje a perna do U de cada vão, 21/10)
+  atravessava a parede do U do muro e a junta muro × haste (revisão do IFC com o muro real, 09/10 noite). Na obra:
     - o fundo é furado onde a barra passa, e o graute da coluna atravessa (brief §3.1: "o fundo da canaleta é quebrado
       nas células grauteadas para o graute vertical passar");
     - a parede da canaleta do muro é quebrada na largura do canal do contraforte, até o fundo, e as duas calhas viram

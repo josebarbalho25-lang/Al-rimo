@@ -3,7 +3,7 @@
 
   Ordem: lê a conta → modula (regra única, modular.ts) → arruma as fiadas (fiadas.ts, com os encaixes da tabela)
   → põe as barras procurando o furo de verdade de cada fiada (armaduras.ts + cavidades.ts; nas fiadas de canaleta,
-  a corrida do muro e a barra em L de cada contraforte) → grauteia (furo com barra sempre; a parede na grade do
+  a corrida reta do balanço ou o U de cada vão entre contrafortes) → grauteia (furo com barra sempre; a parede na grade do
   graute a cada X — 20 = todos; contraforte: sempre todos) → fura o fundo da canaleta onde a barra sobe e quebra a
   parede dela no encontro com o contraforte, com o graute no lugar (canaletas.ts) → sapata, drenagem e terreno
   (entorno.ts).
@@ -22,7 +22,7 @@ import { MapaDeCavidades, type Cavidade } from './cavidades';
 import { arred, caixaGlobal, prisma, retanguloArredondado } from './perfis';
 import { numerarPosicoes } from './barras';
 import { fmt, furosDaPeca, geoBloco, geoCanaleta, geoGrauteCanaleta, pad, secaoCanaleta, zTopoBarra, type Ctx } from './contexto';
-import { barrasDasCanaletasDosContrafortes, barrasDoBalanco, barrasDoPainel, barrasDosContrafortes, esperas, horizontais, type Vertical } from './armaduras';
+import { barrasDoBalanco, barrasDoPainel, barrasDosContrafortes, esperas, horizontais, type Vertical } from './armaduras';
 import { conferenciasGerais, drenagem, sapata, temDente, terreno } from './entorno';
 import { furarEQuebrarCanaletas } from './canaletas';
 
@@ -67,7 +67,6 @@ export function gerarModelo(r: Resultado, extras: Record<string, Valor> = {}): M
     }
     esperas(ctx, tr, mapa, verticais, Ype, YbA);
     horizontais(ctx, tr, fiadas, canaleta);
-    barrasDasCanaletasDosContrafortes(ctx, tr, fiadas, canaleta);
     graute(ctx, tr, fiadas, mapa, verticais, inicioAlvenaria);
     // depois de TODAS as barras do trecho que sobem pelo muro (verticais e esperas) e do graute das canaletas
     furarEQuebrarCanaletas(ctx, tr, canaleta, mapa, inicioAlvenaria);

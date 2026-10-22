@@ -6,7 +6,7 @@
   - medida de perna diferente da lista de ferros (formaDaBarra) — no arranque Padrão e no nó de cachorro;
   - a sombra fora de altura (o armador mede pelo muro do lado) ou em cima do corte;
   - uma legenda escrita em cima da outra;
-  - a barra emendada da canaleta sem a sobreposição, ou as dobradas em L repetidas uma por contraforte;
+  - a barra emendada da canaleta sem a sobreposição, ou os U repetidos um por vão;
   - sombra que não some com o "Sombras" desligado ou com a armadura escondida.
 */
 import { describe, expect, it } from 'vitest';
@@ -199,6 +199,25 @@ describe('sombras no corte', () => {
   });
 });
 
+describe('o U da canaleta no corte do contraforte', () => {
+  it('as pernas dos dois vãos (φ/2 de cada lado do eixo) aparecem como linha em cada fiada de canaleta; no painel, ponto', () => {
+    const m = muro('aula123');
+    const cf = cortesPadrao(m).find((c) => c.rotulo.startsWith('Contraforte'))!;
+    const fiadas = [...new Set(m.barras.filter((b) => b.papel === 'HORIZ').map((b) => Math.floor(b.eixo[0][2] / 200)))];
+    const noCf = barrasNoCorte(m, cf.x);
+    for (const f of fiadas) {
+      const pernas = noCf.linhas.filter((l) => l.barra.papel === 'HORIZ' && Math.floor(l.barra.eixo[0][2] / 200) === f);
+      // contraforte do meio: a perna do vão da esquerda e a do vão da direita, cada uma de um U
+      expect(pernas.length, `fiada ${f}`).toBe(2);
+      for (const l of pernas) expect(Math.max(...l.pts.map((p) => p[0])) - Math.min(...l.pts.map((p) => p[0])), `fiada ${f}`).toBeGreaterThan(300);
+    }
+    const painel = cortesPadrao(m).find((c) => c.rotulo === 'Painel')!;
+    const noPainel = barrasNoCorte(m, painel.x);
+    expect(noPainel.linhas.filter((l) => l.barra.papel === 'HORIZ')).toEqual([]);
+    expect(noPainel.pontos.filter((p) => p.barra.papel === 'HORIZ').length).toBe(fiadas.length);
+  });
+});
+
 describe('sombras na planta', () => {
   const planta = (m: Modelo, f: number) => desenharPlanta(m, f, { S: escalaDaVista(50), semTitulo: true, prefixo: 'p' }).primitivas();
   const fiadasComCanaleta = (m: Modelo) => [...new Set(m.barras.filter((b) => b.papel === 'HORIZ').map((b) => Math.floor(b.eixo[0][2] / 200)))];
@@ -224,19 +243,21 @@ describe('sombras na planta', () => {
     for (const b of naFiada) expect(textos.some((t) => t.t === `${b.posicao} – 1 Ø${String(b.diametro).replace('.', ',')} C=${Math.round(b.comprimento / 10)}`)).toBe(true);
   });
 
-  it('contrafortes: a dobrada em L é uma sombra só por posição, com a soma, e as medidas da lista', () => {
-    const m = muro('aula123');
+  it('contrafortes: o U de cada vão é uma sombra só por posição, com a soma, e as medidas da lista (perna, base, perna)', () => {
+    const m = muro('aula123', { L_total: 6 });
     const f = fiadasComCanaleta(m)[0];
     const { linhas, textos } = daSombra(planta(m, f));
-    const emL = m.barras.filter((b) => b.papel === 'HORIZ' && b.contraforte !== undefined && Math.floor(b.eixo[0][2] / 200) === f);
-    expect(emL.length).toBeGreaterThan(1);
-    const posicoes = [...new Set(emL.map((b) => b.posicao))];
-    const doMuro = m.barras.filter((b) => b.papel === 'HORIZ' && b.contraforte === undefined && Math.floor(b.eixo[0][2] / 200) === f);
-    expect(linhas.length).toBe(doMuro.length + posicoes.length);
+    const emU = m.barras.filter((b) => b.papel === 'HORIZ' && Math.floor(b.eixo[0][2] / 200) === f);
+    expect(emU.length).toBeGreaterThan(1);
+    expect(emU.every((b) => b.eixo.length > 2)).toBe(true);
+    const posicoes = [...new Set(emU.map((b) => b.posicao))];
+    expect(linhas.length).toBe(posicoes.length);
     for (const p of posicoes) {
-      const n = emL.filter((b) => b.posicao === p).length;
+      const n = emU.filter((b) => b.posicao === p).length;
       expect(textos.filter((t) => t.t.startsWith(`${p} – ${n} Ø`)).length).toBe(1);
-      for (const medida of formaDaBarra(emL.find((b) => b.posicao === p)!).trechos) expect(textos.some((t) => t.t === String(medida))).toBe(true);
+      const forma = formaDaBarra(emU.find((b) => b.posicao === p)!);
+      expect(forma.trechos.length).toBe(3);
+      for (const medida of forma.trechos) expect(textos.some((t) => t.t === String(medida))).toBe(true);
     }
   });
 });
