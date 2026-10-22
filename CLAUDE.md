@@ -225,6 +225,12 @@ e dizer ao Jose o que mudou e por quê.
   `tools/golden.py` roda N cenários no Excel (COM) → `dados/golden/`; o teste do app confere célula a célula.
   **Mudou o gerador: `exportar_motor.py` + `golden.py` + `npx vitest run` no app.**
 - Sem LibreOffice nesta máquina: `recalc_lo.recalc()` cai sozinho no Excel (`tools/recalc_excel.py`).
+- **Notebook do Jose (22/10):** clone em `C:\Claude\Al-rimo Notebook`, servidor na 5180 pelo ABRIR.bat. Python 3.13
+  só pelo `py` (o `python` do PATH é o atalho da Microsoft Store): `py tools/exportar_motor.py`, `py tools/golden.py`
+  (Excel instalado, COM ok); sem ifcopenshell (o `validar_ifc.py` não roda lá). O Jose roda processos pesados de
+  outro projeto no notebook ao mesmo tempo: os testes de TEMPO (5 s, 60 s, o de 150 ms do muro de 20 m) estouram —
+  conferir rodando o cenário sozinho com mais tempo antes de achar que é defeito. Nunca derrubar processo que não
+  seja do Al-rimo.
 - Contratos entre frentes: `motor/tipos.ts` (conta), `modelo/tipos.ts` (muro peça a peça: quem fabrica é `modulacao/`;
   3D, IFC, desenhos e quantitativo só leem), `memoria/tipos.ts` (cada linha é uma expressão que desenha o TeX e é
   conferida contra a célula), `modelo/entradasDoModelo.ts` (entradas que só o modelo usa: comprimento, juntas, drenagem).
@@ -669,7 +675,8 @@ e dizer ao Jose o que mudou e por quê.
   (4. não ditado.)
   6. FEITO 14/10 — drenagem no 3D (barbacãs de volta, dreno de fundo, areia e brita).
   5. FEITO 14/10 — modo prancha (PDF e DXF).
-  ESTADO DO ITEM 3: FEITO 21/10 (branch `inercia-em-pedacos`, refeita do main; a `formula-els-painel` velha fica
+  ESTADO DO ITEM 3: FEITO 21/10 e JUNTADO ao main em 22/10 (PR #4, branch `inercia-em-pedacos`, refeita do main; o
+  Jose testou no notebook antes; a `formula-els-painel` velha fica
   só de referência). As figuras já eram de 14/10 (95bb020). A fórmula longa do estádio II saiu em pedaços nas três
   seções I/T — balanço (aba ELS), contraforte (seção 7) e painel (seção 12, as duas direções) —, PLANILHA PRIMEIRO:
   B e C da equação do 2º grau b·x²/2 + B·x − C = 0 em linha própria (`lnB_*`, `lnC_*`; com a LN na alma `lnBw_*` =
@@ -685,7 +692,8 @@ e dizer ao Jose o que mudou e por quê.
   hora, conferido no código, e o caderno sobe no GitHub (main) junto — a sessão seguinte (outra máquina, nuvem) só
   sabe o que estiver aqui.
 - **Anotado do Jose (12/10, noite — fazer depois, ele avisa quando):**
-  1. FEITO 21/10 (branch `barra-em-u`, PR para o Jose conferir). Barra horizontal do painel (a da canaleta) no
+  1. FEITO 21/10 e JUNTADO ao main em 22/10 (PR #5, branch `barra-em-u`; o Jose testou no notebook antes e decidiu a
+     ancoragem da perna). Barra horizontal do painel (a da canaleta) no
      contraforte: era traspasse + L; virou barra dobrada em U de um contraforte ao outro, vários U em sequência, cada
      barra engastada duas vezes ("é mais fácil dobrar a barra em U do que fazer um traspasse e depois um L"). Como ficou
      (`modulacao/armaduras.ts` barrasEmU; `barras.ts` dobrada, no lugar do emL): em cada fiada de canaleta (as da conta
