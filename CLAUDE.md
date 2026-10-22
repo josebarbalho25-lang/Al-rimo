@@ -669,11 +669,18 @@ e dizer ao Jose o que mudou e por quê.
   (4. não ditado.)
   6. FEITO 14/10 — drenagem no 3D (barbacãs de volta, dreno de fundo, areia e brita).
   5. FEITO 14/10 — modo prancha (PDF e DXF).
-  ESTADO DO ITEM 3 (conferido no código em 21/10): a parte das FIGURAS está feita (14/10, 95bb020: desenho no alto,
-  figura no pé, o meio livre). FALTA quebrar a fórmula longa do estádio II (x_II, I_II) em pedaços, uma linha por
-  termo com o valor, e a linha grande só somando. Do começo de 12/10 na branch `formula-els-painel` (B e C da LN em
-  linha própria em `tools/contrafortes.py`, 21 linhas) a branch está 60+ commits atrás: REFAZER a partir do main, não
-  juntar a branch velha. Jose (21/10): fica para depois do navegador da Gráfica (etapa 3 da moldura).
+  ESTADO DO ITEM 3: FEITO 21/10 (branch `inercia-em-pedacos`, refeita do main; a `formula-els-painel` velha fica
+  só de referência). As figuras já eram de 14/10 (95bb020). A fórmula longa do estádio II saiu em pedaços nas três
+  seções I/T — balanço (aba ELS), contraforte (seção 7) e painel (seção 12, as duas direções) —, PLANILHA PRIMEIRO:
+  B e C da equação do 2º grau b·x²/2 + B·x − C = 0 em linha própria (`lnB_*`, `lnC_*`; com a LN na alma `lnBw_*` =
+  (bm − bw)·hf + B e `lnCw_*` = (bm − bw)·hf²/2 + C), x = (−B + √(B² + 2·b·C))/b; III = alvenaria comprimida
+  (`IIc_*` = b·x³/3) + abas da mesa (`IIf_*`, zero com a LN na mesa) + barras (`IIs_els`, `IIs_cf`, `IIs1_*`,
+  `IIs2_ev`), e a linha do III só soma. Painel vertical: as duas hipóteses da 2ª barra em pedaços (1 = tracionada,
+  n: `lnB1_ev`, `xr1_ev`/`xt1_ev`…; 2 = comprimida, n − 1: `lnB2_ev`…); horizontal: hipótese única (`x1_eh` e
+  `n2_eh` SAÍRAM — não há 2ª barra). Valores iguais: os 544 nomes de antes batem a 1e-9 no Excel (aula 12.2, aula
+  12.3, sorteio06), `testar.py` TUDO OK, golden refeito (65 cenários). Memória: um termo por linha (B, C, x, I_alv,
+  I_abas, I_s, I_II = soma); seção cheia (bw = bm) mostra a forma da mesa (na alma dá o mesmo número, abas de
+  largura zero); faixa sem barra (x "—") não mostra B e C.
 - **REGRA DO CADERNO (Jose, 21/10):** todo pendente que muda de estado (feito, pela metade, adiado) se anota AQUI na
   hora, conferido no código, e o caderno sobe no GitHub (main) junto — a sessão seguinte (outra máquina, nuvem) só
   sabe o que estiver aqui.

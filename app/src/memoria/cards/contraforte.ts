@@ -119,8 +119,15 @@ export const SIMBOLOS_CONTRAFORTE: Readonly<Record<string, string>> = {
   'M_{r,cf}': 'momento de fissuração do contraforte',
   'M_{a,cf}': 'momento de serviço na base do contraforte',
   'b_{II,cf}': 'largura comprimida no estádio II',
+  'B_{II,cf}': 'coeficiente B da linha neutra no estádio II: n·As',
+  'C_{II,cf}': 'coeficiente C da linha neutra no estádio II: n·As·d',
+  'B_{IIw,cf}': 'coeficiente B da linha neutra com a LN na alma da seção T',
+  'C_{IIw,cf}': 'coeficiente C da linha neutra com a LN na alma da seção T',
   'x_{II,cf}': 'linha neutra no estádio II (na mesa ou na seção retangular)',
   'x_{IIw,cf}': 'linha neutra no estádio II, na alma da seção T',
+  'I_{alv,cf}': 'inércia da alvenaria comprimida (b × x) no estádio II',
+  'I_{abas,cf}': 'inércia das abas da mesa comprimida (LN na alma) no estádio II',
+  'I_{s,cf}': 'inércia da armadura tracionada homogeneizada (n·As) no estádio II',
   'I_{II,cf}': 'momento de inércia da seção fissurada (estádio II)',
   'I_{eq,cf}': 'momento de inércia equivalente (Branson)',
   'h_{eq,cf}': 'altura do retângulo de largura b com a inércia Ieq do contraforte',
@@ -728,23 +735,31 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
     ps('Ma_cf', 'M_{a,cf}', mul(psi, MkCm), { casas: 1, unidade: 'kN·cm' }),
   ], NBR('9.2.3'));
 
-  // estádio II: armadura comprimida (construtivas) desprezada
+  // estádio II: armadura comprimida (construtivas) desprezada. LN e III em pedaços, um termo por linha como a planilha:
+  // b·x²/2 + B·x − C = 0 com B e C publicados; III = alvenaria comprimida + abas da mesa + barra
   const xII = naMesa ? xr : xt;
+  const B = m.g('lnB_cf', 'B_{II,cf}', 2, 'cm²');
+  const C = m.g('lnC_cf', 'C_{II,cf}', 2, 'cm³');
+  const Bw = m.g('lnBw_cf', 'B_{IIw,cf}', 2, 'cm²');
+  const Cw = m.g('lnCw_cf', 'C_{IIw,cf}', 2, 'cm³');
+  const Ialv = m.g('IIc_cf', 'I_{alv,cf}', 0, 'cm⁴');
+  const Iabas = m.g('IIf_cf', 'I_{abas,cf}', 0, 'cm⁴');
+  const Is = m.g('IIs_cf', 'I_{s,cf}', 0, 'cm⁴');
   const fissurada = secao('Seção fissurada (estádio II)', [
     ps('b2_cf', 'b_{II,cf}', T ? bm : bw, { casas: 1, unidade: 'cm' }),
-    ps('x2r_cf', 'x_{II,cf}', div(soma(neg(nAs), raiz(soma(pot(nAs, 2), mul(dois, b2, ncf, Asef, d)))), b2), { casas: 2, unidade: 'cm' }),
-    !naMesa && ps('x2t_cf', 'x_{IIw,cf}', div(soma(
-      neg(soma(mul(abas, hf), nAs)),
-      raiz(soma(pot(soma(mul(abas, hf), nAs), 2), mul(dois, bw, soma(div(mul(abas, pot(hf, 2)), dois), mul(nAs, d))))),
-    ), bw), { casas: 2, unidade: 'cm' }),
-    ps('III_cf', 'I_{II,cf}', naMesa
-      ? soma(div(mul(b2, pot(xII, 3)), cte(3, 0)), mul(nAs, pot(sub(d, xII), 2)))
-      : soma(
-          div(mul(bw, pot(xII, 3)), cte(3, 0)),
-          div(mul(abas, pot(hf, 3)), cte(12, 0)),
-          mul(abas, hf, pot(sub(xII, div(hf, dois)), 2)),
-          mul(nAs, pot(sub(d, xII), 2)),
-        ), { casas: 0, unidade: 'cm⁴' }),
+    ps('lnB_cf', 'B_{II,cf}', nAs, { casas: 2, unidade: 'cm²' }),
+    ps('lnC_cf', 'C_{II,cf}', mul(nAs, d), { casas: 2, unidade: 'cm³' }),
+    ps('x2r_cf', 'x_{II,cf}', div(soma(neg(B), raiz(soma(pot(B, 2), mul(dois, b2, C)))), b2), { casas: 2, unidade: 'cm' }),
+    !naMesa && ps('lnBw_cf', 'B_{IIw,cf}', soma(mul(abas, hf), B), { casas: 2, unidade: 'cm²' }),
+    !naMesa && ps('lnCw_cf', 'C_{IIw,cf}', soma(div(mul(abas, pot(hf, 2)), dois), C), { casas: 2, unidade: 'cm³' }),
+    !naMesa && ps('x2t_cf', 'x_{IIw,cf}', div(soma(neg(Bw), raiz(soma(pot(Bw, 2), mul(dois, bw, Cw)))), bw), { casas: 2, unidade: 'cm' }),
+    ps('IIc_cf', 'I_{alv,cf}', div(mul(naMesa ? b2 : bw, pot(xII, 3)), cte(3, 0)), { casas: 0, unidade: 'cm⁴' }),
+    !naMesa && ps('IIf_cf', 'I_{abas,cf}', soma(
+      div(mul(abas, pot(hf, 3)), cte(12, 0)),
+      mul(abas, hf, pot(sub(xII, div(hf, dois)), 2)),
+    ), { casas: 0, unidade: 'cm⁴' }),
+    ps('IIs_cf', 'I_{s,cf}', mul(nAs, pot(sub(d, xII), 2)), { casas: 0, unidade: 'cm⁴' }),
+    ps('III_cf', 'I_{II,cf}', naMesa ? soma(Ialv, Is) : soma(Ialv, Iabas, Is), { casas: 0, unidade: 'cm⁴' }),
   ], NBR('9.2.3'));
 
   const razao3 = pot(div(Mr, Ma), 3);

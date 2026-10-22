@@ -72,7 +72,14 @@ export const SIMBOLOS_PAINELELS: Readonly<Record<string, string>> = {
   '\\sigma_{sg}': 'compressão 0,9·Psg/Ae somada no momento de fissuração',
   I_m: 'momento de inércia da seção bruta (estádio I)',
   M_r: 'momento de fissuração',
+  'B_{II}': 'coeficiente B da linha neutra no estádio II: n·As',
+  'C_{II}': 'coeficiente C da linha neutra no estádio II: n·As·d',
+  'B_{IIw}': 'coeficiente B da linha neutra com a LN na alma da seção I',
+  'C_{IIw}': 'coeficiente C da linha neutra com a LN na alma da seção I',
   'x_{II}': 'profundidade da linha neutra no estádio II',
+  'I_{alv}': 'inércia da alvenaria comprimida (b × x) no estádio II',
+  'I_{abas}': 'inércia das abas da mesa comprimida (LN na alma) no estádio II',
+  'I_{s1}': 'inércia da barra tracionada homogeneizada (n·As) no estádio II',
   'I_{II}': 'momento de inércia da seção fissurada (estádio II)',
   'I_{eq}': 'momento de inércia equivalente (Branson)',
   'h_{eq}': 'altura do retângulo de largura bm com a inércia Ieq',
@@ -458,23 +465,21 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
   const x = m.g('xII', 'x_{II}', 2, 'cm');
   const III = m.g('III_', 'I_{II}', 0, 'cm⁴');
   const Ieq = m.g('Ieq_', 'I_{eq}', 0, 'cm⁴');
-  const nAs = mul(n, As);
-  // LN na mesa: bm·x²/2 = n·As·(d − x); na alma: bw·x²/2 + (bm − bw)·hf·(x − hf/2) = n·As·(d − x)
-  const naMesa = (m.num('x_rect') ?? Infinity) <= (m.num('hf_bl') ?? -Infinity);
-  const aMesa = soma(mul(sub(bm, bw), hf), nAs);
-  const bMesa = soma(div(mul(sub(bm, bw), pot(hf, 2)), cte(2, 0)), mul(n, As, d));
+  // LN e III em pedaços (Jose, 14/10: a conta inteira numa linha só ficava grande demais), um termo por linha como a
+  // planilha: b·x²/2 + B·x − C = 0 com B e C publicados; III = alvenaria comprimida + abas da mesa + barra.
+  // LN na mesa: B = n·As, C = n·As·d; na alma: Bw = (bm − bw)·hf + B, Cw = (bm − bw)·hf²/2 + C
+  // seção cheia (bw = bm): na alma dá o mesmo número da mesa — a linha fica a da mesa, sem abas de largura zero
+  const naMesa = !alma || (m.num('x_rect') ?? Infinity) <= (m.num('hf_bl') ?? -Infinity);
+  const B = m.g('lnB_els', 'B_{II}', 2, 'cm²');
+  const C = m.g('lnC_els', 'C_{II}', 2, 'cm³');
+  const Bw = m.g('lnBw_els', 'B_{IIw}', 2, 'cm²');
+  const Cw = m.g('lnCw_els', 'C_{IIw}', 2, 'cm³');
   const xExpr = naMesa
-    ? div(soma(neg(nAs), raiz(soma(pot(nAs, 2), mul(cte(2, 0), bm, n, As, d)))), bm)
-    : div(soma(neg(aMesa), raiz(soma(pot(aMesa, 2), mul(cte(2, 0), bw, bMesa)))), bw);
-  const aco = mul(n, As, pot(sub(d, x), 2));
-  const IIIExpr = naMesa
-    ? soma(div(mul(bm, pot(x, 3)), cte(3, 0)), aco)
-    : soma(
-      div(mul(bw, pot(x, 3)), cte(3, 0)),
-      div(mul(sub(bm, bw), pot(hf, 3)), cte(12, 0)),
-      mul(sub(bm, bw), hf, pot(sub(x, div(hf, cte(2, 0))), 2)),
-      aco,
-    );
+    ? div(soma(neg(B), raiz(soma(pot(B, 2), mul(cte(2, 0), bm, C)))), bm)
+    : div(soma(neg(Bw), raiz(soma(pot(Bw, 2), mul(cte(2, 0), bw, Cw)))), bw);
+  const Ialv = m.g('IIc_els', 'I_{alv}', 0, 'cm⁴');
+  const Iabas = m.g('IIf_els', 'I_{abas}', 0, 'cm⁴');
+  const Is1 = m.g('IIs_els', 'I_{s1}', 0, 'cm⁴');
   const razao3 = pot(div(Mr, Ma), 3);
   const branson = soma(mul(razao3, Im), mul(sub(cte(1, 0), razao3), III));
   const inercia = secao(fissurada ? 'Inércia equivalente · fissurada (Ma > Mr)' : 'Inércia equivalente · não fissurada (Ma ≤ Mr)', [
@@ -483,8 +488,26 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
       casas: 0, unidade: 'MPa', ref: NBR('Tab. 1'),
     }),
     fissurada && tem('n_els') && m.passo('n_els', 'n', div(cte(210000, 0), Em), { casas: 2 }),
+    fissurada && tem('lnB_els') && m.passo('lnB_els', 'B_{II}', mul(n, As), { casas: 2, unidade: 'cm²' }),
+    fissurada && tem('lnC_els') && m.passo('lnC_els', 'C_{II}', mul(n, As, d), { casas: 2, unidade: 'cm³' }),
+    fissurada && !naMesa && tem('lnBw_els') && m.passo('lnBw_els', 'B_{IIw}', soma(mul(sub(bm, bw), hf), B), {
+      casas: 2, unidade: 'cm²',
+    }),
+    fissurada && !naMesa && tem('lnCw_els') && m.passo('lnCw_els', 'C_{IIw}', soma(div(mul(sub(bm, bw), pot(hf, 2)), cte(2, 0)), C), {
+      casas: 2, unidade: 'cm³',
+    }),
     fissurada && tem('xII') && m.passo('xII', 'x_{II}', xExpr, { casas: 2, unidade: 'cm', ref: NBR_ELS }),
-    fissurada && tem('III_') && m.passo('III_', 'I_{II}', IIIExpr, { casas: 0, unidade: 'cm⁴', ref: NBR_ELS }),
+    fissurada && tem('IIc_els') && m.passo('IIc_els', 'I_{alv}', div(mul(naMesa ? bm : bw, pot(x, 3)), cte(3, 0)), {
+      casas: 0, unidade: 'cm⁴',
+    }),
+    fissurada && !naMesa && tem('IIf_els') && m.passo('IIf_els', 'I_{abas}', soma(
+      div(mul(sub(bm, bw), pot(hf, 3)), cte(12, 0)),
+      mul(sub(bm, bw), hf, pot(sub(x, div(hf, cte(2, 0))), 2)),
+    ), { casas: 0, unidade: 'cm⁴' }),
+    fissurada && tem('IIs_els') && m.passo('IIs_els', 'I_{s1}', mul(n, As, pot(sub(d, x), 2)), { casas: 0, unidade: 'cm⁴' }),
+    fissurada && tem('III_') && m.passo('III_', 'I_{II}', naMesa ? soma(Ialv, Is1) : soma(Ialv, Iabas, Is1), {
+      casas: 0, unidade: 'cm⁴', ref: NBR_ELS,
+    }),
     tem('Ieq_') && m.passo('Ieq_', 'I_{eq}', fissurada ? [branson, min(Im, branson)] : Im, { casas: 0, unidade: 'cm⁴' }),
     tem('heq_') && m.passo('heq_', 'h_{eq}', cbrt(div(mul(cte(12, 0), Ieq), bm)), { casas: 2, unidade: 'cm', ref: CRITERIO }),
     fissurada && tem('sig_s_els') && m.passo('sig_s_els', '\\sigma_{s,ser}', div(mul(n, Ma, sub(d, x)), III), {
