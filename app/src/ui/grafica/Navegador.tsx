@@ -79,6 +79,9 @@ export function PainelDaGrafica() {
           <Chevron />
           <span>Navegador</span>
         </button>
+        {/* recolhido, as Propriedades continuam com lugar (escondido): sem ele o desenho as punha por cima da vista
+            (Jose, 23/10: "quer ver propriedade abre a aba de novo") */}
+        <div hidden ref={(el) => publicar('propriedades', el)} />
       </div>
     );
   }

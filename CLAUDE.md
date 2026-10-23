@@ -47,6 +47,9 @@ planilha/               a planilha entregue (base, aula 12.2)
 ```
 
 Comandos: `python tools/gerar.py` · `python tools/testar.py` (precisa do LibreOffice) · `python tools/varredura.py 20`.
+App: `ABRIR.bat` = modo de teste (5180, atualiza sozinho; o StrictMode faz toda conta de tela 2×); `ABRIR_RAPIDO.bat` =
+produção (5185, monta e serve; o que o cliente sente). **Lentidão se mede no de produção** (23/10, soltar cota no muro
+de 14,8 m: ~115 ms no teste × ~25 ms na produção; o número de abas abertas não influi — só a da frente desenha).
 Figuras: `cd figs && python fig15_sapata.py && python render.py fig15_sapata.svg && python make_pdf.py`.
 **Depois de mudar o gerador: rodar `testar.py`.** Se um valor mudar de propósito, atualizar `dados/referencia_regressao.json`
 e dizer ao Jose o que mudou e por quê.
