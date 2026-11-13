@@ -790,10 +790,13 @@ e dizer ao Jose o que mudou e por quê.
   que só topo; topo + meia ≈ 2×. Em aberto: combinação empuxo × vento (ψ0), coeficiente do muro solto.
   Pilarete: ESCOLHA concreto moldado OU bloco grauteado (Jose, 13/11). Casos de conferência = os dois clientes dele
   (ele manda laudos de sondagem e alturas): Rodrigo — terreno natural, compactado depois com compactador manual;
-  Joames — aterro de ARGILA compactada, não é o terreno natural.
+  Joames — aterro de ARGILA compactada, não é o terreno natural. Muro de contrafortes: o pilarete COINCIDE com o
+  contraforte — um por contraforte OU um a cada 2 contrafortes (escolha).
 - **VIRADA DE 90° (Jose, 13/11: "é o que mais é feito; não adianta calcular o muro só num sentido"):** muro em L com
   a quina. A quina dá rigidez (a perna de retorno apoia a outra, como um contraforte), mas traz empuxo nos dois
-  sentidos — "uma verificação a mais". A FAZER, junto com o muro de cima.
+  sentidos — "uma verificação a mais". OS DOIS CASOS (um cliente tem o L para dentro, o outro para fora): aterro
+  DENTRO do L (as pernas abrem, a quina trabalha à tração — armadura horizontal virando a quina e ancorada) e aterro
+  FORA do L (as pernas se empurram, quina comprimida). A FAZER, junto com o muro de cima.
 - **DENTE SEM ARMADURA (Jose, 15/10: "nosso dente não tá armando, é muito detalhe, só anota, depois resolvemos"):** o
   dente da sapata sai no 3D, no corte e na armação sem barra nenhuma. Resolver depois, quando ele pedir.
 - **Revisão adversarial de 15/10 (3 revisores, 16 achados) — CORRIGIDA em 16/10** (`pranchas/__testes__/revisao16.test.ts`
