@@ -556,6 +556,9 @@ const comMuroDeCima = (l: LerValor) => l('mc_on') === 'Sim';
 const comVento = (l: LerValor) => l('vento_on') === 'Sim';
 
 const ATIVA_SE: Record<string, (ler: LerValor, conta?: LerConta) => boolean> = {
+  // Balanço em bloco 14 não leva muro de cima (Jose, 13/11: o pilarete não engasta numa parede de 14). O "Sim" fica
+  // travado; se já estava ligado (o bloco trocado depois), o campo continua aberto para desligar e a conta reprova.
+  mc_on: (l) => l('mc_on') === 'Sim' || l('Tipo_muro') === 'Contrafortes' || l('t_bloco') !== 14,
   alfa_v: (l) => l('Trav_lat') === 'Sim',
   alfa_h: (l) => l('Trav_lat') === 'Sim',
   l_trav: (l) => l('Trav_lat') === 'Sim',
@@ -658,6 +661,8 @@ export const VALOR_AUTO: Readonly<Record<string, string>> = {
   traspasse_dir: 'l0t_v',
   // muro de cima e vento (13/11): vazio = o coeficiente da NBR 6123 e o ftk da tabela pela argamassa
   Cf_dir: 'Cf_v',
+  b_pil: 'b_pila',
+  hs_pil: 'hs_pila',
   ftkn_mc_dir: 'ftkn_mc',
   ftkp_mc_dir: 'ftkp_mc',
 };

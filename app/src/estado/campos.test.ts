@@ -456,3 +456,16 @@ describe('o "l" da Geometria espelha o muro desenhado (Jose, 12/10)', () => {
     expect(campoEspelhado('H_muro', ler({}))).toBeNull();
   });
 });
+describe('muro de cima no balanço de bloco 14 (Jose, 13/11: "a gente já barra na entrada")', () => {
+  const ler = (v: Record<string, Valor>) => (n: string) => v[n] ?? null;
+  it('o "Sim" fica travado no balanço de 14', () => {
+    expect(entradaAtiva('mc_on', ler({ Tipo_muro: 'Balanço', t_bloco: 14, mc_on: 'Não' }))).toBe(false);
+  });
+  it('já ligado (o bloco trocado depois): fica aberto para desligar', () => {
+    expect(entradaAtiva('mc_on', ler({ Tipo_muro: 'Balanço', t_bloco: 14, mc_on: 'Sim' }))).toBe(true);
+  });
+  it('bloco 19 ou contrafortes: livre', () => {
+    expect(entradaAtiva('mc_on', ler({ Tipo_muro: 'Balanço', t_bloco: 19, mc_on: 'Não' }))).toBe(true);
+    expect(entradaAtiva('mc_on', ler({ Tipo_muro: 'Contrafortes', t_bloco: 14, mc_on: 'Não' }))).toBe(true);
+  });
+});

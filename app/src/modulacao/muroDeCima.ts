@@ -25,6 +25,7 @@ import type { Valor } from '@/motor/tipos';
 import type { Geometria, Peca, Vec2, Vec3 } from '@/modelo/tipos';
 import type { Ctx } from './contexto';
 import type { TrechoModulado } from './modular';
+import type { MapaDeCavidades } from './cavidades';
 import { H_FIADA, JUNTA } from './catalogo';
 import { arred, prisma, retangulo } from './perfis';
 import { corrida, distribuir, estribo, reta } from './barras';
@@ -98,8 +99,11 @@ export function lerMuroDeCima(ctx: Ctx, ler: (n: string) => Valor | undefined): 
     concreto: comoTexto(ler('pil_tipo')).startsWith('Conc'),
     s,
     nCf: Math.max(1, Math.round(num(ler('pil_ncf'), 1))),
-    b: num(ler('b_pil'), 14) * 10, hs: num(ler('hs_pil'), 25) * 10,
-    phi: num(ler('phi_pil'), 10), nPorFace: Math.max(1, Math.round(num(ler('n_pil'), 2))), c: num(ler('c_pil'), 4) * 10,
+    // a seção adotada pela conta (em branco = a que o tipo de muro pede: balanço 20 × t, contrafortes t × 25)
+    b: num(ler('b_pila'), 20) * 10, hs: num(ler('hs_pila'), 25) * 10,
+    phi: num(ler('phi_pil'), 10), nPorFace: Math.max(1, Math.round(num(ler('n_pil'), 2))),
+    // cobrimento AO EIXO da conta (cobrimento + estribo + Ø/2; no balanço, ≥ a parede do bloco + Ø/2)
+    c: num(ler('ce_pil'), 4) * 10,
     l0t: (l0tCm ?? 40) * 10,
     phiEst: num(ler('phi_est_pil'), 5), sEst: sEstCm === null || !(sEstCm > 0) ? null : sEstCm * 10,
     phiCinta: num(ler('phi_cin_mc'), 8),
@@ -119,13 +123,131 @@ export function pilaretesDoTrecho(tr: TrechoModulado, contrafortes: boolean, mc:
   return distribuir(a, b, mc.s).map(arred);
 }
 
+/**
+ * Eixo do pilarete em Y. Em cima do contraforte (Jose, 13/11: "falta o transpasse da armadura pros pilaretes") ele fica
+ * com a face rente à face aparente do muro e avança sobre a haste, que é toda grauteada. No balanço, centrado no muro:
+ * as barras descem nos furos do bloco.
+ */
+function yDoPilarete(ctx: Ctx, mc: MuroDeCimaLido): number {
+  const tA = ctx.mod.cat.t;
+  return ctx.p.contrafortes ? (ctx.p.enterrado ? mc.hs / 2 : tA - mc.hs / 2) : tA / 2;
+}
+
+/**
+ * As barras longitudinais de um pilarete: [x, y, face] — nPorFace em cada face, a c das faces. `meio` = distância do
+ * eixo do pilarete à barra da ponta, ao longo do muro (padrão b/2 − c).
+ */
+function barrasDoPilarete(mc: MuroDeCimaLido, xc: number, yPil: number, meio = mc.b / 2 - mc.c): [number, number, 'a' | 's'][] {
+  const xsB = mc.nPorFace === 1 || meio <= 0 ? [xc] : distribuir(xc - meio, xc + meio, (2 * meio) / (mc.nPorFace - 1));
+  const out: [number, number, 'a' | 's'][] = [];
+  for (const [lado, y] of [['a', yPil - mc.hs / 2 + mc.c], ['s', yPil + mc.hs / 2 - mc.c]] as const) for (const x of xsB) out.push([x, y, lado]);
+  return out;
+}
+
+/**
+ * Eixo dos pilaretes do trecho já presos ao arrimo. Com contrafortes, em cima deles (pilaretesDoTrecho). No BALANÇO
+ * (Jose, 13/11: "precisam engastar e ter armadura contínua com o muro, adentrando no graute; a posição deles é
+ * limitada de acordo com os blocos"): cada pilarete vai para a posição mais perto da distribuída onde TODAS as barras
+ * dele descem o traspasse inteiro dentro dos furos do arrimo, fiada a fiada (o furo da fiada par e o da ímpar não são
+ * o mesmo: vale o trecho comum). Sem posição que caiba, fica a distribuída e o aviso PILARETE_LIGACAO.
+ */
+export function posicoesDosPilaretes(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaLido, mapa: MapaDeCavidades): { xs: number[]; meio?: number } {
+  const xs = pilaretesDoTrecho(tr, ctx.p.contrafortes, mc);
+  // na haste do contraforte as barras de uma face ficam dentro do miolo grauteado (entre as paredes do bloco): com o
+  // cobrimento de pilar (2,5 cm) e o pilarete da largura do contraforte, a de bloco 19 passaria 5 mm da parede
+  if (ctx.p.contrafortes) return { xs, meio: Math.max(0, Math.min(mc.b / 2 - mc.c, ctx.mod.cat.t / 2 - ctx.mod.cat.hf - mc.phi / 2)) };
+  const t = ctx.mod.cat.t;
+  const Z0 = ctx.mod.H_des;
+  const zPe = Z0 - mc.l0t;
+  const colunas = new Set<number>();
+  for (const i of mapa.fiadasEntre(zPe, Z0)) {
+    for (const c of mapa.fiada(i)) if (c.tipo === 'furo' && Math.abs(c.cy - t / 2) < 1e-6) for (let dx = -25; dx <= 25; dx += 5) colunas.add(arred(c.cx + dx));
+  }
+  const cabe = (xc: number, meio: number): boolean => xc - mc.b / 2 >= tr.x0 - 1e-6 && xc + mc.b / 2 <= tr.x1 + 1e-6
+    && barrasDoPilarete(mc, xc, t / 2, meio).every(([x, y]) => mapa.folga(x, y, mc.phi / 2, zPe, Z0) >= -1e-6);
+  // As barras de uma face ao longo do muro: a b/2 − c do eixo; se não cabem no furo (bloco 19: o trecho comum aos furos
+  // das fiadas par e ímpar tem 13 cm, e 20 de frente pede 12 a 13 entre eixos), elas chegam mais para o meio de 5 em
+  // 5 mm, até ficarem a φ + 2 cm uma da outra (o graute passa entre elas). A conta não muda: ela não usa essa distância.
+  const meioMax = mc.b / 2 - mc.c;
+  const meioMin = mc.nPorFace === 1 ? meioMax : Math.min(meioMax, ((mc.phi + 20) * (mc.nPorFace - 1)) / 2);
+  // cada pilarete na coluna boa mais perto da posição distribuída, sem encostar no de antes e a menos de meio vão dela
+  const colocar = (boas: number[]): number[] => {
+    const out: number[] = [];
+    for (const x of xs) {
+      const livres = boas.filter((q) => (!out.length || q - out[out.length - 1] >= mc.b + 10) && Math.abs(q - x) <= mc.s / 2);
+      if (livres.length) out.push(livres.reduce((m, q) => (Math.abs(q - x) < Math.abs(m - x) - 1e-9 ? q : m)));
+    }
+    return out;
+  };
+  // a maior abertura em que TODOS os pilaretes acham lugar. Faltou lugar para algum: ficam todos na posição distribuída
+  // (com o aviso da ligação) — sumir com um pilarete deixaria o painel maior que o da conta
+  for (let m = meioMax; m >= meioMin - 1e-6; m -= 5) {
+    const out = colocar([...colunas].filter((xc) => cabe(xc, m)).sort((a, b) => a - b));
+    if (out.length === xs.length) return { xs: out, meio: m };
+  }
+  return { xs };
+}
+
+/**
+ * As barras dos pilaretes, montadas ANTES do graute e do furo das canaletas do arrimo: o furo onde elas descem sai
+ * grauteado (gerar.ts, graute) e o fundo da canaleta do topo sai furado onde elas passam (canaletas.ts) — como as
+ * barras do próprio arrimo.
+ */
+export function barrasDosPilaretes(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaLido, xs: number[], mapa: MapaDeCavidades, meio?: number): void {
+  const { mod } = ctx;
+  const T = `T${tr.indice}`;
+  const Z0 = mod.H_des;
+  const tA = mod.cat.t;
+  const yPil = yDoPilarete(ctx, mc);
+  const zTopo = Z0 + mc.H - 30;
+  const zPe = Z0 - mc.l0t;
+  let foraDoArrimo = false;
+  xs.forEach((xc, k) => {
+    const id = `${T}.MC.P${String(k + 1).padStart(2, '0')}`;
+    const barras = barrasDoPilarete(mc, xc, yPil, meio);
+    // a barra só desce no arrimo se cai dentro dele; fora disso nasce no topo do arrimo e a ligação fica por definir
+    // (aviso) — não se desenha barra no ar nem enterrada no aterro. Com contrafortes, dentro da haste (toda
+    // grauteada, na largura dele); no balanço, dentro dos furos do bloco o traspasse inteiro (fiada a fiada)
+    const hf = mod.cat.hf;
+    const naHaste = (x: number, y: number) => Math.abs(x - xc) + mc.phi / 2 <= tA / 2 - hf
+      && (ctx.p.enterrado ? y - mc.phi / 2 >= hf && y + mc.phi / 2 <= mod.tenr - hf : y - mc.phi / 2 >= tA - mod.tenr + hf && y + mc.phi / 2 <= tA - hf);
+    const dentro = ctx.p.contrafortes
+      ? barras.every(([x, y]) => naHaste(x, y))
+      : barras.every(([x, y]) => mapa.folga(x, y, mc.phi / 2, zPe, Z0) >= -1e-6);
+    if (!dentro) foraDoArrimo = true;
+    const n = { a: 0, s: 0 };
+    for (const [x, y, lado] of barras) {
+      ctx.barras.push(reta(`${id}.L${lado}${++n[lado]}`, 'PIL_LONG', mc.phi, [arred(x), arred(y), dentro ? zPe : Z0], [arred(x), arred(y), arred(zTopo)], tr.indice));
+    }
+    if (!mc.concreto) return;
+    // estribo no lado de fora das longitudinais: eixo a c − φl/2 − φt/2 da face
+    const ce = mc.c - mc.phi / 2 - mc.phiEst / 2;
+    // NBR 6118 18.4.3: o menor entre 20 cm, a MENOR dimensão da seção e 12φ da longitudinal
+    const sMax = Math.min(200, mc.b, mc.hs, 12 * mc.phi);
+    const s = mc.sEst ?? Math.floor(sMax / 10) * 10;
+    for (const [j, z] of distribuir(Z0 + 50, Z0 + mc.H - 50, s).entries()) {
+      const zr = arred(z);
+      const cantos: [Vec3, Vec3, Vec3, Vec3] = [
+        [arred(xc - mc.b / 2 + ce), arred(yPil - mc.hs / 2 + ce), zr],
+        [arred(xc + mc.b / 2 - ce), arred(yPil - mc.hs / 2 + ce), zr],
+        [arred(xc + mc.b / 2 - ce), arred(yPil + mc.hs / 2 - ce), zr],
+        [arred(xc - mc.b / 2 + ce), arred(yPil + mc.hs / 2 - ce), zr],
+      ];
+      ctx.barras.push(estribo(`${id}.E${String(j + 1).padStart(2, '0')}`, 'PIL_ESTRIBO', mc.phiEst, cantos, tr.indice));
+    }
+  });
+  if (foraDoArrimo) {
+    ctx.avisos.push({ codigo: 'PILARETE_LIGACAO', texto: 'Barras do pilarete fora da parede do arrimo: a ligação do pilarete com o arrimo fica por definir', ids: xs.map((_, k) => `${T}.MC.P${String(k + 1).padStart(2, '0')}`) });
+  }
+}
+
 function geo(ctx: Ctx, chave: string, faz: () => Geometria): string {
   if (!ctx.geos[chave]) ctx.geos[chave] = faz();
   return chave;
 }
 
 /** Monta o muro de cima do trecho (peças e barras). */
-export function muroDeCima(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaLido, lbphiC: number | null, a0t: number | null): void {
+export function muroDeCima(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaLido, xs: number[], lbphiC: number | null, a0t: number | null): void {
   const { mod } = ctx;
   const T = `T${tr.indice}`;
   const Z0 = mod.H_des;
@@ -133,13 +255,7 @@ export function muroDeCima(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaLido, lbp
   const { perfil, nome } = mc.tijolo;
   const tm = perfil.t;
   const y0 = arred(yEixo - tm / 2);
-  const xs = pilaretesDoTrecho(tr, ctx.p.contrafortes, mc);
-  // Eixo do pilarete em Y. Em cima do contraforte (Jose, 13/11: "falta o transpasse da armadura pros pilaretes") ele
-  // fica com a face rente à face aparente do muro e avança sobre a haste do contraforte, que é toda grauteada — as
-  // barras descem o traspasse dentro dela. No balanço, centrado no muro (a posição presa aos furos do bloco é a
-  // próxima tarefa, anotada no caderno).
-  const tA = mod.cat.t;
-  const yPil = ctx.p.contrafortes ? (ctx.p.enterrado ? mc.hs / 2 : tA - mc.hs / 2) : yEixo;
+  const yPil = yDoPilarete(ctx, mc);
 
   // ── pilaretes ──
   const gPil = geo(ctx, `pilarete ${mc.concreto ? 'concreto' : 'bloco'} ${mc.b}x${mc.hs} h${mc.H}`, () => {
@@ -204,47 +320,6 @@ export function muroDeCima(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaLido, lbp
         x += Lp + JUNTA;
       });
     }
-  }
-
-  // ── barras do pilarete ──
-  const zTopo = Z0 + mc.H - 30;
-  const zPe = Z0 - mc.l0t;
-  let foraDoArrimo = false;
-  xs.forEach((xc, k) => {
-    const id = `${T}.MC.P${String(k + 1).padStart(2, '0')}`;
-    const xsB = mc.nPorFace === 1 ? [xc] : distribuir(xc - mc.b / 2 + mc.c, xc + mc.b / 2 - mc.c, (mc.b - 2 * mc.c) / (mc.nPorFace - 1));
-    for (const [lado, y] of [['a', yPil - mc.hs / 2 + mc.c], ['s', yPil + mc.hs / 2 - mc.c]] as const) {
-      // a barra só desce no arrimo se cai dentro da parede dele (entre as paredes do bloco); fora disso ela nasce no
-      // topo do arrimo e a ligação fica por definir (aviso) — não se desenha barra no ar nem enterrada no aterro
-      // dentro de quê a barra desce: com contrafortes, na haste do contraforte (toda grauteada, da face aparente à ponta,
-      // na largura dele); no balanço, entre as paredes do bloco do arrimo
-      const hf = mod.cat.hf;
-      const naHaste = (x: number) => Math.abs(x - xc) + mc.phi / 2 <= tA / 2 - hf
-        && (ctx.p.enterrado ? y - mc.phi / 2 >= hf && y + mc.phi / 2 <= mod.tenr - hf : y - mc.phi / 2 >= tA - mod.tenr + hf && y + mc.phi / 2 <= tA - hf);
-      const dentro = ctx.p.contrafortes ? xsB.every(naHaste) : y - mc.phi / 2 >= hf && y + mc.phi / 2 <= tA - hf;
-      if (!dentro) foraDoArrimo = true;
-      xsB.forEach((x, j) => ctx.barras.push(reta(`${id}.L${lado}${j + 1}`, 'PIL_LONG', mc.phi, [arred(x), arred(y), dentro ? zPe : Z0], [arred(x), arred(y), arred(zTopo)], tr.indice)));
-    }
-    if (!mc.concreto) return;
-    // estribo no lado de fora das longitudinais: eixo a c − φl/2 − φt/2 da face
-    const ce = mc.c - mc.phi / 2 - mc.phiEst / 2;
-    // NBR 6118 18.4.3: o menor entre 20 cm, a MENOR dimensão da seção e 12φ da longitudinal
-    const sMax = Math.min(200, mc.b, mc.hs, 12 * mc.phi);
-    const s = mc.sEst ?? Math.floor(sMax / 10) * 10;
-    for (const [j, z] of distribuir(Z0 + 50, Z0 + mc.H - 50, s).entries()) {
-      const zr = arred(z);
-      const cantos: [Vec3, Vec3, Vec3, Vec3] = [
-        [arred(xc - mc.b / 2 + ce), arred(yPil - mc.hs / 2 + ce), zr],
-        [arred(xc + mc.b / 2 - ce), arred(yPil - mc.hs / 2 + ce), zr],
-        [arred(xc + mc.b / 2 - ce), arred(yPil + mc.hs / 2 - ce), zr],
-        [arred(xc - mc.b / 2 + ce), arred(yPil + mc.hs / 2 - ce), zr],
-      ];
-      ctx.barras.push(estribo(`${id}.E${String(j + 1).padStart(2, '0')}`, 'PIL_ESTRIBO', mc.phiEst, cantos, tr.indice));
-    }
-  });
-
-  if (foraDoArrimo) {
-    ctx.avisos.push({ codigo: 'PILARETE_LIGACAO', texto: 'Barras do pilarete fora da parede do arrimo: a ligação do pilarete com o arrimo fica por definir', ids: xs.map((_, k) => `${T}.MC.P${String(k + 1).padStart(2, '0')}`) });
   }
 
   // ── barras da cinta: corridas no trecho todo (passam pelos pilaretes) ──

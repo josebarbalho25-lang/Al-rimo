@@ -93,10 +93,14 @@ r += 1
 section(MC, r, '3. O que vai para o arrimo'); r += 1
 Lm('Reboco do muro de cima', '=21*reb_mc_esp/100*IF(reb_mc="Nas duas faces",2,IF(reb_mc="Só na frente",1,0))', 'kN/m²', '21 kN/m³ (NBR 6120, argamassa de cimento e areia) × espessura × faces.', 'res', '0.00', 'g_mcr')
 Lm('Parede do muro de cima com reboco', '=g_mc+g_mcr', 'kN/m²', '', 'res', '0.00', 'g_mct')
+# Seção do pilarete: em branco, a que o tipo de muro pede (Jose, 13/11). Balanço: 20 de frente e a espessura do muro
+# — as barras descem nos furos do bloco do arrimo. Contrafortes: a espessura do contraforte e 25 cm sobre a haste.
+Lm('Pilarete: largura b (ao longo do muro)', '=IF(ISNUMBER(b_pil),b_pil,IF(' + CF + ',t_bloco,20))', 'cm', 'Digitada manda.', 'res', '0.0', 'b_pila')
+Lm('Pilarete: altura da seção h (na direção do vento)', '=IF(ISNUMBER(hs_pil),hs_pil,IF(' + CF + ',25,t_bloco))', 'cm', 'Digitada manda.', 'res', '0.0', 'hs_pila')
 Lm('Peso específico do pilarete', '=IF(LEFT(pil_tipo,4)="Conc",gama_c,gama_cf_us)', 'kN/m³', 'Concreto: γ do concreto (Fundação). Bloco grauteado: o mesmo γ do contraforte (todos os furos cheios).', 'res', '0.00', 'g_pil')
 Lm('Cintas do muro de cima (quantidade)', '=IF(cin_mc="Nenhuma",0,IF(cin_mc="No topo e a meia altura",2,1))', '', '', 'res', '0', 'n_cin')
 # Cinta de 20 cm de altura em concreto, no lugar de uma faixa de parede: só a diferença de peso (dedução).
-Lm('Peso do muro de cima por metro (P)', '=IF(' + ON_M + ',g_mct*h_mc+IF(s_trib>0,(g_pil*b_pil*hs_pil/10000-g_mct*b_pil/100)*h_mc/s_trib,0)+n_cin*(gama_c*t_mc/100-g_mct)*0.2,0)', 'kN/m',
+Lm('Peso do muro de cima por metro (P)', '=IF(' + ON_M + ',g_mct*h_mc+IF(s_trib>0,(g_pil*b_pila*hs_pila/10000-g_mct*b_pila/100)*h_mc/s_trib,0)+n_cin*(gama_c*t_mc/100-g_mct)*0.2,0)', 'kN/m',
    'Parede + pilaretes (a diferença de peso, dividida pelo eixo a eixo) + cintas de 20 cm em concreto (a diferença). Média por metro.', 'key', '0.00', 'P_mc')
 Lm('Vento por metro na base do arrimo: Vk = C·q·h livre', '=p_w*h_liv', 'kN/m', 'Muro de cima + arrimo acima do solo.', 'key', '0.00', 'Vk_w')
 Lm('Vento por metro na base do arrimo: Mk = Vk·(h solo + h livre/2)', '=Vk_w*(H_solo+h_liv/2)', 'kN·m/m', 'Resultante no meio da altura livre.', 'key', '0.00', 'Mk_w')
@@ -154,22 +158,27 @@ Lm('Vk no pilarete = C·q·h·(eixo a eixo)', '=p_w*h_mce*s_trib', 'kN', 'O pila
 Lm('Mk na base do pilarete = Vk·h/2', '=Vk_pil*h_mce/2', 'kN·m', '', 'res', '0.00', 'Mk_pil')
 Lm('Md = γf·Mk', '=gama_f*Mk_pil', 'kN·m', '', 'key', '0.00', 'Md_pil')
 Lm('Vd = γf·Vk', '=gama_f*Vk_pil', 'kN', '', 'key', '0.00', 'Vd_pil')
-Lm('d = h da seção − cobrimento ao eixo', '=hs_pil-c_pil', 'cm', '', 'res', '0.0', 'd_pil')
+# Cobrimento ao eixo: cobrimento + estribo (Ø5, o mínimo da NBR 6118 18.4.3 — dedução da conta; o desenho usa o Ø do
+# estribo escolhido) + Ø/2. A barra continua reta para dentro do bloco do arrimo (furo no balanço, haste do contraforte
+# rente à face): o eixo fica no mínimo a parede do bloco + Ø/2 da face do muro (no balanço o pilarete é centrado).
+Lm('Cobrimento ao eixo das barras', '=MAX(c_pil+IF(LEFT(pil_tipo,4)="Conc",0.5,0)+phi_pil/20,IF(' + CF + ',0,(t_bloco-hs_pila)/2)+hf_bl+phi_pil/20)', 'cm',
+   'c + Ø estribo + Ø/2, e ≥ parede do bloco + Ø/2 (a barra desce dentro do bloco do arrimo; no balanço, o pilarete centrado no muro: + (t − h)/2).', 'res', '0.00', 'ce_pil')
+Lm('d = h da seção − cobrimento ao eixo', '=hs_pila-ce_pil', 'cm', '', 'res', '0.0', 'd_pil')
 Lm('As efetiva (uma face)', '=n_pil*PI()*phi_pil^2/400', 'cm²', '', 'res', '0.00', 'As_pile')
 Lm('fyd', '=fyk_/gama_s', 'MPa', '', 'res', '0.0', 'fyd_pil')
 # concreto moldado: NBR 6118, flexão simples (a força normal do peso próprio é pequena e desprezada — a favor)
 Lm('Concreto: fcd', '=VALUE(MID(fck_pil,2,2))/1.4', 'MPa', '', 'res', '0.00', 'fcd_pil', 'NBR 6118')
-Lm('Concreto: x', '=IFERROR(1.25*d_pil*(1-SQRT(1-Md_pil*100/(0.425*b_pil*d_pil^2*fcd_pil/10))),"não resiste")', 'cm', 'Bloco 0,8x com 0,85fcd.', 'res', '0.00', 'xc_pil', 'NBR 6118 17.2.2')
+Lm('Concreto: x', '=IFERROR(1.25*d_pil*(1-SQRT(1-Md_pil*100/(0.425*b_pila*d_pil^2*fcd_pil/10))),"não resiste")', 'cm', 'Bloco 0,8x com 0,85fcd.', 'res', '0.00', 'xc_pil', 'NBR 6118 17.2.2')
 Lm('Concreto: As', '=IFERROR(Md_pil*100/(fyd_pil/10*(d_pil-0.4*xc_pil)),"—")', 'cm²', '', 'res', '0.00', 'Asc_pil')
-Lm('Concreto: As,mín = 0,15%·b·h', '=0.0015*b_pil*hs_pil', 'cm²', '', 'res', '0.00', 'Asm_pil', 'NBR 6118 17.3.5.2.1')
-Lm('Concreto: VRd2 = 0,27·(1 − fck/250)·fcd·b·d', '=0.27*(1-VALUE(MID(fck_pil,2,2))/250)*fcd_pil/10*b_pil*d_pil', 'kN', '', 'res', '0.00', 'VR2c_pil', 'NBR 6118 17.4.2.2')
+Lm('Concreto: As,mín = 0,15%·b·h', '=0.0015*b_pila*hs_pila', 'cm²', '', 'res', '0.00', 'Asm_pil', 'NBR 6118 17.3.5.2.1')
+Lm('Concreto: VRd2 = 0,27·(1 − fck/250)·fcd·b·d', '=0.27*(1-VALUE(MID(fck_pil,2,2))/250)*fcd_pil/10*b_pila*d_pil', 'kN', '', 'res', '0.00', 'VR2c_pil', 'NBR 6118 17.4.2.2')
 # bloco grauteado: NBR 16868-1, seção retangular cheia (fpk*), como o contraforte aparente
 Lm('Bloco: fpk* (prisma cheio)', "=VLOOKUP(fbk_pil,'Referências'!$H$5:$J$16,3,FALSE)", 'MPa', '', 'res', '0.0', 'fpk_pil', 'ABCP Tab. 3.2')
 Lm('Bloco: K·fd = K·0,7·fpk*/γm', '=IF(ISNUMBER(K_cf),K_cf,2)*0.7*fpk_pil/gama_m', 'MPa', 'K = o do contraforte (Entradas); em branco, 2,0 (todo grauteado, NBR 16868-1 6.2.2.4).', 'res', '0.000', 'Kfd_pil')
-Lm('Bloco: x', '=IFERROR(1.25*d_pil*(1-SQRT(1-Md_pil*100/(0.5*b_pil*d_pil^2*Kfd_pil/10))),"não resiste")', 'cm', '', 'res', '0.00', 'xb_pil', 'NBR 16868-1 11.3')
+Lm('Bloco: x', '=IFERROR(1.25*d_pil*(1-SQRT(1-Md_pil*100/(0.5*b_pila*d_pil^2*Kfd_pil/10))),"não resiste")', 'cm', '', 'res', '0.00', 'xb_pil', 'NBR 16868-1 11.3')
 Lm('Bloco: As = Md/(fyd·z), z ≤ 0,95d', '=IFERROR(Md_pil*100/(fyd_pil/10*MIN(d_pil-0.4*xb_pil,0.95*d_pil)),"—")', 'cm²', '', 'res', '0.00', 'Asb_pil')
-Lm('Bloco: As,mín = 0,15%·b·d', '=0.0015*b_pil*d_pil', 'cm²', '', 'res', '0.00', 'Asmb_pil')
-Lm('Bloco: fvd = (0,35 + 17,5ρ ≤ 0,7)/γm', '=MIN(0.7,0.35+17.5*As_pile/(b_pil*d_pil))/gama_m', 'MPa', '', 'res', '0.000', 'fvd_pil', 'NBR 16868-1 11.4')
+Lm('Bloco: As,mín = 0,15%·b·d', '=0.0015*b_pila*d_pil', 'cm²', '', 'res', '0.00', 'Asmb_pil')
+Lm('Bloco: fvd = (0,35 + 17,5ρ ≤ 0,7)/γm', '=MIN(0.7,0.35+17.5*As_pile/(b_pila*d_pil))/gama_m', 'MPa', '', 'res', '0.000', 'fvd_pil', 'NBR 16868-1 11.4')
 _concreto = 'LEFT(pil_tipo,4)="Conc"'
 Lm('x/d', f'=IFERROR(IF({_concreto},xc_pil,xb_pil)/d_pil,"—")', '', '≤ 0,45 (ductilidade).', 'res', '0.000', 'xd_pil')
 Lm('As necessária', f'=IF(ISNUMBER(IF({_concreto},xc_pil,xb_pil)),MAX(IF({_concreto},Asc_pil,Asb_pil),IF({_concreto},Asm_pil,Asmb_pil)),"não resiste")', 'cm²', 'Maior entre o cálculo e o mínimo. Seção que não resiste: texto (o MAX ignoraria o texto e daria só o mínimo).', 'key', '0.00', 'Asn_pil')
@@ -179,8 +188,42 @@ Lm('Ancoragem no arrimo: ℓ0t = α0t·ℓb no graute ≥ ℓ0t,mín',
 Lm('Pilarete: resumo',
    f'=IF(h_mce<=0,"— (sem muro de cima)",IF(p_w<=0,"— (sem vento)",IF(ISNUMBER(Asn_pil)=FALSE,"NÃO OK — a seção não resiste: aumentar a seção",'
    f'IF(xd_pil>0.45,"NÃO OK — x/d > 0,45: aumentar a seção",IF(As_pile<Asn_pil,"NÃO OK — As "&FIXED(As_pile,2)&" < "&FIXED(Asn_pil,2)&" cm²: mais barras ou Ø maior",'
-   f'IF(IF({_concreto},Vd_pil>VR2c_pil,Vd_pil/(b_pil*d_pil)*10>fvd_pil),"NÃO OK — cisalhamento","OK ("&FIXED(100*Asn_pil/As_pile,0)&"% do aço)"))))))',
+   f'IF(IF({_concreto},Vd_pil>VR2c_pil,Vd_pil/(b_pila*d_pil)*10>fvd_pil),"NÃO OK — cisalhamento","OK ("&FIXED(100*Asn_pil/As_pile,0)&"% do aço)"))))))',
    '', 'Concreto: estribo mínimo da NBR 6118 17.4.1.1 em todo caso.', 'key', None, 'res_pil')
+r += 1
+
+# A LIGAÇÃO do pilarete com o arrimo (Jose, 13/11: "esses pilares precisam engastar e ter armadura contínua com o
+# muro, adentrando no graute"). O momento do pilarete chega inteiro no topo do arrimo e as barras dele descem ℓ0t
+# dentro da alvenaria grauteada: a seção que resiste ali é de ALVENARIA, não a do pilarete. Balanço: b × t (a frente
+# do pilarete na parede do muro); contrafortes: a haste, t × comprimento do contraforte. Toda grauteada → fpk* do
+# bloco do arrimo, com o K do contraforte. DEDUÇÃO, a favor: a parede em volta, que espalha o momento, não conta.
+# O d é o do sentido pior: a barra tracionada mais perto do bordo comprimido (mín(h do pilarete; h da ligação) − c).
+section(MC, r, '5b. Ligação do pilarete no arrimo'); r += 1
+Lm('Largura da ligação', '=IF(' + CF + ',t_bloco,b_pila)', 'cm', 'Balanço: a frente do pilarete. Contrafortes: a espessura da haste.', 'res', '0.0', 'b_lig')
+Lm('Altura da ligação (na direção do vento)', '=IF(' + CF + ',tenr_adot,t_bloco)', 'cm', 'Balanço: a espessura do muro. Contrafortes: o comprimento do contraforte.', 'res', '0.0', 'h_lig')
+Lm('d = mín(h do pilarete; h da ligação) − c', '=MIN(hs_pila,h_lig)-ce_pil', 'cm', 'O vento vem dos dois lados: vale o braço menor.', 'res', '0.0', 'd_lig')
+Lm('fpk* do bloco do arrimo (prisma cheio)', "=VLOOKUP(fbk_,'Referências'!$H$5:$J$16,3,FALSE)", 'MPa', 'A ligação é toda grauteada.', 'res', '0.0', 'fpk_lig', 'ABCP Tab. 3.2')
+Lm('K·fd = K·0,7·fpk*/γm', '=IF(ISNUMBER(K_cf),K_cf,2)*0.7*fpk_lig/gama_m', 'MPa', 'K = o do contraforte (Entradas); em branco, 2,0.', 'res', '0.000', 'Kfd_lig')
+Lm('x', '=IFERROR(1.25*d_lig*(1-SQRT(1-Md_pil*100/(0.5*b_lig*d_lig^2*Kfd_lig/10))),"não resiste")', 'cm', '', 'res', '0.00', 'x_lig', 'NBR 16868-1 11.3')
+Lm('x/d', '=IFERROR(x_lig/d_lig,"—")', '', '≤ 0,45 (ductilidade).', 'res', '0.000', 'xd_lig')
+Lm('As = Md/(fyd·z), z ≤ 0,95d', '=IFERROR(Md_pil*100/(fyd_pil/10*MIN(d_lig-0.4*x_lig,0.95*d_lig)),"não resiste")', 'cm²', 'As de uma face do pilarete que desce na ligação.', 'res', '0.00', 'As_lig')
+Lm('fvd = (0,35 + 17,5ρ ≤ 0,7)/γm', '=MIN(0.7,0.35+17.5*As_pile/(b_lig*d_lig))/gama_m', 'MPa', '', 'res', '0.000', 'fvd_lig', 'NBR 16868-1 11.4')
+Lm('τvd = Vd/(b·d)', '=Vd_pil/(b_lig*d_lig)*10', 'MPa', '', 'res', '0.000', 'tvd_lig')
+# A montagem vale com ou sem vento (o veredito do app a lê no card do muro de cima); a conta, só com vento.
+Lm('Ligação: montagem',
+   '=IF(OR(mc_on<>"Sim",h_mce<=0),"— (sem muro de cima)",'
+   'IF(AND(Tipo_muro<>"Contrafortes",t_bloco=14),"NÃO OK — balanço em bloco 14 não leva muro de cima: bloco 19 ou contrafortes",'
+   'IF(AND(Tipo_muro<>"Contrafortes",b_pila<20),"NÃO OK — pilarete com menos de 20 cm de frente",'
+   'IF(hs_pila>h_lig,IF(' + CF + ',"NÃO OK — pilarete passa da ponta do contraforte","NÃO OK — pilarete mais grosso que o muro: as barras não caem nos furos"),"OK"))))',
+   '', 'Balanço: bloco 19 e 20 cm de frente (Jose, 13/11). Pilarete dentro da ligação.', 'key', None, 'chk_ligg')
+Lm('Ligação: resumo',
+   '=IF(LEFT(chk_ligg,2)<>"OK",chk_ligg,'
+   'IF(p_w<=0,"— (sem vento)",'
+   'IF(ISNUMBER(x_lig)=FALSE,"NÃO OK — a alvenaria da ligação não resiste",'
+   'IF(xd_lig>0.45,"NÃO OK — x/d "&FIXED(xd_lig,2)&" > 0,45 na ligação",'
+   'IF(As_pile<As_lig,"NÃO OK — As "&FIXED(As_pile,2)&" < "&FIXED(As_lig,2)&" cm² na ligação",'
+   'IF(tvd_lig>fvd_lig,"NÃO OK — cisalhamento na ligação","OK ("&FIXED(100*As_lig/As_pile,0)&"% do aço; x/d "&FIXED(xd_lig,2)&")"))))))',
+   '', 'Dentro do arrimo: frente mínima no balanço, flexão, ductilidade, aço e cisalhamento.', 'key', None, 'res_lig')
 r += 1
 
 section(MC, r, '6. Cinta do topo do arrimo (só com contrafortes)'); r += 1
@@ -201,10 +244,10 @@ r += 1
 
 section(MC, r, '7. Verificações'); r += 1
 Lm('Dados do vento', '=IF(vento_on<>"Sim","— (sem vento)",IF(AND(ISNUMBER(V0_v),ISNUMBER(S1_v),ISNUMBER(S3_v),ISNUMBER(S3_e),q_v>0,q_vv>0),"OK","NÃO OK — vento ligado sem V0, S1 ou S3"))', '', '', 'key', None, 'chk_dv')
-Lm('Dados do muro de cima', '=IF(mc_on<>"Sim","— (sem muro de cima)",IF(AND(ISNUMBER(h_mc),h_mc>0,ISNUMBER(t_mc),t_mc>0,ISNUMBER(g_mc),s_trib>0,ISNUMBER(b_pil),ISNUMBER(hs_pil)),"OK","NÃO OK — falta altura, espessura, peso, espaçamento ou seção do pilarete"))', '', '', 'key', None, 'chk_dmc')
+Lm('Dados do muro de cima', '=IF(mc_on<>"Sim","— (sem muro de cima)",IF(AND(ISNUMBER(h_mc),h_mc>0,ISNUMBER(t_mc),t_mc>0,ISNUMBER(g_mc),s_trib>0,b_pila>0,hs_pila>0),"OK","NÃO OK — falta altura, espessura, peso, espaçamento ou seção do pilarete"))', '', '', 'key', None, 'chk_dmc')
 # Só vale "OK…" ou o "— (motivo)" escrito pela própria conta: o "—" puro é o IFERROR do pós-processamento, ou
 # seja, conta que não fechou — e conta que não fechou não pode passar.
 Lm('Muro de cima e vento: resumo',
-   '=IF(AND(mc_on<>"Sim",vento_on<>"Sim"),"— (sem muro de cima e sem vento)",IF(AND(OR(LEFT(chk_dv,2)="OK",LEFT(chk_dv,3)="— ("),OR(LEFT(chk_dmc,2)="OK",LEFT(chk_dmc,3)="— ("),OR(LEFT(res_pA,2)="OK",LEFT(res_pA,3)="— ("),OR(LEFT(res_pB,2)="OK",LEFT(res_pB,3)="— ("),OR(LEFT(res_pil,2)="OK",LEFT(res_pil,3)="— ("),OR(LEFT(res_cin,2)="OK",LEFT(res_cin,3)="— (")),"OK","NÃO OK"))',
-   '', 'Dados, painéis, pilarete e cinta do topo do arrimo. Vai para as verificações do balanço e do contraforte.', 'key', None, 'res_mc')
+   '=IF(AND(mc_on<>"Sim",vento_on<>"Sim"),"— (sem muro de cima e sem vento)",IF(AND(OR(LEFT(chk_dv,2)="OK",LEFT(chk_dv,3)="— ("),OR(LEFT(chk_dmc,2)="OK",LEFT(chk_dmc,3)="— ("),OR(LEFT(res_pA,2)="OK",LEFT(res_pA,3)="— ("),OR(LEFT(res_pB,2)="OK",LEFT(res_pB,3)="— ("),OR(LEFT(res_pil,2)="OK",LEFT(res_pil,3)="— ("),OR(LEFT(res_lig,2)="OK",LEFT(res_lig,3)="— ("),OR(LEFT(res_cin,2)="OK",LEFT(res_cin,3)="— (")),"OK","NÃO OK"))',
+   '', 'Dados, painéis, pilarete, ligação no arrimo e cinta do topo do arrimo. Vai para as verificações do balanço e do contraforte.', 'key', None, 'res_mc')
 widths(MC, {'A': 46, 'B': 22, 'C': 9, 'D': 70, 'E': 18, 'H': 10, 'I': 8, 'J': 8, 'K': 8, 'L': 8})

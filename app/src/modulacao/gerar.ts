@@ -25,7 +25,7 @@ import { fmt, furosDaPeca, geoBloco, geoCanaleta, geoGrauteCanaleta, pad, secaoC
 import { barrasDoBalanco, barrasDoPainel, barrasDosContrafortes, esperas, horizontais, type Vertical } from './armaduras';
 import { conferenciasGerais, drenagem, sapata, temDente, terreno } from './entorno';
 import { furarEQuebrarCanaletas } from './canaletas';
-import { leitorDoMuroDeCima, lerMuroDeCima, muroDeCima, pilaretesDoTrecho } from './muroDeCima';
+import { barrasDosPilaretes, leitorDoMuroDeCima, lerMuroDeCima, muroDeCima, posicoesDosPilaretes } from './muroDeCima';
 
 // 5: canaleta furada onde sobe a barra, T de graute no contraforte, graute da haste corrido (09/10 noite)
 export const VERSAO_MODULACAO = 'modulacao 5';
@@ -52,6 +52,7 @@ export function gerarModelo(r: Resultado, extras: Record<string, Valor> = {}): M
   const Ype = mod.cat.t / 2 + p.a_ater - p.B_sap;
   const mc = lerMuroDeCima(ctx, leitorDoMuroDeCima(ctx, r));
   const YbA = mod.cat.t / 2 + p.a_ater;
+  const pilaretes: number[] = [];
 
   for (const tr of mod.trechos) {
     const fiadas = montarFiadas(tr, { ...mod, aparente: !p.enterrado }, tipos);
@@ -69,13 +70,18 @@ export function gerarModelo(r: Resultado, extras: Record<string, Valor> = {}): M
     }
     esperas(ctx, tr, mapa, verticais, Ype, YbA);
     horizontais(ctx, tr, fiadas, canaleta);
+    // pilaretes do muro de cima: barras antes do graute (o furo delas sai cheio) e do furo das canaletas
+    const pos = mc ? posicoesDosPilaretes(ctx, tr, mc, mapa) : { xs: [] };
+    const xsPil = pos.xs;
+    if (mc) barrasDosPilaretes(ctx, tr, mc, xsPil, mapa, pos.meio);
+    pilaretes.push(...xsPil);
     graute(ctx, tr, fiadas, mapa, verticais, inicioAlvenaria);
     // depois de TODAS as barras do trecho que sobem pelo muro (verticais e esperas) e do graute das canaletas
     furarEQuebrarCanaletas(ctx, tr, canaleta, mapa, inicioAlvenaria);
     sapata(ctx, tr, Ype, YbA);
     drenagem(ctx, tr, mapa);
     terreno(ctx, tr, Ype, YbA);
-    if (mc) muroDeCima(ctx, tr, mc, p.lbphi_c, p.a0t);
+    if (mc) muroDeCima(ctx, tr, mc, xsPil, p.lbphi_c, p.a0t);
   }
 
   conferenciasGerais(ctx, Ype, YbA);
@@ -89,7 +95,7 @@ export function gerarModelo(r: Resultado, extras: Record<string, Valor> = {}): M
     contrafortes: mod.trechos.flatMap((t) => t.nos.map((n) => ({ x: n.xc, trecho: t.indice, ponta: n.tipo !== 'T' }))),
     sapata: { y0: arred(Ype), y1: arred(YbA), z0: -(p.h_sap + (temDente(p) ? p.h_den : 0)), z1: 0 },
   };
-  if (mc) dims.muroDeCima = { z0: mod.H_des, z1: mod.H_des + mc.H, t: mc.tijolo.perfil.t, pilaretes: mod.trechos.flatMap((t) => pilaretesDoTrecho(t, p.contrafortes, mc)) };
+  if (mc) dims.muroDeCima = { z0: mod.H_des, z1: mod.H_des + mc.H, t: mc.tijolo.perfil.t, pilaretes };
 
   // a canaleta furada/quebrada troca de geometria depois de nascer inteira: a inteira que ninguém mais usa sai (quem
   // lê o Modelo percorre as geometrias — o IFC não pode ganhar tipo sem peça, nem o 3D molde sem uso)
@@ -243,6 +249,14 @@ function graute(ctx: Ctx, tr: TrechoModulado, fiadas: FiadaMontada[], mapa: Mapa
   const { mod, p, pecas } = ctx;
   const t = mod.cat.t;
   for (const v of vs) mapa.marcar(v.x, v.y, 0, zTopoBarra(ctx));
+  // as barras do pilarete do muro de cima que descem no arrimo: o furo delas é grauteado (Jose, 13/11: "adentrando
+  // no graute") — no balanço, mesmo fora da grade do graute
+  for (const b of ctx.barras) {
+    if (b.papel !== 'PIL_LONG' || b.trecho !== tr.indice) continue;
+    const [a, c] = [b.eixo[0], b.eixo[b.eixo.length - 1]];
+    const z0 = Math.min(a[2], c[2]);
+    if (z0 < mod.H_des - 1e-6) mapa.marcar(a[0], a[1], z0, mod.H_des);
+  }
   // grade do graute da parede (graute a cada X, Jose 13/10): contada a partir das barras da parede, que caem nela
   const xsDasBarras = [...new Set(vs.filter((v) => v.y > 0 && v.y < t).map((v) => v.x))].sort((a, b) => a - b);
   const passo = Math.max(1, Math.round(p.s_graute / mod.m));

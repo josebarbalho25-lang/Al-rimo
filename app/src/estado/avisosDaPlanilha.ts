@@ -39,6 +39,8 @@ const AVISOS: ReadonlyArray<{ nome: string; campo: string }> = [
   { nome: 'aviso_coesao', campo: 'c_solo' },
   // passivo só com o solo da frente garantido na vida útil (Jose, 10/10: lembrar na hora de preencher)
   { nome: 'aviso_passivo', campo: 'pass_on' },
+  // balanço em bloco 14 com muro de cima (Jose, 13/11): não leva — bloco 19 ou contrafortes
+  { nome: 'aviso_mc', campo: 'mc_on' },
 ];
 
 /** Só para o teste conferir que os nomes existem na planilha e no painel (nome errado não avisa nada). */

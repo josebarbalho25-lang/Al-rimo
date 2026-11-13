@@ -57,6 +57,17 @@ export const SIMBOLOS_MURODECIMA: Readonly<Record<string, string>> = {
   '\\ell_{mc}': 'largura do painel do muro de cima (eixo a eixo dos pilaretes)',
   'b_{pil}': 'largura do pilarete, ao longo do muro',
   'h_{pil}': 'altura da seção do pilarete, na direção do vento',
+  'c_{e,pil}': 'cobrimento ao eixo das barras do pilarete',
+  'b_{lig}': 'largura da ligação do pilarete no arrimo (frente ou haste)',
+  'h_{lig}': 'altura da ligação na direção do vento (muro ou contraforte)',
+  'd_{lig}': 'altura útil das barras do pilarete dentro da ligação',
+  'f_{pk*,lig}': 'resistência do prisma cheio do bloco do arrimo',
+  'K_{f_d,lig}': 'resistência de cálculo da alvenaria grauteada da ligação',
+  'x_{lig}': 'linha neutra na ligação',
+  'x/d_{lig}': 'posição relativa da linha neutra na ligação',
+  'A_{s,lig}': 'armadura de uma face do pilarete pedida na ligação',
+  'f_{vd,lig}': 'resistência de cálculo ao cisalhamento na ligação',
+  '\\tau_{vd,lig}': 'tensão de cisalhamento na ligação',
   't_{mc}': 'espessura do bloco do muro de cima',
   'P_{mc}': 'peso do muro de cima por metro de arrimo',
   'f_{d,mc}': 'pressão de cálculo do vento no painel',
@@ -86,7 +97,7 @@ export const SIMBOLOS_MURODECIMA: Readonly<Record<string, string>> = {
   'M_{d,pil}': 'momento de cálculo na base do pilarete',
   'V_{d,pil}': 'força cortante de cálculo na base do pilarete',
   'd_{pil}': 'altura útil do pilarete',
-  'c_{pil}': 'cobrimento ao eixo das barras do pilarete',
+  'c_{pil}': 'cobrimento do pilarete (até o estribo; no bloco, até a barra)',
   'n_{b,pil}': 'barras em cada face do pilarete',
   '\\phi_{pil}': 'diâmetro das barras do pilarete',
   'A_{s,ef,pil}': 'armadura efetiva de uma face do pilarete',
@@ -202,8 +213,8 @@ function cardMuroDeCima(r: Parameters<AutorDeCards>[0]): Card {
   const gpil = m.g('g_pil', '\\gamma_{pil}', 2, 'kN/m³');
   const ncin = m.g('n_cin', 'n_{cin}', 0);
   const s = m.g('s_trib', 's_{pil}', 2, 'm');
-  const bp = m.ent('b_pil', 'b_{pil}');
-  const hp = m.ent('hs_pil', 'h_{pil}');
+  const bp = m.g('b_pila', 'b_{pil}', 1, 'cm');
+  const hp = m.g('hs_pila', 'h_{pil}', 1, 'cm');
   const gc = m.ent('gama_c', '\\gamma_c');
   const gf = m.ent('gama_f', '\\gamma_f');
   const l = m.g('l_mc', '\\ell_{mc}', 2, 'm');
@@ -222,11 +233,21 @@ function cardMuroDeCima(r: Parameters<AutorDeCards>[0]): Card {
     m.passo('g_pil', '\\gamma_{pil}', null, { casas: 2, unidade: 'kN/m³', origem: 'adotado' }),
     m.passo('n_cin', 'n_{cin}', null, { casas: 0, origem: 'adotado' }),
     m.passo('s_trib', 's_{pil}', null, { casas: 2, unidade: 'm', origem: 'adotado' }),
+    // a seção do pilarete (em branco = a que o tipo de muro pede) e a MONTAGEM dele no arrimo: balanço só em bloco 19
+    // e com 20 cm de frente (Jose, 13/11) — reprova com ou sem vento
+    m.passo('b_pila', 'b_{pil}', null, { casas: 1, unidade: 'cm', origem: m.num('b_pil') !== null ? 'entrada' : 'adotado' }),
+    m.passo('hs_pila', 'h_{pil}', null, {
+      casas: 1, unidade: 'cm', origem: m.num('hs_pil') !== null ? 'entrada' : 'adotado',
+      verif: { chave: 'murocima.pilarete.montagem', rotulo: 'Pilarete: montagem no arrimo', limite: m.g('h_lig', 'h_{lig}', 1, 'cm'), relacao: '<=', celula: 'chk_ligg', aplicavel: comMc },
+    }),
     m.passo('P_mc', 'P_{mc}', soma(...[
       mul(gmct, hmc),
       ...((m.num('s_trib') ?? 0) > 0 ? [mul(par(sub(div(mul(gpil, bp, hp), cte(10000, 0)), div(mul(gmct, bp), cem))), div(hmc, s))] : []),
       mul(ncin, par(sub(div(mul(gc, tmc), cem), gmct)), cte(0.2, 1)),
-    ]), { casas: 2, unidade: 'kN/m', ref: CRITERIO }),
+    ]), {
+      casas: 2, unidade: 'kN/m', ref: CRITERIO,
+      verif: { chave: 'murocima.dados', rotulo: 'Muro de cima: dados', limite: 0, relacao: '>=', celula: 'chk_dmc', aplicavel: comMc },
+    }),
   ], { fonte: 'NBR 6120' });
 
   const basePainel = secao('Painéis entre pilaretes e cintas', [
@@ -289,9 +310,10 @@ function cardPilarete(r: Parameters<AutorDeCards>[0]): Card {
   const s = m.g('s_trib', 's_{pil}', 2, 'm');
   const gf = m.ent('gama_f', '\\gamma_f');
   const gm = m.ent('gama_m', '\\gamma_m');
-  const b = m.ent('b_pil', 'b_{pil}');
-  const hs = m.ent('hs_pil', 'h_{pil}');
-  const c = m.ent('c_pil', 'c_{pil}');
+  const b = m.g('b_pila', 'b_{pil}', 1, 'cm');
+  const hs = m.g('hs_pila', 'h_{pil}', 1, 'cm');
+  const c = m.g('ce_pil', 'c_{e,pil}', 2, 'cm');
+  const balanco = m.texto('Tipo_muro') !== 'Contrafortes';
   const phi = m.ent('phi_pil', '\\phi_{pil}');
   const nb = m.ent('n_pil', 'n_{b,pil}');
   const Vk = m.g('Vk_pil', 'V_{k,pil}', 2, 'kN');
@@ -317,6 +339,14 @@ function cardPilarete(r: Parameters<AutorDeCards>[0]): Card {
 
   const kNumero = m.num('K_cf');
   const flexao = secao(concreto ? 'Flexão (NBR 6118)' : 'Flexão (NBR 16868-1)', [
+    // cobrimento ao eixo: c + estribo (Ø5 na conta) + Ø/2, e a barra dentro do bloco do arrimo (≥ parede + Ø/2)
+    m.passo('ce_pil', 'c_{e,pil}', (() => {
+      const cob = soma(m.ent('c_pil', 'c_{pil}'), ...(concreto ? [cte(0.5, 1)] : []), div(phi, cte(20, 0)));
+      const hf = m.g('hf_bl', 'h_f', 1, 'cm');
+      return balanco
+        ? max(cob, soma(div(sub(m.ent('t_bloco', 't'), hs), cte(2, 0)), hf, div(phi, cte(20, 0))))
+        : max(cob, soma(hf, div(phi, cte(20, 0))));
+    })(), { casas: 2, unidade: 'cm', ref: concreto ? NBR6118('7.4.7.5') : CRITERIO }),
     m.passo('d_pil', 'd_{pil}', sub(hs, c), { casas: 1, unidade: 'cm' }),
     m.passo('As_pile', 'A_{s,ef,pil}', div(mul(nb, pi(), pot(phi, 2)), cte(400, 0)), { casas: 2, unidade: 'cm²' }),
     m.passo('fyd_pil', 'f_{yd,pil}', div(m.ent('fyk_', 'f_{yk}'), m.ent('gama_s', '\\gamma_s')), { casas: 1, unidade: 'MPa' }),
@@ -356,6 +386,40 @@ function cardPilarete(r: Parameters<AutorDeCards>[0]): Card {
       }),
   ], concreto ? NBR6118('17.4') : NBR16868('11.4'));
 
+  // A ligação dentro do arrimo: alvenaria grauteada com as barras do pilarete (dedução, a parede em volta não conta)
+  const bL = m.g('b_lig', 'b_{lig}', 1, 'cm');
+  const dL = m.g('d_lig', 'd_{lig}', 1, 'cm');
+  const KfdL = m.g('Kfd_lig', 'K_{f_d,lig}', 3, 'MPa');
+  const xLNum = m.num('x_lig') !== null;
+  const xL = m.g('x_lig', 'x_{lig}', 2, 'cm');
+  const cf = m.texto('Tipo_muro') === 'Contrafortes';
+  const ligacao = secao('Ligação no arrimo', [
+    m.passo('b_lig', 'b_{lig}', null, { casas: 1, unidade: 'cm', origem: 'adotado', ref: CRITERIO }),
+    m.passo('h_lig', 'h_{lig}', null, { casas: 1, unidade: 'cm', origem: 'adotado', ref: CRITERIO }),
+    m.passo('d_lig', 'd_{lig}', sub(min(hs, m.g('h_lig', 'h_{lig}', 1, 'cm')), c), { casas: 1, unidade: 'cm' }),
+    m.passo('fpk_lig', 'f_{pk*,lig}', null, { casas: 1, unidade: 'MPa', origem: 'tabela', ref: { fonte: 'ABCP', item: 'Tab. 3.2' } }),
+    m.passo('Kfd_lig', 'K_{f_d,lig}', div(mul(kNumero !== null ? m.ent('K_cf', 'K_{cf}') : cte(2, 1), cte(0.7, 1), m.g('fpk_lig', 'f_{pk*,lig}', 1, 'MPa')), gm), {
+      casas: 3, unidade: 'MPa', ref: NBR16868('6.2.2.4'),
+    }),
+    xLNum && m.passo('x_lig', 'x_{lig}', mul(cte(1.25, 2), dL, par(sub(cte(1, 0), raiz(sub(cte(1, 0), div(mul(Md, cem), div(mul(cte(0.5, 1), bL, pot(dL, 2), KfdL), cte(10, 0)))))))), {
+      casas: 2, unidade: 'cm', ref: NBR16868('11.3'),
+    }),
+    xLNum && m.passo('xd_lig', 'x/d_{lig}', div(xL, dL), {
+      casas: 3, verif: { chave: 'murocima.ligacao.xd', rotulo: 'Ligação: x/d ≤ 0,45', limite: 0.45, relacao: '<=', casasLimite: 2 },
+    }),
+    xLNum && m.passo('As_lig', 'A_{s,lig}', div(mul(Md, cem), mul(div(fyd, cte(10, 0)), min(sub(dL, mul(cte(0.4, 1), xL)), mul(cte(0.95, 2), dL)))), {
+      casas: 2, unidade: 'cm²',
+      verif: { chave: 'murocima.ligacao.As', rotulo: 'Ligação: As,ef ≥ As', limite: Asef, relacao: '<=' },
+    }),
+    m.passo('fvd_lig', 'f_{vd,lig}', div(min(cte(0.7, 1), soma(cte(0.35, 2), mul(cte(17.5, 1), div(Asef, mul(bL, dL))))), gm), {
+      casas: 3, unidade: 'MPa', ref: NBR16868('11.4'),
+    }),
+    m.passo('tvd_lig', '\\tau_{vd,lig}', mul(div(m.g('Vd_pil', 'V_{d,pil}', 2, 'kN'), mul(bL, dL)), cte(10, 0)), {
+      casas: 3, unidade: 'MPa',
+      verif: { chave: 'murocima.ligacao', rotulo: cf ? 'Ligação no contraforte' : 'Ligação no muro', limite: m.g('fvd_lig', 'f_{vd,lig}', 3, 'MPa'), relacao: '<=', celula: 'res_lig' },
+    }),
+  ], NBR16868('11.3'));
+
   const ancoragem = secao('Emenda no arrimo', [
     m.passo('l0t_pil', '\\ell_{0t,pil}', null, { casas: 0, unidade: 'cm', origem: 'calculado', ref: NBR6118('9.5.2.2.1') }),
   ], NBR6118('9.5.2.2.1'));
@@ -364,7 +428,7 @@ function cardPilarete(r: Parameters<AutorDeCards>[0]): Card {
     id: 'murocima.pilarete',
     titulo: concreto ? 'Pilarete de concreto' : 'Pilarete de bloco grauteado',
     ref: concreto ? { fonte: 'NBR 6118' } : { fonte: 'NBR 16868-1' },
-    secoes: comMc && (m.num('p_w') ?? 0) > 0 ? [esforcos, flexao, cortante, ancoragem] : [],
+    secoes: comMc && (m.num('p_w') ?? 0) > 0 ? [esforcos, flexao, cortante, ligacao, ancoragem] : [],
     avisos: [],
     aplicavel: comMc && (m.num('p_w') ?? 0) > 0,
   };

@@ -886,7 +886,7 @@ e dizer ao Jose o que mudou e por quê.
   de bloco sem concreto nem fôrma; desenho do pilarete de bloco com a hachura do graute; Mostrar › Blocos liga o
   muro de cima. Ficou (anotado pelo revisor): frontal não desenha barra do pilarete/cinta; chamada classifica como
   "muro"; isométrico ~5× mais pesado com os furos dos tijolos; barra da cinta termina reta a 3 cm da ponta.
-  PILARETE × ARRIMO (Jose, 13/11 — PRÓXIMA TAREFA): "esses pilares precisam engastar e ter armadura contínua com o
+  PILARETE × ARRIMO (Jose, 13/11 — FEITO no mesmo dia, ver "REGRA DO PILARETE" abaixo): "esses pilares precisam engastar e ter armadura contínua com o
   muro, adentrando no graute, ou seja a posição deles é limitada de acordo com os blocos; eles devem sempre ter no
   mínimo 20 de frente pra isso funcionar". Ou seja: pilarete na grade dos furos do arrimo (x das barras em furo
   grauteado), largura ao longo do muro ≥ 20 cm (lista), barras do pilarete descendo e emendando no graute do arrimo
@@ -900,7 +900,26 @@ e dizer ao Jose o que mudou e por quê.
   a cada 2,6 x/d 0,47), 40 passa. Muro de cima 2,5 m: bloco 14 não passa nem com 60; bloco 19 só com 40 (81–89 %).
   O pilarete de CONCRETO em si (14 × 20) passa folgado (61–74 %): quem manda é a ligação na alvenaria. Arrimo pela
   média por metro (Ø12,5 c/40): 1,0 e 1,6 m passam em 14 e 19; 2,0 m não passa nem sem o muro de cima (x/d e
-  flecha). AGUARDANDO o Jose decidir a regra (19 com 20 de frente? liberar 14 com 60?).
+  flecha). DECIDIDO (Jose, 13/11): "muro de 14 sem contraforte a gente já barra na entrada empilhar muro de
+  vedação com pilaretes, o resto vamos implementar o transpasse".
+  REGRA DO PILARETE (FEITA 13/11): planilha — b_pil e hs_pil OPCIONAIS (em branco: balanço 20 × t, contrafortes
+  t × 25; adotados b_pila/hs_pila); aviso_mc (Entradas, ao lado do mc_on) e chk_ligg ("Ligação: montagem": balanço
+  em bloco 14 NÃO, frente < 20 NÃO, pilarete mais grosso que o muro ou além da ponta do contraforte NÃO — vale com
+  ou sem vento); seção 5b "Ligação do pilarete no arrimo" (b_lig, h_lig, d_lig, fpk_lig = fpk* do bloco do arrimo,
+  Kfd_lig com K_cf, x_lig, xd_lig, As_lig, fvd_lig, tvd_lig → res_lig, que entra no res_mc). COBRIMENTO (Jose,
+  13/11: "no pilar a gente raramente põe 4 cm, põe 2,5, 3 no máximo"): c_pil virou o cobrimento NOMINAL (padrão
+  2,5, até o estribo; bloco: até a barra); ce_pil = c + 0,5 (estribo Ø5 na conta, só concreto) + Ø/2, e
+  ≥ hf_bl + Ø/2 (a barra desce dentro do bloco do arrimo; no balanço, + (t − h)/2). Na haste do contraforte as barras
+  de uma face chegam para o miolo grauteado (≤ t/2 − hf − Ø/2 do eixo): com 2,5 cm o 19 passava 5 mm da parede. App: "Sim" do mc_on travado no balanço de 14 (ATIVA_SE;
+  se já estava ligado, fica aberto para desligar); memória com a montagem (verif em hs_pila, célula chk_ligg), os
+  dados (P_mc, célula chk_dmc), o ce_pil e a seção "Ligação no arrimo" no card do pilarete. 3D
+  (`modulacao/muroDeCima.ts` posicoesDosPilaretes/barrasDosPilaretes): barras do pilarete montadas ANTES do graute
+  e do furo das canaletas (o furo delas sai grauteado; o fundo da canaleta do topo, furado); no balanço o pilarete
+  vai para a coluna de furos mais perto da posição distribuída onde TODAS as barras descem ℓ0t dentro dos furos
+  fiada a fiada (folga ≥ 0); se não cabem, as barras da face chegam para o meio de 5 em 5 mm (bloco 19: o furo
+  comum às fiadas par e ímpar tem 13 cm, e 20 de frente com o cobrimento pede 12 entre eixos) — a conta não usa essa
+  distância. Varredura bloco 19, H 1,0–2,4, s 2,0/2,4, b 20/30: todos encaixam, sem aviso. Com b 30 o pilarete da
+  ponta entra até ~25 cm (o muro de cima começa nele).
   PILARETE × CONTRAFORTE NO BLOCO 14 (Jose, 13/11, mesmo teste; ligação = seção 14 × tenr grauteada, d = tenr − 4):
   a LIGAÇÃO funciona — x/d 0,03 a 0,30, As mínimo manda. Única falha: contraforte 34, vão 2,55, pilarete a cada 2
   contrafortes → CISALHAMENTO da ligação (Vd 9,9 > 8,7 kN, sem estribo). Pilarete de concreto 14 × 25 passa até

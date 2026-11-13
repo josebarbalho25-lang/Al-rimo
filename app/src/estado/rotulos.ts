@@ -131,7 +131,7 @@ export const ROTULO_CURTO: Record<string, string> = {
   fbk_pil: 'fbk do bloco',
   phi_pil: 'Ø das barras',
   n_pil: 'Barras por face',
-  c_pil: 'Cobrimento ao eixo',
+  c_pil: 'Cobrimento',
   phi_cin_mc: 'Ø da cinta',
   phi_est_pil: 'Ø do estribo',
   s_est_pil: 'Estribo a cada',

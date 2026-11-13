@@ -371,6 +371,9 @@ r += 1
 section(E, r, 'Muro de cima e vento'); r += 1
 line(E, r, 'Muro de vedação em cima do arrimo?', 'Não', '', 'Sim = o peso dele entra no arrimo (compressão da parede e fundação) e, com o vento ligado, o vento nele também. Os painéis e os pilaretes são verificados na aba Muro de cima e vento.', 'inp', None, 'mc_on'); r += 1
 dv_mc = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validation(dv_mc); dv_mc.add(f'B{r-1}')
+# Muro em balanço de bloco 14 não leva muro de cima (Jose, 13/11): o pilarete engasta numa parede de 14 com as barras a
+# 10 cm uma da outra e não resiste (teste no caderno). No app o "Sim" fica travado; aqui a conta reprova (res_lig).
+line(E, r, 'Aviso do muro de cima', '=IF(AND(mc_on="Sim",Tipo_muro<>"Contrafortes",t_bloco=14),"Balanço em bloco 14 não leva muro de cima: bloco 19 ou contrafortes","")', '', 'Aparece no app ao lado do campo e no memorial.', 'key', None, 'aviso_mc'); r += 1
 line(E, r, 'Muro de cima: altura', 2.0, 'm', 'Do topo do arrimo ao topo do muro de cima.', 'inp', '0.00', 'h_mc'); r += 1
 line(E, r, 'Muro de cima: espessura do bloco', 11.5, 'cm', 'Espessura nominal do bloco, sem reboco (entra na verificação dos painéis).', 'inp', '0.0', 't_mc'); r += 1
 line(E, r, 'Muro de cima: material do bloco', 'Cerâmico', '', 'Só descreve o muro (desenho, quantitativo e memória). O peso vem da linha de baixo.', 'inp', None, 'mat_mc'); r += 1
@@ -396,8 +399,8 @@ dv_pt = DataValidation(type='list', formula1='"Concreto moldado,Bloco grauteado"
 line(E, r, 'Pilaretes: espaçamento (muro em balanço)', 2.4, 'm', 'Eixo a eixo. Só no balanço; com contrafortes o pilarete fica em cima do contraforte (linha de baixo).', 'inp', '0.00', 's_pil'); r += 1
 line(E, r, 'Pilaretes: a cada quantos contrafortes', 1, '', '1 = um pilarete em cada contraforte; 2 = em contraforte sim, contraforte não.', 'inp', '0', 'pil_ncf'); r += 1
 dv_pn = DataValidation(type='list', formula1='"1,2"'); E.add_data_validation(dv_pn); dv_pn.add(f'B{r-1}')
-line(E, r, 'Pilarete: largura (ao longo do muro)', 14, 'cm', '', 'inp', '0.0', 'b_pil'); r += 1
-line(E, r, 'Pilarete: altura da seção (na direção do vento)', 25, 'cm', 'Perpendicular ao muro: é a altura que resiste à flexão do vento.', 'inp', '0.0', 'hs_pil'); r += 1
+line(E, r, 'Pilarete: largura (ao longo do muro) — opcional', None, 'cm', 'Em branco = balanço: 20 cm (o mínimo de frente para as barras caírem no furo do bloco — Jose, 13/11); contrafortes: a espessura do contraforte (t).', 'inp', '0.0', 'b_pil'); r += 1
+line(E, r, 'Pilarete: altura da seção (na direção do vento) — opcional', None, 'cm', 'Perpendicular ao muro: é a altura que resiste à flexão do vento. Em branco = balanço: a espessura do muro (t, as barras descem nos furos); contrafortes: 25 cm.', 'inp', '0.0', 'hs_pil'); r += 1
 line(E, r, 'Pilarete: concreto (moldado)', 'C25', '', 'Só no pilarete de concreto.', 'inp', None, 'fck_pil'); r += 1
 dv_fp = DataValidation(type='list', formula1='"C20,C25,C30"'); E.add_data_validation(dv_fp); dv_fp.add(f'B{r-1}')
 line(E, r, 'Pilarete: fbk do bloco (grauteado)', 8, 'MPa', 'Só no pilarete de bloco: prisma cheio (fpk*) da ABCP Tab. 3.2.', 'inp', '0.0', 'fbk_pil'); r += 1
@@ -405,7 +408,7 @@ dv_fb2 = DataValidation(type='list', formula1="='Referências'!$H$5:$H$16"); E.a
 line(E, r, 'Pilarete: Ø das barras', 10, 'mm', '', 'inp', '0.0', 'phi_pil'); r += 1
 lista(LST_PHI, f'B{r-1}')
 line(E, r, 'Pilarete: barras em cada face', 2, '', 'Barras na face tracionada (o vento vem dos dois lados: a mesma quantidade na outra face).', 'inp', '0', 'n_pil'); r += 1
-line(E, r, 'Pilarete: cobrimento ao eixo das barras', 4, 'cm', 'Da face ao eixo da barra.', 'inp', '0.0', 'c_pil'); r += 1
+line(E, r, 'Pilarete: cobrimento', 2.5, 'cm', 'Da face à face do estribo (concreto; estribo Ø5 na conta) ou à face da barra (bloco). Pilar de muro: 2,5 a 3,0 cm (Jose, 13/11). No balanço a barra desce no furo do bloco: o eixo fica no mínimo a parede do bloco + Ø/2 da face do muro.', 'inp', '0.0', 'c_pil'); r += 1
 line(E, r, 'Vento?', 'Não', '', 'Sim = vento perpendicular ao muro (NBR 6123), soprando do aterro para a frente — o sentido que soma ao empuxo. Entra no muro de cima, na parte do arrimo acima do solo e na fundação.', 'inp', None, 'vento_on'); r += 1
 dv_vo = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validation(dv_vo); dv_vo.add(f'B{r-1}')
 line(E, r, 'V0 (velocidade básica)', 35, 'm/s', 'Mapa de isopletas da NBR 6123 (rajada de 3 s, 50 anos).', 'inp', '0.0', 'V0_v'); r += 1
