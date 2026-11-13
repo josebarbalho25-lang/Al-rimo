@@ -180,7 +180,8 @@ export function desenhoDaSecaoDoContraforte(r: Resultado): DesenhoDoCard | null 
   const xT = Math.min(v1.x(-t / 2) - 30, xEsq - 22);
   partes.push(chamada(v1.x(-t / 2), v1.y(tenr), xT - 3, v1.y(tenr)));
   partes.push(cota(xT, v1.y(0), xT, v1.y(tenr), `tenr = ${cmCel(tenr / 10)}`, -1));
-  const xDir = v1.x(t / 2) + 16;
+  // d e c à direita da MESA (no T): colados à alma, a linha de cota do d atravessava a mesa (Jose, 13/11)
+  const xDir = (T ? v1.x(bm / 2) : v1.x(t / 2)) + 16;
   partes.push(chamada(v1.x(0), v1.y(etaBarra), xDir + 3, v1.y(etaBarra)));
   partes.push(cota(xDir, v1.y(faceComprimida), xDir, v1.y(etaBarra), `d = ${cmCel(d / 10)}`, 1));
   partes.push(cota(xDir + 22, v1.y(etaBarra), xDir + 22, v1.y(faceTracionada), `c = ${cmCel(c / 10)}`, 1));
