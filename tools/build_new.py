@@ -318,8 +318,9 @@ line(E, r, 'Ø horizontal do painel (canaletas)', 12.5, 'mm', 'Barra na canaleta
 lista(LST_PHI, f'B{r-1}')
 line(E, r, 'Espaçamento das canaletas — opcional', None, 'cm', 'Em branco = automático (20/40/60/80). Lista: 20 a 160 cm (fiadas inteiras).', 'inp', '0', 's_ph_dir'); r += 1
 lista(LST['lst_sph'], f'B{r-1}')
-line(E, r, 'Posição da barra horizontal', 'Centralizada (d = t/2)', '', 'Centralizada na canaleta: d = t/2 (atende o vão e o engaste lateral).', 'inp', None, 'pos_ph'); r += 1
-dv_ph = DataValidation(type='list', formula1='"Centralizada (d = t/2),Encostada na face externa"'); E.add_data_validation(dv_ph); dv_ph.add(f'B{r-1}')
+# 2 barras (Jose, 13/11): uma encostada em cada face da canaleta, como as verticais — d = t − c para os dois sinais
+line(E, r, 'Posição da barra horizontal', 'Centralizada (d = t/2)', '', 'Centralizada na canaleta: d = t/2 (atende o vão e o engaste lateral). 2 barras: uma encostada em cada face, d = t − c nos dois sinais.', 'inp', None, 'pos_ph'); r += 1
+dv_ph = DataValidation(type='list', formula1='"Centralizada (d = t/2),Encostada na face externa,2 barras (uma em cada face)"'); E.add_data_validation(dv_ph); dv_ph.add(f'B{r-1}')
 line(E, r, 'K na flexão vertical do painel', 1.0, '', 'Padrão 1,0 (critério adotado, a favor da segurança).', 'inp', '0.00', 'K_pv'); r += 1
 line(E, r, 'K na flexão horizontal do painel — opcional', None, '', 'Em branco = 0,5 (fk horizontal = 0,5·fk se a seção horizontal não for toda grauteada; NBR 16868-1 6.2.2.4 b), ABCP 3.2) ou 1,0 com grauteamento total.', 'inp', '0.00', 'K_ph'); r += 1
 line(E, r, 'ELS vertical: alma da seção I — opcional', None, 'cm', 'Em branco = furo grauteado + 2 septos.', 'inp', '0.00', 'bwv_dir'); r += 1

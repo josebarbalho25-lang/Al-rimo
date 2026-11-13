@@ -119,10 +119,16 @@ export const SIMBOLOS_PAINELCF: Readonly<Record<string, string>> = {
   'C_{2,v}': 'coef. C da LN vertical com a 2ª barra comprimida: n − 1',
   'B_{2w,v}': 'coef. B da LN vertical na alma, 2ª barra comprimida',
   'C_{2w,v}': 'coef. C da LN vertical na alma, 2ª barra comprimida',
-  'B_{II,h}': 'coef. B da linha neutra no estádio II, flexão horizontal',
-  'C_{II,h}': 'coef. C da linha neutra no estádio II, flexão horizontal',
-  'B_{IIw,h}': 'coef. B da LN horizontal com a LN na alma da seção I',
-  'C_{IIw,h}': 'coef. C da LN horizontal com a LN na alma da seção I',
+  // horizontal: as mesmas duas hipóteses desde 13/11 (2 barras na canaleta, uma em cada face — Jose)
+  'B_{1,h}': 'coef. B da LN horizontal, 2ª barra (se houver) tracionada: n',
+  'C_{1,h}': 'coef. C da LN horizontal, 2ª barra (se houver) tracionada: n',
+  'B_{1w,h}': 'coef. B da LN horizontal na alma, 2ª barra (se houver) tracionada',
+  'C_{1w,h}': 'coef. C da LN horizontal na alma, 2ª barra (se houver) tracionada',
+  'B_{2,h}': 'coef. B da LN horizontal com a 2ª barra comprimida: n − 1',
+  'C_{2,h}': 'coef. C da LN horizontal com a 2ª barra comprimida: n − 1',
+  'B_{2w,h}': 'coef. B da LN horizontal na alma, 2ª barra comprimida',
+  'C_{2w,h}': 'coef. C da LN horizontal na alma, 2ª barra comprimida',
+  'x_{1,h}': 'linha neutra no estádio II com a 2ª barra tracionada, horizontal',
   'x_{1,v}': 'linha neutra no estádio II com a 2ª barra tracionada, vertical',
   'x_{II,v}': 'linha neutra no estádio II, flexão vertical',
   'x_{II,h}': 'linha neutra no estádio II, flexão horizontal',
@@ -133,6 +139,7 @@ export const SIMBOLOS_PAINELCF: Readonly<Record<string, string>> = {
   'I_{s1,v}': 'inércia da barra tracionada (n·As1) no estádio II, vertical',
   'I_{s1,h}': 'inércia da barra tracionada (n·As1) no estádio II, horizontal',
   'I_{s2,v}': 'inércia da 2ª barra (n2·As2) no estádio II, vertical',
+  'I_{s2,h}': 'inércia da 2ª barra (n2·As2) no estádio II, horizontal',
   'I_{II,v}': 'momento de inércia no estádio II, flexão vertical',
   'I_{II,h}': 'momento de inércia no estádio II, flexão horizontal',
   'I_{eq,v}': 'momento de inércia equivalente (Branson), flexão vertical',
@@ -572,7 +579,9 @@ function cardHorizontal(m: Memoria): Card {
   ]);
 
   // barra centralizada atende os dois sinais: vão (Mdx) e engaste lateral (Mdxe, só com laterais engastadas)
-  const momentoH: Expr[] = centralizada ? (engastadas ? [max(Mdx, Mdxe)] : [Mdx, max(Mdx, Mdxe)]) : [Mdx];
+  // com uma barra em cada face (13/11) cada face leva o maior dos dois sinais, como a centralizada
+  const duasH = (m.num('nb_ph') ?? 0) === 2;
+  const momentoH: Expr[] = centralizada || duasH ? (engastadas ? [max(Mdx, Mdxe)] : [Mdx, max(Mdx, Mdxe)]) : [Mdx];
   const esforcos = secao('Esforços na faixa s_h', [
     m.passo('d_ph', 'd_h', centralizada ? div(t, cte(2, 0)) : sub(t, m.ent('c_pv', 'c_p')), { casas: 1, unidade: 'cm' }),
     m.passo('M_ph', 'M_h', momentoH, { casas: 1, unidade: 'kN·cm/m' }),
@@ -775,15 +784,15 @@ function secaoDaDirecao(m: Memoria, D: Direcao) {
   const Ieq = m.g(id('Ieq'), `I_{eq,${s}}`, 0, 'cm⁴');
   const c = m.valor('c_pv') ?? 0;
 
-  // 2ª barra tracionada (entra com n) enquanto x ≤ d' = c; se a LN passar dela, comprimida (n − 1). Só a vertical tem
-  // as duas hipóteses na planilha (x1_ev e a 2ª); a horizontal não tem 2ª barra: hipótese única
+  // 2ª barra tracionada (entra com n) enquanto x ≤ d' = c; se a LN passar dela, comprimida (n − 1). As duas direções
+  // têm as duas hipóteses na planilha desde 13/11 (a horizontal ganhou "2 barras, uma em cada face" — Jose)
   const vertical = e === 'ev';
-  const as2 = D.segunda && (m.valor('a_pv') ?? 0) !== 0;        // IF(nb_pv=2;a_pv;0) = 0 → OR(As2=0;...) verdadeiro
-  const x1 = vertical ? m.valor(id('x1')) : null;
+  const as2 = D.segunda && (m.valor(vertical ? 'a_pv' : 'a_ph') ?? 0) !== 0;   // IF(nb;a;0) = 0 → OR(As2=0;...) verdadeiro
+  const x1 = m.valor(id('x1'));
   // sem x1 (faixa sem barra) não há 2ª hipótese a contar: a linha do x sai "—" e o card não a mostra
   const tracionada = !as2 || x1 === null || x1 <= c;
   const secaoI = (n2: Expr): SecaoI => ({ bm, bw, hf, n, as1: D.as1, d: D.d, ...(as2 ? { b2: { as2: D.as1, n2, dl: cp } } : {}) });
-  const h1 = linhaNeutraEmPedacos(m, e, s, vertical ? '1' : '', vertical ? '1' : 'II', secaoI(n));
+  const h1 = linhaNeutraEmPedacos(m, e, s, '1', '1', secaoI(n));
   const h2 = tracionada ? null : linhaNeutraEmPedacos(m, e, s, '2', '2', secaoI(sub(n, cte(1, 0))));
   const xv = m.valor(id('x'));
   const n2III = xv !== null && xv <= c ? n : sub(n, cte(1, 0));  // n2 = IF(x ≤ c; n; n − 1)
@@ -876,7 +885,7 @@ function cardEls(m: Memoria): Card {
     ftk: m.g('ftk_par', 'f_{tk,\\parallel}', 3, 'kN/cm²', { fator: 0.1 }),
     as1: m.g('a_ph', 'a_{s,h}', 3, 'cm²'),
     d: m.g('d_ph', 'd_h', 1, 'cm'),
-    segunda: false,
+    segunda: (m.num('nb_ph') ?? 0) === 2,
   });
 
   // ── flecha pela tabela de Libânio: a = α/100 · p·l⁴/(E·t³), com t = h_eq de cada direção ──

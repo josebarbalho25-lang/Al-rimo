@@ -22,6 +22,7 @@ import * as THREE from 'three';
 import type { EstiloVisual } from './estiloVisual';
 import { bytesDaPele, campoDaPele, type Pele } from './geracaoDasPeles';
 import type { Acabamento } from './lotes';
+import type { ClassePeca } from '@/modelo/tipos';
 
 /*
   QUEM GANHA QUANDO DUAS FACES MORAM NO MESMO LUGAR (recuo de profundidade, maior = mais para trás).
@@ -61,10 +62,10 @@ const PELE: Partial<Record<Acabamento, Pele>> = {
  * O lado do ladrilho de cada pele, em METROS: o poro do bloco tem o tamanho de
  * um poro em qualquer zoom, e o solo não vira papel de parede repetido.
  */
-const LADRILHO_M: Record<Pele, number> = { bloco: 0.5, concreto: 1.0, solo: 1.2 };
+const LADRILHO_M: Record<Pele, number> = { bloco: 0.5, concreto: 1.0, solo: 1.2, ceramica: 0.5 };
 
 /** Quanto a pele afasta a cor da média (0 = lisa). O graute, por dentro do furo, é mais fechado que o bloco. */
-const CONTRASTE: Record<Pele, number> = { bloco: 0.8, concreto: 0.45, solo: 0.7 };
+const CONTRASTE: Record<Pele, number> = { bloco: 0.8, concreto: 0.45, solo: 0.7, ceramica: 0.75 };
 
 /** Rugosidade (0 espelho, 1 fosco). Concreto e solo são foscos; a manta geotêxtil e o PVC brilham um pouco. */
 const RUGOSIDADE: Record<Acabamento, number> = {
@@ -209,10 +210,13 @@ const FRAGMENTO_RUGOSIDADE = /* glsl */ `
 float roughnessFactor = clamp(roughness * (1.2 - 0.4 * pele), 0.0, 1.0);
 `;
 
-function materialRealista(a: Acabamento, peles: FonteDasPeles): THREE.MeshStandardMaterial {
+function materialRealista(a: Acabamento, peles: FonteDasPeles, classe?: ClassePeca): THREE.MeshStandardMaterial {
+  // o tijolo cerâmico do muro de cima (13/11) é alvenaria, mas não é concreto: pele de barro, fosco de todo e com o
+  // tom variando mais de peça para peça (cada queima sai de um jeito)
+  const tijolo = a === 'alvenaria' && classe === 'tijolo';
   const m = new THREE.MeshStandardMaterial({
     color: 0xffffff,
-    roughness: RUGOSIDADE[a],
+    roughness: tijolo ? 1 : RUGOSIDADE[a],
     metalness: 0,
     side: THREE.DoubleSide,
     polygonOffset: RECUO[a] !== 0,
@@ -221,13 +225,13 @@ function materialRealista(a: Acabamento, peles: FonteDasPeles): THREE.MeshStanda
     // O pedaço que o corte apagou também não faz sombra.
     clipShadows: true,
   });
-  const pele = PELE[a];
+  const pele = tijolo ? 'ceramica' : PELE[a];
   if (!pele) return m;
   const uniformes = {
     mapaDaPele: { value: peles(pele) },
     metrosPorLadrilho: { value: LADRILHO_M[pele] },
     contrasteDaPele: { value: CONTRASTE[pele] },
-    variacaoDoTom: { value: VARIACAO_DO_TOM[a] ?? 0 },
+    variacaoDoTom: { value: tijolo ? 0.16 : VARIACAO_DO_TOM[a] ?? 0 },
   };
   m.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniformes);
@@ -247,8 +251,9 @@ export function materialDoAcabamento(
   estilo: EstiloVisual,
   a: Acabamento,
   peles: FonteDasPeles = texturaDaPele,
+  classe?: ClassePeca,
 ): THREE.MeshLambertMaterial | THREE.MeshBasicMaterial | THREE.MeshStandardMaterial {
-  if (estilo === 'realista') return materialRealista(a, peles);
+  if (estilo === 'realista') return materialRealista(a, peles, classe);
   const base = {
     color: 0xffffff,
     // Dupla face: com o corte, o miolo do bloco aberto aparece em vez de sumir.

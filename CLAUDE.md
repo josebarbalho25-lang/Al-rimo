@@ -881,6 +881,18 @@ e dizer ao Jose o que mudou e por quê.
   grauteado), largura ao longo do muro ≥ 20 cm (lista), barras do pilarete descendo e emendando no graute do arrimo
   (contínuas com a vertical do arrimo). Previsão dele: arrimo ≥ 1 m com 2 m ou mais de alvenaria em cima "só vai
   resistir com contrafortes".
+  BARRA HORIZONTAL EM 2 (Jose, 13/11: "habilita essa opção de duas barras também encostadas em cada face da
+  canaleta"; FEITO no ramo `horizontal-duas-faces`, a partir do muro-de-cima): pos_ph ganhou "2 barras (uma em cada
+  face)". Planilha: nb_ph; d_ph = t − c; M_ph = máx(Mdx; Mdxe) (cada face leva o maior sinal, como a
+  centralizada); ELS horizontal com a 2ª barra (As2 = a_ph a d' = c) — as DUAS hipóteses da LN agora valem também
+  na horizontal (nomes lnB1_eh, x1_eh… voltaram; a memória usa '1'/'2' nas duas direções). Modelo: dois U por vão,
+  um em cada face (y = c e t − c), as pernas do segundo uma bitola mais para dentro do vão (id "…U01b"). Desenho
+  da escolha com as duas barras. Alvos novos no golden: alvo_ph_duas_faces (laterais engastadas) e
+  alvo_ph_duas_faces_apoiadas. A opção não entrou no sorteio (trocaria os muros que os testes conhecem).
+  TIJOLO NO 3D REALISTA (Jose, 13/11, foto de tijolo baiano: "meio foscos, opacos, porosos e com algumas
+  imperfeições"): pele nova 'ceramica' (visor/geracaoDasPeles.ts: mancha de queima, ondulação, grão, poros miúdos,
+  lascas de 3–9 mm e pintinhas claras), rugosidade 1 (fosco de todo), variação de tom 16 % de peça para peça, cor
+  #b4623a (estiloVisual TIJOLO_REALISTA); entra pela classe 'tijolo' (materialDoAcabamento recebe a classe).
   BLOCOS CERÂMICOS 3D (9, 11,5, 14 e 19): o Jose modela no Revit e exporta em IFC (13/11: "deixa isso comigo").
 - **VIRADA DE 90° (Jose, 13/11: "é o que mais é feito; não adianta calcular o muro só num sentido"):** muro em L com
   a quina. A quina dá rigidez (a perna de retorno apoia a outra, como um contraforte), mas traz empuxo nos dois

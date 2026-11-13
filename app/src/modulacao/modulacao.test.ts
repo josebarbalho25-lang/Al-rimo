@@ -229,7 +229,12 @@ function barrasEmUDosVaos(m: Modelo, r: Resultado): string[] {
     // e a canaleta da conta encostada a c_p, com o mesmo Ø, têm pernas diferentes: duas barras)
     const porFio = new Map<string, Set<string>>();
     for (const i of fiadasC) {
-      const us = horiz.filter((b) => b.trecho === k && Math.floor(b.eixo[0][2] / 200) === i).sort((a, b) => a.eixo[0][0] - b.eixo[0][0]);
+      const daFiada = horiz.filter((b) => b.trecho === k && Math.floor(b.eixo[0][2] / 200) === i);
+      // com 2 barras na canaleta (uma em cada face, 13/11) são dois U por vão: o segundo (id terminando em "b") tem as
+      // pernas uma bitola mais para dentro do vão
+      for (const [j, us] of [daFiada.filter((b) => !b.id.endsWith('b')), daFiada.filter((b) => b.id.endsWith('b'))].entries()) {
+      if (j === 1 && !us.length) continue;
+      us.sort((a, b) => a.eixo[0][0] - b.eixo[0][0]);
       if (us.length !== cfs.length - 1) {
         out.push(`T${k} fiada ${i}: ${us.length} U para ${cfs.length - 1} vãos`);
         continue;
@@ -242,8 +247,8 @@ function barrasEmUDosVaos(m: Modelo, r: Resultado): string[] {
         if (us.some((q) => q.diametro !== phi)) out.push(`${b.id}: Ø diferente na mesma fiada`);
         if (e.some((q) => Math.abs(q[2] - ini[2]) > 1e-6)) out.push(`${b.id}: não é plana`);
         // as pernas: na ponta dos dois contrafortes do vão, φ/2 para dentro do vão
-        if (Math.abs(ini[0] - (cfs[v].x + phi / 2)) > 0.05 || Math.abs(ini[1] - yPonta) > 0.05) out.push(`${b.id}: 1ª perna fora da ponta de C(${cfs[v].x})`);
-        if (Math.abs(fim[0] - (cfs[v + 1].x - phi / 2)) > 0.05 || Math.abs(fim[1] - yPonta) > 0.05) out.push(`${b.id}: 2ª perna fora da ponta de C(${cfs[v + 1].x})`);
+        if (Math.abs(ini[0] - (cfs[v].x + phi / 2 + j * phi)) > 0.05 || Math.abs(ini[1] - yPonta) > 0.05) out.push(`${b.id}: 1ª perna fora da ponta de C(${cfs[v].x})`);
+        if (Math.abs(fim[0] - (cfs[v + 1].x - phi / 2 - j * phi)) > 0.05 || Math.abs(fim[1] - yPonta) > 0.05) out.push(`${b.id}: 2ª perna fora da ponta de C(${cfs[v + 1].x})`);
         // a base: o trecho reto ao longo de X, entre as duas dobras (no y da barra da canaleta da conta: centralizada ou
         // encostada a c_p da face — o lugar é o da planilha, como era o da corrida)
         let base: [Vec3, Vec3] | null = null;
@@ -273,6 +278,7 @@ function barrasEmUDosVaos(m: Modelo, r: Resultado): string[] {
         (porFio.get(forma) ?? porFio.set(forma, new Set()).get(forma)!).add(b.posicao);
         if (us.some((q) => q.posicao !== b.posicao)) out.push(`${b.id}: U diferentes na mesma fiada`);
       });
+      }
     }
     for (const [forma, ps] of porFio) if (ps.size > 1) out.push(`T${k} U ${forma}: em ${ps.size} posições (${[...ps].join(', ')})`);
   });

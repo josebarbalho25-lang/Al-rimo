@@ -56,6 +56,7 @@ export interface Parametros {
   estribos: boolean;                   // o contraforte leva estribo? (a conta pediu: Asw/s de cálculo > 0)
   phi_pv: number; s_pv: number | null; duasBarrasPv: boolean; c_pv: number;
   phi_ph: number; s_ph: number | null; phCentralizada: boolean;
+  phDuas: boolean;                     // 2 barras na canaleta, uma encostada em cada face (Jose, 13/11)
   // fundação
   B_sap: number; h_sap: number; a_ater: number; b_den: number; h_den: number; x_den: number; cob_sap: number;
   phi_sap: number; phi_sap2: number; phi_tor: number; s_ps: number | null; s_ss: number | null; s_tor: number | null;
@@ -142,7 +143,8 @@ export function lerParametros(r: Resultado, extrasIn: Record<string, Valor>, avi
     c_pv: ou('c_pv', 5) * 10,
     phi_ph: ou('phi_ph', 12.5),
     s_ph: cm(n('s_ph')),
-    phCentralizada: !txt('pos_ph').trim().toLowerCase().startsWith('enc'),
+    phCentralizada: !txt('pos_ph').trim().toLowerCase().startsWith('enc') && !txt('pos_ph').trim().startsWith('2'),
+    phDuas: txt('pos_ph').trim().startsWith('2'),
 
     B_sap: ou('B_sap', 1.4) * 1000,
     h_sap: ou('h_sap', 0.3) * 1000,

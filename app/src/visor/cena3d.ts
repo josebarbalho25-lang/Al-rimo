@@ -204,7 +204,7 @@ export function construirCena3D(modelo: Modelo, paleta: PaletaVisor, estiloInici
     const chave = `${a}|${classe ?? ''}`;
     let q = doEstilo.get(chave);
     if (!q) {
-      doEstilo.set(chave, (q = { m: materialDoAcabamento(e, a, peles), a, classe }));
+      doEstilo.set(chave, (q = { m: materialDoAcabamento(e, a, peles, classe), a, classe }));
       q.m.clippingPlanes = planos.length ? [...planos] : null;
       ajustarTransparencia(q.m, daTabela(a, classe), veuDe(e, a, classe));
     }

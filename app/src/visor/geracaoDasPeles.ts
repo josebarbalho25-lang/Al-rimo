@@ -20,7 +20,7 @@
 //  (`THREE.DataTexture`), o que deixa este arquivo testável no Node.
 // ═══════════════════════════════════════════════════════════════════════════
 
-export type Pele = 'bloco' | 'concreto' | 'solo';
+export type Pele = 'bloco' | 'concreto' | 'solo' | 'ceramica';
 
 /** Gerador congruente linear (o do A-PORT): barato e reproduzível. */
 function acaso(semente: number): () => number {
@@ -95,8 +95,8 @@ function carimbar(S: number, cx: number, cy: number, r: number, fn: (d: number, 
  */
 export function campoDaPele(pele: Pele, S = 512): Float32Array {
   const k = S / 512;
-  const fbm = ruido(pele === 'bloco' ? 1337 : pele === 'concreto' ? 2718 : 4242);
-  const rnd = acaso(pele === 'bloco' ? 42 : pele === 'concreto' ? 7 : 99);
+  const fbm = ruido(pele === 'bloco' ? 1337 : pele === 'concreto' ? 2718 : pele === 'ceramica' ? 3141 : 4242);
+  const rnd = acaso(pele === 'bloco' ? 42 : pele === 'concreto' ? 7 : pele === 'ceramica' ? 23 : 99);
   const g = new Float32Array(S * S);
 
   for (let y = 0; y < S; y++) {
@@ -108,6 +108,11 @@ export function campoDaPele(pele: Pele, S = 512): Float32Array {
       if (pele === 'bloco') {
         // Ladrilho de 0,5 m (1 px ≈ 1 mm): mancha larga de cura, textura média do vibroprensado e o grão.
         c = 0.5 + 0.06 * fbm(u, v, 3, 2) + 0.06 * fbm(u, v, 3, 16) + 0.08 * fbm(u, v, 2, 128) + 0.14 * grao;
+      } else if (pele === 'ceramica') {
+        // Tijolo cerâmico (Jose, 13/11: "meio foscos, opacos, porosos e com algumas imperfeições"). Ladrilho de 0,5 m:
+        // a mancha de queima do forno (larga e forte — um lado mais escuro, outro mais claro), a ondulação da
+        // extrusão e o grão do barro.
+        c = 0.5 + 0.1 * fbm(u, v, 4, 2) + 0.05 * fbm(u, v, 3, 12) + 0.05 * fbm(u, v, 2, 96) + 0.1 * grao;
       } else if (pele === 'concreto') {
         // Ladrilho de 1 m: a fôrma deixa mancha grande e superfície fechada; grão pouco.
         c = 0.5 + 0.09 * fbm(u, v, 4, 3) + 0.035 * fbm(u, v, 3, 24) + 0.04 * grao;
@@ -136,6 +141,34 @@ export function campoDaPele(pele: Pele, S = 512): Float32Array {
     for (let n = 0; n < pedras; n++) {
       const r = (0.7 + 1.4 * rnd()) * k;
       const s = rnd() < 0.55 ? 0.1 + 0.08 * rnd() : -(0.06 + 0.06 * rnd());
+      carimbar(S, rnd() * S, rnd() * S, r, (d, i) => {
+        g[i]! += s * (1 - d);
+      });
+    }
+  } else if (pele === 'ceramica') {
+    // Poros do barro: miúdos e muitos, escurecendo pouco (a cerâmica é fosca, o poro não é buraco fundo).
+    const poros = Math.round(6500 * k * k);
+    for (let n = 0; n < poros; n++) {
+      const r = (0.6 + 1.2 * Math.pow(rnd(), 2.5)) * k;
+      const escuro = 0.15 + 0.2 * rnd();
+      carimbar(S, rnd() * S, rnd() * S, r, (d, i) => {
+        g[i]! *= 1 - escuro * (1 - d * d);
+      });
+    }
+    // Imperfeições: lascas e falhas de 3 a 9 mm, mais escuras (a quina batida, o grumo que soltou).
+    const falhas = Math.round(55 * k * k);
+    for (let n = 0; n < falhas; n++) {
+      const r = (3 + 6 * Math.pow(rnd(), 1.5)) * k;
+      const escuro = 0.12 + 0.12 * rnd();
+      carimbar(S, rnd() * S, rnd() * S, r, (d, i) => {
+        g[i]! *= 1 - escuro * Math.sqrt(1 - d * d);
+      });
+    }
+    // Pintinhas claras de calcário e areia do barro.
+    const pintas = Math.round(1400 * k * k);
+    for (let n = 0; n < pintas; n++) {
+      const r = (0.6 + 0.9 * rnd()) * k;
+      const s = 0.06 + 0.08 * rnd();
       carimbar(S, rnd() * S, rnd() * S, r, (d, i) => {
         g[i]! += s * (1 - d);
       });

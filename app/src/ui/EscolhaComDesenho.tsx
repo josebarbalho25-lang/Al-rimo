@@ -86,12 +86,12 @@ function plantaCf(aparente: boolean, destaque: number | null): ReactNode {
 }
 
 /** Canaleta (U) em corte com a barra: centrada ou junto à face externa. */
-function canaleta(encostada: boolean): ReactNode {
+function canaleta(posicao: 'centro' | 'face' | 'duas'): ReactNode {
   return (
     <g>
       <path d="M40 8 V52 H80 V8 H74 V46 H46 V8 Z" fill={C.bloco} stroke={C.linha} strokeWidth={1.2} />
       <rect x={46} y={8} width={28} height={38} fill={C.graute} />
-      <circle cx={encostada ? 51 : 60} cy={34} r={3.6} fill={C.aco} />
+      {(posicao === 'duas' ? [51, 69] : [posicao === 'face' ? 51 : 60]).map((cx) => <circle key={cx} cx={cx} cy={34} r={3.6} fill={C.aco} />)}
       <rect x={82} y={8} width={30} height={44} fill={C.solo} />
     </g>
   );
@@ -180,7 +180,7 @@ const DESENHOS: Record<string, (v: Valor) => ReactNode | null> = {
   },
   pos_ph: (v) => {
     const s = String(v ?? '');
-    return s.startsWith('Centralizada') ? canaleta(false) : s.startsWith('Encostada') ? canaleta(true) : null;
+    return s.startsWith('Centralizada') ? canaleta('centro') : s.startsWith('Encostada') ? canaleta('face') : s.startsWith('2 barras') ? canaleta('duas') : null;
   },
 };
 

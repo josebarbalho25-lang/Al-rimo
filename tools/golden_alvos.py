@@ -197,6 +197,9 @@ ALVOS.update({
     'alvo_mc_cf_duas': {**_MC, 'Tipo_muro': 'Contrafortes', 'H_muro': 3.0, 'H_solo': 2.2, 'l_cf': 1.6, 'cin_mc': 'No topo e a meia altura',
                         'pil_tipo': 'Bloco grauteado', 'hs_pil': 39, 'b_pil': 14, 'cls_v': 'B', 'cat_v': 'V'},
     'alvo_vento_sem_mc': {'vento_on': 'Sim', 'mc_on': 'Não', 'H_muro': 2.4, 'H_solo': 1.6, 'V0_v': 40},
+    # barra horizontal da canaleta: uma encostada em cada face (Jose, 13/11), com laterais engastadas (os dois sinais)
+    'alvo_ph_duas_faces': {'Tipo_muro': 'Contrafortes', 'H_muro': 2.6, 'l_cf': 2.4, 'pos_ph': '2 barras (uma em cada face)', 'lat_pan': 'Engastadas', 'phi_ph': 10},
+    'alvo_ph_duas_faces_apoiadas': {'Tipo_muro': 'Contrafortes', 'H_muro': 3.0, 'l_cf': 1.6, 'pos_ph': '2 barras (uma em cada face)', 'lat_pan': 'Apoiadas', 't_bloco': 19},
 })
 
 

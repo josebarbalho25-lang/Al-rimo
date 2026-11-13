@@ -374,8 +374,9 @@ r += 1
 section(C, r, '10. Painel — flexão horizontal (barras nas canaletas)'); r += 1
 Lc('K horizontal', '=IF(ISNUMBER(K_ph),K_ph,IF(gr_tot="Sim",1,0.5))', '', 'Entradas ou, em branco: 0,5 com a seção horizontal não toda grauteada (manual ABCP); 1,0 com grauteamento total.', 'res', '0.00', 'K_ph_us', 'Manual ABCP')
 Lc('Kfd horizontal = K·0,7·fpk/γm', '=K_ph_us*0.7*fpk_pn/gama_m', 'MPa', '', 'res', '0.000', 'Kfd_ph', 'Manual ABCP')
-Lc('d horizontal', '=IF(LEFT(pos_ph,4)="Cent",t_bloco/2,t_bloco-c_pv)', 'cm', 'Centralizada na canaleta → d = t/2; encostada na face externa → d = t − c.', 'key', '0.0', 'd_ph')
-Lc('Momento horizontal de cálculo', '=IF(LEFT(pos_ph,4)="Cent",MAX(Mdx_p,Mdxe_p),Mdx_p)', 'kN·cm/m', 'Barra centralizada atende os dois sinais (vão e engaste lateral).', 'res', '0.0', 'M_ph')
+Lc('Barras por canaleta', '=IF(LEFT(pos_ph,1)="2",2,1)', '', '2 = uma barra encostada em cada face.', 'res', '0', 'nb_ph')
+Lc('d horizontal', '=IF(LEFT(pos_ph,4)="Cent",t_bloco/2,t_bloco-c_pv)', 'cm', 'Centralizada na canaleta → d = t/2; encostada na face externa ou uma em cada face → d = t − c.', 'key', '0.0', 'd_ph')
+Lc('Momento horizontal de cálculo', '=IF(OR(LEFT(pos_ph,4)="Cent",nb_ph=2),MAX(Mdx_p,Mdxe_p),Mdx_p)', 'kN·cm/m', 'Barra centralizada atende os dois sinais (vão e engaste lateral); com uma barra em cada face, cada face leva o maior dos dois.', 'res', '0.0', 'M_ph')
 C.cell(row=r, column=1, value='Arranjos (faixa bm = espaçamento das canaletas; última coluna = As com a barra encostada na face, d = t − c)').font = fB; r += 1
 ph0, ph1 = arr_table('ph', 'd_ph', 'Kfd_ph', 'M_ph', ['20', '40', '60', '80'], 'phi_ph', extra_d=('As com d = t − c, fyd (cm²)', '(t_bloco-c_pv)'))
 Lc('Espaçamento das canaletas adotado', f'=IF(ISNUMBER(s_ph_dir),s_ph_dir,SUMPRODUCT(MAX((F{ph0}:F{ph1}="OK")*A{ph0}:A{ph1})))', 'cm', 'Entradas ou automático.', 'key', '0', 's_ph')
@@ -385,7 +386,7 @@ Lc('fsd da barra horizontal', '=fyk_/gama_s', 'MPa', '', 'res', '0.0', 'fsd_ph')
 Lc('As horizontal', '=IFERROR(Md_ph/(fsd_ph/10*MIN(d_ph-0.4*x_ph,0.95*d_ph)),"não resiste")', 'cm²', '', 'res', '0.00', 'As_phc')
 Lc('As,mín da faixa', '=IF(LEFT(AsMin_crit,4)="Viga",0.0015*s_ph*d_ph,0.001*s_ph*t_bloco)', 'cm²', '', 'res', '0.00', 'As_phm')
 Lc('Área da barra horizontal', '=PI()*phi_ph^2/400', 'cm²', '', 'res', '0.000', 'a_ph')
-Lc('Precisa de barra do lado do solo junto ao contraforte?', '=IF(AND(LEFT(pos_ph,4)<>"Cent",Mdxe_p>0),"SIM — laterais engastadas com barra encostada na face externa: Mdxe traciona a face do solo. Usar barra centralizada ou 2 barras na canaleta","Não")', '', '', 'res')
+Lc('Precisa de barra do lado do solo junto ao contraforte?', '=IF(AND(LEFT(pos_ph,4)="Enco",Mdxe_p>0),"SIM — laterais engastadas com barra encostada na face externa: Mdxe traciona a face do solo. Usar barra centralizada ou 2 barras na canaleta","Não")', '', '', 'res')
 r += 1
 section(C, r, '11. Painel não armado entre barras e canaletas'); r += 1
 Lc('l = espaçamento vertical', '=s_pv/100', 'm', '', 'res', '0.00', 'l_sp')
@@ -468,7 +469,7 @@ Lc('bw (canaleta grauteada)', '=IF(gr_tot="Sim",bm_eh,MIN(bm_eh,bwh_els))', 'cm'
 Lc('Ma = (Ma/Mk)·M/γf·bm', '=psi_els*M_ph/gama_f*bm_eh/100', 'kN·cm', '', 'res', '0.0', 'Ma_eh')
 Lc('Im', '=bm_eh*t_bloco^3/12-(bm_eh-bw_eh)*(t_bloco-2*hf_bl)^3/12', 'cm⁴', '', 'res', '0', 'Im_eh')
 Lc('Mr = ftk∥·Im/(h/2)', '=ftk_par/10*Im_eh/(t_bloco/2)', 'kN·cm', '', 'res', '0.0', 'Mr_eh')
-els_block('eh', 'bm_eh', 'bw_eh', 'a_ph', 'd_ph', '0', 'c_pv', 'Ma_eh', 'Mr_eh', 'Im_eh')
+els_block('eh', 'bm_eh', 'bw_eh', 'a_ph', 'd_ph', 'IF(nb_ph=2,a_ph,0)', 'c_pv', 'Ma_eh', 'Mr_eh', 'Im_eh')
 # --- flechas
 _a, _aB = _cn['α'], _cn['αB']
 Lc('Carga de serviço × α (triangular + uniforme)', f'=psi_els*(B{_a}*p_tri+C{_a}*p_uni)', 'kN/m²', 'α·p de cada parcela, somados.', 'res', '0.00', 'ap_c')
@@ -499,7 +500,7 @@ r += 1
 section(C, r, '14. Detalhamento (resumo)'); r += 1
 Lc('Contraforte', '=n_cf&"Ø"&'+fphi('phi_cf')+'&" na ponta (d = "&FIXED(d_cf,1)&" cm) + "&n_cc&"Ø"&'+fphi('phi_cc')+'&" construtivas; "&IF(Asw_c=0,"sem estribos (dispensa pela conta)","estribos Ø"&'+fphi('phi_est')+'&" c/"&FIXED(s_est,0)&" ("&ramos_est&" ramos) nas juntas")', '', '', 'key')
 Lc('Painel — vertical', '=IF(nb_pv=2,"Ø"&'+fphi('phi_pv')+'&" c/"&FIXED(s_pv,0)&" em CADA face (2 barras por furo, a "&'+fphi('c_pv')+'&" cm das faces)","Ø"&'+fphi('phi_pv')+'&" c/"&FIXED(s_pv,0)&" centralizada")', '', '', 'key')
-Lc('Painel — horizontal', '="Ø"&'+fphi('phi_ph')+'&" c/"&FIXED(s_ph,0)&" em canaleta grauteada, "&IF(LEFT(pos_ph,4)="Cent","centralizada","encostada na face externa")', '', '', 'key')
+Lc('Painel — horizontal', '="Ø"&'+fphi('phi_ph')+'&" c/"&FIXED(s_ph,0)&" em canaleta grauteada, "&IF(LEFT(pos_ph,4)="Cent","centralizada",IF(nb_ph=2,"uma em cada face","encostada na face externa"))', '', '', 'key')
 r += 1
 section(C, r, '15. Verificações'); r += 1
 CHK = [
@@ -523,7 +524,7 @@ CHK = [
     ('Painel não armado: dimensões-limite', '=IF(LEFT(tem_sp,3)="Não","— não se aplica",IF(AND(MAX(l_sp,h_sp)<=50*t_bloco/100,l_sp*h_sp<=2025*(t_bloco/100)^2),"OK","NÃO OK"))'),
     ('Painel: ELS δ∞ ≤ δadm', '=IF(dinf_p<=dadm_p,"OK ("&FIXED(dinf_p,1)&" ≤ "&FIXED(dadm_p,1)&" mm)","NÃO OK")'),
     ('Painel: ábaco simplificado da NBR', '=IF(ISNUMBER(htl_ab),IF(ht_ab<=htl_ab,"OK (h/t "&FIXED(ht_ab,1)&" ≤ "&FIXED(htl_ab,0)&")","NÃO OK pelo ábaco — vale o cálculo da flecha acima"),"fora do ábaco")'),
-    ('POSIÇÃO DAS BARRAS DO PAINEL', '=IF(nb_pv=2,"ATENÇÃO — verticais: uma barra encostada em CADA face (a "&'+fphi('c_pv')+'&" cm), não centralizar. Horizontais: "&IF(LEFT(pos_ph,4)="Cent","centralizadas na canaleta.","encostadas na face externa."),"Verticais centralizadas.")'),
+    ('POSIÇÃO DAS BARRAS DO PAINEL', '=IF(nb_pv=2,"ATENÇÃO — verticais: uma barra encostada em CADA face (a "&'+fphi('c_pv')+'&" cm), não centralizar. Horizontais: "&IF(LEFT(pos_ph,4)="Cent","centralizadas na canaleta.",IF(nb_ph=2,"uma encostada em CADA face da canaleta.","encostadas na face externa.")),"Verticais centralizadas."&IF(nb_ph=2," Horizontais: uma encostada em CADA face da canaleta.",""))'),
     ('Muro de cima e vento', '=res_mc'),
 ]
 for lab, f in CHK:

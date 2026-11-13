@@ -114,6 +114,8 @@ const REALISTA: Record<Acabamento, string> = {
   tubo: '#e6e6e1',
   terreno: '#7a5d3c',
 };
+// tijolo cerâmico (13/11): o laranja de barro queimado, fosco (a foto que o Jose mandou)
+const TIJOLO_REALISTA = '#b4623a';
 const ACO_REALISTA = '#6a5e54';
 
 /*
@@ -153,7 +155,7 @@ export function corDaPeca(estilo: EstiloVisual, p: PaletaVisor, a: Acabamento, c
 
 /** A cor da peça sem o meio-tom: o 3D em vetor da prancha, que passa o material e deixa o meio-tom com a Prancha. */
 export function corDaPecaSemMeioTom(estilo: EstiloVisual, p: PaletaVisor, a: Acabamento, classe?: ClassePeca): string {
-  if (estilo === 'realista') return REALISTA[a];
+  if (estilo === 'realista') return a === 'alvenaria' && classe === 'tijolo' ? TIJOLO_REALISTA : REALISTA[a];
   const g = tabelaDaVista('3d');
   if (estilo === 'opaco') return g[MATERIAL_DO_ACABAMENTO[a]]?.opaco ?? OPACO[a];
   const escolhida = a === 'alvenaria' ? undefined : g[MATERIAL_DO_ACABAMENTO[a]]?.cor;

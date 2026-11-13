@@ -456,7 +456,11 @@ function avisarPontaDoNo(ctx: Ctx, vs: Vertical[], Ype: number): void {
 // ── horizontais nas canaletas ────────────────────────────────────────────────
 
 /** A barra da canaleta do muro numa fiada: Ø, eixo (y, z) e o desvio das barras emendadas (lado a lado, em y). */
-export interface BarraDaCanaleta { phi: number; y: number; z: number; lado: number }
+export interface BarraDaCanaleta {
+  phi: number; y: number; z: number; lado: number;
+  /** Todas as barras da fiada em y: uma (a de `y`) ou, com 2 barras na canaleta (13/11), uma encostada em cada face. */
+  ys: number[];
+}
 
 export function barraDaCanaletaDoMuro(ctx: Ctx, f: FiadaMontada): BarraDaCanaleta {
   const { mod, p } = ctx;
@@ -467,6 +471,7 @@ export function barraDaCanaletaDoMuro(ctx: Ctx, f: FiadaMontada): BarraDaCanalet
   const daConta = mod.s_can > 0 && ((f.i + 1) * H_FIADA) % mod.s_can === 0;
   const phi = p.contrafortes && daConta ? p.phi_ph : p.phi_cinta;
   const y = p.contrafortes && daConta && !p.phCentralizada ? p.c_pv : t / 2;
+  const ys = p.contrafortes && daConta && p.phDuas ? [p.c_pv, t - p.c_pv] : [y];
   // a barra é reta e corre por canaletas de fundos diferentes (a cortada da 19 tem 1 cm a mais): fica no mais alto,
   // para ter o graute mínimo em cima de todas — também nas da haste, onde corre a barra do contraforte (mesmo z)
   let fundo = mod.cat.canaleta.fundo;
@@ -478,7 +483,7 @@ export function barraDaCanaletaDoMuro(ctx: Ctx, f: FiadaMontada): BarraDaCanalet
   const z = f.i * H_FIADA + JUNTA + fundo + COB_GRAUTE + phi / 2;
   // barras emendadas (a corrida do balanço): a 2ª encosta ao lado da 1ª
   const lado = y + 1.5 * phi <= t - parede ? phi : -phi;
-  return { phi, y, z, lado };
+  return { phi, y, z, lado, ys };
 }
 
 /**
@@ -536,16 +541,20 @@ function barrasEmU(ctx: Ctx, tr: TrechoModulado, fiadas: FiadaMontada[], canalet
   const curtas: { id: string; perna: number; lb: number; nec: number; peloMinimo: boolean }[] = [];
   for (const f of fiadas) {
     if (!canaleta[f.i]) continue;
-    const { phi, y, z } = barraDaCanaletaDoMuro(ctx, f);
-    const perna = Math.abs(yPonta - y) - raioDoEixo(phi);
+    const { phi, z, ys } = barraDaCanaletaDoMuro(ctx, f);
     const anc = ancoragemDaPernaDoU(ctx, phi);
-    for (let k = 0; k + 1 < nos.length; k++) {
-      const xa = nos[k].xc + phi / 2;
-      const xb = nos[k + 1].xc - phi / 2;
-      const id = `T${tr.indice}.H.f${pad(f.i, 2)}.U${pad(k + 1, 2)}`;
-      ctx.barras.push(dobrada(id, 'HORIZ', phi, [[xa, yPonta, z], [xa, y, z], [xb, y, z], [xb, yPonta, z]], tr.indice));
-      if (anc !== null && perna < anc.nec - 0.5) curtas.push({ id, perna, ...anc });
-    }
+    // com 2 barras (uma em cada face, 13/11) são dois U por vão; as pernas do segundo ficam uma bitola mais para
+    // dentro do vão, encostadas nas do primeiro, para as quatro pernas não ocuparem o mesmo lugar no contraforte
+    ys.forEach((y, j) => {
+      const perna = Math.abs(yPonta - y) - raioDoEixo(phi);
+      for (let k = 0; k + 1 < nos.length; k++) {
+        const xa = nos[k].xc + phi / 2 + j * phi;
+        const xb = nos[k + 1].xc - phi / 2 - j * phi;
+        const id = `T${tr.indice}.H.f${pad(f.i, 2)}.U${pad(k + 1, 2)}${j ? 'b' : ''}`;
+        ctx.barras.push(dobrada(id, 'HORIZ', phi, [[xa, yPonta, z], [xa, y, z], [xb, y, z], [xb, yPonta, z]], tr.indice));
+        if (anc !== null && perna < anc.nec - 0.5) curtas.push({ id, perna, ...anc });
+      }
+    });
   }
   if (curtas.length) {
     const pior = curtas.reduce((a, b) => (b.perna / b.nec < a.perna / a.nec ? b : a));
