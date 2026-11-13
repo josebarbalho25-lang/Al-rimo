@@ -318,6 +318,10 @@ e dizer ao Jose o que mudou e por quê.
   pedida precisa de célula livre (sem barra); sem ela, fica a automática com aviso BARBACA_ALTURA; saída abaixo do
   aterro da frente avisa BARBACA_ABAIXO_DA_FRENTE. Limite que já existia: painel com barra em todo furo (s_pv = 20)
   não tem célula livre — nenhum barbacã (BARBACA_SEM_CELULA), ligado ou não.
+  FURO COM BARRA (Jose, 13/11: "ou só deslocar o barbacã do ferro vertical… até automático"): sem furo livre na
+  fiada, o tubo passa no furo da barra, ao lado dela (1 cm da barra e da borda do furo; vai antes do graute) — com
+  Ø50 e Ø10, eixo a 4 cm do eixo da barra. Furo sem barra continua o primeiro lugar. Com barra em todo furo (s = 20)
+  o barbacã agora sai; o BARBACA_SEM_CELULA fica para furo pequeno demais.
 - **Hachuras do Revit do Jose (14/10):** terra = trançado EARTH do AutoCAD (casa 48 px, #a67857 sobre #dbc9bb),
   concreto (#5d5d5d sobre #d4d4d4), areia (#5d5d5d sobre #ffffb7), brita = pedras de quina viva (opção A, #4a4a4a sobre
   #c3bfb5). Tamanhos CALIBRADOS por ele na régua (`_trabalho/calibrar_hachuras.html`): terra ×0,40, concreto ×0,85,
