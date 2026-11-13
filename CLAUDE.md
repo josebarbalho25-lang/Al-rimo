@@ -885,6 +885,10 @@ e dizer ao Jose o que mudou e por quê.
   com contrafortes o pilarete fica com a face rente à face aparente do muro (enterrado; no aparente, rente à face do
   solo) e avança sobre a haste, que é toda grauteada: as barras descem ℓ0t (l0t_pil) dentro dela quando caem na
   largura do contraforte. No BALANÇO ainda não descem (aviso PILARETE_LIGACAO) — esperando a regra dos furos.
+  FORÇAS NO CONTRAFORTE (Jose, 13/11: "um SVG com o braço de alavanca pra confirmar a posição da LN"): desenho
+  `desenhoDasForcasNoContraforte` (memoria/desenhoDaSecaoI.ts) na seção da LN do card de flexão do contraforte —
+  de perfil, mesa em cima, blocos comprimidos (mesa e alma no T além da mesa), LN em x, barra em d, z ou os dois braços
+  (d − hf/2 e d − 0,4x). Seção do contraforte: cotas do d e do c à direita da mesa.
   BARRA HORIZONTAL EM 2 (Jose, 13/11: "habilita essa opção de duas barras também encostadas em cada face da
   canaleta"; FEITO no ramo `horizontal-duas-faces`, a partir do muro-de-cima): pos_ph ganhou "2 barras (uma em cada
   face)". Planilha: nb_ph; d_ph = t − c; M_ph = máx(Mdx; Mdxe) (cada face leva o maior sinal, como a

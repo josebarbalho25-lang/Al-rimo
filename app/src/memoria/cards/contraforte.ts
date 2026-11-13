@@ -26,6 +26,7 @@ import { lerValor, memoriaDe, secao, type Memoria, type OpcoesDoPasso, type Pedi
 import { casasDaEntrada } from '../metaDaPlanilha';
 import { passoDaSomaDaFlecha } from './painelEls';
 import { desenhoDaSecaoDoContraforte } from '../desenhoDaSecaoCf';
+import { desenhoDasForcasNoContraforte } from '../desenhoDaSecaoI';
 
 /*
   Grafias que outro grupo já descreve (uma letra, um significado no glossário): ℓcf, tenr, eenr em
@@ -501,6 +502,9 @@ function cardFlexao(r: Parameters<AutorDeCards>[0]): Card {
   const xNum = m.valor(TT ? 'x_cfw' : 'x_cfr') !== null;
   const secLN = secao('Linha neutra', passosLN, ABCP_34);
 
+  // as forças, a LN e o braço de alavanca desenhados ao lado da conta da LN (Jose, 13/11: "pra confirmar a posição dela")
+  const forcas = desenhoDasForcasNoContraforte(r);
+  if (forcas) secLN.desenho = forcas;
   const secoes = [montagem, secaoT, materiais, secLN];
   if (xNum) {
     // ── armadura ── (a seção que não resiste para em "não resiste": As, nº de barras e As,máx ficam de fora)

@@ -384,3 +384,80 @@ export function desenhoDasForcasNaFaixa(r: Resultado): DesenhoDoCard | null {
     largura: LARGURA_FLEXAO,
   };
 }
+
+/*
+  FORÇAS NA SEÇÃO DO CONTRAFORTE (Jose, 13/11: "era bom ter um SVG com o braço de alavanca pra confirmar a posição da
+  linha neutra"). O mesmo desenho das forças do balanço, de perfil: a profundidade na vertical, com a face comprimida
+  EM CIMA (a mesa = o muro, como na planta da seção) e a ponta tracionada embaixo. A largura de cada bloco comprimido é
+  a largura da seção nele (bm na mesa, bw na alma): mesma tensão K·fd, então a área do bloco é a força. Números das
+  células da planilha (x_cf, d_cf, hf_cf, bm_cf, bw_cf, z_cf, cf_TT); nada é recalculado aqui além das posições.
+*/
+export function desenhoDasForcasNoContraforte(r: Resultado): DesenhoDoCard | null {
+  const n = (k: string) => r.num(k);
+  const d = n('d_cf'), x = n('x_cf'), bw = n('bw_cf'), h = n('h_cf'), z = n('z_cf');
+  const bm = n('bm_cf') ?? bw, hfT = n('hf_cf') ?? 0;
+  if (!ok(d, x, bw, h) || !(x! > 0) || !(d! > 0) || !(h! > 0)) return null;
+  const T = (n('cf_T') ?? 0) === 1;              // enterrado: mesa (o muro) comprimida
+  const alemDaMesa = (n('cf_TT') ?? 0) === 1;    // o bloco 0,8x passa da mesa: seção T de verdade
+  const hf = T ? hfT : 0;
+  const k = Math.min(9, 400 / h!);               // px por cm de profundidade
+  const yTopo = 30;
+  const nivel = (p: number) => yTopo + p * k;
+  const xa = 300, wLarga = 150;                  // a face da seção; o bloco mais largo
+  const larg = Math.max(T ? bm! : bw!, bw!);
+  const wM = (wLarga * (T ? bm! : bw!)) / larg;  // mesa (ou a seção retangular inteira)
+  const wA = (wLarga * bw!) / larg;               // alma
+  const partes: string[] = [];
+  // a seção de perfil: a mesa (muro) em cima, a alma até a ponta
+  if (T) partes.push(rect(xa - 14, nivel(0), 14, hf * k, MESA, TINTA, 0.8));
+  partes.push(rect(xa - 14, nivel(hf), 14, (h! - hf) * k, GRAUTE, GRAUTE_LINHA, 0.8));
+  partes.push(lin(xa, nivel(0), xa, nivel(h!), TINTA, 1.5));
+  // blocos comprimidos e resultantes
+  const xSeta = xa + wLarga + 52;
+  const bracos: Array<[number, string]> = [];
+  if (T && alemDaMesa) {
+    const yAlma = 0.8 * x!;                      // o bloco da alma, de cima, na largura bw (o das abas é Cf)
+    partes.push(zona(xa, nivel(0), wM, hf * k), zona(xa, nivel(hf), wA, Math.max(0, yAlma - hf) * k));
+    partes.push(seta(xSeta, xa + wM + 4, nivel(hf / 2), LARANJA), texto(xSeta + 6, nivel(hf / 2) + 5, 'C mesa', FS, 'start'));
+    partes.push(seta(xSeta, xa + wA + 4, nivel(0.4 * x!), LARANJA), texto(xSeta + 6, nivel(0.4 * x!) + 5, 'C alma', FS, 'start'));
+    bracos.push([nivel(hf / 2), 'd − hf/2'], [nivel(0.4 * x!), 'd − 0,4x']);
+  } else {
+    partes.push(zona(xa, nivel(0), wM, 0.8 * x! * k));
+    partes.push(seta(xSeta, xa + wM + 4, nivel(0.4 * x!), LARANJA), texto(xSeta + 6, nivel(0.4 * x!) + 5, 'C', FS, 'start'));
+    bracos.push([nivel(0.4 * x!), z !== null ? `z = ${nbr(z, 2)}` : 'z = d − 0,4x']);
+  }
+  // a linha neutra e o aço (rótulos em cima das linhas, como no balanço)
+  const fimLN = xa + wLarga + 30;
+  partes.push(lin(xa - 20, nivel(x!), fimLN, nivel(x!), LARANJA, 1.3, TRACO_LN));
+  partes.push(texto(fimLN, nivel(x!) - 5, 'LN', 13, 'end'));
+  partes.push(`<circle cx="${xa}" cy="${nivel(d!).toFixed(2)}" r="5" fill="${ACO}"/>`);
+  partes.push(seta(xa + 7, xa + 80, nivel(d!), ACO), texto(xa + 44, nivel(d!) - 9, 'As·σs', FS));
+  // profundidades à esquerda, da face comprimida: hf (com mesa), x, d e o total
+  const cA = xa - 34, cB = xa - 118, cC = xa - 202;
+  partes.push(chamada(xa - 14, nivel(0), cC - 4, nivel(0)));
+  // o x na coluna de perto e o hf na de fora: a chamada do x (curta) não cruza o rótulo do hf
+  partes.push(chamada(xa - 20, nivel(x!), cA - 4, nivel(x!)));
+  partes.push(cotaV(cA, nivel(0), nivel(x!), `x = ${nbr(x!, 2)}`, -1));
+  if (T) {
+    partes.push(chamada(xa - 14, nivel(hf), cB - 4, nivel(hf)));
+    partes.push(cotaV(cB, nivel(0), nivel(hf), `hf = ${cm(hf)}`, -1));
+  }
+  partes.push(chamada(xa - 5, nivel(d!), cC - 4, nivel(d!)));
+  partes.push(cotaV(cC, nivel(0), nivel(d!), `d = ${cm(d!)}`, -1));
+  if (!alemDaMesa && T) partes.push(texto(xa + wM / 2, nivel(Math.max(0.8 * x!, hf)) + 20, `0,8x = ${nbr(0.8 * x!, 2)} ≤ hf`, FS));
+  // braços até a barra, à direita
+  const xr0 = xSeta + 84, passo = 112;
+  partes.push(chamada(fimLN + 6, nivel(d!), xr0 + (bracos.length - 1) * passo + 4, nivel(d!)));
+  bracos.forEach(([yy, rot], i) => {
+    const xr = xr0 + i * passo;
+    partes.push(chamada(xSeta + 60, yy, xr + 4, yy));
+    partes.push(cotaV(xr, yy, nivel(d!), rot, 1));
+  });
+  const Ht = nivel(h!) + 30;
+  const Wt = Math.max(LARGURA_FLEXAO, Math.ceil(xr0 + (bracos.length - 1) * passo + 110));
+  return {
+    svg: svgDe(partes, Wt, Ht),
+    titulo: T ? (alemDaMesa ? 'Forças na seção T do contraforte (cm)' : 'Forças no contraforte: compressão na mesa (cm)') : 'Forças no contraforte aparente (cm)',
+    largura: LARGURA_FLEXAO,
+  };
+}
