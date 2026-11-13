@@ -414,7 +414,7 @@ const ITEM_DO_TIPO: Partial<Record<TipoPeca, ItemDaVista>> = {
   SAPATA: 'sapata',
   DRENO: 'drenagem', AREIA: 'drenagem', MANTA: 'drenagem', BARBACA: 'drenagem', TUBO_DRENO: 'drenagem',
   ATERRO: 'terreno', SOLO_FRENTE: 'terreno',
-  TIJOLO: 'blocos', TIJOLO_CORTADO: 'blocos', PILARETE: 'sapata', CINTA_MC: 'sapata',
+  TIJOLO: 'blocos', TIJOLO_CORTADO: 'blocos', PILARETE: 'blocos', CINTA_MC: 'blocos',
 };
 
 /** A peça aparece nesta vista? (o item dela não está desligado; tipo sem item sempre aparece) */

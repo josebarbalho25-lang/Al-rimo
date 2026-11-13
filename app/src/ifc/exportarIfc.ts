@@ -363,7 +363,7 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
     avisos.push(`${o} com id repetido: ${id} (exportada como ${id}~${n + 1})`);
     return `${id}~${n + 1}`;
   };
-  interface Grupo { chave: string; nome: string; tag: string; objectType: string; pecas: Peca[]; trecho: number; contraforte?: number }
+  interface Grupo { chave: string; nome: string; tag: string; objectType: string; pecas: Peca[]; trecho: number; contraforte?: number; muroDeCima?: boolean }
   const grupos = new Map<string, Grupo>();
   const soltas: Peca[] = [];
   for (const peca of modelo.pecas) {
@@ -379,7 +379,7 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
       g = cf
         ? { chave, nome: `Contraforte C${cf}`, tag: `C${cf}`, objectType: 'CONTRAFORTE', pecas: [], trecho: peca.trecho, contraforte: cf }
         : mc
-          ? { chave, nome: `Muro de cima T${peca.trecho}`, tag: `MC${peca.trecho}`, objectType: 'MURODEVEDACAO', pecas: [], trecho: peca.trecho }
+          ? { chave, nome: `Muro de cima T${peca.trecho}`, tag: `MC${peca.trecho}`, objectType: 'MURODEVEDACAO', pecas: [], trecho: peca.trecho, muroDeCima: true }
           : { chave, nome: `Muro T${peca.trecho}`, tag: `T${peca.trecho}`, objectType: 'RETAININGWALL', pecas: [], trecho: peca.trecho };
       grupos.set(chave, g);
     }
@@ -435,11 +435,19 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
     // Psets do contêiner
     const cx = caixaDe(g.pecas);
     ligarPset('pset/' + g.chave + '/comum', 'Pset_WallCommon', [muro], [
-      prop('Reference', 'IFCIDENTIFIER', g.contraforte ? 'Contraforte' : ehBalanco ? 'Arrimo em balanço' : 'Arrimo com contrafortes'),
+      prop('Reference', 'IFCIDENTIFIER', g.muroDeCima ? 'Muro de vedação' : g.contraforte ? 'Contraforte' : ehBalanco ? 'Arrimo em balanço' : 'Arrimo com contrafortes'),
       prop('IsExternal', 'IFCBOOLEAN', true),
-      prop('LoadBearing', 'IFCBOOLEAN', true),
+      // o muro de cima é vedação: quem carrega o vento até o arrimo é o pilarete (IfcColumn)
+      prop('LoadBearing', 'IFCBOOLEAN', !g.muroDeCima),
     ]);
-    if (cx) {
+    if (cx && g.muroDeCima) {
+      // muro de cima: espessura do tijolo e altura a partir do topo do arrimo
+      const mcd = modelo.dims.muroDeCima;
+      const comp = mm(cx.max[0] - cx.min[0]), larg = mm(mcd?.t ?? cx.max[1] - cx.min[1]), alt = mm(cx.max[2] - (mcd?.z0 ?? cx.min[2]));
+      relProps('qto/' + g.chave, [muro], qto('qto/' + g.chave, 'Qto_WallBaseQuantities', [
+        qLen('Length', comp), qLen('Width', larg), qLen('Height', alt), qArea('GrossSideArea', comp * alt), qVol('GrossVolume', comp * larg * alt),
+      ]));
+    } else if (cx) {
       // altura a partir do topo da sapata (Z = 0), não do 1º bloco: a junta de assentamento da 1ª fiada é muro
       const dx = mm(cx.max[0] - cx.min[0]), dy = mm(cx.max[1] - cx.min[1]), dz = mm(cx.max[2]);
       // contraforte: o comprimento é a haste (Y) e a largura é a espessura (X); no muro é o contrário
@@ -459,6 +467,13 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
         // família 14: o encaixe da haste no muro ainda não foi conferido com os modelos do Revit do José — o
         // arquivo sai dizendo isso, para ninguém tomar o travamento como projeto
         fam.provisoria ? prop('EncaixeProvisorio', 'IFCBOOLEAN', true) : null,
+      ]);
+    } else if (g.muroDeCima) {
+      ligarPset('pset/' + g.chave + '/alrimo', 'AlRimo_MuroDeCima', [muro], [
+        prop('Tipo', 'IFCLABEL', 'Muro de vedação em cima do arrimo'),
+        R.txt('mat_mc') ? prop('Material', 'IFCLABEL', R.txt('mat_mc')) : null,
+        propPos('Altura', 'IFCPOSITIVELENGTHMEASURE', R.num('h_mc')),
+        R.txt('cin_mc') ? prop('Cintas', 'IFCLABEL', R.txt('cin_mc')) : null,
       ]);
     } else {
       ligarPset('pset/' + g.chave + '/alrimo', 'AlRimo_Muro', [muro], [
@@ -512,7 +527,7 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
         qVol('NetVolume', geo.volume_mm3 / 1e9),
       ]));
     } else if (classe === 'PILAR') {
-      el = w.add('IFCCOLUMN', [G('peca/' + id), oh, `Pilarete ${peca.id.split('.').pop()}`, $, $, pl, corpo, id, E('COLUMN')]);
+      el = w.add('IFCCOLUMN', [G('peca/' + id), oh, `Pilarete ${peca.id.split('.')[0]} ${peca.id.split('.').pop()}`, $, $, pl, corpo, id, E('COLUMN')]);
       conta('IfcColumn');
       nomePorDono.set(`murocima/T${peca.trecho}`, `Muro de cima T${peca.trecho}`);
     } else if (classe === 'VIGA') {
@@ -569,7 +584,8 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
           : t.classe === 'BARBACA' ? w.add('IFCPIPESEGMENTTYPE', [...comum, $, E('RIGIDSEGMENT')])
             : t.classe === 'MANTA' ? w.add('IFCCOVERINGTYPE', [...comum, $, E('MEMBRANE')])
               : w.add('IFCBUILDINGELEMENTPROXYTYPE', [...comum, ROTULO[t.tipoPeca], E('USERDEFINED')]);
-    associaMaterial(materialDe(t.tipoPeca), ref);
+    // pilarete de bloco grauteado: bloco, não concreto (a geometria diz qual é)
+    associaMaterial(t.tipoPeca === 'PILARETE' && t.geo.catalogo?.includes('bloco') ? 'bloco' : materialDe(t.tipoPeca), ref);
     w.add('IFCRELDEFINESBYTYPE', [G('rel/tipo/geo/' + t.k), oh, $, $, t.ocorrencias, ref]);
   }
 

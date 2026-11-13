@@ -119,6 +119,7 @@ export function estiloDaSecao(s: Solido, pr: Prancha): Estilo | null {
   if (ALVENARIA.has(tp)) return { fill: pr.padrao('alv'), stroke: hachuraDe('alvenaria').risco, sw: 0.9, camada: 'alvenaria' };
   if (tp === 'GRAUTE_FURO' || tp === 'GRAUTE_CANALETA') return { fill: pr.padrao('grc'), stroke: hachuraDe('graute').risco, sw: 0.6, camada: 'graute' };
   if (tp === 'SAPATA') return { fill: pr.padrao('conc'), stroke: COR.linha, sw: 1.6, camada: 'concreto' };
+  if (tp === 'PILARETE' && s.geo.catalogo?.includes('bloco')) return { fill: pr.padrao('grc'), stroke: hachuraDe('graute').risco, sw: 1.2, camada: 'graute' };
   if (tp === 'PILARETE' || tp === 'CINTA_MC') return { fill: pr.padrao('conc'), stroke: COR.linha, sw: 1.2, camada: 'concreto' };
   if (tp === 'DRENO') return { fill: pr.padrao('brita'), stroke: hachuraDe('brita').risco, sw: 0.8, camada: 'drenagem' };
   if (tp === 'AREIA') return { fill: pr.padrao('areia'), stroke: hachuraDe('areia').risco, sw: 0.6, camada: 'drenagem' };

@@ -58,7 +58,8 @@ export interface Quantitativo {
     area: number;             // m² de parede de tijolo (vista de frente)
     argamassa: number;        // m³
     pilaretes: number;        // un
-    concretoPilaretes: number; // m³
+    concretoPilaretes: number; // m³ (concreto moldado)
+    blocoPilaretes: number;   // m³ de pilarete de bloco grauteado (volume da seção × altura)
     concretoCintas: number;   // m³
     forma: number;            // m²
   } | null;
@@ -341,9 +342,12 @@ export function quantificar(m: Modelo): Quantitativo {
 /** O muro de cima (13/11): tijolo, argamassa, concreto e fôrma do pilarete e da cinta. null sem muro de cima. */
 function quantificarMuroDeCima(m: Modelo): Quantitativo['muroDeCima'] {
   const tij = m.pecas.filter((p) => p.tipo === 'TIJOLO' || p.tipo === 'TIJOLO_CORTADO');
-  const pil = pecasDoTipo(m, 'PILARETE');
+  const pilTodos = pecasDoTipo(m, 'PILARETE');
+  const ehBloco = ({ g }: { g: Geometria }) => !!g.catalogo?.includes('bloco');
+  const pil = pilTodos.filter((x) => !ehBloco(x));
+  const pilBloco = pilTodos.filter(ehBloco);
   const cin = pecasDoTipo(m, 'CINTA_MC');
-  if (!tij.length && !pil.length) return null;
+  if (!tij.length && !pilTodos.length) return null;
   const J = 10;
   const lados = (g: Geometria) => { const l = limitesDoPerfil(g); return { u: l.u1 - l.u0, v: l.v1 - l.v0 }; };
   let area = 0;
@@ -369,8 +373,9 @@ function quantificarMuroDeCima(m: Modelo): Quantitativo['muroDeCima'] {
     cortados: tij.filter((p) => p.tipo === 'TIJOLO_CORTADO').length,
     area: area / MM2,
     argamassa: arg / MM3,
-    pilaretes: pil.length,
+    pilaretes: pilTodos.length,
     concretoPilaretes: somaVolumes(pil) / MM3,
+    blocoPilaretes: somaVolumes(pilBloco) / MM3,
     concretoCintas: somaVolumes(cin) / MM3,
     forma: (formaPil + formaCin) / MM2,
   };

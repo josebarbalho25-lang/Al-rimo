@@ -166,7 +166,10 @@ function frontalNaVista(m: Modelo, o: OpcoesDaVista): Prancha {
   pr.fechar();
   // pilarete e cinta do muro de cima: concreto, como a sapata (traço cheio — estão à vista)
   pr.abrir('data-camada="concreto"');
-  for (const s of aparece('sapata') ? sol.filter((q) => CONCRETO_MC.has(q.peca.tipo)) : []) pr.caminho(aneis(projecao(s, 'Y')), { fill: pr.padrao('conc'), stroke: COR.linha, sw: 1, camada: 'concreto', id: s.peca.id });
+  for (const s of aparece('blocos') ? sol.filter((q) => CONCRETO_MC.has(q.peca.tipo)) : []) {
+    const bloco = s.geo.catalogo?.includes('bloco');
+    pr.caminho(aneis(projecao(s, 'Y')), { fill: pr.padrao(bloco ? 'grc' : 'conc'), stroke: COR.linha, sw: 1, camada: bloco ? 'graute' : 'concreto', id: s.peca.id });
+  }
   pr.fechar();
   // nível do aterro atrás do muro (escondido): só quando o muro sobe além do solo
   if (aparece('terreno') && H_solo < H_muro - 0.5) pr.linha(X(xIni), Y(H_solo), X(xFim), Y(H_solo), { stroke: hachuraDe('terra').risco, sw: 1.2, dash: '10,4', material: 'terra' });

@@ -865,8 +865,22 @@ e dizer ao Jose o que mudou e por quê.
   Quantitativo: tabela "Muro de cima" (tijolo para comprar com os cortados, área, argamassa estimada pela junta,
   concreto e fôrma de pilarete e cinta). Visto na tela (5180): 3D, frontal, corte e quantitativo certos para o
   exemplo + muro de cima. Suíte inteira verde (4827). FALTA: figuras das entradas (Fig. 28/29), planta e
-  armação do pilarete na prancha, ligação pilarete × arrimo no balanço (decisão dele), cintas do muro de cima não
-  verificadas, a quina (virada de 90°).
+  armação do pilarete na prancha, cintas do muro de cima não verificadas, a quina (virada de 90°).
+  Revisão adversarial do 3D (13/11, 1 revisor) — corrigido: lasca de tijolo no fim do painel (sobra < 5 cm junta
+  com a peça de antes em duas metades iguais, CORTE_MINIMO); barra do pilarete só desce no arrimo se cai dentro
+  da parede dele, senão nasce no topo + aviso PILARETE_LIGACAO; espaçamento 0 do pilarete/estribo não derruba
+  mais o modelo (padrão + aviso); estribo a mín(20; MENOR dimensão; 12φ); cinta a meia altura com nº ímpar de
+  fiadas avisa; IFC: a parede "Muro de cima" com Pset próprio (vedação, LoadBearing falso, espessura do tijolo,
+  altura do topo do arrimo), pilarete de bloco com material bloco, nome "Pilarete T1 P01"; quantitativo: pilarete
+  de bloco sem concreto nem fôrma; desenho do pilarete de bloco com a hachura do graute; Mostrar › Blocos liga o
+  muro de cima. Ficou (anotado pelo revisor): frontal não desenha barra do pilarete/cinta; chamada classifica como
+  "muro"; isométrico ~5× mais pesado com os furos dos tijolos; barra da cinta termina reta a 3 cm da ponta.
+  PILARETE × ARRIMO (Jose, 13/11 — PRÓXIMA TAREFA): "esses pilares precisam engastar e ter armadura contínua com o
+  muro, adentrando no graute, ou seja a posição deles é limitada de acordo com os blocos; eles devem sempre ter no
+  mínimo 20 de frente pra isso funcionar". Ou seja: pilarete na grade dos furos do arrimo (x das barras em furo
+  grauteado), largura ao longo do muro ≥ 20 cm (lista), barras do pilarete descendo e emendando no graute do arrimo
+  (contínuas com a vertical do arrimo). Previsão dele: arrimo ≥ 1 m com 2 m ou mais de alvenaria em cima "só vai
+  resistir com contrafortes".
   BLOCOS CERÂMICOS 3D (9, 11,5, 14 e 19): o Jose modela no Revit e exporta em IFC (13/11: "deixa isso comigo").
 - **VIRADA DE 90° (Jose, 13/11: "é o que mais é feito; não adianta calcular o muro só num sentido"):** muro em L com
   a quina. A quina dá rigidez (a perna de retorno apoia a outra, como um contraforte), mas traz empuxo nos dois

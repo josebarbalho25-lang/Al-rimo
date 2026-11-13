@@ -4,7 +4,7 @@
 
   A conta é a da aba "Muro de cima e vento" da planilha; aqui só se monta o que ela verificou:
     - ALTURA: fiadas inteiras de 20 cm (tijolo de 19 + junta de 1), a mais perto de h_mc (a conta usa h_mc; a
-      diferença é menor que meia fiada e aparece em Modelo.ajustes como "h do muro de cima");
+      diferença é menor que meia fiada e vira aviso MURO_DE_CIMA_FIADAS);
     - PILARETES: em cima do contraforte (um a cada pil_ncf; as duas pontas sempre) ou, no balanço, a cada s_pil no
       máximo, com as pontas do trecho sempre fechadas por pilarete (painel com borda livre de lado não é o caso que a
       conta verificou). Seção b × h centrada no eixo do muro de cima, da base ao topo;
@@ -78,20 +78,30 @@ export function lerMuroDeCima(ctx: Ctx, ler: (n: string) => Valor | undefined): 
   if (!tijolo.exato) {
     ctx.avisos.push({ codigo: 'TIJOLO_SEM_MODELO', texto: `Muro de cima: tijolo de ${String(num(ler('t_mc'), 0)).replace('.', ',')} cm desenhado com o ${tijolo.nome} do Revit` });
   }
+  if (cintas.includes(meio) && cin !== 'No topo' && hFiadas % 2) {
+    ctx.avisos.push({ codigo: 'MURO_DE_CIMA_MEIA_ALTURA', texto: `Muro de cima com ${hFiadas} fiadas: a cinta de meia altura não divide o muro em dois painéis iguais` });
+  }
   if (Math.abs(hFiadas * H_FIADA - h) > 1) {
     ctx.avisos.push({ codigo: 'MURO_DE_CIMA_FIADAS', texto: `Muro de cima desenhado com ${hFiadas} fiadas de 20 cm (${String(hFiadas * 0.2).replace('.', ',')} m)` });
   }
   const l0tCm = comoNumero(ler('l0t_pil'));
   const sEstCm = comoNumero(ler('s_est_pil'));
+  // espaçamento zero ou negativo (campo apagado ou digitado errado) derrubaria o modelo inteiro no distribuir: vale o
+  // padrão, com aviso (a planilha já reprova o muro de cima sem espaçamento — chk_dmc)
+  let s = num(ler('s_pil'), 2.4) * 1000;
+  if (!(s > 0)) {
+    ctx.avisos.push({ codigo: 'PILARETE_SEM_ESPACAMENTO', texto: 'Pilaretes sem espaçamento: desenhados a cada 2,40 m' });
+    s = 2400;
+  }
   return {
     hFiadas, H: hFiadas * H_FIADA, tijolo, cintas,
     concreto: comoTexto(ler('pil_tipo')).startsWith('Conc'),
-    s: num(ler('s_pil'), 2.4) * 1000,
+    s,
     nCf: Math.max(1, Math.round(num(ler('pil_ncf'), 1))),
     b: num(ler('b_pil'), 14) * 10, hs: num(ler('hs_pil'), 25) * 10,
     phi: num(ler('phi_pil'), 10), nPorFace: Math.max(1, Math.round(num(ler('n_pil'), 2))), c: num(ler('c_pil'), 4) * 10,
     l0t: (l0tCm ?? 40) * 10,
-    phiEst: num(ler('phi_est_pil'), 5), sEst: sEstCm === null ? null : sEstCm * 10,
+    phiEst: num(ler('phi_est_pil'), 5), sEst: sEstCm === null || !(sEstCm > 0) ? null : sEstCm * 10,
     phiCinta: num(ler('phi_cin_mc'), 8),
   };
 }
@@ -140,7 +150,9 @@ export function muroDeCima(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaLido, lbp
   const gTij = (L: number): string => {
     const chave = `tijolo ${nome} L${Math.round(L * 10) / 10}`;
     return geo(ctx, chave, () => {
-      const g = prisma(chave, 'X', perfil.contorno, L, perfil.furos, L >= perfil.L - 0.5 ? `${nome.toLowerCase()} (${fmtCm(perfil.t)}×19×29)` : `${nome.toLowerCase()} cortado`);
+      const g = prisma(chave, 'X', perfil.contorno, L, perfil.furos, L >= perfil.L - 0.5
+        ? `${nome.toLowerCase()} (${fmtCm(perfil.t)}×${fmtCm(perfil.h)}×${fmtCm(perfil.L)})`
+        : `${nome.toLowerCase()} cortado ${fmtCm(L)}`);
       g.classe = 'tijolo';
       return g;
     });
@@ -159,38 +171,54 @@ export function muroDeCima(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaLido, lbp
         continue;
       }
       // fiada de tijolo: junta de 1 cm nas faces dos pilaretes, meia peça de deslocamento nas fiadas ímpares
-      let x = xa + JUNTA;
-      let k = 0;
       const fim = xb - JUNTA;
-      const primeiro = f % 2 ? (perfil.L - JUNTA) / 2 : perfil.L;
-      let L = Math.min(primeiro, fim - x);
+      const comps: number[] = [];
+      let x = xa + JUNTA;
+      let L = f % 2 ? (perfil.L - JUNTA) / 2 : perfil.L;
       while (fim - x > 1) {
         L = Math.min(L, fim - x);
-        const inteiro = L >= perfil.L - 0.5;
-        ctx.pecas.push({
-          id: `${T}.MC.v${String(v + 1).padStart(2, '0')}.f${String(f).padStart(2, '0')}.t${String(++k).padStart(2, '0')}`,
-          tipo: inteiro ? 'TIJOLO' : 'TIJOLO_CORTADO', grupo: 'murocima', geometria: gTij(arred(L)),
-          origem: [arred(x), y0, arred(zf + JUNTA)], giro: 0, trecho: tr.indice, fiada: f,
-        });
+        comps.push(L);
         x += L + JUNTA;
         L = perfil.L;
       }
+      // sobra pequena no fim (uma lasca que ninguém corta): ela e a peça de antes viram duas metades iguais
+      const n = comps.length;
+      if (n >= 2 && comps[n - 1] < CORTE_MINIMO) {
+        const meio = (comps[n - 2] + JUNTA + comps[n - 1] - JUNTA) / 2;
+        comps.splice(n - 2, 2, meio, meio);
+      }
+      x = xa + JUNTA;
+      comps.forEach((Lp, k) => {
+        const inteiro = Lp >= perfil.L - 0.5;
+        ctx.pecas.push({
+          id: `${T}.MC.v${String(v + 1).padStart(2, '0')}.f${String(f).padStart(2, '0')}.t${String(k + 1).padStart(2, '0')}`,
+          tipo: inteiro ? 'TIJOLO' : 'TIJOLO_CORTADO', grupo: 'murocima', geometria: gTij(arred(Lp)),
+          origem: [arred(x), y0, arred(zf + JUNTA)], giro: 0, trecho: tr.indice, fiada: f,
+        });
+        x += Lp + JUNTA;
+      });
     }
   }
 
   // ── barras do pilarete ──
   const zTopo = Z0 + mc.H - 30;
   const zPe = Z0 - mc.l0t;
+  let foraDoArrimo = false;
   xs.forEach((xc, k) => {
     const id = `${T}.MC.P${String(k + 1).padStart(2, '0')}`;
     const xsB = mc.nPorFace === 1 ? [xc] : distribuir(xc - mc.b / 2 + mc.c, xc + mc.b / 2 - mc.c, (mc.b - 2 * mc.c) / (mc.nPorFace - 1));
     for (const [lado, y] of [['a', yEixo - mc.hs / 2 + mc.c], ['s', yEixo + mc.hs / 2 - mc.c]] as const) {
-      xsB.forEach((x, j) => ctx.barras.push(reta(`${id}.L${lado}${j + 1}`, 'PIL_LONG', mc.phi, [arred(x), arred(y), zPe], [arred(x), arred(y), arred(zTopo)], tr.indice)));
+      // a barra só desce no arrimo se cai dentro da parede dele (entre as paredes do bloco); fora disso ela nasce no
+      // topo do arrimo e a ligação fica por definir (aviso) — não se desenha barra no ar nem enterrada no aterro
+      const dentro = y - mc.phi / 2 >= mod.cat.hf && y + mc.phi / 2 <= mod.cat.t - mod.cat.hf;
+      if (!dentro) foraDoArrimo = true;
+      xsB.forEach((x, j) => ctx.barras.push(reta(`${id}.L${lado}${j + 1}`, 'PIL_LONG', mc.phi, [arred(x), arred(y), dentro ? zPe : Z0], [arred(x), arred(y), arred(zTopo)], tr.indice)));
     }
     if (!mc.concreto) return;
     // estribo no lado de fora das longitudinais: eixo a c − φl/2 − φt/2 da face
     const ce = mc.c - mc.phi / 2 - mc.phiEst / 2;
-    const sMax = Math.min(200, mc.b, 12 * mc.phi);
+    // NBR 6118 18.4.3: o menor entre 20 cm, a MENOR dimensão da seção e 12φ da longitudinal
+    const sMax = Math.min(200, mc.b, mc.hs, 12 * mc.phi);
     const s = mc.sEst ?? Math.floor(sMax / 10) * 10;
     for (const [j, z] of distribuir(Z0 + 50, Z0 + mc.H - 50, s).entries()) {
       const zr = arred(z);
@@ -203,6 +231,10 @@ export function muroDeCima(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaLido, lbp
       ctx.barras.push(estribo(`${id}.E${String(j + 1).padStart(2, '0')}`, 'PIL_ESTRIBO', mc.phiEst, cantos, tr.indice));
     }
   });
+
+  if (foraDoArrimo) {
+    ctx.avisos.push({ codigo: 'PILARETE_LIGACAO', texto: 'Barras do pilarete fora da parede do arrimo: a ligação do pilarete com o arrimo fica por definir', ids: xs.map((_, k) => `${T}.MC.P${String(k + 1).padStart(2, '0')}`) });
+  }
 
   // ── barras da cinta: corridas no trecho todo (passam pelos pilaretes) ──
   const traspasse = lbphiC !== null && lbphiC > 0 && a0t !== null && a0t > 0
@@ -217,6 +249,9 @@ export function muroDeCima(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaLido, lbp
     }
   }
 }
+
+/** Menor pedaço de tijolo que se corta na obra (mm). Abaixo disso, a peça de antes e a sobra viram duas metades. */
+const CORTE_MINIMO = 50;
 
 const fmtCm = (mm: number): string => String(Math.round(mm) / 10).replace('.', ',');
 
