@@ -140,8 +140,8 @@ section(C, r, '1. Carga no contraforte (área de influência)'); r += 1
 Lc('Espaçamento entre contrafortes (eixo a eixo)', '=l_cf_adot', 'm', 'Adotado no módulo do bloco (Entradas).', 'res', '0.00')
 Lc('Largura de influência', '=IF(LEFT(tipo_cf,5)="Inter",l_cf_adot,l_cf_adot/2+bal_cf)', 'm', 'Intermediário = l; extremidade = l/2 + balanço do muro além do contraforte.', 'res', '0.00', 'binf', 'Critério adotado (área de influência)')
 Lc('Carga na base = σh,base·largura', '=sh_base*binf', 'kN/m', '', 'res', '0.00', 'q_cf')
-Lc('Mk na base do contraforte', '=Mk_*binf', 'kN·m', 'Mk por metro (aba Solo e Empuxo) × largura.', 'res', '0.00', 'Mk_cf')
-Lc('Vk na base do contraforte', '=Vk_*binf', 'kN', '', 'res', '0.00', 'Vk_cf')
+Lc('Mk na base do contraforte', '=Mk_*binf+Mk_wcf', 'kN·m', 'Mk por metro (aba Solo e Empuxo) × largura + vento (aba Muro de cima e vento; zero sem vento).', 'res', '0.00', 'Mk_cf')
+Lc('Vk na base do contraforte', '=Vk_*binf+Vk_wcf', 'kN', '', 'res', '0.00', 'Vk_cf')
 Lc('Md = γf·Mk', '=gama_f*Mk_cf', 'kN·m', '', 'key', '0.00', 'Md_cf')
 Lc('Vd = γf·Vk', '=gama_f*Vk_cf', 'kN', '', 'key', '0.00', 'Vd_cf')
 r += 1
@@ -255,7 +255,7 @@ Lc('Área bruta', '=IF(cf_T=1,(bm_cf-bw_cf)*hf_cf+bw_cf*h_cf,bw_cf*h_cf)', 'cm²
 Lc('yCG (da face comprimida)', '=IF(cf_T=1,((bm_cf-bw_cf)*hf_cf^2/2+bw_cf*h_cf^2/2)/A_cfg,h_cf/2)', 'cm', '', 'res', '0.00', 'y_cfg')
 Lc('Ig', '=IF(cf_T=1,(bm_cf-bw_cf)*hf_cf^3/12+(bm_cf-bw_cf)*hf_cf*(y_cfg-hf_cf/2)^2+bw_cf*h_cf^3/12+bw_cf*h_cf*(h_cf/2-y_cfg)^2,bw_cf*h_cf^3/12)', 'cm⁴', '', 'res', '0', 'Ig_cf')
 Lc('Mr = ftk·Ig/yt (yt = h − yCG)', '=ftk_nor/10*Ig_cf/(h_cf-y_cfg)', 'kN·cm', '', 'key', '0.0', 'Mr_cf')
-Lc('Ma = (Ma/Mk)·Mk', '=psi_els*Mk_cf*100', 'kN·cm', '', 'key', '0.0', 'Ma_cf')
+Lc('Ma = (Ma/Mk)·Mk', '=psi_els*(Mk_cf-Mk_wcf)*100', 'kN·cm', '', 'key', '0.0', 'Ma_cf')
 Lc('b da compressão no estádio II', '=IF(cf_T=1,bm_cf,bw_cf)', 'cm', '', 'res', '0.0', 'b2_cf')
 # LN e III em pedaços, como no balanço (aba ELS): B e C em linha própria; III = alvenaria + abas + barra
 Lc('B = n·As', '=n_cfe*As_cfe', 'cm²', 'LN: b·x²/2 + B·x − C = 0 → x = (−B + √(B² + 2·b·C))/b.', 'res', '0.00', 'lnB_cf')
@@ -524,6 +524,7 @@ CHK = [
     ('Painel: ELS δ∞ ≤ δadm', '=IF(dinf_p<=dadm_p,"OK ("&FIXED(dinf_p,1)&" ≤ "&FIXED(dadm_p,1)&" mm)","NÃO OK")'),
     ('Painel: ábaco simplificado da NBR', '=IF(ISNUMBER(htl_ab),IF(ht_ab<=htl_ab,"OK (h/t "&FIXED(ht_ab,1)&" ≤ "&FIXED(htl_ab,0)&")","NÃO OK pelo ábaco — vale o cálculo da flecha acima"),"fora do ábaco")'),
     ('POSIÇÃO DAS BARRAS DO PAINEL', '=IF(nb_pv=2,"ATENÇÃO — verticais: uma barra encostada em CADA face (a "&'+fphi('c_pv')+'&" cm), não centralizar. Horizontais: "&IF(LEFT(pos_ph,4)="Cent","centralizadas na canaleta.","encostadas na face externa."),"Verticais centralizadas.")'),
+    ('Muro de cima e vento', '=res_mc'),
 ]
 for lab, f in CHK:
     Lc(lab, f, '', '', 'key')

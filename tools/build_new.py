@@ -363,6 +363,59 @@ lista(LST['lst_phi_sap2'], f'B{r-1}')
 line(E, r, 'Ø do estribo de torção (contrafortes)', 6.3, 'mm', '', 'inp', '0.0', 'phi_tor'); r += 1
 lista(LST['lst_phi_sap2'], f'B{r-1}')
 r += 1
+# MURO DE CIMA E VENTO (Jose, 13/11): o arrimo dos clientes dele "não pode ser só arrimo" — tem muro de vedação por
+# cima, e o vento nesse muro desce no arrimo. Tudo no mesmo programa ("é mais fácil integrar do que fazer separado e
+# detalhar separado"). A conta mora na aba "Muro de cima e vento" (tools/muro_de_cima.py); aqui só as entradas. Com
+# "Muro de cima" = Não e "Vento" = Não nada muda no arrimo — é assim que a aula 12.2 e o VAL123 continuam iguais.
+section(E, r, 'Muro de cima e vento'); r += 1
+line(E, r, 'Muro de vedação em cima do arrimo?', 'Não', '', 'Sim = o peso dele entra no arrimo (compressão da parede e fundação) e, com o vento ligado, o vento nele também. Os painéis e os pilaretes são verificados na aba Muro de cima e vento.', 'inp', None, 'mc_on'); r += 1
+dv_mc = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validation(dv_mc); dv_mc.add(f'B{r-1}')
+line(E, r, 'Muro de cima: altura', 2.0, 'm', 'Do topo do arrimo ao topo do muro de cima.', 'inp', '0.00', 'h_mc'); r += 1
+line(E, r, 'Muro de cima: espessura do bloco', 11.5, 'cm', 'Espessura nominal do bloco, sem reboco (entra na verificação dos painéis).', 'inp', '0.0', 't_mc'); r += 1
+line(E, r, 'Muro de cima: material do bloco', 'Cerâmico', '', 'Só descreve o muro (desenho, quantitativo e memória). O peso vem da linha de baixo.', 'inp', None, 'mat_mc'); r += 1
+dv_mm = DataValidation(type='list', formula1='"Cerâmico,Concreto"'); E.add_data_validation(dv_mm); dv_mm.add(f'B{r-1}')
+# Peso da alvenaria de vedação: entrada (não calculada como a do arrimo) porque o bloco de vedação muda muito de
+# fabricante para fabricante (cerâmico de furo horizontal, vertical, de concreto) e a NBR 6120 dá o peso por m² por
+# tipo e espessura. Quem projeta põe o do bloco que vai usar.
+line(E, r, 'Muro de cima: peso da alvenaria (sem reboco)', 1.4, 'kN/m²', 'Bloco + argamassa de assentamento, por m² de parede (NBR 6120, Tab. 2, pelo tipo e espessura do bloco).', 'inp', '0.00', 'g_mc'); r += 1
+line(E, r, 'Muro de cima: reboco', 'Nas duas faces', '', 'Nenhum, só na frente ou nas duas faces. Entra no peso (21 kN/m³ × espessura).', 'inp', None, 'reb_mc'); r += 1
+dv_rm = DataValidation(type='list', formula1='"Nenhum,Só na frente,Nas duas faces"'); E.add_data_validation(dv_rm); dv_rm.add(f'B{r-1}')
+line(E, r, 'Muro de cima: reboco em cada face', 2.0, 'cm', 'Só com reboco.', 'inp', '0.0', 'reb_mc_esp'); r += 1
+line(E, r, 'Muro de cima: argamassa de assentamento', '1,5 a 3,4 MPa', '', 'Define ftk (NBR 16868-1, Tab. 3) e fvk (Tab. 4) dos painéis do muro de cima.', 'inp', None, 'arg_mc'); r += 1
+dv_am2 = DataValidation(type='list', formula1="='Referências'!$L$16:$L$18"); E.add_data_validation(dv_am2); dv_am2.add(f'B{r-1}')
+# Tijolo baiano (cerâmico de furo horizontal, Jose 13/11): a Tab. 3 da NBR 16868-1 é de alvenaria estrutural e não
+# cobre essa peça. A resistência é julgamento de quem assina: entrada opcional; em branco vale a da tabela pela argamassa.
+line(E, r, 'Muro de cima: ftk ⊥ fiada — opcional', None, 'MPa', 'Tração na flexão normal à fiada. Em branco = NBR 16868-1 Tab. 3 pela argamassa. A tabela é de alvenaria estrutural: para tijolo de furo horizontal, o valor que o projetista julgar coerente.', 'inp', '0.00', 'ftkn_mc_dir'); r += 1
+line(E, r, 'Muro de cima: ftk ∥ fiada — opcional', None, 'MPa', 'Tração na flexão paralela à fiada. Em branco = NBR 16868-1 Tab. 3 pela argamassa.', 'inp', '0.00', 'ftkp_mc_dir'); r += 1
+line(E, r, 'Muro de cima: fvk — opcional', None, 'MPa', 'Cisalhamento. Em branco = NBR 16868-1 Tab. 4 pela argamassa (fvk0, sem pré-compressão).', 'inp', '0.00', 'fvk_mc_dir'); r += 1
+line(E, r, 'Muro de cima: cintas', 'No topo', '', 'Cinta = apoio do painel. No topo; a meia altura; no topo e a meia altura; nenhuma (topo livre). Cada painel entre cintas é verificado e vale o pior.', 'inp', None, 'cin_mc'); r += 1
+dv_cm = DataValidation(type='list', formula1='"No topo,A meia altura,No topo e a meia altura,Nenhuma"'); E.add_data_validation(dv_cm); dv_cm.add(f'B{r-1}')
+line(E, r, 'Pilaretes: tipo', 'Concreto moldado', '', 'Concreto moldado (NBR 6118) ou bloco grauteado (NBR 16868-1).', 'inp', None, 'pil_tipo'); r += 1
+dv_pt = DataValidation(type='list', formula1='"Concreto moldado,Bloco grauteado"'); E.add_data_validation(dv_pt); dv_pt.add(f'B{r-1}')
+line(E, r, 'Pilaretes: espaçamento (muro em balanço)', 2.4, 'm', 'Eixo a eixo. Só no balanço; com contrafortes o pilarete fica em cima do contraforte (linha de baixo).', 'inp', '0.00', 's_pil'); r += 1
+line(E, r, 'Pilaretes: a cada quantos contrafortes', 1, '', '1 = um pilarete em cada contraforte; 2 = em contraforte sim, contraforte não.', 'inp', '0', 'pil_ncf'); r += 1
+dv_pn = DataValidation(type='list', formula1='"1,2"'); E.add_data_validation(dv_pn); dv_pn.add(f'B{r-1}')
+line(E, r, 'Pilarete: largura (ao longo do muro)', 14, 'cm', '', 'inp', '0.0', 'b_pil'); r += 1
+line(E, r, 'Pilarete: altura da seção (na direção do vento)', 25, 'cm', 'Perpendicular ao muro: é a altura que resiste à flexão do vento.', 'inp', '0.0', 'hs_pil'); r += 1
+line(E, r, 'Pilarete: concreto (moldado)', 'C25', '', 'Só no pilarete de concreto.', 'inp', None, 'fck_pil'); r += 1
+dv_fp = DataValidation(type='list', formula1='"C20,C25,C30"'); E.add_data_validation(dv_fp); dv_fp.add(f'B{r-1}')
+line(E, r, 'Pilarete: fbk do bloco (grauteado)', 8, 'MPa', 'Só no pilarete de bloco: prisma cheio (fpk*) da ABCP Tab. 3.2.', 'inp', '0.0', 'fbk_pil'); r += 1
+dv_fb2 = DataValidation(type='list', formula1="='Referências'!$H$5:$H$16"); E.add_data_validation(dv_fb2); dv_fb2.add(f'B{r-1}')
+line(E, r, 'Pilarete: Ø das barras', 10, 'mm', '', 'inp', '0.0', 'phi_pil'); r += 1
+lista(LST_PHI, f'B{r-1}')
+line(E, r, 'Pilarete: barras em cada face', 2, '', 'Barras na face tracionada (o vento vem dos dois lados: a mesma quantidade na outra face).', 'inp', '0', 'n_pil'); r += 1
+line(E, r, 'Pilarete: cobrimento ao eixo das barras', 4, 'cm', 'Da face ao eixo da barra.', 'inp', '0.0', 'c_pil'); r += 1
+line(E, r, 'Vento?', 'Não', '', 'Sim = vento perpendicular ao muro (NBR 6123), soprando do aterro para a frente — o sentido que soma ao empuxo. Entra no muro de cima, na parte do arrimo acima do solo e na fundação.', 'inp', None, 'vento_on'); r += 1
+dv_vo = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validation(dv_vo); dv_vo.add(f'B{r-1}')
+line(E, r, 'V0 (velocidade básica)', 35, 'm/s', 'Mapa de isopletas da NBR 6123 (rajada de 3 s, 50 anos).', 'inp', '0.0', 'V0_v'); r += 1
+line(E, r, 'S1 (topografia)', 1.0, '', '1,0 terreno plano; 0,9 vale protegido; talude/morro: NBR 6123 5.2.', 'inp', '0.00', 'S1_v'); r += 1
+line(E, r, 'Categoria do terreno (S2)', 'III', '', 'I mar/lagos … III subúrbio, casas baixas … V centro de cidade (NBR 6123 5.3.1).', 'inp', None, 'cat_v'); r += 1
+dv_cv = DataValidation(type='list', formula1='"I,II,III,IV,V"'); E.add_data_validation(dv_cv); dv_cv.add(f'B{r-1}')
+line(E, r, 'Classe (S2)', 'A', '', 'A: maior dimensão ≤ 20 m (painel de vedação, muro curto); B: ≤ 50 m; C: > 50 m (NBR 6123 5.3.2).', 'inp', None, 'cls_v'); r += 1
+dv_kv = DataValidation(type='list', formula1='"A,B,C"'); E.add_data_validation(dv_kv); dv_kv.add(f'B{r-1}')
+line(E, r, 'S3 (estatístico)', 0.95, '', 'NBR 6123 (1988) Tab. 3: grupo 1 = 1,10; 2 = 1,00; 3 = 0,95; 4 (vedações) = 0,88; 5 (temporárias) = 0,83.', 'inp', '0.00', 'S3_v'); r += 1
+line(E, r, 'Coeficiente de força do muro — opcional', None, '', 'Em branco = o da NBR 6123 para muro isolado (aba Muro de cima e vento). Preencha só para forçar outro valor.', 'inp', '0.00', 'Cf_dir'); r += 1
+r += 1
 section(E, r, 'Coeficientes'); r += 1
 line(E, r, 'γf', 1.4, '', 'Majoração das ações.', 'inp', '0.00', 'gama_f'); r += 1
 line(E, r, 'γm', 2.0, '', 'Alvenaria, combinações normais (NBR 16868-1 6.2.2.2, Tab. 2; ABCP 3.1).', 'inp', '0.00', 'gama_m'); r += 1
@@ -731,11 +784,14 @@ r = 4
 section(B, r, 'Esforços'); r += 1
 line(B, r, 'Mk (empuxo)', '=Mk_', 'kN·m/m', 'Da aba Solo e Empuxo.', 'res', '0.00', None); r += 1
 line(B, r, 'Vk (empuxo)', '=Vk_', 'kN/m', '', 'res', '0.00', None); r += 1
+# Vento (aba Muro de cima e vento): soma no ELU, com γf, junto com o empuxo. Zero sem vento.
+line(B, r, 'Mk (vento)', '=Mk_w', 'kN·m/m', 'Muro de cima + arrimo acima do solo (aba Muro de cima e vento). Zero sem vento.', 'res', '0.00', None); r += 1
+line(B, r, 'Vk (vento)', '=Vk_w', 'kN/m', '', 'res', '0.00', None); r += 1
 line(B, r, 'he (altura efetiva)', '=IF(Trav_lat="Sim",MIN(alfa_v*H_muro,0.7*SQRT(alfa_v*H_muro*alfa_h*IF(Tipo_muro="Contrafortes",l_cf_adot,l_trav))),2*H_muro)', 'm', 'h = altura do muro (o balanço é o muro inteiro, não só o trecho com solo). Sem travamento lateral: he = 2h. Com travamento: mín(αv·h; 0,7·√(αv·h·αh·l)); com contrafortes, l = espaçamento adotado dos contrafortes.', 'res', '0.00', 'he_', 'NBR 16868-1 9.4.1'); r += 1
 line(B, r, 'λ = he/t', '=he_/(t_bloco/100)', '', 'Não armada ≤ 24; armada ≤ 30.', 'res', '0.0', 'lambda_', 'NBR 16868-1 10.1.2'); r += 1
-line(B, r, 'Nd na base', '=gama_f*peso_ch*H_muro', 'kN/m', 'Peso próprio majorado (parede na altura do muro), com todos os furos grauteados (Entradas).', 'res', '0.00', 'Nd_'); r += 1
+line(B, r, 'Nd na base', '=gama_f*peso_ch*H_muro+gama_f*P_mc', 'kN/m', 'Peso próprio majorado (parede na altura do muro), com todos os furos grauteados (Entradas), mais o muro de cima.', 'res', '0.00', 'Nd_'); r += 1
 line(B, r, 'M2d', '=Nd_*he_^2/(3600*t_bloco/100)', 'kN·m/m', 'Nd·he²/(3600·t). A compressão de N, que ajudaria, é desprezada.', 'res', '0.000', 'M2d_', 'ABCP 3.6.3.2'); r += 1
-line(B, r, 'Md', '=gama_f*Mk_+IF(M2d_on="Não",0,M2d_)', 'kN·m/m', 'γf·Mk + M2d (M2d só se "Somar M2d" = Sim nas Entradas).', 'key', '0.00', 'Md_'); r += 1
+line(B, r, 'Md', '=gama_f*(Mk_+Mk_w)+IF(M2d_on="Não",0,M2d_)', 'kN·m/m', 'γf·(Mk do empuxo + Mk do vento) + M2d (M2d só se "Somar M2d" = Sim nas Entradas).', 'key', '0.00', 'Md_'); r += 1
 r += 1
 section(B, r, 'Material'); r += 1
 line(B, r, 'fpk do bloco vazado (bruto)', "=VLOOKUP(fbk_,'Referências'!$H$5:$J$16,2,FALSE)", 'MPa', 'Tab. 3.2 pelo fbk.', 'res', '0.0', 'fpk_oco', 'ABCP Tab. 3.2'); r += 1
@@ -810,10 +866,10 @@ line(B, r, 'As necessária com barra centralizada', '=IF(Md_<=0,As_min,IF(ISNUMB
 line(B, r, 'Arranjo adotado atende com barra centralizada?', '=IF(d_util<=t_bloco/2+0.01,"— (cálculo já está com a barra centralizada)",IF(AND(ISNUMBER(As_c),ISNUMBER(xd_c)),IF(AND(As_ef>=As_c-0.005,xd_c<=0.45),"SIM — o projeto tolera a barra no meio do furo","NÃO — o projeto DEPENDE da barra encostada no lado do solo: deixar explícito em planta, corte e notas"),"NÃO — com a barra no meio a seção não resiste: o projeto DEPENDE da barra encostada"))', '', 'Robustez contra o erro de obra mais comum. Se der NÃO, detalhar espaçador/gabarito e conferir antes do grauteamento.', 'key', None, 'rob_c'); r += 1
 r += 1
 section(B, r, 'Cisalhamento'); r += 1
-line(B, r, 'τvd = γf·Vk/(b·d)', '=gama_f*Vk_/(100*d_util)*10', 'MPa', '', 'res', '0.000', 'tau_vd', 'ABCP 3.3'); r += 1
+line(B, r, 'τvd = γf·Vk/(b·d)', '=gama_f*(Vk_+Vk_w)/(100*d_util)*10', 'MPa', '', 'res', '0.000', 'tau_vd', 'ABCP 3.3'); r += 1
 line(B, r, 'ρ = As,ef/(b·d)', '=As_ef/(100*d_util)', '', 'Limitado a 2%.', 'res', '0.0000', 'rho_v'); r += 1
 line(B, r, 'fvd = (0,35 + 17,5ρ ≤ 0,7)/γm', '=MIN(0.35+17.5*MIN(rho_v,0.02),0.7)/gama_m', 'MPa', '', 'res', '0.000', 'fvd', 'NBR 16868-1 6.2.2.6 / ABCP 3.3'); r += 1
-line(B, r, 'Vsd = γf·Vk', '=gama_f*Vk_', 'kN/m', '', 'res', '0.00', 'Vsd_'); r += 1
+line(B, r, 'Vsd = γf·Vk', '=gama_f*(Vk_+Vk_w)', 'kN/m', '', 'res', '0.00', 'Vsd_'); r += 1
 line(B, r, 'Vrd = Va = fvd·b·d', '=fvd/10*100*d_util', 'kN/m', 'Resistência sem estribo (alvenaria).', 'res', '0.00', 'Va_', 'NBR 16868-1 11.4.3'); r += 1
 line(B, r, 'Vrd2 (bielas) = Va + 0,4·√fpk/γm·b·d', '=Va_+0.4*SQRT(fpk_tab)/gama_m*100*d_util/10', 'kN/m', 'Usa o fpk da tabela (bruto).', 'res', '0.00', 'Vrd2_', 'NBR 16868-1 11.4.3'); r += 1
 r += 1
@@ -845,6 +901,7 @@ checks = [
     ('ELS (fissuração/deslocamento)', '=res_els', 'Aba ELS'),
     # no fim da lista de propósito: linhas acima têm endereço lido pelo app (memória de cálculo)
     ('Largura por barra ≤ 6t', '=IF(s_adot<=6*t_bloco,"OK","NÃO OK — espaçamento > 6t: a faixa de cada barra passa do limite")', 'NBR 16868-1 11.3.5'),
+    ('Muro de cima e vento', '=res_mc', 'Aba Muro de cima e vento'),
 ]
 # Nome nas linhas que a memória do app lê (antes por endereço, B77…B89: a flexão pela geometria real, 12/10,
 # acrescentou linhas acima e mudaria todos de lugar).
@@ -989,7 +1046,7 @@ line(L_, r, 'Ma = (Ma/Mk)·Mk·bm', '=psi_els*Mk_*bm_els', 'kN·cm', 'Momento no
 line(L_, r, 'Em = (Em/fpk)·fpk usado', '=Em_coef*fpk_', 'MPa', 'Ex.: 800·11,1 = 8889 MPa (fpk líquido).', 'res', '0', 'Em_', 'NBR 16868-1 6.2.1 (Tab. 1)'); r += 1
 line(L_, r, 'n = Es/Em', '=210000/Em_', '', 'Es = 210 GPa.', 'res', '0.00', 'n_els'); r += 1
 line(L_, r, 'ftk ⊥ fiada', '=ftk_nor', 'MPa', 'Fissura horizontal na base.', 'res', '0.00', None, 'NBR 16868-1 Tab. 3'); r += 1
-line(L_, r, 'σsg = 0,9·Psg/Ae', '=IF(sg_on="Sim",0.9*peso_us*H_muro/(t_bloco/100)/1000,0)', 'MPa', 'Só se "Somar σsg" = Sim (padrão). Peso da parede (usado) na altura do muro.', 'res', '0.0000', 'sig_sg'); r += 1
+line(L_, r, 'σsg = 0,9·Psg/Ae', '=IF(sg_on="Sim",0.9*peso_us*H_muro/(t_bloco/100)/1000+0.9*P_mc/(t_bloco/100)/1000,0)', 'MPa', 'Só se "Somar σsg" = Sim (padrão). Peso da parede (usado) na altura do muro, mais o muro de cima.', 'res', '0.0000', 'sig_sg'); r += 1
 line(L_, r, 'Im = bm·h³/12 − (bm − bw)·(h − 2hf)³/12', '=bm_els*t_bloco^3/12-(bm_els-bw_els)*(t_bloco-2*hf_bl)^3/12', 'cm⁴', 'Seção bruta.', 'res', '0', 'Im_', 'NBR 16868-1 9.2.3'); r += 1
 line(L_, r, 'Mr = (ftk + σsg)·Im/yt', '=(ftk_nor+sig_sg)/10*Im_/(t_bloco/2)', 'kN·cm', 'yt = h/2 (seção simétrica).', 'key', '0.0', 'Mr_', 'NBR 16868-1 9.2.3'); r += 1
 r += 1
@@ -1034,6 +1091,7 @@ import os as _os_cf
 from openpyxl.utils import get_column_letter as _gl
 exec(open(_os_cf.path.join(_os_cf.path.dirname(_os_cf.path.abspath(__file__)), 'contrafortes.py'), encoding='utf8').read())
 exec(open(_os_cf.path.join(_os_cf.path.dirname(_os_cf.path.abspath(__file__)), 'fundacao.py'), encoding='utf8').read())
+exec(open(_os_cf.path.join(_os_cf.path.dirname(_os_cf.path.abspath(__file__)), 'muro_de_cima.py'), encoding='utf8').read())
 # (aba Sapata sobre molas: saiu em 14/10 — Jose: "a planilha não vai fazer sapata flexível, vai verificar"; a
 # conta das molas e da punção fica na branch sapata-molas, para o software)
 
@@ -1130,7 +1188,7 @@ for nm, n in FIG_OF.items():
     if cD.value and 'Fig.' not in str(cD.value): cD.value = f'{cD.value} (ver Fig. {n})'
 
 import re as _re
-for _cr in list(wb['Contrafortes'].iter_rows(min_row=4)) + list(wb['Fundação'].iter_rows(min_row=4)):
+for _cr in list(wb['Contrafortes'].iter_rows(min_row=4)) + list(wb['Fundação'].iter_rows(min_row=4)) + list(wb['Muro de cima e vento'].iter_rows(min_row=4)):
     for _c in _cr:
         if _c.column <= 8:
             if isinstance(_c.value, str) and _c.value.startswith('=') and not _c.value.startswith('=IFERROR('):
@@ -1145,6 +1203,13 @@ for _ws in (wb['ELS'], wb['Painel não armado']):
                     if _ws.title == 'Painel não armado':
                         _f = 'IF(AND(s_adot>0,s_adot<=m_mod),"— não se aplica: barra em todos os furos, não há painel entre barras",' + _f + ')'
                 _c.value = '=IFERROR(' + _f + ',"—")'
+# sanity: pedaço de f-string esquecido sem o f ('{k}' literal na fórmula) — o Excel recusa ABRIR o arquivo pela
+# automação, e o erro só aparece lá no golden. Matriz inline ({13,18,11}) começa com algarismo e passa.
+for _ws in wb.worksheets:
+    for _row in _ws.iter_rows():
+        for _c in _row:
+            if isinstance(_c.value, str) and _c.value.startswith('='):
+                assert not _re.search(r'\{[A-Za-z_]\w*\}', _c.value), f'f-string sem o f em {_ws.title}!{_c.coordinate}: {_c.value[:80]}'
 # sanity: Excel-invalid defined names (look like cell refs)
 def _col2n(c):
     n = 0

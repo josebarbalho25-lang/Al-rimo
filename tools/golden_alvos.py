@@ -182,6 +182,23 @@ ALVOS.update({
     'alvo_sadm_spt_teto': {'SPT_b': 30, 'sig_adm_dir': None},    # conta 20 golpes: 400 kPa, não 600
 })
 
+# Muro de cima e vento (13/11): os sorteios não ligam essas entradas (mexer no sorteio trocaria os muros que os
+# testes do app conhecem pelo nome); estes alvos cobrem os ramos — balanço e contrafortes, as quatro cintas, pilarete
+# de concreto e de bloco, solo abaixo do topo do arrimo (parte exposta) e vento sem muro de cima.
+_MC = {'mc_on': 'Sim', 'vento_on': 'Sim', 'h_mc': 2.0, 't_mc': 11.5, 'g_mc': 1.4, 'arg_mc': '1,5 a 3,4 MPa', 's_pil': 2.4,
+       'V0_v': 35, 'S1_v': 1.0, 'cat_v': 'III', 'cls_v': 'A', 'S3_v': 0.88, 'Cf_dir': None}
+ALVOS.update({
+    'alvo_mc_balanco_topo': {**_MC, 'cin_mc': 'No topo'},
+    'alvo_mc_balanco_livre_exposto': {**_MC, 'cin_mc': 'Nenhuma', 'H_muro': 2.0, 'H_solo': 1.4, 'reb_mc': 'Só na frente',
+                                      'pil_tipo': 'Bloco grauteado', 'b_pil': 19, 'hs_pil': 39, 'fbk_pil': 10, 'cat_v': 'II', 'V0_v': 45,
+                                      'ftkn_mc_dir': 0.08, 'ftkp_mc_dir': 0.16, 'fvk_mc_dir': 0.08},
+    'alvo_mc_cf_meia': {**_MC, 'Tipo_muro': 'Contrafortes', 'H_muro': 2.6, 'l_cf': 2.4, 'cin_mc': 'A meia altura', 'pil_ncf': 2,
+                        'fck_pil': 'C30', 'Cf_dir': 1.5},
+    'alvo_mc_cf_duas': {**_MC, 'Tipo_muro': 'Contrafortes', 'H_muro': 3.0, 'H_solo': 2.2, 'l_cf': 1.6, 'cin_mc': 'No topo e a meia altura',
+                        'pil_tipo': 'Bloco grauteado', 'hs_pil': 39, 'b_pil': 14, 'cls_v': 'B', 'cat_v': 'V'},
+    'alvo_vento_sem_mc': {'vento_on': 'Sim', 'mc_on': 'Não', 'H_muro': 2.4, 'H_solo': 1.6, 'V0_v': 40},
+})
+
 
 # Cenários de ENTRADA EM BRANCO. O app deixa o usuário apagar qualquer campo numérico (o motor grava null, como o
 # Excel grava célula vazia), e a sonda do Excel mostrou que o vazio não se comporta igual em toda função: o

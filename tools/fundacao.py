@@ -40,7 +40,7 @@ VERT = [
     ('Sapata', '=gama_c*B_sap*h_sap*Lm', '=B_sap/2'),
     ('Solo sobre o talão', '=gama_solo*H_solo*heel*Lm-IF(AND(Tipo_muro="Contrafortes",LEFT(pos_cf,4)="Ente"),gama_solo*eenr/100*MIN(heel,(tenr_adot-t_bloco)/100)*H_solo,0)', '=heel/2'),
     ('Sobrecarga sobre o talão', '=IF(q_est="Sim",q_sobre*heel*Lm,0)', '=heel/2'),
-    ('Carga permanente no topo', '=P_topo*Lm', '=a_ater'),
+    ('Carga permanente no topo', '=(P_topo+P_mc)*Lm', '=a_ater'),
     ('Subpressão (água)', '=-IF(Agua="Sim",gama_w*MAX(0,H_solo+h_sap-z_NA)*B_sap*Lm,0)', '=B_sap/2'),
     # Aterro sobre a ponta (Jose, 12/10): só com a garantia do solo da frente. Desconta o contraforte APARENTE, que fica
     # na ponta (espelho do enterrado no talão). Linha no FIM da tabela: as de cima mantêm o endereço que o app lê.
@@ -68,8 +68,8 @@ Fd.cell(row=r, column=1, value='Muro e contraforte na altura do muro; solo do ta
 section(Fd, r, '3. Empuxo até a base da sapata'); r += 1
 Lf('σh na base do muro', '=sh_base', 'kPa', '', 'res', '0.00')
 Lf('σh na base da sapata', '=sh_base+h_sap*(Ka_*(gama_solo-IF(AND(Agua="Sim",H_solo+h_sap>z_NA),gama_w,0))+IF(AND(Agua="Sim",H_solo+h_sap>z_NA),gama_w,0))', 'kPa', 'Continua o perfil por mais h da sapata.', 'res', '0.00', 'sh_b2')
-Lf('Hk — empuxo total no módulo', '=(Vk_+(sh_base+sh_b2)/2*h_sap)*Lm', 'kN', '', 'key', '0.00', 'H_k')
-Lf('M de tombamento em relação à base da sapata', '=(Mk_+Vk_*h_sap+h_sap^2*(2*sh_base+sh_b2)/6)*Lm', 'kN·m', 'Mk na base do muro + Vk·h sapata + fatia da sapata.', 'key', '0.00', 'M_tb')
+Lf('Hk — empuxo total no módulo', '=(Vk_+Vk_w+(sh_base+sh_b2)/2*h_sap)*Lm', 'kN', 'Empuxo + vento (aba Muro de cima e vento; zero sem vento).', 'key', '0.00', 'H_k')
+Lf('M de tombamento em relação à base da sapata', '=(Mk_+Mk_w+(Vk_+Vk_w)*h_sap+h_sap^2*(2*sh_base+sh_b2)/6)*Lm', 'kN·m', 'Mk na base do muro (empuxo + vento) + Vk·h sapata + fatia da sapata.', 'key', '0.00', 'M_tb')
 # Passivo (Jose, 13/10): com o solo da frente garantido, a face toda da frente (aterro + sapata + dente). Sem a garantia,
 # só o dente do centro para trás: o solo na frente dele está debaixo da sapata e não é escavado; vale a altura do dente
 # abaixo da base, sem o peso da sapata por cima (a favor). Dente para a ponta, sem garantia: nada.
@@ -145,7 +145,7 @@ _iv = {lab: v0 + j for j, (lab, _, _) in enumerate(VERT)}   # linha de cada parc
 def _ktab(rz): return f'IF({rz}<=0.5,0.45,IF({rz}<=1,0.45+({rz}-0.5)*0.3,IF({rz}<=2,0.6+({rz}-1)*0.1,IF({rz}<=3,0.7+({rz}-2)*0.1,0.8))))'
 Lf('τRd2 = 0,27·αv·fcd (αv = 1 − fck/250)', '=0.27*(1-fck_s/250)*fcd_s', 'MPa', 'Compressão diagonal no contorno C.', 'res', '0.000', 'tauRd2_s', 'NBR 6118 19.5.3.1')
 Lf('Muro: FSd = 1,4·(peso do muro + carga no topo)/L', f"=1.4*(B{_iv['Muro (peso próprio)']}+B{_iv['Carga permanente no topo']})/Lm", 'kN/m', 'Sem descontar a reação do solo (a favor), como Bastos, Ex. 6.', 'res', '0.00', 'Fw_s')
-Lf('Muro: MSd = 1,4·Mk na base do muro', '=1.4*Mk_', 'kN·m/m', '', 'res', '0.00', 'Mw_s')
+Lf('Muro: MSd = 1,4·Mk na base do muro', '=1.4*(Mk_+Mk_w)', 'kN·m/m', '', 'res', '0.00', 'Mw_s')
 Lf('Muro: τSd = FSd/(u0·d) + K·MSd/(Wp0·d); u0 = 200 cm, Wp0 = t²/2 + 100·t, K = 0,45', '=(Fw_s/(200*d_s)+0.45*Mw_s*100/((t_bloco^2/2+100*t_bloco)*d_s))*10', 'MPa',
    'Faixa de 1 m como pilar t × 100 cm (dedução).', 'key', '0.000', 'tw_s', 'NBR 6118 19.5.2.2 e 19.5.3.1')
 Lf('Contraforte: K da Tabela 19.2 por C1/C2 = tenr/t (interpolado)', '=IF(Tipo_muro="Contrafortes",' + _ktab('tenr_adot/t_bloco') + ',0)', '', 'Interpolar a tabela é dedução.', 'res', '0.000', 'K_cc', 'NBR 6118 Tab. 19.2')

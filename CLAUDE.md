@@ -792,6 +792,46 @@ e dizer ao Jose o que mudou e por quê.
   (ele manda laudos de sondagem e alturas): Rodrigo — terreno natural, compactado depois com compactador manual;
   Joames — aterro de ARGILA compactada, não é o terreno natural. Muro de contrafortes: o pilarete COINCIDE com o
   contraforte — um por contraforte OU um a cada 2 contrafortes (escolha).
+  PLANILHA FEITA 13/11 (branch `muro-de-cima`): entradas na seção "Muro de cima e vento" das Entradas (mc_on,
+  h_mc, t_mc, mat_mc, g_mc — peso da alvenaria de vedação DIGITADO, NBR 6120 Tab. 2 —, reb_mc, arg_mc, cin_mc,
+  pil_tipo, s_pil, pil_ncf, b_pil, hs_pil, fck_pil, fbk_pil, phi_pil, n_pil, c_pil, vento_on, V0_v, S1_v, cat_v,
+  cls_v, S3_v, Cf_dir); aba nova `tools/muro_de_cima.py`. Vento: S2 = b·Fr·(z/10)^p (tabela do A-PORT), z do
+  terreno da FRENTE ao topo do muro de cima, q no topo; Cf = 1,2 (NBR 6123:1988 8.1, Tab. 16, muro sobre o
+  terreno, vento a 90°: 1,1 com l/h = 1 a 1,2 com l/h ≥ 10 — o 1,2 vale para qualquer comprimento; a norma diz
+  que fora do fluxo 2D o OBLÍQUO é pior, 1,5 com a força na ponta — o Jose decidiu só perpendicular; a 2023 não
+  foi lida). O arrimo SOMA: P_mc (peso por metro: parede + reboco + diferença do pilarete e das cintas de 20 cm)
+  no Nd/M2d, no σsg e na carga do topo da Fundação; Mk_w/Vk_w (por metro, muro de cima + arrimo acima do solo)
+  no Md/Vsd do balanço, no Hk/M de tombamento e no MSd da biela; Mk_wcf/Vk_wcf no contraforte (o que tem
+  pilarete leva a largura do pilarete inteira). ELS sem vento (ψ2 = 0). ELU: vento CHEIO junto com o empuxo
+  (sem ψ0) — confirmar com o Jose. Painéis A (de baixo) e B (de cima, só com cinta a meia altura), caso 13/18,
+  l = eixo dos pilaretes. Pilarete: balanço engastado no topo do arrimo, vento da largura inteira; concreto NBR
+  6118 flexão simples, bloco grauteado como o contraforte aparente (fpk*, K_cf); emenda no graute do arrimo
+  ℓ0t = α0t·ℓb. Cinta do topo do arrimo (contrafortes): parte do vento que desce pela base do painel (½ com
+  cinta no topo, ¼ a meia altura, tudo sem cinta) + ½ do arrimo exposto, biapoiada entre contrafortes, somada ao
+  As da faixa do empuxo, ≤ uma barra Ø horizontal. Conferido: muro típico (2,0 m, 2,4 m, cerâmico 11,5, S3 0,88,
+  C = 1) dá flexão do painel a 92 % (Mr/Md 109 %), como a conta à mão. TIJOLO BAIANO (Jose, 13/11: "bota pro
+  calculista considerar a resistência que ele acredita que é coerente"): ftk ⊥, ftk ∥ e fvk do muro de cima são
+  entradas opcionais (ftkn_mc_dir, ftkp_mc_dir, fvk_mc_dir); em branco, NBR 16868-1 Tab. 3/4 pela argamassa (padrão
+  1,5 a 3,4 → 0,10/0,20, o mesmo da planilha antiga dele). O 1,5 MPa que ele lembrou é a compressão do bloco de
+  vedação de furo horizontal (NBR 15270-1, de memória), não a tração na flexão.
+  Revisão adversarial 13/11 (2 revisores) — corrigido: o motor do app NÃO tem NOT (usar <> e ISNUMBER()=FALSE);
+  o resumo res_mc só aceita "OK…" ou "— (motivo)" (o "—" puro do IFERROR é conta que não fechou e reprova); vento
+  ligado sem V0/S1/S3 reprova (chk_dv); dados do muro de cima faltando reprovam (chk_dmc); K do pilarete de bloco
+  com K_cf em branco = 2,0; cinta do topo com o Mdxb (borda livre) e um As só para empuxo + vento, na faixa s_ph
+  (a mesma seção da canaleta na aba Contrafortes); As do pilarete que não resiste vira texto (o MAX daria o
+  mínimo); Nd_ e σsg com o termo novo somado por fora (bit a bit igual sem muro de cima); exportar_motor conta
+  muro_de_cima.py na versão; trava no gerador para f-string sem o f ('{k}' literal fazia o Excel recusar abrir).
+  res_mc entra nas verificações do balanço e do contraforte. Golden: 5 alvos novos (alvo_mc_*, alvo_vento_sem_mc;
+  os sorteios não ligam o muro de cima para não trocar os muros que os testes conhecem pelo nome); motor × Excel
+  bate em tudo. PARA O JOSE DECIDIR: ψ0 do vento com o empuxo (hoje cheio); S3 padrão 0,95 (grupo 3) ou 1,00
+  (residência); vento oblíquo (1,5 na ponta) fica de fora; ligação do pilarete com o arrimo em BALANÇO (o momento
+  do pilarete chega concentrado e o arrimo é verificado pela média por metro; barras do pilarete de 25 cm não caem
+  nos furos do bloco); verificar as cintas do próprio muro de cima (hoje não). FALTA: app — 31 testes vermelhos
+  (abas.ts, rotulos.ts, figuras.json, termos novos na memória: solo.ts Nd_/Md_, balanco.ts Vsd_, painelEls.ts
+  sig_sg, contraforte.ts Mk_cf/Vk_cf/Ma_cf, estabilidade.ts carga no topo/H_k/M_tb, sapata.ts Mw_s), card novo do
+  muro de cima e do vento (o veredito do app só lê cards), VALOR_AUTO Cf_dir→Cf_v, ATIVA_SE, Novo; depois
+  3D/IFC/quantitativo/desenhos do muro de cima, pilaretes e cintas.
+  BLOCOS CERÂMICOS 3D (9, 11,5, 14 e 19): o Jose modela no Revit e exporta em IFC (13/11: "deixa isso comigo").
 - **VIRADA DE 90° (Jose, 13/11: "é o que mais é feito; não adianta calcular o muro só num sentido"):** muro em L com
   a quina. A quina dá rigidez (a perna de retorno apoia a outra, como um contraforte), mas traz empuxo nos dois
   sentidos — "uma verificação a mais". OS DOIS CASOS (um cliente tem o L para dentro, o outro para fora): aterro
