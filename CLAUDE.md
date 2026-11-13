@@ -881,6 +881,10 @@ e dizer ao Jose o que mudou e por quê.
   grauteado), largura ao longo do muro ≥ 20 cm (lista), barras do pilarete descendo e emendando no graute do arrimo
   (contínuas com a vertical do arrimo). Previsão dele: arrimo ≥ 1 m com 2 m ou mais de alvenaria em cima "só vai
   resistir com contrafortes".
+  TRASPASSE DO PILARETE NO CONTRAFORTE FEITO 13/11 (Jose: "ainda falta o transpasse da armadura pros pilaretes"):
+  com contrafortes o pilarete fica com a face rente à face aparente do muro (enterrado; no aparente, rente à face do
+  solo) e avança sobre a haste, que é toda grauteada: as barras descem ℓ0t (l0t_pil) dentro dela quando caem na
+  largura do contraforte. No BALANÇO ainda não descem (aviso PILARETE_LIGACAO) — esperando a regra dos furos.
   BARRA HORIZONTAL EM 2 (Jose, 13/11: "habilita essa opção de duas barras também encostadas em cada face da
   canaleta"; FEITO no ramo `horizontal-duas-faces`, a partir do muro-de-cima): pos_ph ganhou "2 barras (uma em cada
   face)". Planilha: nb_ph; d_ph = t − c; M_ph = máx(Mdx; Mdxe) (cada face leva o maior sinal, como a

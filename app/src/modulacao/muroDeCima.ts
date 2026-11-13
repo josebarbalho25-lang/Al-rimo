@@ -134,6 +134,12 @@ export function muroDeCima(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaLido, lbp
   const tm = perfil.t;
   const y0 = arred(yEixo - tm / 2);
   const xs = pilaretesDoTrecho(tr, ctx.p.contrafortes, mc);
+  // Eixo do pilarete em Y. Em cima do contraforte (Jose, 13/11: "falta o transpasse da armadura pros pilaretes") ele
+  // fica com a face rente à face aparente do muro e avança sobre a haste do contraforte, que é toda grauteada — as
+  // barras descem o traspasse dentro dela. No balanço, centrado no muro (a posição presa aos furos do bloco é a
+  // próxima tarefa, anotada no caderno).
+  const tA = mod.cat.t;
+  const yPil = ctx.p.contrafortes ? (ctx.p.enterrado ? mc.hs / 2 : tA - mc.hs / 2) : yEixo;
 
   // ── pilaretes ──
   const gPil = geo(ctx, `pilarete ${mc.concreto ? 'concreto' : 'bloco'} ${mc.b}x${mc.hs} h${mc.H}`, () => {
@@ -143,7 +149,7 @@ export function muroDeCima(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaLido, lbp
   });
   xs.forEach((x, k) => {
     ctx.pecas.push({ id: `${T}.MC.P${String(k + 1).padStart(2, '0')}`, tipo: 'PILARETE', grupo: 'murocima', geometria: gPil,
-      origem: [arred(x - mc.b / 2), arred(yEixo - mc.hs / 2), Z0], giro: 0, trecho: tr.indice });
+      origem: [arred(x - mc.b / 2), arred(yPil - mc.hs / 2), Z0], giro: 0, trecho: tr.indice });
   });
 
   // ── painéis: cintas e tijolos entre pilaretes ──
@@ -207,10 +213,15 @@ export function muroDeCima(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaLido, lbp
   xs.forEach((xc, k) => {
     const id = `${T}.MC.P${String(k + 1).padStart(2, '0')}`;
     const xsB = mc.nPorFace === 1 ? [xc] : distribuir(xc - mc.b / 2 + mc.c, xc + mc.b / 2 - mc.c, (mc.b - 2 * mc.c) / (mc.nPorFace - 1));
-    for (const [lado, y] of [['a', yEixo - mc.hs / 2 + mc.c], ['s', yEixo + mc.hs / 2 - mc.c]] as const) {
+    for (const [lado, y] of [['a', yPil - mc.hs / 2 + mc.c], ['s', yPil + mc.hs / 2 - mc.c]] as const) {
       // a barra só desce no arrimo se cai dentro da parede dele (entre as paredes do bloco); fora disso ela nasce no
       // topo do arrimo e a ligação fica por definir (aviso) — não se desenha barra no ar nem enterrada no aterro
-      const dentro = y - mc.phi / 2 >= mod.cat.hf && y + mc.phi / 2 <= mod.cat.t - mod.cat.hf;
+      // dentro de quê a barra desce: com contrafortes, na haste do contraforte (toda grauteada, da face aparente à ponta,
+      // na largura dele); no balanço, entre as paredes do bloco do arrimo
+      const hf = mod.cat.hf;
+      const naHaste = (x: number) => Math.abs(x - xc) + mc.phi / 2 <= tA / 2 - hf
+        && (ctx.p.enterrado ? y - mc.phi / 2 >= hf && y + mc.phi / 2 <= mod.tenr - hf : y - mc.phi / 2 >= tA - mod.tenr + hf && y + mc.phi / 2 <= tA - hf);
+      const dentro = ctx.p.contrafortes ? xsB.every(naHaste) : y - mc.phi / 2 >= hf && y + mc.phi / 2 <= tA - hf;
       if (!dentro) foraDoArrimo = true;
       xsB.forEach((x, j) => ctx.barras.push(reta(`${id}.L${lado}${j + 1}`, 'PIL_LONG', mc.phi, [arred(x), arred(y), dentro ? zPe : Z0], [arred(x), arred(y), arred(zTopo)], tr.indice)));
     }
@@ -223,10 +234,10 @@ export function muroDeCima(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaLido, lbp
     for (const [j, z] of distribuir(Z0 + 50, Z0 + mc.H - 50, s).entries()) {
       const zr = arred(z);
       const cantos: [Vec3, Vec3, Vec3, Vec3] = [
-        [arred(xc - mc.b / 2 + ce), arred(yEixo - mc.hs / 2 + ce), zr],
-        [arred(xc + mc.b / 2 - ce), arred(yEixo - mc.hs / 2 + ce), zr],
-        [arred(xc + mc.b / 2 - ce), arred(yEixo + mc.hs / 2 - ce), zr],
-        [arred(xc - mc.b / 2 + ce), arred(yEixo + mc.hs / 2 - ce), zr],
+        [arred(xc - mc.b / 2 + ce), arred(yPil - mc.hs / 2 + ce), zr],
+        [arred(xc + mc.b / 2 - ce), arred(yPil - mc.hs / 2 + ce), zr],
+        [arred(xc + mc.b / 2 - ce), arred(yPil + mc.hs / 2 - ce), zr],
+        [arred(xc - mc.b / 2 + ce), arred(yPil + mc.hs / 2 - ce), zr],
       ];
       ctx.barras.push(estribo(`${id}.E${String(j + 1).padStart(2, '0')}`, 'PIL_ESTRIBO', mc.phiEst, cantos, tr.indice));
     }
