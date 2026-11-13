@@ -286,7 +286,7 @@ export function drenagem(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidades): v
     const celulas = (fiada: number): { cand: number[]; emCanaleta: boolean } => {
       const zc = zDaFiada(fiada);
       const daFiada = mapa.fiada(fiada);
-      const comBarra = new Set<Cavidade>();
+      const comBarra = new Map<Cavidade, { x: number; r: number }[]>();
       for (const b of ctx.barras) {
         if (b.trecho !== tr.indice) continue;
         for (let k = 0; k + 1 < b.eixo.length; k++) {
@@ -294,12 +294,28 @@ export function drenagem(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidades): v
           if (Math.abs(a[0] - c[0]) > 1e-6 || Math.abs(a[1] - c[1]) > 1e-6) continue;
           if (Math.min(a[2], c[2]) >= zc + d / 2 || Math.max(a[2], c[2]) <= zc - d / 2) continue;
           const f = mapa.achar(fiada, a[0], a[1]);
-          if (f) comBarra.add(f.cav);
+          if (f) comBarra.set(f.cav, [...(comBarra.get(f.cav) ?? []), { x: a[0], r: b.diametro / 2 }]);
         }
       }
-      const daParede = daFiada.filter((c) => c.tipo === 'furo' && Math.abs(c.cy - t / 2) < 1e-6 && ctx.pecas[c.peca].grupo === 'muro' && foraDosNos(c.cx) && !comBarra.has(c));
+      const naParede = daFiada.filter((c) => c.tipo === 'furo' && Math.abs(c.cy - t / 2) < 1e-6 && ctx.pecas[c.peca].grupo === 'muro' && foraDosNos(c.cx));
+      const daParede = naParede.filter((c) => !comBarra.has(c));
       let cand = daParede.filter((c) => !c.grauteada).map((c) => c.cx);
       if (!cand.length) cand = daParede.map((c) => c.cx);
+      // Furo com barra vertical (Jose, 13/11: "ou só deslocar o barbacã do ferro vertical"): o tubo passa no mesmo
+      // furo, ao lado da barra — a 1 cm dela — se couber inteiro no furo, também a 1 cm da borda. O tubo vai antes do
+      // graute. Só quando a fiada não tem furo livre: furo sem barra continua sendo o primeiro lugar.
+      if (!cand.length) {
+        for (const c of naParede) {
+          const barras = comBarra.get(c);
+          if (!barras) continue;
+          for (const lado of [-1, 1]) {
+            const ref: number = lado < 0 ? Math.min(...barras.map((q) => q.x - q.r)) : Math.max(...barras.map((q) => q.x + q.r));
+            const x: number = ref + lado * (10 + d / 2);
+            const livre = barras.every((q) => Math.abs(x - q.x) >= q.r + d / 2 + 10 - 1e-6);
+            if (livre && Math.abs(x - c.cx) + d / 2 <= c.a - 10 + 1e-6) cand.push(arred(x));
+          }
+        }
+      }
       return { cand, emCanaleta: daFiada.some((c) => c.tipo === 'canaleta' && Math.abs(c.cy - t / 2) < 1e-6) };
     };
     /** O furo na canaleta da fiada `f`: o tubo no alto do U (2 cm abaixo da borda), 1 cm acima da barra mais alta da
