@@ -24,10 +24,11 @@ const NOME: Record<ClassePeca, string> = {
   canaleta: 'Canaleta',
   bloco34: 'Bloco 34',
   bloco54: 'Bloco 54',
+  tijolo: 'Tijolo cerâmico',
 };
 
 /** Ordem da legenda: a do Revit do Jose (cores_jose.json), depois o que não tem cor dele. */
-const ORDEM = ['inteiro', 'meio', 'canaleta', 'bloco34', 'bloco54', 'especial'];
+const ORDEM = ['inteiro', 'meio', 'canaleta', 'bloco34', 'bloco54', 'tijolo', 'especial'];
 
 /** Contorno da peça pintada: escuro, porque o cinza do inteiro (#787878) engoliria o traço cinza de antes. */
 export const TRACO_DA_PECA = COR.linha;
@@ -42,6 +43,7 @@ function classePeloTipo(tp: TipoPeca): ClassePeca | undefined {
   if (tp === 'BLOCO') return 'inteiro';
   if (tp === 'MEIO_BLOCO') return 'meio';
   if (tp === 'CANALETA' || tp === 'MEIA_CANALETA' || tp === 'CANALETA_CORTADA') return 'canaleta';
+  if (tp === 'TIJOLO' || tp === 'TIJOLO_CORTADO') return 'tijolo';
   return undefined;
 }
 

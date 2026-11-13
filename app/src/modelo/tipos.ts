@@ -88,7 +88,7 @@ export interface Geometria {
 /** Um pedaço de prisma (ver Geometria.pedacos): contorno anti-horário, extrudado de `de` a `ate`. */
 export interface PedacoDePrisma { contorno: Vec2[]; de: number; ate: number }
 
-export type ClassePeca = 'inteiro' | 'meio' | 'canaleta' | 'bloco34' | 'bloco54';
+export type ClassePeca = 'inteiro' | 'meio' | 'canaleta' | 'bloco34' | 'bloco54' | 'tijolo';   // tijolo: muro de cima (13/11)
 
 export type TipoPeca =
   | 'BLOCO' | 'MEIO_BLOCO' | 'BLOCO_JUNCAO' | 'BLOCO_CORTADO'
@@ -96,9 +96,10 @@ export type TipoPeca =
   | 'GRAUTE_FURO' | 'GRAUTE_CANALETA'
   | 'SAPATA'
   | 'DRENO' | 'AREIA' | 'MANTA' | 'BARBACA' | 'TUBO_DRENO'   // brita, filtro de areia, manta, barbacã, dreno de fundo
-  | 'ATERRO' | 'SOLO_FRENTE';   // terreno: só para ver (transparente); fora do IFC e do quantitativo
+  | 'ATERRO' | 'SOLO_FRENTE'   // terreno: só para ver (transparente); fora do IFC e do quantitativo
+  | 'TIJOLO' | 'TIJOLO_CORTADO' | 'PILARETE' | 'CINTA_MC';   // muro de cima (13/11): tijolo cerâmico do Revit, pilarete e cinta
 
-export type GrupoPeca = 'muro' | 'contraforte' | 'fundacao' | 'drenagem' | 'terreno';
+export type GrupoPeca = 'muro' | 'contraforte' | 'fundacao' | 'drenagem' | 'terreno' | 'murocima';
 
 export interface Peca {
   id: string;                    // estável e legível: 'T1.M.f03.p012', 'T1.CF2.f05.p01', 'T1.GF.c017', 'SAP.T1'
@@ -121,7 +122,8 @@ export interface Peca {
 export type PapelBarra =
   | 'VERT_MURO' | 'ESPERA' | 'HORIZ'
   | 'CF_PRINCIPAL' | 'CF_CONSTRUTIVA' | 'CF_ESTRIBO'
-  | 'SAP_TRANSV' | 'SAP_LONG' | 'SAP_TORCAO';
+  | 'SAP_TRANSV' | 'SAP_LONG' | 'SAP_TORCAO'
+  | 'PIL_LONG' | 'PIL_ESTRIBO' | 'CINTA_MC';   // muro de cima (13/11): pilarete e cinta
 
 export interface Barra {
   id: string;
@@ -163,6 +165,8 @@ export interface Modelo {
     trechos: { x0: number; x1: number }[];
     contrafortes: { x: number; trecho: number; ponta: boolean }[];   // x do eixo, mm
     sapata: { y0: number; y1: number; z0: number; z1: number };      // envoltória da seção, mm
+    /** Muro de cima (13/11), quando há: do topo do arrimo (z0) ao topo dele (z1) e o eixo de cada pilarete. */
+    muroDeCima?: { z0: number; z1: number; t: number; pilaretes: number[] };
   };
   /**
    * OPCIONAL (acrescentado pela modulação, 08/10): as entradas do modelo efetivamente usadas (padrões de

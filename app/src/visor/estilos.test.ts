@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import type { ClassePeca, Modelo } from '@/modelo/tipos';
-import { CORES_DO_JOSE } from '@/modulacao/catalogo';
+import { CORES_DO_JOSE, COR_DO_TIJOLO } from '@/modulacao/catalogo';
 import { construirCena3D } from './cena3d';
 import { COR_DA_CLASSE, corDaPeca, corDoAco, ehEstiloVisual, lembrarEstilo, guardarEstilo, ESTILO_PADRAO, opacidadeDoTerreno, tracoDoEstilo } from './estiloVisual';
 import { muroDeExemplo } from './exemploDeModelo';
@@ -38,7 +38,9 @@ function muroComClasses(): Modelo {
 describe('estilo: escolhas e cores', () => {
   it('as cores das classes são as do Revit do Jose (o bloco 44, sem cor no Revit, saiu com a família 14x29)', () => {
     for (const [c, cor] of Object.entries(CORES_DO_JOSE)) expect(COR_DA_CLASSE[c as ClassePeca]).toBe(cor);
-    for (const c of Object.keys(COR_DA_CLASSE)) expect(CORES_DO_JOSE, c).toHaveProperty(c);
+    // o tijolo do muro de cima (13/11) não é do Revit do Jose: cor de cerâmica, à parte
+    for (const c of Object.keys(COR_DA_CLASSE)) if (c !== 'tijolo') expect(CORES_DO_JOSE, c).toHaveProperty(c);
+    expect(COR_DA_CLASSE.tijolo).toBe(COR_DO_TIJOLO);
   });
 
   it('no Cores, graute e aço não repetem a cor de nenhum bloco (o pilar e a barra não se confundem com a modulação)', () => {

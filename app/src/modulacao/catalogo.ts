@@ -143,6 +143,9 @@ export const CORES_DO_JOSE: Partial<Record<ClassePeca, string>> = {
   bloco54: '#ff0000',
 };
 
+/** Tijolo cerâmico do muro de cima (13/11): cor de cerâmica — NÃO é do Revit do Jose; muda na janela de Gráficos. */
+export const COR_DO_TIJOLO = '#c0673d';
+
 /** Canaleta cortada na obra: chave 'canaleta@<mm>'. */
 export const chaveDoCorte = (comprimento: number): string => `canaleta@${Math.round(comprimento * 10) / 10}`;
 

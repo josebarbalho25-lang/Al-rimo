@@ -73,8 +73,9 @@ export function exportarIfc(modelo: Modelo, info: InfoIfc): string {
 }
 
 // ── classificação das peças ───────────────────────────────────────────────────────────────────────────────────────
-type Classe = 'PARTE' | 'SAPATA' | 'DRENO' | 'MANTA' | 'BARBACA';
-type Mat = 'bloco' | 'graute' | 'concreto' | 'brita' | 'areia' | 'manta' | 'pvc';
+// muro de cima (13/11): o tijolo é PARTE de uma parede própria ("Muro de cima T1"); pilarete = IfcColumn; cinta = IfcBeam
+type Classe = 'PARTE' | 'SAPATA' | 'DRENO' | 'MANTA' | 'BARBACA' | 'PILAR' | 'VIGA';
+type Mat = 'bloco' | 'graute' | 'concreto' | 'brita' | 'areia' | 'manta' | 'pvc' | 'ceramica';
 
 const CLASSE: Record<TipoPeca, Classe | null> = {
   BLOCO: 'PARTE', MEIO_BLOCO: 'PARTE', BLOCO_JUNCAO: 'PARTE', BLOCO_CORTADO: 'PARTE',
@@ -83,6 +84,7 @@ const CLASSE: Record<TipoPeca, Classe | null> = {
   SAPATA: 'SAPATA',
   DRENO: 'DRENO', AREIA: 'DRENO', MANTA: 'MANTA', BARBACA: 'BARBACA', TUBO_DRENO: 'BARBACA',
   ATERRO: null, SOLO_FRENTE: null,
+  TIJOLO: 'PARTE', TIJOLO_CORTADO: 'PARTE', PILARETE: 'PILAR', CINTA_MC: 'VIGA',
 };
 
 const ROTULO: Record<TipoPeca, string> = {
@@ -92,22 +94,27 @@ const ROTULO: Record<TipoPeca, string> = {
   SAPATA: 'Sapata corrida', DRENO: 'Dreno (brita)', AREIA: 'Filtro de areia', MANTA: 'Manta geotêxtil', BARBACA: 'Barbacã',
   TUBO_DRENO: 'Dreno de fundo (tubo perfurado)',
   ATERRO: 'Aterro', SOLO_FRENTE: 'Solo',
+  TIJOLO: 'Tijolo cerâmico', TIJOLO_CORTADO: 'Tijolo cerâmico cortado', PILARETE: 'Pilarete', CINTA_MC: 'Cinta do muro de cima',
 };
 
 const materialDe = (t: TipoPeca): Mat =>
   t === 'GRAUTE_FURO' || t === 'GRAUTE_CANALETA' ? 'graute'
-    : t === 'SAPATA' ? 'concreto'
+    : t === 'SAPATA' || t === 'CINTA_MC' ? 'concreto'
+      : t === 'TIJOLO' || t === 'TIJOLO_CORTADO' ? 'ceramica'
+        : t === 'PILARETE' ? 'concreto'
       : t === 'DRENO' ? 'brita' : t === 'AREIA' ? 'areia' : t === 'MANTA' ? 'manta' : t === 'BARBACA' || t === 'TUBO_DRENO' ? 'pvc' : 'bloco';
 
 // IfcReinforcingBarTypeEnum (IFC4). Estribo e torção fechada = SHEAR; o resto trabalha como armadura principal.
 const TIPO_BARRA: Record<PapelBarra, string> = {
   VERT_MURO: 'MAIN', ESPERA: 'MAIN', HORIZ: 'MAIN', CF_PRINCIPAL: 'MAIN', CF_CONSTRUTIVA: 'MAIN', CF_ESTRIBO: 'SHEAR',
   SAP_TRANSV: 'MAIN', SAP_LONG: 'MAIN', SAP_TORCAO: 'MAIN',
+  PIL_LONG: 'MAIN', PIL_ESTRIBO: 'SHEAR', CINTA_MC: 'MAIN',
 };
 
 const COR: Record<Mat | 'aco', [number, number, number]> = {
   bloco: [0.72, 0.72, 0.7], graute: [0.55, 0.62, 0.75], concreto: [0.8, 0.8, 0.8], aco: [0.7, 0.25, 0.2],
   brita: [0.6, 0.55, 0.45], areia: [0.93, 0.89, 0.62], manta: [0.3, 0.3, 0.35], pvc: [0.9, 0.9, 0.9],
+  ceramica: [0.75, 0.42, 0.27],
 };
 
 // ── leitura tolerante do Resultado: Psets são enfeite, nome que falta não pode derrubar a exportação ───────────────
@@ -234,6 +241,7 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
     areia: ['Areia', 'sand'],
     manta: ['Manta geotêxtil', 'plastic'],
     pvc: ['Tubo de PVC', 'plastic'],
+    ceramica: ['Tijolo cerâmico', 'brick'],
   };
   const materiais = new Map<Mat | 'aco', Ref>();
   const estilos = new Map<Mat | 'aco', Ref>();
@@ -364,12 +372,15 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
     if ((classe === 'DRENO' || classe === 'MANTA' || classe === 'BARBACA') && !info.drenagem) continue;
     if (classe !== 'PARTE') { soltas.push(peca); continue; }
     const cf = peca.grupo === 'contraforte' && peca.contraforte ? peca.contraforte : undefined;
-    const chave = cf ? `contraforte/C${cf}` : `muro/T${peca.trecho}`;
+    const mc = peca.grupo === 'murocima';
+    const chave = cf ? `contraforte/C${cf}` : mc ? `murocima/T${peca.trecho}` : `muro/T${peca.trecho}`;
     let g = grupos.get(chave);
     if (!g) {
       g = cf
         ? { chave, nome: `Contraforte C${cf}`, tag: `C${cf}`, objectType: 'CONTRAFORTE', pecas: [], trecho: peca.trecho, contraforte: cf }
-        : { chave, nome: `Muro T${peca.trecho}`, tag: `T${peca.trecho}`, objectType: 'RETAININGWALL', pecas: [], trecho: peca.trecho };
+        : mc
+          ? { chave, nome: `Muro de cima T${peca.trecho}`, tag: `MC${peca.trecho}`, objectType: 'MURODEVEDACAO', pecas: [], trecho: peca.trecho }
+          : { chave, nome: `Muro T${peca.trecho}`, tag: `T${peca.trecho}`, objectType: 'RETAININGWALL', pecas: [], trecho: peca.trecho };
       grupos.set(chave, g);
     }
     g.pecas.push(peca);
@@ -500,6 +511,13 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
         qVol('GrossVolume', geo.volume_mm3 / 1e9),
         qVol('NetVolume', geo.volume_mm3 / 1e9),
       ]));
+    } else if (classe === 'PILAR') {
+      el = w.add('IFCCOLUMN', [G('peca/' + id), oh, `Pilarete ${peca.id.split('.').pop()}`, $, $, pl, corpo, id, E('COLUMN')]);
+      conta('IfcColumn');
+      nomePorDono.set(`murocima/T${peca.trecho}`, `Muro de cima T${peca.trecho}`);
+    } else if (classe === 'VIGA') {
+      el = w.add('IFCBEAM', [G('peca/' + id), oh, ROTULO[peca.tipo], $, $, pl, corpo, id, E('BEAM')]);
+      conta('IfcBeam');
     } else if (classe === 'BARBACA') {
       el = w.add('IFCPIPESEGMENT', [G('peca/' + id), oh, ROTULO[peca.tipo], $, $, pl, corpo, id, E('RIGIDSEGMENT')]);
       conta('IfcPipeSegment');
@@ -518,7 +536,9 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
   for (const t of tiposGeo.values()) {
     if (!t || !t.ocorrencias.length) continue;
     const ehGraute = t.tipoPeca === 'GRAUTE_FURO' || t.tipoPeca === 'GRAUTE_CANALETA';
-    const ehAlvenaria = t.classe === 'PARTE' && !ehGraute;
+    // o tijolo do muro de cima é alvenaria, mas não é da família do bloco de concreto (sem família nem fbk)
+    const ehTijolo = t.tipoPeca === 'TIJOLO' || t.tipoPeca === 'TIJOLO_CORTADO';
+    const ehAlvenaria = t.classe === 'PARTE' && !ehGraute && !ehTijolo;
     const props: (Ref | null)[] = [
       prop('Quantidade', 'IFCINTEGER', I(t.ocorrencias.length)),
       prop('VolumePorPeca', 'IFCVOLUMEMEASURE', t.geo.volume_mm3 / 1e9),
@@ -536,6 +556,7 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
       }
     }
     if (ehGraute && fgk !== null) props.push(prop('fgk', 'IFCPRESSUREMEASURE', fgk));
+    if (ehTijolo && t.geo.catalogo) props.push(prop('Catalogo', 'IFCLABEL', t.geo.catalogo));
     const ps = pset('pset/tipo/geo/' + t.k, ehAlvenaria ? 'AlRimo_Bloco' : ehGraute ? 'AlRimo_Graute' : 'AlRimo_Peca', props)!;
     const gid = G('tipo/geo/' + t.k);
     const nome = nomeDaPeca(t.tipoPeca, t.geo);
@@ -543,6 +564,8 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
     const ref =
       t.classe === 'PARTE' ? w.add('IFCBUILDINGELEMENTPARTTYPE', [...comum, ROTULO[t.tipoPeca], E('USERDEFINED')])
         : t.classe === 'SAPATA' ? w.add('IFCFOOTINGTYPE', [...comum, $, E('STRIP_FOOTING')])
+          : t.classe === 'PILAR' ? w.add('IFCCOLUMNTYPE', [...comum, $, E('COLUMN')])
+          : t.classe === 'VIGA' ? w.add('IFCBEAMTYPE', [...comum, $, E('BEAM')])
           : t.classe === 'BARBACA' ? w.add('IFCPIPESEGMENTTYPE', [...comum, $, E('RIGIDSEGMENT')])
             : t.classe === 'MANTA' ? w.add('IFCCOVERINGTYPE', [...comum, $, E('MEMBRANE')])
               : w.add('IFCBUILDINGELEMENTPROXYTYPE', [...comum, ROTULO[t.tipoPeca], E('USERDEFINED')]);
@@ -561,6 +584,7 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
   // barra da sapata é da sapata mesmo que a modulação a marque com o contraforte de cima (torção, por exemplo)
   const donoDaBarra = (b: Barra): string => {
     if (b.papel.startsWith('SAP_')) return `sapata/T${b.trecho}`;
+    if (b.papel.startsWith('PIL_') || b.papel === 'CINTA_MC') return `murocima/T${b.trecho}`;
     if (b.contraforte) return `contraforte/C${b.contraforte}`;
     return `muro/T${b.trecho}`;
   };

@@ -413,7 +413,10 @@ line(E, r, 'Categoria do terreno (S2)', 'III', '', 'I mar/lagos … III subúrbi
 dv_cv = DataValidation(type='list', formula1='"I,II,III,IV,V"'); E.add_data_validation(dv_cv); dv_cv.add(f'B{r-1}')
 line(E, r, 'Classe (S2)', 'A', '', 'A: maior dimensão ≤ 20 m (painel de vedação, muro curto); B: ≤ 50 m; C: > 50 m (NBR 6123 5.3.2).', 'inp', None, 'cls_v'); r += 1
 dv_kv = DataValidation(type='list', formula1='"A,B,C"'); E.add_data_validation(dv_kv); dv_kv.add(f'B{r-1}')
-line(E, r, 'S3 (estatístico)', 0.95, '', 'NBR 6123 (1988) Tab. 3: grupo 1 = 1,10; 2 = 1,00; 3 = 0,95; 4 (vedações) = 0,88; 5 (temporárias) = 0,83.', 'inp', '0.00', 'S3_v'); r += 1
+# S3 em dois (Jose, 13/11: "da vedação é o que está na norma, vedação é vedação; estrutura é estrutura"): o painel do
+# muro de cima é vedação (grupo 4); o pilarete e o arrimo são estrutura (grupo da edificação).
+line(E, r, 'S3 da vedação (painéis do muro de cima)', 0.88, '', 'NBR 6123 (1988) Tab. 3, grupo 4: vedações (telhas, vidros, painéis de vedação).', 'inp', '0.00', 'S3_v'); r += 1
+line(E, r, 'S3 da estrutura (pilarete e arrimo)', 1.0, '', 'NBR 6123 (1988) Tab. 3: grupo 1 = 1,10; 2 (residências, comércio) = 1,00; 3 = 0,95; 5 (temporárias) = 0,83.', 'inp', '0.00', 'S3_e'); r += 1
 line(E, r, 'Coeficiente de força do muro — opcional', None, '', 'Em branco = o da NBR 6123 para muro isolado (aba Muro de cima e vento). Preencha só para forçar outro valor.', 'inp', '0.00', 'Cf_dir'); r += 1
 r += 1
 section(E, r, 'Coeficientes'); r += 1

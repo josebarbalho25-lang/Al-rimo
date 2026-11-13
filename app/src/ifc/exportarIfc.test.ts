@@ -63,7 +63,8 @@ function validar(texto: string, ...flags: string[]): Rel {
 const contaPorTipo = (m: Modelo) => {
   const c: Record<string, number> = {};
   for (const p of m.pecas) {
-    if ((p.grupo !== 'muro' && p.grupo !== 'contraforte') || p.tipo === 'SAPATA') continue;
+    // o tijolo do muro de cima (13/11) é parte da parede "Muro de cima"; o pilarete e a cinta são coluna e viga
+    if ((p.grupo !== 'muro' && p.grupo !== 'contraforte' && p.grupo !== 'murocima') || p.tipo === 'SAPATA' || p.tipo === 'PILARETE' || p.tipo === 'CINTA_MC') continue;
     c[p.tipo] = (c[p.tipo] ?? 0) + 1;
   }
   return Object.fromEntries(Object.entries(c).sort(([a], [b]) => (a < b ? -1 : 1)));
@@ -411,6 +412,8 @@ describe.skipIf(!Object.keys(modulacao).length)('exportarIfc — todos os cenár
       expect(g.avisos, c).toEqual([]);
       expect(g.contagem.IfcBuildingElementPart ?? 0, c).toBe(partesDoModelo(m));
       expect(g.contagem.IfcReinforcingBar ?? 0, c).toBe(m.barras.length);
+      expect(g.contagem.IfcColumn ?? 0, c).toBe(m.pecas.filter((p) => p.tipo === 'PILARETE').length);
+      expect(g.contagem.IfcBeam ?? 0, c).toBe(m.pecas.filter((p) => p.tipo === 'CINTA_MC').length);
     }
   }, 120000);
 

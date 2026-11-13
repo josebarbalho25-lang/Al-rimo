@@ -49,6 +49,10 @@ const ACABAMENTO: Record<TipoPeca, Acabamento> = {
   TUBO_DRENO: 'tubo',
   ATERRO: 'terreno',
   SOLO_FRENTE: 'terreno',
+  TIJOLO: 'alvenaria',
+  TIJOLO_CORTADO: 'alvenaria',
+  PILARETE: 'concreto',
+  CINTA_MC: 'concreto',
 };
 
 export function acabamentoDaPeca(tipo: TipoPeca): Acabamento {

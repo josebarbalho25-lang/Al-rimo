@@ -408,7 +408,7 @@ function veu(hex: string, op: number): string {
 function camadaDaPeca(tp: Solido['peca']['tipo']): string {
   if (ALVENARIA.has(tp)) return 'alvenaria';
   if (GRAUTE.has(tp)) return 'graute';
-  if (tp === 'SAPATA') return 'concreto';
+  if (tp === 'SAPATA' || tp === 'PILARETE' || tp === 'CINTA_MC') return 'concreto';
   return 'drenagem';
 }
 

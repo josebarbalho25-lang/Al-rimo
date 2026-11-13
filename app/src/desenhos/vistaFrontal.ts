@@ -17,7 +17,7 @@
 import type { Barra, Modelo } from '@/modelo/tipos';
 import { cm, cmCheio } from './formato';
 import {
-  ALVENARIA, contrafortesDoModelo, projecao, projetarPontos, solidosDoModelo, type Regiao, type Solido,
+  ALVENARIA, CONCRETO_MC, contrafortesDoModelo, projecao, projetarPontos, solidosDoModelo, type Regiao, type Solido,
 } from './geometria';
 import { desenharLegenda, estiloPintado, itensDasTintas, tintaDaPeca, tintasPresentes, type Amostra } from './cores';
 import { COR, Prancha, escalaPara, type Estilo, type OpcoesDaVista, type Pt } from './prancha';
@@ -133,7 +133,9 @@ function frontalNaVista(m: Modelo, o: OpcoesDaVista): Prancha {
   // na folha, o enquadrar amplia mais e toda a anotação cresce junto — cota ~15 px, como o rótulo do painel e a
   // cota da planta. Os limites acompanham na mesma razão.
   // Na prancha a escala vem pedida (1:25, 1:50…) e o desenho fica do tamanho que ela der.
-  const S = o.S ?? escalaPara(Math.max(xFim - xIni, 1.6 * (H_muro - sapata.z0)), 900, 0.045, 0.45);
+  // com muro de cima (13/11) o desenho vai até o topo dele
+  const zTopo = m.dims.muroDeCima?.z1 ?? H_muro;
+  const S = o.S ?? escalaPara(Math.max(xFim - xIni, 1.6 * (zTopo - sapata.z0)), 900, 0.045, 0.45);
   const X = (x: number) => x * S;
   const Y = (z: number) => -z * S;
   const aneis = (r: Regiao): Pt[][] => [r.contorno, ...r.furos].map((a) => a.map(([x, z]): Pt => [X(x), Y(z)]));
@@ -161,6 +163,10 @@ function frontalNaVista(m: Modelo, o: OpcoesDaVista): Prancha {
   // a passante do contraforte que aparece na face vai na cor do tipo, como as outras: o tom mais escuro que ela
   // levava antes misturaria um segundo código com o das cores do Jose
   for (const s of aparece('blocos') ? noPlano : []) pr.caminho(aneis(projecao(s, 'Y')), { ...estiloDaAlvenaria(s), id: s.peca.id });
+  pr.fechar();
+  // pilarete e cinta do muro de cima: concreto, como a sapata (traço cheio — estão à vista)
+  pr.abrir('data-camada="concreto"');
+  for (const s of aparece('sapata') ? sol.filter((q) => CONCRETO_MC.has(q.peca.tipo)) : []) pr.caminho(aneis(projecao(s, 'Y')), { fill: pr.padrao('conc'), stroke: COR.linha, sw: 1, camada: 'concreto', id: s.peca.id });
   pr.fechar();
   // nível do aterro atrás do muro (escondido): só quando o muro sobe além do solo
   if (aparece('terreno') && H_solo < H_muro - 0.5) pr.linha(X(xIni), Y(H_solo), X(xFim), Y(H_solo), { stroke: hachuraDe('terra').risco, sw: 1.2, dash: '10,4', material: 'terra' });
@@ -238,7 +244,7 @@ function frontalNaVista(m: Modelo, o: OpcoesDaVista): Prancha {
   const chamadas: Chamada[] = [...daChamada.values()].map(({ pts, b }) => ({ posicao: b.posicao, elemento: elementoDaBarra(b), ancora: ancoraNaBarra(pts) }));
 
   // ── eixos dos contrafortes e juntas de controle ──────────────────────────────────────────────────────────────
-  const topo = Y(H_muro);
+  const topo = Y(zTopo);
   const temBarras = m.barras.some((b) => b.papel === 'VERT_MURO');
   const linhaBarras = topo - 22;
   const linhaCf = temBarras ? topo - 50 : topo - 22;
@@ -298,6 +304,8 @@ function frontalNaVista(m: Modelo, o: OpcoesDaVista): Prancha {
   const xc1 = xNum - 16;
   pr.cotaV(xc1, Y(0), Y(H_muro), `muro ${cm(H_muro)}`, { de: [X(xIni), xNum] });
   pr.cotaV(xc1 - 30, Y(0), Y(H_solo), `solo ${cm(H_solo)}`, { de: [xNum, xNum] });
+  // muro de cima (13/11): do topo do arrimo ao topo dele, na mesma linha da cota do muro
+  if (m.dims.muroDeCima) pr.cotaV(xc1, Y(H_muro), Y(zTopo), `muro de cima ${cm(zTopo - H_muro)}`, { de: [X(xIni), X(xIni)] });
   pr.silenciar(false);
   pr.fechar();
 

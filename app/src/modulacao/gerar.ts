@@ -25,6 +25,7 @@ import { fmt, furosDaPeca, geoBloco, geoCanaleta, geoGrauteCanaleta, pad, secaoC
 import { barrasDoBalanco, barrasDoPainel, barrasDosContrafortes, esperas, horizontais, type Vertical } from './armaduras';
 import { conferenciasGerais, drenagem, sapata, temDente, terreno } from './entorno';
 import { furarEQuebrarCanaletas } from './canaletas';
+import { leitorDoMuroDeCima, lerMuroDeCima, muroDeCima, pilaretesDoTrecho } from './muroDeCima';
 
 // 5: canaleta furada onde sobe a barra, T de graute no contraforte, graute da haste corrido (09/10 noite)
 export const VERSAO_MODULACAO = 'modulacao 5';
@@ -49,6 +50,7 @@ export function gerarModelo(r: Resultado, extras: Record<string, Valor> = {}): M
   const canaleta = fiadasDeCanaleta(mod.n_fiadas, mod.s_can, p.cinta);
   const tipos = tiposDasFiadas(canaleta, ENCAIXES[mod.cat.nome].primeira);
   const Ype = mod.cat.t / 2 + p.a_ater - p.B_sap;
+  const mc = lerMuroDeCima(ctx, leitorDoMuroDeCima(ctx, r));
   const YbA = mod.cat.t / 2 + p.a_ater;
 
   for (const tr of mod.trechos) {
@@ -73,6 +75,7 @@ export function gerarModelo(r: Resultado, extras: Record<string, Valor> = {}): M
     sapata(ctx, tr, Ype, YbA);
     drenagem(ctx, tr, mapa);
     terreno(ctx, tr, Ype, YbA);
+    if (mc) muroDeCima(ctx, tr, mc, p.lbphi_c, p.a0t);
   }
 
   conferenciasGerais(ctx, Ype, YbA);
@@ -86,6 +89,7 @@ export function gerarModelo(r: Resultado, extras: Record<string, Valor> = {}): M
     contrafortes: mod.trechos.flatMap((t) => t.nos.map((n) => ({ x: n.xc, trecho: t.indice, ponta: n.tipo !== 'T' }))),
     sapata: { y0: arred(Ype), y1: arred(YbA), z0: -(p.h_sap + (temDente(p) ? p.h_den : 0)), z1: 0 },
   };
+  if (mc) dims.muroDeCima = { z0: mod.H_des, z1: mod.H_des + mc.H, t: mc.tijolo.perfil.t, pilaretes: mod.trechos.flatMap((t) => pilaretesDoTrecho(t, p.contrafortes, mc)) };
 
   // a canaleta furada/quebrada troca de geometria depois de nascer inteira: a inteira que ninguém mais usa sai (quem
   // lê o Modelo percorre as geometrias — o IFC não pode ganhar tipo sem peça, nem o 3D molde sem uso)

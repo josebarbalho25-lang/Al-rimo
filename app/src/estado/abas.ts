@@ -113,9 +113,9 @@ export const ABAS: readonly Aba[] = [
     id: 'murocima', titulo: 'Muro de cima e vento', grupos: [
       { titulo: 'Muro de cima', campos: ['mc_on', 'h_mc', 't_mc', 'mat_mc', 'g_mc', 'reb_mc', 'reb_mc_esp'] },
       { titulo: 'Resistência da alvenaria', campos: ['arg_mc', 'ftkn_mc_dir', 'ftkp_mc_dir', 'fvk_mc_dir'] },
-      { titulo: 'Cintas', campos: ['cin_mc'] },
-      { titulo: 'Pilaretes', campos: ['pil_tipo', ['s_pil', B], ['pil_ncf', C], 'b_pil', 'hs_pil', 'fck_pil', 'fbk_pil', 'phi_pil', 'n_pil', 'c_pil'] },
-      { titulo: 'Vento', campos: ['vento_on', 'V0_v', 'S1_v', 'cat_v', 'cls_v', 'S3_v', 'Cf_dir'] },
+      { titulo: 'Cintas', campos: ['cin_mc', 'phi_cin_mc'] },
+      { titulo: 'Pilaretes', campos: ['pil_tipo', ['s_pil', B], ['pil_ncf', C], 'b_pil', 'hs_pil', 'fck_pil', 'fbk_pil', 'phi_pil', 'n_pil', 'c_pil', 'phi_est_pil', 's_est_pil'] },
+      { titulo: 'Vento', campos: ['vento_on', 'V0_v', 'S1_v', 'cat_v', 'cls_v', 'S3_v', 'S3_e', 'Cf_dir'] },
     ],
   },
   {

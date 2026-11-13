@@ -39,12 +39,12 @@ export interface OpcoesIso extends OpcoesDaVista {
 
 /** Camada do DXF da peça do isométrico: a cor sombreada da face não diz o material, a peça diz. */
 function camadaDaPeca(s: Solido): string {
-  if (s.peca.tipo === 'SAPATA') return 'concreto';
+  if (s.peca.tipo === 'SAPATA' || s.peca.tipo === 'PILARETE' || s.peca.tipo === 'CINTA_MC') return 'concreto';
   if (s.peca.tipo === 'DRENO') return 'drenagem';
   return 'alvenaria';
 }
 
-const TIPOS_ISO = new Set<Solido['peca']['tipo']>([...ALVENARIA, 'SAPATA', 'DRENO']);
+const TIPOS_ISO = new Set<Solido['peca']['tipo']>([...ALVENARIA, 'SAPATA', 'DRENO', 'PILARETE', 'CINTA_MC']);
 
 export function sentido(vista: VistaIso): { ax: number; ay: number } {
   return { ax: vista.endsWith('direita') ? 1 : -1, ay: vista.startsWith('frente') ? -1 : 1 };
@@ -151,7 +151,7 @@ export function corBase(s: Solido): string {
   if (tinta) return tinta.cor;
   if (ESPECIAL.has(s.peca.tipo)) return COR.especialFundo;
   // sapata e dreno no fundo da hachura deles (tabela de gráficos — 15/10)
-  if (s.peca.tipo === 'SAPATA') return hachuraDe('concreto').fundo;
+  if (s.peca.tipo === 'SAPATA' || s.peca.tipo === 'PILARETE' || s.peca.tipo === 'CINTA_MC') return hachuraDe('concreto').fundo;
   if (s.peca.tipo === 'DRENO') return hachuraDe('brita').fundo;
   return COR.blocoFundo;
 }

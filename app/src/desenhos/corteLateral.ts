@@ -119,6 +119,7 @@ export function estiloDaSecao(s: Solido, pr: Prancha): Estilo | null {
   if (ALVENARIA.has(tp)) return { fill: pr.padrao('alv'), stroke: hachuraDe('alvenaria').risco, sw: 0.9, camada: 'alvenaria' };
   if (tp === 'GRAUTE_FURO' || tp === 'GRAUTE_CANALETA') return { fill: pr.padrao('grc'), stroke: hachuraDe('graute').risco, sw: 0.6, camada: 'graute' };
   if (tp === 'SAPATA') return { fill: pr.padrao('conc'), stroke: COR.linha, sw: 1.6, camada: 'concreto' };
+  if (tp === 'PILARETE' || tp === 'CINTA_MC') return { fill: pr.padrao('conc'), stroke: COR.linha, sw: 1.2, camada: 'concreto' };
   if (tp === 'DRENO') return { fill: pr.padrao('brita'), stroke: hachuraDe('brita').risco, sw: 0.8, camada: 'drenagem' };
   if (tp === 'AREIA') return { fill: pr.padrao('areia'), stroke: hachuraDe('areia').risco, sw: 0.6, camada: 'drenagem' };
   if (tp === 'MANTA') return { fill: pr.padrao('mnt'), stroke: hachuraDe('manta').risco, sw: 0.6, camada: 'drenagem' };
@@ -127,7 +128,7 @@ export function estiloDaSecao(s: Solido, pr: Prancha): Estilo | null {
 }
 
 /** Ordem de pintura na seção: o que é fundo primeiro, o que enche furo depois. */
-const ORDEM: Partial<Record<Solido['peca']['tipo'], number>> = { SAPATA: 0, DRENO: 1, AREIA: 1, MANTA: 2, GRAUTE_FURO: 4, GRAUTE_CANALETA: 4, BARBACA: 5, TUBO_DRENO: 5 };
+const ORDEM: Partial<Record<Solido['peca']['tipo'], number>> = { PILARETE: 3, CINTA_MC: 3, SAPATA: 0, DRENO: 1, AREIA: 1, MANTA: 2, GRAUTE_FURO: 4, GRAUTE_CANALETA: 4, BARBACA: 5, TUBO_DRENO: 5 };
 
 /** `o`: escala fixa, sem título e prefixo dos ids — o pedido do modo prancha (paraPrancha.ts). */
 /** O corte com a tabela de gráficos dela (corte: graficos.ts, naVista). */
@@ -157,7 +158,8 @@ function corteNaVista(m: Modelo, xCorte: number | undefined, o: OpcoesDaVista): 
   // o Jose achou a letra pequena (09/10). Com o desenho menor na folha, o enquadrar amplia mais e TODA a anotação
   // cresce junto (~1,3×): cota ~15 px, a mesma altura do rótulo do painel. Os limites acompanham na mesma razão.
   // Na prancha a escala vem pedida (1:25, 1:50…).
-  const S = o.S ?? escalaPara(Math.max(yLonge - yPerto, H_muro - zFundo), 530, 0.056, 0.42);
+  // com muro de cima (13/11) o corte vai até o topo dele
+  const S = o.S ?? escalaPara(Math.max(yLonge - yPerto, (m.dims.muroDeCima?.z1 ?? H_muro) - zFundo), 530, 0.056, 0.42);
   const U = (y: number) => -y * S;
   const V = (z: number) => -z * S;
   const tela = (p: Vec2): Pt => [U(p[0]), V(p[1])];

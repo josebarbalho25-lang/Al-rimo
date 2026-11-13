@@ -27,6 +27,10 @@ export const NOME_DO_TIPO: Record<TipoPeca, string> = {
   TUBO_DRENO: 'Dreno de fundo',
   ATERRO: 'Aterro',
   SOLO_FRENTE: 'Solo da frente',
+  TIJOLO: 'Tijolo cerâmico',
+  TIJOLO_CORTADO: 'Tijolo cortado',
+  PILARETE: 'Pilarete',
+  CINTA_MC: 'Cinta do muro de cima',
 };
 
 export const NOME_DO_PAPEL: Record<PapelBarra, string> = {
@@ -39,6 +43,9 @@ export const NOME_DO_PAPEL: Record<PapelBarra, string> = {
   SAP_TRANSV: 'Sapata, transversal',
   SAP_LONG: 'Sapata, longitudinal',
   SAP_TORCAO: 'Sapata, torção',
+  PIL_LONG: 'Pilarete, longitudinal',
+  PIL_ESTRIBO: 'Pilarete, estribo',
+  CINTA_MC: 'Cinta do muro de cima',
 };
 
 const num = (v: number, casas: number) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas }).format(v);

@@ -36,6 +36,9 @@ export const ROTULO_DO_PAPEL: Readonly<Record<PapelBarra, string>> = {
   SAP_TRANSV: 'Sapata · transversal',
   SAP_LONG: 'Sapata · longitudinal',
   SAP_TORCAO: 'Sapata · torção',
+  PIL_LONG: 'Pilarete · longitudinal',
+  PIL_ESTRIBO: 'Pilarete · estribo',
+  CINTA_MC: 'Cinta do muro de cima',
 };
 
 export interface PosicaoDeFerro {

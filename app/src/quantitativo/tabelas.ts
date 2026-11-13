@@ -132,6 +132,25 @@ export function tabelasDoQuantitativo(q: Quantitativo): Tabela[] {
     ],
   });
 
+  const mc = q.muroDeCima;
+  if (mc) {
+    t.push({
+      id: 'murocima',
+      titulo: 'Muro de cima',
+      cabecalho: ['Item', 'Quantidade', 'Unidade'],
+      linhas: [
+        [mc.tijolo ? `Tijolo cerâmico (${mc.tijolo.replace(/^tijolo [^(]*\(/, '').replace(/\)$/, '')})` : 'Tijolo cerâmico', num(mc.tijolos, 0), 'un'],
+        ...(mc.cortados ? [['   das quais, para cortar', num(mc.cortados, 0), 'un'] as Celula[]] : []),
+        ['Parede de tijolo', num(mc.area, 2), 'm²'],
+        ['Argamassa de assentamento', num(mc.argamassa, 3), 'm³'],
+        ['Pilaretes', num(mc.pilaretes, 0), 'un'],
+        ['Concreto dos pilaretes', num(mc.concretoPilaretes, 3), 'm³'],
+        ['Concreto das cintas', num(mc.concretoCintas, 3), 'm³'],
+        ['Fôrma (pilaretes e cintas)', num(mc.forma, 2), 'm²'],
+      ],
+    });
+  }
+
   // Item desligado nas entradas não aparece: linha zerada na tela parece esquecimento, não escolha.
   const d = q.drenagem;
   const dren: Celula[][] = [];

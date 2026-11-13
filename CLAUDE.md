@@ -844,6 +844,29 @@ e dizer ao Jose o que mudou e por quê.
   O exemplo já saía "Não passa · 2" antes (As,mín 2,10 > Ø10 c/40 1,96 e deslizamento 1,04) — não é do muro de
   cima. Acréscimo do vento sobre o Mk do empuxo (muro de cima 2 m, Cf 1,2, S3 0,95, Ka 0,4, γ 19, q 2): arrimo
   1,0 m +150 %, 1,6 +52 %, 2,0 +32 %, 2,6 +18 %, 3,0 +13 %. VIRADA DE 90°: ainda NÃO mexida (13/11).
+  S3 EM DOIS (Jose, 13/11: "o S3 do muro é esse mesmo… vedação é vedação, estrutura é estrutura"): `S3_v` = 0,88
+  (vedação, grupo 4 de 1988) só nos PAINÉIS do muro de cima (q_vv, p_wv, fd_mc); `S3_e` = 1,00 (estrutura) no
+  pilarete, no arrimo, no contraforte e na cinta do topo (q_v, p_w). Os dois são entrada.
+  3D, VISTAS, IFC E QUANTITATIVO DO MURO DE CIMA FEITOS 13/11 (mesmo ramo): perfis dos tijolos lidos do IFC do
+  Jose por `tools/tijolos_do_revit.py` → `app/src/modulacao/tijolos.gerado.json` (arcos com 6 segmentos por quarto,
+  como o furo do bloco); `modulacao/muroDeCima.ts` monta: fiadas de 20 cm (a mais perto de h_mc, aviso se
+  arredonda), tijolo do Revit mais perto do t_mc (aviso se não é exato), centrado no eixo do arrimo, amarração em
+  meia peça, junta de 1 cm, cortado no fim do painel; pilaretes (balanço: pontas + ≤ s_pil; contrafortes: em cima
+  do contraforte a cada pil_ncf, pontas sempre), seção b × h centrada, da base ao topo; cinta de concreto de 20 cm
+  na fiada do topo e/ou na de meia altura (topo dela na fiada mais perto de h/2), entre os pilaretes. Barras:
+  pilarete n_pil por face descendo l0t_pil no arrimo, até 3 cm do topo; estribo (só concreto) Ø do modelo a
+  mín(20; b; 12φ) — DEDUÇÃO (NBR 6118 18.4.3); cinta 2 barras corridas a 3 cm das faces (entrada do modelo
+  phi_cin_mc). Entradas do modelo novas: phi_cin_mc, phi_est_pil, s_est_pil. Tipos novos: TIJOLO, TIJOLO_CORTADO,
+  PILARETE, CINTA_MC (grupo 'murocima'); papéis PIL_LONG, PIL_ESTRIBO, CINTA_MC; classe 'tijolo' com
+  COR_DO_TIJOLO #c0673d (não é do Revit do Jose — muda na janela de Gráficos); dims.muroDeCima. IFC: tijolo =
+  parte da parede "Muro de cima T1", pilarete = IfcColumn, cinta = IfcBeam, material "Tijolo cerâmico"; aridade
+  conferida no ifcopenshell (IFC4). Desenhos: tijolo é alvenaria (pintado pela classe), pilarete e cinta com a
+  hachura de concreto; frontal e corte enquadram até o topo do muro de cima; cota "muro de cima" na frontal.
+  Quantitativo: tabela "Muro de cima" (tijolo para comprar com os cortados, área, argamassa estimada pela junta,
+  concreto e fôrma de pilarete e cinta). Visto na tela (5180): 3D, frontal, corte e quantitativo certos para o
+  exemplo + muro de cima. Suíte inteira verde (4827). FALTA: figuras das entradas (Fig. 28/29), planta e
+  armação do pilarete na prancha, ligação pilarete × arrimo no balanço (decisão dele), cintas do muro de cima não
+  verificadas, a quina (virada de 90°).
   BLOCOS CERÂMICOS 3D (9, 11,5, 14 e 19): o Jose modela no Revit e exporta em IFC (13/11: "deixa isso comigo").
 - **VIRADA DE 90° (Jose, 13/11: "é o que mais é feito; não adianta calcular o muro só num sentido"):** muro em L com
   a quina. A quina dá rigidez (a perna de retorno apoia a outra, como um contraforte), mas traz empuxo nos dois

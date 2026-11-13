@@ -368,7 +368,10 @@ export function faixa(eixo: Vec3[], k: 0 | 1 | 2): [number, number] {
 
 export const ALVENARIA = new Set<Peca['tipo']>([
   'BLOCO', 'MEIO_BLOCO', 'BLOCO_JUNCAO', 'BLOCO_CORTADO', 'CANALETA', 'MEIA_CANALETA', 'CANALETA_CORTADA',
+  'TIJOLO', 'TIJOLO_CORTADO',   // muro de cima (13/11): o tijolo cerâmico é alvenaria nos desenhos (pintado pela classe 'tijolo')
 ]);
+/** Concreto moldado do muro de cima (13/11): pilarete e cinta — desenhados como a sapata (hachura de concreto). */
+export const CONCRETO_MC = new Set<Peca['tipo']>(['PILARETE', 'CINTA_MC']);
 export const CANALETA = new Set<Peca['tipo']>(['CANALETA', 'MEIA_CANALETA', 'CANALETA_CORTADA']);
 /** Peças fora do catálogo comum (inteiro, meio, canaleta, meia): o desenho as destaca. */
 export const ESPECIAL = new Set<Peca['tipo']>(['BLOCO_JUNCAO', 'BLOCO_CORTADO', 'CANALETA_CORTADA']);

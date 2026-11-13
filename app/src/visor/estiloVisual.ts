@@ -19,7 +19,7 @@
 
 import { guardar, lembrar } from '@/estado/lembrete';
 import type { ClassePeca } from '@/modelo/tipos';
-import { CORES_DO_JOSE } from '@/modulacao/catalogo';
+import { CORES_DO_JOSE, COR_DO_TIJOLO } from '@/modulacao/catalogo';
 import type { Acabamento } from './lotes';
 import type { PaletaVisor } from './tema3d';
 import { emMeioTom, tabelaDaVista, type Material } from '@/desenhos/graficos';
@@ -62,9 +62,9 @@ export function guardarEstilo(e: EstiloVisual): void {
 const COR_SEM_REVIT = '#3a9a5c';
 
 /** A ordem da legenda: do bloco comum para o especial (é a ordem em que a obra os encontra). */
-export const ORDEM_DAS_CLASSES: readonly ClassePeca[] = ['inteiro', 'meio', 'canaleta', 'bloco34', 'bloco54'];
+export const ORDEM_DAS_CLASSES: readonly ClassePeca[] = ['inteiro', 'meio', 'canaleta', 'bloco34', 'bloco54', 'tijolo'];
 
-export const COR_DA_CLASSE = Object.fromEntries(ORDEM_DAS_CLASSES.map((c) => [c, CORES_DO_JOSE[c] ?? COR_SEM_REVIT])) as Readonly<Record<ClassePeca, string>>;
+export const COR_DA_CLASSE = Object.fromEntries(ORDEM_DAS_CLASSES.map((c) => [c, c === 'tijolo' ? COR_DO_TIJOLO : CORES_DO_JOSE[c] ?? COR_SEM_REVIT])) as Readonly<Record<ClassePeca, string>>;
 
 /** A cor da classe na tabela de gráficos em uso (o Jose troca na tela — 15/10); a de fábrica é COR_DA_CLASSE. */
 export function corDaClasse(c: ClassePeca): string {
@@ -83,6 +83,7 @@ export const ROTULO_DA_CLASSE: Readonly<Record<ClassePeca, string>> = {
   canaleta: 'Canaleta',
   bloco34: 'Bloco 34',
   bloco54: 'Bloco 54',
+  tijolo: 'Tijolo cerâmico',
 };
 
 /*

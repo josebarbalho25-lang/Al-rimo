@@ -23,7 +23,11 @@ export const SIMBOLOS_MURODECIMA: Readonly<Record<string, string>> = {
   V_0: 'velocidade básica do vento (isopletas)',
   S_1: 'fator topográfico',
   S_2: 'fator de rugosidade, dimensões e altura',
-  S_3: 'fator estatístico',
+  S_3: 'fator estatístico da estrutura (pilarete e arrimo)',
+  'S_{3,v}': 'fator estatístico da vedação (painéis do muro de cima)',
+  'v_{k,v}': 'velocidade característica do vento na vedação',
+  'q_{v,v}': 'pressão dinâmica do vento na vedação',
+  'p_{w,v}': 'pressão do vento no painel de vedação, característica',
   'z_v': 'altura do topo do muro de cima acima do terreno da frente',
   'z_{S2}': 'altura usada no S2 (no mínimo a da tabela)',
   'b_{S2}': 'parâmetro meteorológico b do S2',
@@ -137,7 +141,8 @@ function cardVento(r: Parameters<AutorDeCards>[0]): Card {
   const pressao = secao('Pressão dinâmica', [
     m.entrada('V0_v', 'V_0'),
     m.entrada('S1_v', 'S_1'),
-    m.entrada('S3_v', 'S_3'),
+    m.entrada('S3_e', 'S_3'),
+    m.entrada('S3_v', 'S_{3,v}'),
     m.passo('h_mce', 'h_{mc}', null, { casas: 2, unidade: 'm', origem: 'adotado' }),
     m.passo('z_v', 'z_v', soma(hM, hmc), { casas: 2, unidade: 'm' }),
     m.passo('z_s2', 'z_{S2}', max(cte(zMin, 0), zv), { casas: 2, unidade: 'm', ref: NBR6123('Tab. 1') }),
@@ -145,13 +150,17 @@ function cardVento(r: Parameters<AutorDeCards>[0]): Card {
     m.passo('Fr_s2', 'F_r', null, { casas: 2, origem: 'tabela', ref: NBR6123('Tab. 1') }),
     m.passo('p_s2', 'p_{S2}', null, { casas: 3, origem: 'tabela', ref: NBR6123('Tab. 1') }),
     m.passo('S2_v', 'S_2', mul(b, fr, pot(div(z2, cte(10, 0)), p)), { casas: 3, ref: NBR6123('5.3.3') }),
-    m.passo('Vk_v', 'v_k', mul(m.ent('V0_v', 'V_0'), m.ent('S1_v', 'S_1'), S2, m.ent('S3_v', 'S_3')), { casas: 2, unidade: 'm/s', ref: NBR6123('4.2') }),
+    m.passo('Vk_v', 'v_k', mul(m.ent('V0_v', 'V_0'), m.ent('S1_v', 'S_1'), S2, m.ent('S3_e', 'S_3')), { casas: 2, unidade: 'm/s', ref: NBR6123('4.2') }),
     m.passo('q_v', 'q_v', div(mul(cte(0.613, 3), pot(vk, 2)), cte(1000, 0)), { casas: 3, unidade: 'kN/m²', ref: NBR6123('4.2') }),
     m.passo('Cf_v', 'C_f', null, { casas: 2, origem: m.num('Cf_dir') !== null ? 'entrada' : 'tabela', ref: NBR6123('8.1, Tab. 16') }),
     m.passo('p_w', 'p_w', mul(Cf, q), {
       casas: 3, unidade: 'kN/m²',
       verif: { chave: 'vento.dados', rotulo: 'Dados do vento', limite: 0, relacao: '>=', celula: 'chk_dv', aplicavel: vento },
     }),
+    // a vedação (painéis do muro de cima) com o S3 dela (Jose, 13/11: "vedação é vedação, estrutura é estrutura")
+    m.passo('Vk_vv', 'v_{k,v}', mul(m.ent('V0_v', 'V_0'), m.ent('S1_v', 'S_1'), S2, m.ent('S3_v', 'S_{3,v}')), { casas: 2, unidade: 'm/s' }),
+    m.passo('q_vv', 'q_{v,v}', div(mul(cte(0.613, 3), pot(m.g('Vk_vv', 'v_{k,v}', 2, 'm/s'), 2)), cte(1000, 0)), { casas: 3, unidade: 'kN/m²' }),
+    m.passo('p_wv', 'p_{w,v}', mul(Cf, m.g('q_vv', 'q_{v,v}', 3, 'kN/m²')), { casas: 3, unidade: 'kN/m²' }),
   ], NBR6123('4.2'));
 
   const noArrimo = secao('Na base do arrimo, por metro', [
@@ -197,7 +206,6 @@ function cardMuroDeCima(r: Parameters<AutorDeCards>[0]): Card {
   const hp = m.ent('hs_pil', 'h_{pil}');
   const gc = m.ent('gama_c', '\\gamma_c');
   const gf = m.ent('gama_f', '\\gamma_f');
-  const pw = m.g('p_w', 'p_w', 3, 'kN/m²');
   const l = m.g('l_mc', '\\ell_{mc}', 2, 'm');
   const fd = m.g('fd_mc', 'f_{d,mc}', 3, 'kN/m²');
   const W = m.g('W_mc', 'W_{mc}', 6, 'm³/m');
@@ -229,7 +237,7 @@ function cardMuroDeCima(r: Parameters<AutorDeCards>[0]): Card {
     m.passo('ftdp_mc', 'f_{td,\\parallel,mc}', div(ftkp, gm), { casas: 3, unidade: 'MPa' }),
     m.passo('ftdn_mc', 'f_{td,\\perp,mc}', div(ftkn, gm), { casas: 3, unidade: 'MPa' }),
     m.passo('fvd_mc', 'f_{vd,mc}', null, { casas: 3, unidade: 'MPa', origem: m.num('fvk_mc_dir') !== null ? 'entrada' : 'tabela', ref: NBR16868('Tab. 4') }),
-    m.passo('fd_mc', 'f_{d,mc}', mul(gf, pw), { casas: 3, unidade: 'kN/m²' }),
+    m.passo('fd_mc', 'f_{d,mc}', mul(gf, m.g('p_wv', 'p_{w,v}', 3, 'kN/m²')), { casas: 3, unidade: 'kN/m²' }),
     m.passo('W_mc', 'W_{mc}', div(pot(div(tmc, cem), 2), cte(6, 0)), { casas: 6, unidade: 'm³/m' }),
   ], NBR16868('Anexo E'));
 

@@ -606,12 +606,15 @@ const ATIVA_SE: Record<string, (ler: LerValor, conta?: LerConta) => boolean> = {
   // e vento da planilha zera p_w e P_mc sem eles). Concreto só no pilarete moldado, fbk só no de bloco.
   ...Object.fromEntries(['h_mc', 't_mc', 'mat_mc', 'g_mc', 'reb_mc', 'arg_mc', 'ftkn_mc_dir', 'ftkp_mc_dir', 'fvk_mc_dir',
     'cin_mc', 'pil_tipo', 'b_pil', 'hs_pil', 'phi_pil', 'n_pil', 'c_pil'].map((n) => [n, comMuroDeCima])),
+  phi_cin_mc: (l) => comMuroDeCima(l) && l('cin_mc') !== 'Nenhuma',
+  phi_est_pil: (l) => comMuroDeCima(l) && String(l('pil_tipo') ?? '').startsWith('Conc'),
+  s_est_pil: (l) => comMuroDeCima(l) && String(l('pil_tipo') ?? '').startsWith('Conc'),
   reb_mc_esp: (l) => comMuroDeCima(l) && l('reb_mc') !== 'Nenhum',
   s_pil: (l) => comMuroDeCima(l) && soNoBalanco(l),
   pil_ncf: (l) => comMuroDeCima(l) && !soNoBalanco(l),
   fck_pil: (l) => comMuroDeCima(l) && String(l('pil_tipo') ?? '').startsWith('Conc'),
   fbk_pil: (l) => comMuroDeCima(l) && String(l('pil_tipo') ?? '').startsWith('Bloco'),
-  ...Object.fromEntries(['V0_v', 'S1_v', 'cat_v', 'cls_v', 'S3_v', 'Cf_dir'].map((n) => [n, comVento])),
+  ...Object.fromEntries(['V0_v', 'S1_v', 'cat_v', 'cls_v', 'S3_v', 'S3_e', 'Cf_dir'].map((n) => [n, comVento])),
 };
 
 export function entradaAtiva(nome: string, ler: LerValor, conta?: LerConta): boolean {

@@ -76,15 +76,18 @@ Lm('b', '=INDEX(s2_tab,MATCH(cat_v&cls_v,s2_chave,0),1)', '', '', 'res', '0.00',
 Lm('Fr', '=INDEX(s2_tab,MATCH(cat_v&cls_v,s2_chave,0),2)', '', '', 'res', '0.00', 'Fr_s2', 'NBR 6123 Tab. 1')
 Lm('p', '=INDEX(s2_tab,MATCH(cat_v&cls_v,s2_chave,0),3)', '', '', 'res', '0.000', 'p_s2', 'NBR 6123 Tab. 1')
 Lm('S2 = b·Fr·(z/10)^p', '=b_s2*Fr_s2*(z_s2/10)^p_s2', '', '', 'res', '0.000', 'S2_v', 'NBR 6123 5.3.3')
-Lm('Vk = V0·S1·S2·S3', '=V0_v*S1_v*S2_v*S3_v', 'm/s', '', 'res', '0.00', 'Vk_v', 'NBR 6123 4.2')
-Lm('q = 0,613·Vk²', '=0.613*Vk_v^2/1000', 'kN/m²', 'Pressão dinâmica.', 'key', '0.000', 'q_v', 'NBR 6123 4.2')
+Lm('Vk da estrutura = V0·S1·S2·S3', '=V0_v*S1_v*S2_v*S3_e', 'm/s', 'S3 da estrutura: pilarete e arrimo.', 'res', '0.00', 'Vk_v', 'NBR 6123 4.2')
+Lm('q da estrutura = 0,613·Vk²', '=0.613*Vk_v^2/1000', 'kN/m²', 'Pressão dinâmica.', 'key', '0.000', 'q_v', 'NBR 6123 4.2')
+Lm('Vk da vedação = V0·S1·S2·S3', '=V0_v*S1_v*S2_v*S3_v', 'm/s', 'S3 da vedação: painéis do muro de cima.', 'res', '0.00', 'Vk_vv', 'NBR 6123 4.2')
+Lm('q da vedação = 0,613·Vk²', '=0.613*Vk_vv^2/1000', 'kN/m²', '', 'key', '0.000', 'q_vv', 'NBR 6123 4.2')
 # Tab. 16 da NBR 6123 (1988, item 8.1), muro sobre o terreno, vento a 90°: Cf = 1,1 com l/h = 1 e 1,2 com l/h ≥ 10
 # (e no fluxo bidimensional). O l é o comprimento do muro inteiro, que a planilha não tem — fica o maior, 1,2, que
 # vale para qualquer comprimento. A norma avisa que, fora do fluxo bidimensional, o vento OBLÍQUO é o pior (1,5 com
 # a força deslocada para a ponta); o Jose decidiu só o perpendicular (13/11). q no topo do muro (8.1).
 Lm('Coeficiente de força do muro isolado (sugestão)', 1.2, '', 'Muro sobre o terreno, vento perpendicular: 1,1 (l/h = 1) a 1,2 (l/h ≥ 10). Fica 1,2, que vale para qualquer comprimento.', 'sug', '0.00', 'Cf_sug', 'NBR 6123 8.1, Tab. 16')
 Lm('Coeficiente de força usado', '=IF(ISNUMBER(Cf_dir),Cf_dir,Cf_sug)', '', 'Digitado nas Entradas ou a sugestão.', 'res', '0.00', 'Cf_v')
-Lm('Pressão do vento no muro = C·q', '=IF(' + ON_V + ',IFERROR(Cf_v*q_v,0),0)', 'kN/m²', 'Característica. Zero sem vento.', 'key', '0.000', 'p_w')
+Lm('Pressão do vento na estrutura = C·q', '=IF(' + ON_V + ',IFERROR(Cf_v*q_v,0),0)', 'kN/m²', 'Característica, com o S3 da estrutura (pilarete e arrimo). Zero sem vento.', 'key', '0.000', 'p_w')
+Lm('Pressão do vento na vedação = C·q', '=IF(' + ON_V + ',IFERROR(Cf_v*q_vv,0),0)', 'kN/m²', 'Característica, com o S3 da vedação (painéis do muro de cima).', 'key', '0.000', 'p_wv')
 r += 1
 
 section(MC, r, '3. O que vai para o arrimo'); r += 1
@@ -109,7 +112,7 @@ Lm('Largura do painel (l)', '=s_trib', 'm', 'Eixo a eixo dos pilaretes (a favor:
 Lm('ftk ⊥ fiada usado', "=IF(ISNUMBER(ftkn_mc_dir),ftkn_mc_dir,INDEX('Referências'!$M$16:$M$18,MATCH(arg_mc,'Referências'!$L$16:$L$18,0)))", 'MPa', 'Digitado nas Entradas ou, em branco, a tabela pela argamassa.', 'res', '0.00', 'ftkn_mc', 'NBR 16868-1 Tab. 3 / projetista')
 Lm('ftk ∥ fiada usado', "=IF(ISNUMBER(ftkp_mc_dir),ftkp_mc_dir,INDEX('Referências'!$N$16:$N$18,MATCH(arg_mc,'Referências'!$L$16:$L$18,0)))", 'MPa', 'Digitado nas Entradas ou, em branco, a tabela pela argamassa.', 'res', '0.00', 'ftkp_mc', 'NBR 16868-1 Tab. 3 / projetista')
 Lm('μ = ftk⊥/ftk∥', '=ftkn_mc/ftkp_mc', '', '', 'res', '0.00', 'mu_mc', 'NBR 16868-1 E.2')
-Lm('fd = γf·C·q', '=gama_f*p_w', 'kN/m²', '', 'key', '0.000', 'fd_mc')
+Lm('fd = γf·C·q (vedação)', '=gama_f*p_wv', 'kN/m²', '', 'key', '0.000', 'fd_mc')
 Lm('W = t²/6 (por metro)', '=(t_mc/100)^2/6', 'm³/m', 'Seção bruta, como no painel do arrimo.', 'res', '0.000000', 'W_mc')
 Lm('fvd = fvk/γm', "=IF(ISNUMBER(fvk_mc_dir),fvk_mc_dir,MIN(INDEX('Referências'!$O$16:$O$18,MATCH(arg_mc,'Referências'!$L$16:$L$18,0)),INDEX('Referências'!$P$16:$P$18,MATCH(arg_mc,'Referências'!$L$16:$L$18,0))))/gama_m", 'MPa', 'fvk digitado ou, em branco, fvk0 da tabela sem pré-compressão (a favor).', 'res', '0.000', 'fvd_mc', 'NBR 16868-1 Tab. 4 / projetista')
 # limites publicados como célula: a memória do app compara com a célula, não refaz a conta
@@ -142,7 +145,7 @@ for k, desc, fh, fcaso in _PAINEIS:
     Lm('τvd = fd·l/2/t', f'=fd_mc*l_mc/2/(t_mc/100)/1000', 'MPa', 'Faixa horizontal biapoiada nos pilaretes (como no painel do arrimo).', 'res', '0.0000', f'tv_p{k}')
     Lm('Limite de área (coef. × t²)', f'=IF(cs_p{k}=13,2025,1350)', '', '2025·t² com 4 lados; 1350·t² com 3.', 'res', '0', f'ca_p{k}', 'NBR 16868-1 E.4.1')
     Lm(f'Painel {desc}: resumo',
-       f'=IF(mc_on<>"Sim","— (sem muro de cima)",IF(h_p{k}<=0,"— (não há)",IF(p_w<=0,"— (sem vento)",IF(AND(sp_p{k}<=ftkp_mc/gama_m,sn_p{k}<=ftkn_mc/gama_m,tv_p{k}<=fvd_mc,MAX(l_mc,h_p{k})<=50*t_mc/100,l_mc*h_p{k}<=ca_p{k}*(t_mc/100)^2),'
+       f'=IF(mc_on<>"Sim","— (sem muro de cima)",IF(h_p{k}<=0,"— (não há)",IF(p_wv<=0,"— (sem vento)",IF(AND(sp_p{k}<=ftkp_mc/gama_m,sn_p{k}<=ftkn_mc/gama_m,tv_p{k}<=fvd_mc,MAX(l_mc,h_p{k})<=50*t_mc/100,l_mc*h_p{k}<=ca_p{k}*(t_mc/100)^2),'
        f'"OK (flexão "&FIXED(100*MAX(sp_p{k}/(ftkp_mc/gama_m),sn_p{k}/(ftkn_mc/gama_m)),0)&"%)","NÃO OK"))))', '', 'Flexão nas duas direções, cisalhamento e dimensões-limite.', 'key', None, f'res_p{k}')
 r += 1
 
@@ -197,7 +200,7 @@ Lm('Cinta do topo: resumo',
 r += 1
 
 section(MC, r, '7. Verificações'); r += 1
-Lm('Dados do vento', '=IF(vento_on<>"Sim","— (sem vento)",IF(AND(ISNUMBER(V0_v),ISNUMBER(S1_v),ISNUMBER(S3_v),q_v>0),"OK","NÃO OK — vento ligado sem V0, S1 ou S3"))', '', '', 'key', None, 'chk_dv')
+Lm('Dados do vento', '=IF(vento_on<>"Sim","— (sem vento)",IF(AND(ISNUMBER(V0_v),ISNUMBER(S1_v),ISNUMBER(S3_v),ISNUMBER(S3_e),q_v>0,q_vv>0),"OK","NÃO OK — vento ligado sem V0, S1 ou S3"))', '', '', 'key', None, 'chk_dv')
 Lm('Dados do muro de cima', '=IF(mc_on<>"Sim","— (sem muro de cima)",IF(AND(ISNUMBER(h_mc),h_mc>0,ISNUMBER(t_mc),t_mc>0,ISNUMBER(g_mc),s_trib>0,ISNUMBER(b_pil),ISNUMBER(hs_pil)),"OK","NÃO OK — falta altura, espessura, peso, espaçamento ou seção do pilarete"))', '', '', 'key', None, 'chk_dmc')
 # Só vale "OK…" ou o "— (motivo)" escrito pela própria conta: o "—" puro é o IFERROR do pós-processamento, ou
 # seja, conta que não fechou — e conta que não fechou não pode passar.

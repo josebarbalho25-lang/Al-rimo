@@ -12,7 +12,7 @@
 import type { ClassePeca, Modelo, Peca, TipoPeca, Geometria } from '@/modelo/tipos';
 import type { Valor } from '@/motor/tipos';
 import { ENTRADAS_DO_MODELO } from '@/modelo/entradasDoModelo';
-import { areaDaFolha, areaDoLaco, areaLiquida, caixaDaPeca, eixoGlobal, recortarAcimaDe, type Caixa } from './geometria';
+import { areaDaFolha, areaDoLaco, areaLiquida, caixaDaPeca, eixoGlobal, limitesDoPerfil, recortarAcimaDe, type Caixa } from './geometria';
 import { ALVENARIA, medirArgamassa } from './argamassa';
 import { listaDeFerros, resumoDoAco, type PosicaoDeFerro, type ResumoPorBitola } from './aco';
 
@@ -46,6 +46,22 @@ export interface Quantitativo {
   resumoAco: ResumoPorBitola[];
   massaAco: number;           // kg
   sapata: { concreto: number; forma: number };                          // m³, m²
+  /**
+   * Muro de cima (13/11), quando há. Tijolo para COMPRAR: o cortado gasta um inteiro (como a canaleta cortada).
+   * Argamassa: junta de 1 cm embaixo e de um lado de cada tijolo (dedução, a da alvenaria do arrimo é medida peça
+   * a peça). Fôrma do pilarete: as faces que não encostam no painel; da cinta: as duas faces (o fundo é o tijolo).
+   */
+  muroDeCima: {
+    tijolo: string;           // catálogo do tijolo inteiro
+    tijolos: number;          // un, para comprar (inteiros + cortados)
+    cortados: number;         // un, dos quais vão ser cortados
+    area: number;             // m² de parede de tijolo (vista de frente)
+    argamassa: number;        // m³
+    pilaretes: number;        // un
+    concretoPilaretes: number; // m³
+    concretoCintas: number;   // m³
+    forma: number;            // m²
+  } | null;
   drenagem: {
     barbacas: number;         // un
     tubo: number;             // m
@@ -308,6 +324,7 @@ export function quantificar(m: Modelo): Quantitativo {
     resumoAco,
     massaAco: resumoAco.reduce((s, r) => s + r.massa, 0),
     sapata: { concreto: somaVolumes(sapatas) / MM3, forma: formaDaSapata(sapatas) / MM2 },
+    muroDeCima: quantificarMuroDeCima(m),
     drenagem: {
       barbacas: barbacas.length,
       tubo: barbacas.reduce((s, { g }) => s + g.extensao, 0) / 1000,
@@ -318,6 +335,44 @@ export function quantificar(m: Modelo): Quantitativo {
       impermeabilizacao: imperLigada ? areaDoTardoz(m) / MM2 : null,
     },
     avisos,
+  };
+}
+
+/** O muro de cima (13/11): tijolo, argamassa, concreto e fôrma do pilarete e da cinta. null sem muro de cima. */
+function quantificarMuroDeCima(m: Modelo): Quantitativo['muroDeCima'] {
+  const tij = m.pecas.filter((p) => p.tipo === 'TIJOLO' || p.tipo === 'TIJOLO_CORTADO');
+  const pil = pecasDoTipo(m, 'PILARETE');
+  const cin = pecasDoTipo(m, 'CINTA_MC');
+  if (!tij.length && !pil.length) return null;
+  const J = 10;
+  const lados = (g: Geometria) => { const l = limitesDoPerfil(g); return { u: l.u1 - l.u0, v: l.v1 - l.v0 }; };
+  let area = 0;
+  let arg = 0;
+  let catalogo = '';
+  for (const p of tij) {
+    const g = m.geometrias[p.geometria];
+    if (!g) continue;
+    if (p.tipo === 'TIJOLO' && g.catalogo) catalogo = g.catalogo;
+    const { u, v } = lados(g);        // u = espessura, v = altura (tijolo extrudado ao longo do muro)
+    area += (g.extensao + J) * (v + J);
+    arg += (g.extensao + J) * u * J + J * u * v;
+  }
+  const formaPil = pil.reduce((s, { g }) => {
+    const { u, v } = lados(g);        // b × h da seção (extrusão em Z)
+    const t = m.dims.muroDeCima?.t ?? 0;
+    return s + (2 * (u + v) - 2 * t) * g.extensao;
+  }, 0);
+  const formaCin = cin.reduce((s, { g }) => s + 2 * lados(g).v * g.extensao, 0);
+  return {
+    tijolo: catalogo,
+    tijolos: tij.length,
+    cortados: tij.filter((p) => p.tipo === 'TIJOLO_CORTADO').length,
+    area: area / MM2,
+    argamassa: arg / MM3,
+    pilaretes: pil.length,
+    concretoPilaretes: somaVolumes(pil) / MM3,
+    concretoCintas: somaVolumes(cin) / MM3,
+    forma: (formaPil + formaCin) / MM2,
   };
 }
 

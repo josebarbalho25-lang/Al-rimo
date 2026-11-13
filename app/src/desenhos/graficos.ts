@@ -21,7 +21,7 @@
   dependência. Sem ninguém chamar `usarGraficos` (os testes), vale o de fábrica.
 */
 import type { ClassePeca, TipoPeca } from '@/modelo/tipos';
-import { CORES_DO_JOSE } from '@/modulacao/catalogo';
+import { CORES_DO_JOSE, COR_DO_TIJOLO } from '@/modulacao/catalogo';
 
 /** O desenho de uma hachura de corte. Os quatro primeiros são os do Revit do Jose (hachuras.ts). */
 export type DesenhoDeHachura = 'terra' | 'concreto' | 'areia' | 'brita' | 'riscado' | 'solido' | 'vazio';
@@ -49,7 +49,7 @@ export interface Hachura {
  * "alvenaria" é o bloco CORTADO (a hachura do corte) e a cor do Opaco, igual para todo bloco.
  */
 export type Material =
-  | 'inteiro' | 'meio' | 'canaleta' | 'bloco34' | 'bloco54'
+  | 'inteiro' | 'meio' | 'canaleta' | 'bloco34' | 'bloco54' | 'tijolo'
   | 'alvenaria' | 'graute' | 'aco' | 'concreto' | 'brita' | 'areia' | 'manta' | 'tubo' | 'terra';
 
 /**
@@ -74,6 +74,7 @@ export const MATERIAIS: readonly { id: Material; rotulo: string }[] = [
   { id: 'canaleta', rotulo: 'Canaleta' },
   { id: 'bloco34', rotulo: 'Bloco 34' },
   { id: 'bloco54', rotulo: 'Bloco 54' },
+  { id: 'tijolo', rotulo: 'Tijolo cerâmico' },
   { id: 'alvenaria', rotulo: 'Alvenaria cortada' },
   { id: 'graute', rotulo: 'Graute' },
   { id: 'aco', rotulo: 'Aço' },
@@ -128,7 +129,7 @@ export const ITENS_DA_VISTA: Readonly<Record<TipoDeVista, readonly ItemDaVista[]
 
 /** As CATEGORIAS de modelo da janela (o que se liga e desliga) e os materiais (as subcategorias) de cada uma. */
 export const GRUPOS_DE_MATERIAIS: readonly { item: ItemDaVista; materiais: readonly Material[] }[] = [
-  { item: 'blocos', materiais: ['inteiro', 'meio', 'canaleta', 'bloco34', 'bloco54', 'alvenaria'] },
+  { item: 'blocos', materiais: ['inteiro', 'meio', 'canaleta', 'bloco34', 'bloco54', 'tijolo', 'alvenaria'] },
   { item: 'graute', materiais: ['graute'] },
   { item: 'armadura', materiais: ['aco'] },
   { item: 'sapata', materiais: ['concreto'] },
@@ -210,6 +211,7 @@ export const MATERIAIS_DE_FABRICA: Readonly<Record<Material, GraficoDoMaterial>>
   canaleta: { cor: CORES_DO_JOSE.canaleta ?? '#ffff80' },
   bloco34: { cor: CORES_DO_JOSE.bloco34 ?? '#ff8040' },
   bloco54: { cor: CORES_DO_JOSE.bloco54 ?? '#ff0000' },
+  tijolo: { cor: COR_DO_TIJOLO },
   alvenaria: { opaco: '#ffffff', hachura: { desenho: 'riscado', risco: '#7f7f7f', fundo: '#d9d9d9', escala: 1 } },
   graute: { cor: null, opaco: '#dcdcdc', hachura: { desenho: 'solido', risco: '#2e75b6', fundo: '#bdd7ee', escala: 1 } },
   aco: { cor: '#34373c', opaco: '#4a4a4a', desenho: '#c00000' },
@@ -385,6 +387,8 @@ export function materialDaPeca(tipo: TipoPeca, classe?: ClassePeca): Material | 
     case 'GRAUTE_CANALETA':
       return 'graute';
     case 'SAPATA':
+    case 'PILARETE':
+    case 'CINTA_MC':
       return 'concreto';
     case 'DRENO':
       return 'brita';
@@ -410,6 +414,7 @@ const ITEM_DO_TIPO: Partial<Record<TipoPeca, ItemDaVista>> = {
   SAPATA: 'sapata',
   DRENO: 'drenagem', AREIA: 'drenagem', MANTA: 'drenagem', BARBACA: 'drenagem', TUBO_DRENO: 'drenagem',
   ATERRO: 'terreno', SOLO_FRENTE: 'terreno',
+  TIJOLO: 'blocos', TIJOLO_CORTADO: 'blocos', PILARETE: 'sapata', CINTA_MC: 'sapata',
 };
 
 /** A peça aparece nesta vista? (o item dela não está desligado; tipo sem item sempre aparece) */

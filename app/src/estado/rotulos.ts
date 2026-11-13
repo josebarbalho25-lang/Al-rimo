@@ -132,12 +132,16 @@ export const ROTULO_CURTO: Record<string, string> = {
   phi_pil: 'Ø das barras',
   n_pil: 'Barras por face',
   c_pil: 'Cobrimento ao eixo',
+  phi_cin_mc: 'Ø da cinta',
+  phi_est_pil: 'Ø do estribo',
+  s_est_pil: 'Estribo a cada',
   vento_on: 'Vento',
   V0_v: 'V0',
   S1_v: 'S1 topografia',
   cat_v: 'Categoria (S2)',
   cls_v: 'Classe (S2)',
-  S3_v: 'S3 estatístico',
+  S3_v: 'S3 da vedação',
+  S3_e: 'S3 da estrutura',
   Cf_dir: 'Coeficiente de força',
 
   // ── Fundação
