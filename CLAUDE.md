@@ -901,6 +901,13 @@ e dizer ao Jose o que mudou e por quê.
   O pilarete de CONCRETO em si (14 × 20) passa folgado (61–74 %): quem manda é a ligação na alvenaria. Arrimo pela
   média por metro (Ø12,5 c/40): 1,0 e 1,6 m passam em 14 e 19; 2,0 m não passa nem sem o muro de cima (x/d e
   flecha). AGUARDANDO o Jose decidir a regra (19 com 20 de frente? liberar 14 com 60?).
+  PILARETE × CONTRAFORTE NO BLOCO 14 (Jose, 13/11, mesmo teste; ligação = seção 14 × tenr grauteada, d = tenr − 4):
+  a LIGAÇÃO funciona — x/d 0,03 a 0,30, As mínimo manda. Única falha: contraforte 34, vão 2,55, pilarete a cada 2
+  contrafortes → CISALHAMENTO da ligação (Vd 9,9 > 8,7 kN, sem estribo). Pilarete de concreto 14 × 25 passa até
+  muro de 2,0 m a cada 2 contrafortes de 2,55 (73 %); 2,5 m a cada 2 não. Quem manda é o CONTRAFORTE inteiro:
+  34 não passa nem sem muro de cima (H 2,6, já sabido); 54 em H 2,6: vão 1,75 passa (pilarete em 1 ou a cada 2),
+  vão 2,55 só sem muro de cima (com: x/d 0,90 em todo contraforte; a cada 2 não resiste); 54 em H 3,0: vão 1,75
+  com pilarete em todo contraforte (x/d 0,38), a cada 2 x/d 0,78; vão 2,55 não passa nem sem muro de cima.
   COMBINAÇÃO VENTO × EMPUXO (Jose perguntou): o empuxo do solo é PERMANENTE (não reduz); ψ0 só entre as variáveis
   (sobrecarga q e vento): duas combinações (vento principal + ψ0·q; q principal + ψ0·vento, ψ0 vento 0,6 — NBR 8681
   de memória). Hoje os dois cheios (a favor). Decisão dele.
