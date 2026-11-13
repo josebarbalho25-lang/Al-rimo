@@ -788,6 +788,12 @@ e dizer ao Jose o que mudou e por quê.
   comparado. Muro típico brasileiro (dele): 2,0 m, pilarete a cada 2,2–2,6 m, cerâmico 11,5, argamassa fraca, V0 35,
   S2 0,88, γm 2,0, C = 1: com cinta no topo Mr/Md 116/108/102 %; topo livre 60/52/45 %; só meia altura ≈ o mesmo
   que só topo; topo + meia ≈ 2×. Em aberto: combinação empuxo × vento (ψ0), coeficiente do muro solto.
+  Pilarete: ESCOLHA concreto moldado OU bloco grauteado (Jose, 13/11). Casos de conferência = os dois clientes dele
+  (ele manda laudos de sondagem e alturas): Rodrigo — terreno natural, compactado depois com compactador manual;
+  Joames — aterro de ARGILA compactada, não é o terreno natural.
+- **VIRADA DE 90° (Jose, 13/11: "é o que mais é feito; não adianta calcular o muro só num sentido"):** muro em L com
+  a quina. A quina dá rigidez (a perna de retorno apoia a outra, como um contraforte), mas traz empuxo nos dois
+  sentidos — "uma verificação a mais". A FAZER, junto com o muro de cima.
 - **DENTE SEM ARMADURA (Jose, 15/10: "nosso dente não tá armando, é muito detalhe, só anota, depois resolvemos"):** o
   dente da sapata sai no 3D, no corte e na armação sem barra nenhuma. Resolver depois, quando ele pedir.
 - **Revisão adversarial de 15/10 (3 revisores, 16 achados) — CORRIGIDA em 16/10** (`pranchas/__testes__/revisao16.test.ts`
