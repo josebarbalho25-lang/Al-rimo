@@ -769,6 +769,25 @@ e dizer ao Jose o que mudou e por quê.
   com nó fica ~2,5 cortes de largura (cada nó tem a largura da sapata); a prancha que já tinha um corte vê o muro
   andar para a direita (a sombra entra na caixa do desenho, à esquerda). Decidido (Jose, 20/10, "sim"): a barra de
   pé com sombra NÃO leva chamada no corte (a sombra já diz tudo); com as sombras desligadas a chamada volta.
+- **MURO DE VEDAÇÃO EM CIMA DO ARRIMO, COM VENTO (Jose, 13/11 — PRIORIDADE: dois clientes dele agora "não podem
+  ser só arrimo"):** TUDO integrado no Al-rimo ("é mais fácil integrar todos esses cálculos num lugar só do que fazer
+  separado e detalhar separado"): muro de cima (cerâmico ou outro), cintas, pilaretes, vento, e o arrimo se adapta
+  (contraforte, pilar se precisar). Decisões dele: o PESO do muro de cima entra "pro bem e pro mal" (compressão na
+  parede do arrimo e fundação), não só como P_topo da fundação (hoje `P_topo` só entra na Fundação); limites 3,0/4,0
+  só para o ARRIMO; vento pela rotina do A-PORT (`Pórtico Estrutural/src/modelo/vento/pressao.ts`, NBR 6123:2023,
+  pura: S1, S2 = b·Fr·(z/10)^p, S3 com redutor de vedação 0,92, q = 0,613·Vk²) SÓ PERPENDICULAR ao muro — o A-PORT
+  NÃO tem coeficiente de força de muro solto (só Ca de prédio): acrescentar o de "muros e placas" da NBR 6123 (ler
+  na norma). Painel do muro de cima = verificação de PAINÉIS (a do painel não armado: NBR 16868-1 Anexo E, caso 13
+  com cinta no topo, 18 topo livre), painel a painel entre cintas (topo / meia altura / os dois / nenhuma — "tem
+  gente que faz cinta a meia altura"), vale o pior. Pilaretes: verificar também; o All Sec dele
+  (`C:\CLAUDE\Projetos\All Sec`, análise de seção NBR 6118: flexão oblíqua, pilar, reforço) pode entrar no Al-rimo
+  para seção qualquer. Planilha dele de referência (≈ jan/2026):
+  `C:\JB Projetos\02_BIBLIOTECA_E_TEMPLATES\02.3_Planilhas_de_Calculo\Dimensionamento Parede de Vedação.xlsx` —
+  conferida 13/11: βf idêntico ao nosso; Mr = W·K·ftk/1,5 com K 1,5 CANCELA o γm (NBR: ftk/2,0 → resistência 2× a
+  dela); vento sem coeficiente de força (C = 1); 0,88 fixo = S3 de vedações de 1988; cisalhamento calculado e não
+  comparado. Muro típico brasileiro (dele): 2,0 m, pilarete a cada 2,2–2,6 m, cerâmico 11,5, argamassa fraca, V0 35,
+  S2 0,88, γm 2,0, C = 1: com cinta no topo Mr/Md 116/108/102 %; topo livre 60/52/45 %; só meia altura ≈ o mesmo
+  que só topo; topo + meia ≈ 2×. Em aberto: combinação empuxo × vento (ψ0), coeficiente do muro solto.
 - **DENTE SEM ARMADURA (Jose, 15/10: "nosso dente não tá armando, é muito detalhe, só anota, depois resolvemos"):** o
   dente da sapata sai no 3D, no corte e na armação sem barra nenhuma. Resolver depois, quando ele pedir.
 - **Revisão adversarial de 15/10 (3 revisores, 16 achados) — CORRIGIDA em 16/10** (`pranchas/__testes__/revisao16.test.ts`
