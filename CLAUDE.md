@@ -892,6 +892,18 @@ e dizer ao Jose o que mudou e por quê.
   grauteado), largura ao longo do muro ≥ 20 cm (lista), barras do pilarete descendo e emendando no graute do arrimo
   (contínuas com a vertical do arrimo). Previsão dele: arrimo ≥ 1 m com 2 m ou mais de alvenaria em cima "só vai
   resistir com contrafortes".
+  TESTE DO PILARETE NO BALANÇO (Jose, 13/11: "sem contraforte não tem pra onde correr… faz uns testes com 14"):
+  a LIGAÇÃO dentro do arrimo foi conferida como seção b × t de bloco grauteado com as barras do pilarete (o ramo
+  "Bloco grauteado" da aba, fbk 8, K 2,0, d = t − 4; DEDUÇÃO — a parede em volta, que espalha o momento, não conta).
+  Vento V0 35, cat. III, S3 1,00, Cf 1,2, cinta no topo, 2 Ø10 por face. Muro de cima 2,0 m, pilarete a cada 2,4:
+  bloco 14 → 20 de frente NÃO resiste, 40 resiste mas x/d 0,49 (> 0,45), 60 passa (78 %); bloco 19 → 20 passa (55 %;
+  a cada 2,6 x/d 0,47), 40 passa. Muro de cima 2,5 m: bloco 14 não passa nem com 60; bloco 19 só com 40 (81–89 %).
+  O pilarete de CONCRETO em si (14 × 20) passa folgado (61–74 %): quem manda é a ligação na alvenaria. Arrimo pela
+  média por metro (Ø12,5 c/40): 1,0 e 1,6 m passam em 14 e 19; 2,0 m não passa nem sem o muro de cima (x/d e
+  flecha). AGUARDANDO o Jose decidir a regra (19 com 20 de frente? liberar 14 com 60?).
+  COMBINAÇÃO VENTO × EMPUXO (Jose perguntou): o empuxo do solo é PERMANENTE (não reduz); ψ0 só entre as variáveis
+  (sobrecarga q e vento): duas combinações (vento principal + ψ0·q; q principal + ψ0·vento, ψ0 vento 0,6 — NBR 8681
+  de memória). Hoje os dois cheios (a favor). Decisão dele.
   TRASPASSE DO PILARETE NO CONTRAFORTE FEITO 13/11 (Jose: "ainda falta o transpasse da armadura pros pilaretes"):
   com contrafortes o pilarete fica com a face rente à face aparente do muro (enterrado; no aparente, rente à face do
   solo) e avança sobre a haste, que é toda grauteada: as barras descem ℓ0t (l0t_pil) dentro dela quando caem na
