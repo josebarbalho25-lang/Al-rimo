@@ -338,6 +338,25 @@ export function drenagem(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidades): v
       const furo = naCanaleta(fiadaAcimaDaFrente);
       if (furo) [fiada, zc, cand] = [fiadaAcimaDaFrente, furo.zc, furo.cand];
     }
+    // ALTURA PEDIDA (Jose, 13/11): o eixo do barbacã acima do topo da sapata, na fiada em que ele cai; ligado ao dreno
+    // de fundo, a altura é a do centro do tubo perfurado e o barbacã vai da face do muro até lá (a saída do dreno de
+    // cada vão, sem furar o contraforte). Fiada sem célula livre nessa altura: fica a automática, com aviso.
+    const ligado = p.barbaca_dreno && pac.fundo;
+    const zPedido = ligado ? p.drenof_env / 2 : p.barbaca_z;
+    let Lb = t + 2 * SALIENCIA_BARBACA;
+    if (zPedido !== null && zPedido > 0) {
+      const fz = Math.min(mod.n_fiadas - 1, Math.max(0, Math.floor(zPedido / H_FIADA)));
+      const livres = celulas(fz).cand;
+      if (livres.length) {
+        [fiada, zc, cand] = [fz, zPedido, livres];
+        if (ligado) Lb = t + SALIENCIA_BARBACA + p.drenof_env / 2;
+      } else if (!ctx.avisos.some((a) => a.codigo === 'BARBACA_ALTURA')) {
+        ctx.avisos.push({ codigo: 'BARBACA_ALTURA', texto: `Barbacã a ${br(zPedido / 1000, 2)} m: a fiada não tem célula livre, ficou na altura automática` });
+      }
+      if (zc - d / 2 < p.h_fr - 1e-6 && !ctx.avisos.some((a) => a.codigo === 'BARBACA_ABAIXO_DA_FRENTE')) {
+        ctx.avisos.push({ codigo: 'BARBACA_ABAIXO_DA_FRENTE', texto: 'Barbacã abaixo do aterro da frente: a saída fica enterrada' });
+      }
+    }
     const conta = ctx.barbacas ?? (ctx.barbacas = { pedidos: 0, desenhados: 0, emCanaleta: false });
     if (primeira.emCanaleta) conta.emCanaleta = true;
     if (!abaixoDoAterro) conta.acimaDoAterro = true;
@@ -351,7 +370,6 @@ export function drenagem(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidades): v
       faixas.push([tr.x0, tr.x1]);
     }
     const usados = new Set<number>();
-    const Lb = t + 2 * SALIENCIA_BARBACA;
     const geo = geoPrismaReto(ctx, `barbacã Ø${fmt(d)} L${fmt(Lb)}`, 'X', circulo(d), Lb, `tubo Ø${fmt(d)} mm`);
     let j = 0;
     for (const [xa, xb] of faixas) {

@@ -156,7 +156,7 @@ const POSITIVO = new Set([
   'n_cf_dir', 'K_cf', 'ramos_est', 's_est', 'K_pv', 'K_ph', 'bwv_dir', 'bwh_els',
   'B_sap', 'h_sap', 'gama_f', 'gama_m', 'gama_s',
   // modelo (dedução)
-  'L_total', 'barbaca_phi', 'barbaca_s', 'dreno_esp', 'drenof_phi', 'drenof_env', 'traspasse_dir',
+  'L_total', 'barbaca_phi', 'barbaca_s', 'barbaca_z', 'dreno_esp', 'drenof_phi', 'drenof_env', 'traspasse_dir',
 ]);
 
 /** Contagem de barras e de ramos: 2,5 barras não existe. */
@@ -589,6 +589,9 @@ const ATIVA_SE: Record<string, (ler: LerValor, conta?: LerConta) => boolean> = {
   phi_cinta: (l) => soNoBalanco(l) || l('cinta_topo') === 'Sim',
   barbaca_phi: (l) => l('barbaca_on') === 'Sim',
   barbaca_s: (l) => l('barbaca_on') === 'Sim',
+  // ligado ao dreno, a altura é a do tubo: o campo da altura apaga
+  barbaca_dreno: (l) => l('barbaca_on') === 'Sim' && l('drenof_on') === 'Sim',
+  barbaca_z: (l) => l('barbaca_on') === 'Sim' && !(l('barbaca_dreno') === 'Sim' && l('drenof_on') === 'Sim'),
   dreno_esp: (l) => l('dreno_on') === 'Sim',
   dreno_folga: (l) => l('dreno_on') === 'Sim',
   drenof_phi: (l) => l('drenof_on') === 'Sim',

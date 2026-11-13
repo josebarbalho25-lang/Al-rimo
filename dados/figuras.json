@@ -634,6 +634,14 @@
     "imper_on": {
       "figura": "fig17",
       "campo": "imper_on"
+    },
+    "barbaca_z": {
+      "figura": "fig17",
+      "campo": "barbaca_on"
+    },
+    "barbaca_dreno": {
+      "figura": "fig17",
+      "campo": "barbaca_on"
     }
   },
   "sem_figura": {

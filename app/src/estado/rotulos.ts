@@ -186,6 +186,8 @@ export const ROTULO_CURTO: Record<string, string> = {
   barbaca_on: 'Barbacãs',
   barbaca_phi: 'Ø do barbacã',
   barbaca_s: 'Espaçamento',
+  barbaca_dreno: 'Ligado ao dreno',
+  barbaca_z: 'Altura do barbacã',
   dreno_on: 'Dreno no tardoz',
   dreno_esp: 'Espessura da brita',
   dreno_folga: 'Abaixo do topo',

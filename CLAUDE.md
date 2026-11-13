@@ -311,6 +311,13 @@ e dizer ao Jose o que mudou e por quê.
   NÃO é furado (Jose, 14/10) — por isso os barbacãs se distribuem vão a vão, no mínimo um por vão (a saída do dreno
   daquele vão). Opaco: tubo cinza #8c8c8c (branco sumia no bloco branco), brita #c4c4c4, areia #e4e4e4. Código:
   `modulacao/entorno.ts` (pacoteDoDreno, bordaDoPacote).
+- **Barbacã na altura pedida e ligado ao dreno de fundo (Jose, 13/11: "a alternativa pro muro com contrafortes sem
+  furar os contrafortes"):** entradas do modelo `barbaca_z` (m, eixo acima do topo da sapata; em branco = a
+  automática de antes) e `barbaca_dreno` (Sim = o barbacã vai da face do muro até o CENTRO do tubo perfurado, na
+  altura dele: z = drenof_env/2, comprimento t + 5 cm + drenof_env/2; um por vão, como já era). A fiada da altura
+  pedida precisa de célula livre (sem barra); sem ela, fica a automática com aviso BARBACA_ALTURA; saída abaixo do
+  aterro da frente avisa BARBACA_ABAIXO_DA_FRENTE. Limite que já existia: painel com barra em todo furo (s_pv = 20)
+  não tem célula livre — nenhum barbacã (BARBACA_SEM_CELULA), ligado ou não.
 - **Hachuras do Revit do Jose (14/10):** terra = trançado EARTH do AutoCAD (casa 48 px, #a67857 sobre #dbc9bb),
   concreto (#5d5d5d sobre #d4d4d4), areia (#5d5d5d sobre #ffffb7), brita = pedras de quina viva (opção A, #4a4a4a sobre
   #c3bfb5). Tamanhos CALIBRADOS por ele na régua (`_trabalho/calibrar_hachuras.html`): terra ×0,40, concreto ×0,85,

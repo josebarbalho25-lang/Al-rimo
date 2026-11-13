@@ -35,6 +35,10 @@ export const ENTRADAS_DO_MODELO: EntradaMeta[] = [
   { nome: 'barbaca_on', rotulo: 'Barbacãs', padrao: 'Sim', unidade: '', nota: '', figura: 'Fig. 17', opcoes: ['Sim', 'Não'], formato: 'General', secao: DRENAGEM, ref: 'modelo!barbaca_on' },
   { nome: 'barbaca_phi', rotulo: 'Ø do barbacã', padrao: 50, unidade: 'mm', nota: '', figura: 'Fig. 17', opcoes: null, formato: '0', secao: DRENAGEM, ref: 'modelo!barbaca_phi' },
   { nome: 'barbaca_s', rotulo: 'Espaçamento dos barbacãs', padrao: 1.5, unidade: 'm', nota: 'Na 1ª fiada acima do solo da frente, em célula sem graute.', figura: 'Fig. 17', opcoes: null, formato: '0.00', secao: DRENAGEM, ref: 'modelo!barbaca_s' },
+  // Jose, 13/11: a altura do barbacã na mão, e a saída do dreno de fundo pelo barbacã — no muro com contrafortes cada
+  // vão tem o seu dreno e o contraforte não é furado; o barbacã ligado ao tubo é a saída de cada vão
+  { nome: 'barbaca_z', rotulo: 'Altura do barbacã — opcional', padrao: null, unidade: 'm', nota: 'Eixo do tubo acima do topo da sapata. Em branco = 1ª fiada acima do solo da frente.', figura: 'Fig. 17', opcoes: null, formato: '0.00', secao: DRENAGEM, ref: 'modelo!barbaca_z' },
+  { nome: 'barbaca_dreno', rotulo: 'Barbacã ligado ao dreno de fundo', padrao: 'Não', unidade: '', nota: 'Sim = o barbacã vai da face do muro até o centro do tubo perfurado, na altura dele.', figura: 'Fig. 17', opcoes: ['Sim', 'Não'], formato: 'General', secao: DRENAGEM, ref: 'modelo!barbaca_dreno' },
   { nome: 'dreno_on', rotulo: 'Dreno no tardoz (brita)', padrao: 'Sim', unidade: '', nota: '', figura: 'Fig. 17', opcoes: ['Sim', 'Não'], formato: 'General', secao: DRENAGEM, ref: 'modelo!dreno_on' },
   { nome: 'dreno_esp', rotulo: 'Espessura da brita no tardoz', padrao: 0.2, unidade: 'm', nota: '', figura: 'Fig. 17', opcoes: null, formato: '0.00', secao: DRENAGEM, ref: 'modelo!dreno_esp' },
   { nome: 'dreno_folga', rotulo: 'Dreno termina abaixo do topo do solo', padrao: 0.3, unidade: 'm', nota: '', figura: 'Fig. 17', opcoes: null, formato: '0.00', secao: DRENAGEM, ref: 'modelo!dreno_folga' },

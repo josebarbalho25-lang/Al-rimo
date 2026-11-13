@@ -73,6 +73,8 @@ export interface Parametros {
   sapTransv: 'estribo' | 'reta';       // transversal da sapata: estribo fechado (padrão, 15/10) ou a barra reta de antes
   arranque: 'padrao' | 'no';           // espera: a de sempre ou o nó de cachorro (forma a confirmar no Revit)
   barbaca: boolean; barbaca_phi: number; barbaca_s: number;
+  barbaca_z: number | null;            // mm, eixo do barbacã acima do topo da sapata (null = automático)
+  barbaca_dreno: boolean;              // barbacã ligado ao centro do tubo do dreno de fundo (Jose, 13/11)
   dreno: boolean; dreno_esp: number; dreno_folga: number;
   drenof: boolean; drenof_phi: number; drenof_env: number; areia_esp: number;
   h_fr: number;                        // mm — aterro sobre a ponta (solo da frente acima do topo da sapata)
@@ -188,6 +190,8 @@ export function lerParametros(r: Resultado, extrasIn: Record<string, Valor>, avi
     barbaca: sim('barbaca_on'),
     barbaca_phi: xn('barbaca_phi', 50),
     barbaca_s: xn('barbaca_s', 1.5) * 1000,
+    barbaca_z: comoNumero(extras.barbaca_z) === null ? null : (comoNumero(extras.barbaca_z) as number) * 1000,
+    barbaca_dreno: sim('barbaca_dreno'),
     dreno: sim('dreno_on'),
     dreno_esp: xn('dreno_esp', 0.2) * 1000,
     dreno_folga: xn('dreno_folga', 0.3) * 1000,
