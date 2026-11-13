@@ -445,7 +445,10 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
   const meiaAltura = mul(cte(0.5, 1), t);                     // yt = h/2 (seção simétrica)
   const fissuracao = secao('Momento de fissuração', [
     tem('Ma_') && m.passo('Ma_', 'M_a', psi1 ? mul(Mk, bm) : mul(psi, Mk, bm), { casas: 1, unidade: 'kN·cm', ref: NBR_ELS }),
-    comSg && tem('sig_sg') && m.passo('sig_sg', '\\sigma_{sg}', div(mul(cte(0.9, 1), gpar, h), mul(cte(1000, 0), tM)), {
+    comSg && tem('sig_sg') && m.texto('mc_on') === 'Sim' && m.passo('P_mc', 'P_{mc}', null, { casas: 2, unidade: 'kN/m', origem: 'calculado' }),
+    comSg && tem('sig_sg') && m.passo('sig_sg', '\\sigma_{sg}', m.texto('mc_on') === 'Sim'
+      ? soma(div(mul(cte(0.9, 1), gpar, h), mul(cte(1000, 0), tM)), div(mul(cte(0.9, 1), m.g('P_mc', 'P_{mc}', 2, 'kN/m')), mul(cte(1000, 0), tM)))
+      : div(mul(cte(0.9, 1), gpar, h), mul(cte(1000, 0), tM)), {
       casas: 4, unidade: 'MPa',
     }),
     tem('Mr_') && m.passo('Mr_', 'M_r', div(mul(comSg ? soma(ftk, sg) : ftk, Im), meiaAltura), { casas: 1, unidade: 'kN·cm' }),

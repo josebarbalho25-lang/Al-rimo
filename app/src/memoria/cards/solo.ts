@@ -170,6 +170,11 @@ function cardEsforcosBalanco(r: Parameters<AutorDeCards>[0]): Card {
   const Mk = m.g('Mk_', 'M_k', 2, 'kN·m/m');
   const Nd = m.g('Nd_', 'N_d', 2, 'kN/m');
   const M2d = m.g('M2d_', 'M_{2d}', 3, 'kN·m/m');
+  // muro de cima e vento (13/11, aba Muro de cima e vento): somam no Md e no Nd só quando ligados (zero sem eles)
+  const vento = m.texto('vento_on') === 'Sim';
+  const comMc = m.texto('mc_on') === 'Sim';
+  const Mkw = m.g('Mk_w', 'M_{k,w}', 2, 'kN·m/m');
+  const Pmc = m.g('P_mc', 'P_{mc}', 2, 'kN/m');
 
   const esbeltez = secao('Altura efetiva e esbeltez', [
     m.entrada('H_muro', 'h_{muro}'),
@@ -190,13 +195,18 @@ function cardEsforcosBalanco(r: Parameters<AutorDeCards>[0]): Card {
 
   const momento = secao('Momento de cálculo na base', [
     m.passo('Mk_', 'M_k', null, { casas: 2, unidade: 'kN·m/m', origem: 'calculado' }),
+    vento && m.passo('Mk_w', 'M_{k,w}', null, { casas: 2, unidade: 'kN·m/m', origem: 'calculado' }),
     m.entrada('gama_f', '\\gamma_f'),
     somaM2d && passoDoPesoCheio(m),
-    somaM2d && m.passo('Nd_', 'N_d', mul(gf, gpar, h), { casas: 2, unidade: 'kN/m' }),
+    somaM2d && comMc && m.passo('P_mc', 'P_{mc}', null, { casas: 2, unidade: 'kN/m', origem: 'calculado' }),
+    somaM2d && m.passo('Nd_', 'N_d', comMc ? soma(mul(gf, gpar, h), mul(gf, Pmc)) : mul(gf, gpar, h), { casas: 2, unidade: 'kN/m' }),
     somaM2d && m.passo('M2d_', 'M_{2d}', div(mul(Nd, pot(he, 2)), mul(cte(3600, 0), tM)), {
       casas: 3, unidade: 'kN·m/m', ref: { fonte: 'ABCP', item: '3.6.3.2' },
     }),
-    m.passo('Md_', 'M_d', somaM2d ? soma(mul(gf, Mk), M2d) : mul(gf, Mk), { casas: 2, unidade: 'kN·m/m' }),
+    m.passo('Md_', 'M_d', (() => {
+      const gMk = vento ? mul(gf, par(soma(Mk, Mkw))) : mul(gf, Mk);
+      return somaM2d ? soma(gMk, M2d) : gMk;
+    })(), { casas: 2, unidade: 'kN·m/m' }),
   ], NBR('8.8.3, Tab. 7'));
 
   return {

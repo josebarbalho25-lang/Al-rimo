@@ -10,7 +10,7 @@
   são fixos de propósito no gerador ("no fim da lista de propósito: linhas acima têm endereço lido pelo app").
 */
 import type { AutorDeCards, Card, Expr, Ref, Secao } from '../tipos';
-import { arredBaixo, arredCima, cte, div, max, min, mul, pi, pot, raiz, soma, sub } from '../expr';
+import { arredBaixo, arredCima, cte, div, max, min, mul, par, pi, pot, raiz, soma, sub } from '../expr';
 import { memoriaDe, secao, type Memoria } from '../passo';
 import { nbr, nt } from '../formato';
 import { passoDaDobra, secaoDoTraspasse } from './sapata';
@@ -464,7 +464,9 @@ function cardCisalhamento(m: Memoria, f: Folhas, c: Ctx): Card {
     fvdOk && m.passo('fvd', 'f_{vd}', [div(fvk(f.rho), f.gm), div(fvk(min(f.rho, cte(0.02, 2))), f.gm)], {
       casas: 3, unidade: 'MPa', ref: NBR('6.2.2.6'),
     }),
-    v('Vsd_') !== null && m.passo('Vsd_', 'V_{sd}', mul(f.gf, f.Vk), { casas: 2, unidade: 'kN/m' }),
+    v('Vsd_') !== null && m.texto('vento_on') === 'Sim' && m.passo('Vk_w', 'V_{k,w}', null, { casas: 2, unidade: 'kN/m', origem: 'calculado' }),
+    v('Vsd_') !== null && m.passo('Vsd_', 'V_{sd}', m.texto('vento_on') === 'Sim'
+      ? mul(f.gf, par(soma(f.Vk, m.g('Vk_w', 'V_{k,w}', 2, 'kN/m')))) : mul(f.gf, f.Vk), { casas: 2, unidade: 'kN/m' }),
     // τvd = γf·Vk/(b·d), em kN/cm² × 10 = MPa
     v('tau_vd') !== null && m.passo('tau_vd', '\\tau_{vd}', mul(div(f.Vsd, mul(cte(100, 0), f.d)), cte(10, 0)), {
       casas: 3, unidade: 'MPa', ref: NBR('11.4.1'),

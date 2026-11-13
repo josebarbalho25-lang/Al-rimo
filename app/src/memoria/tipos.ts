@@ -23,7 +23,8 @@ export interface Ref {
   fonte: 'NBR 16868-1' | 'NBR 6118' | 'NBR 6122' | 'NBR 11682' | 'NBR 6120' | 'NBR 6136' | 'ABCP'
     | 'Libânio' | 'Rankine' | 'Cintra, Aoki e Albiero' | 'Critério adotado' | 'Dedução'
     // medida tirada dos templates de montagem que o Jose modelou no Revit (dados/encaixes_revit/)
-    | 'Template do Revit';
+    | 'Template do Revit'
+    | 'NBR 6123';
   item?: string;
 }
 

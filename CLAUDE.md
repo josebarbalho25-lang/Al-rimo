@@ -831,6 +831,19 @@ e dizer ao Jose o que mudou e por quê.
   sig_sg, contraforte.ts Mk_cf/Vk_cf/Ma_cf, estabilidade.ts carga no topo/H_k/M_tb, sapata.ts Mw_s), card novo do
   muro de cima e do vento (o veredito do app só lê cards), VALOR_AUTO Cf_dir→Cf_v, ATIVA_SE, Novo; depois
   3D/IFC/quantitativo/desenhos do muro de cima, pilaretes e cintas.
+  APP (TELA E MEMÓRIA) FEITO 13/11 no mesmo ramo: aba "Muro de cima e vento" nas Entradas (`estado/abas.ts`,
+  id 'murocima', entre Drenagem e Critérios), rótulos, campos que apagam sem muro de cima/vento (concreto só no
+  pilarete moldado, fbk só no de bloco), "auto" com número no Cf e nos ftk; figuras ainda SEM (motivo em
+  dados/figuras.json: "Fig. 28/29, próxima etapa"). Memória: termos novos nos cards do arrimo só quando ligados
+  (Nd/Md/Vsd/σsg/Mk_cf/Vk_cf/Ma_cf sem vento/carga no topo/Hk/M tomb/MSd da biela) e autor novo
+  `memoria/cards/muroDeCima.ts` com 4 cards (vento, muro de cima — peso e painéis A/B —, pilarete, cinta do topo
+  do arrimo); card que não se aplica não monta passo; fonte 'NBR 6123' nova no tipo Ref. Planilha publica ftdp_mc,
+  ftdn_mc e Asb_cin (limites como célula). Suíte inteira verde (4834), memória conferida contra o Excel nos 5 alvos.
+  Visto na tela (5180): exemplo + muro de cima + vento → painel do muro de cima a 128 % (Cf 1,2, S3 0,95, l 2,4,
+  cinta no topo) — o muro típico NÃO passa com o coeficiente da norma e S3 0,95 (passava com C 1 e S3 0,88).
+  O exemplo já saía "Não passa · 2" antes (As,mín 2,10 > Ø10 c/40 1,96 e deslizamento 1,04) — não é do muro de
+  cima. Acréscimo do vento sobre o Mk do empuxo (muro de cima 2 m, Cf 1,2, S3 0,95, Ka 0,4, γ 19, q 2): arrimo
+  1,0 m +150 %, 1,6 +52 %, 2,0 +32 %, 2,6 +18 %, 3,0 +13 %. VIRADA DE 90°: ainda NÃO mexida (13/11).
   BLOCOS CERÂMICOS 3D (9, 11,5, 14 e 19): o Jose modela no Revit e exporta em IFC (13/11: "deixa isso comigo").
 - **VIRADA DE 90° (Jose, 13/11: "é o que mais é feito; não adianta calcular o muro só num sentido"):** muro em L com
   a quina. A quina dá rigidez (a perna de retorno apoia a outra, como um contraforte), mas traz empuxo nos dois

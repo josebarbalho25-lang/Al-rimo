@@ -112,6 +112,9 @@ Lm('μ = ftk⊥/ftk∥', '=ftkn_mc/ftkp_mc', '', '', 'res', '0.00', 'mu_mc', 'NB
 Lm('fd = γf·C·q', '=gama_f*p_w', 'kN/m²', '', 'key', '0.000', 'fd_mc')
 Lm('W = t²/6 (por metro)', '=(t_mc/100)^2/6', 'm³/m', 'Seção bruta, como no painel do arrimo.', 'res', '0.000000', 'W_mc')
 Lm('fvd = fvk/γm', "=IF(ISNUMBER(fvk_mc_dir),fvk_mc_dir,MIN(INDEX('Referências'!$O$16:$O$18,MATCH(arg_mc,'Referências'!$L$16:$L$18,0)),INDEX('Referências'!$P$16:$P$18,MATCH(arg_mc,'Referências'!$L$16:$L$18,0))))/gama_m", 'MPa', 'fvk digitado ou, em branco, fvk0 da tabela sem pré-compressão (a favor).', 'res', '0.000', 'fvd_mc', 'NBR 16868-1 Tab. 4 / projetista')
+# limites publicados como célula: a memória do app compara com a célula, não refaz a conta
+Lm('ftd ∥ = ftk∥/γm', '=ftkp_mc/gama_m', 'MPa', '', 'res', '0.000', 'ftdp_mc', 'NBR 16868-1')
+Lm('ftd ⊥ = ftk⊥/γm', '=ftkn_mc/gama_m', 'MPa', '', 'res', '0.000', 'ftdn_mc', 'NBR 16868-1')
 Lm('Painel de cima existe?', '=IF(OR(cin_mc="A meia altura",cin_mc="No topo e a meia altura"),"Sim","Não")', '', 'Só com cinta a meia altura o muro vira dois painéis.', 'res', None, 'pnB_on')
 _PAINEIS = (
     ('A', 'de baixo', '=IF(pnB_on="Sim",h_mc/2,h_mc)', '=IF(cin_mc="Nenhuma",18,13)'),
@@ -187,6 +190,7 @@ Lm('Md do vento = γf·w·l²/8 (biapoiada entre contrafortes)', '=gama_f*w_cin*
 Lm('Md do empuxo na canaleta do topo = máx(Mdxb; M horizontal)·faixa', '=IF(Tipo_muro="Contrafortes",MAX(Mdxb_p,M_ph)*s_ph/100,0)', 'kN·cm', 'Mdxb = borda livre (aba Contrafortes, seção 8).', 'res', '0.0', 'Mde_cin')
 Lm('x', '=IFERROR(1.25*d_ph*(1-SQRT(1-(Md_cin+Mde_cin)/(0.5*s_ph*d_ph^2*Kfd_ph/10))),"não resiste")', 'cm', 'Faixa s da canaleta comprimida, d e K·fd da barra horizontal do painel — a mesma seção da aba Contrafortes, seção 9.', 'res', '0.00', 'x_cin')
 Lm('As (empuxo + vento) ≤ uma barra Ø horizontal', '=IFERROR((Md_cin+Mde_cin)/(fyk_/gama_s/10*MIN(d_ph-0.4*x_cin,0.95*d_ph)),"não resiste")', 'cm²', '', 'res', '0.00', 'Ast_cin')
+Lm('As de uma barra Ø horizontal', '=PI()*phi_ph^2/400', 'cm²', '', 'res', '0.00', 'Asb_cin')
 Lm('Cinta do topo: resumo',
    '=IF(Tipo_muro<>"Contrafortes","— (muro em balanço)",IF(w_cin<=0,"— (sem vento)",IF(ISNUMBER(Ast_cin)=FALSE,"NÃO OK — a canaleta não resiste",IF(Ast_cin<=PI()*phi_ph^2/400,"OK ("&FIXED(100*Ast_cin/(PI()*phi_ph^2/400),0)&"% da barra)","NÃO OK — "&FIXED(Ast_cin,2)&" cm² > uma barra Ø"&FIXED(phi_ph,1)))))',
    '', '', 'key', None, 'res_cin')

@@ -38,10 +38,11 @@ import { autorContraforte } from './contraforte';
 import { autorPainelCf } from './painelCf';
 import { autorEstabilidade } from './estabilidade';
 import { autorSapata } from './sapata';
+import { autorMuroDeCima } from './muroDeCima';
 
 /** Na ordem do documento (a mesma das abas da planilha). */
 export const AUTORES: readonly AutorDeCards[] = [
-  autorSolo, autorBalanco, autorPainelEls, autorContraforte, autorPainelCf, autorEstabilidade, autorSapata,
+  autorSolo, autorBalanco, autorPainelEls, autorContraforte, autorPainelCf, autorEstabilidade, autorSapata, autorMuroDeCima,
 ];
 
 /**

@@ -21,7 +21,7 @@
 import dados from '@/motor/planilha.gerada.json';
 import type { PlanilhaExportada } from '@/motor/tipos';
 import type { AutorDeCards, Card, Expr, Passo, Ref } from '../tipos';
-import { arredCima, avaliar, cbrt, celulasDoIntervalo, cte, div, inteiro, max, min, mul, neg, pi, pot, raiz, soma, sub } from '../expr';
+import { arredCima, avaliar, cbrt, celulasDoIntervalo, cte, div, inteiro, max, min, mul, neg, par, pi, pot, raiz, soma, sub } from '../expr';
 import { lerValor, memoriaDe, secao, type Memoria, type OpcoesDoPasso, type PedidoDeVerificacao } from '../passo';
 import { casasDaEntrada } from '../metaDaPlanilha';
 import { passoDaSomaDaFlecha } from './painelEls';
@@ -256,10 +256,18 @@ function cardEsforcos(r: Parameters<AutorDeCards>[0]): Card {
   ], CRITERIO);
 
   const tab7 = NBR('8.8.3, Tab. 7');
+  const ventoCf = m.texto('vento_on') === 'Sim';
   const esforcos = secao('Esforços na base do contraforte', [
     ps('q_cf', 'q_{cf}', mul(m.g('sh_base', '\\sigma_{h,base}', 2, 'kPa'), binf), { casas: 2, unidade: 'kN/m' }),
-    ps('Mk_cf', 'M_{k,cf}', mul(m.g('Mk_', 'M_k', 2, 'kN·m/m'), binf), { casas: 2, unidade: 'kN·m' }),
-    ps('Vk_cf', 'V_{k,cf}', mul(m.g('Vk_', 'V_k', 2, 'kN/m'), binf), { casas: 2, unidade: 'kN' }),
+    // vento (13/11): o contraforte com pilarete leva o vento do muro de cima e da parte do arrimo acima do solo
+    ventoCf && ps('Mk_wcf', 'M_{k,w,cf}', null, { casas: 2, unidade: 'kN·m', origem: 'calculado' }),
+    ventoCf && ps('Vk_wcf', 'V_{k,w,cf}', null, { casas: 2, unidade: 'kN', origem: 'calculado' }),
+    ps('Mk_cf', 'M_{k,cf}', ventoCf
+      ? soma(mul(m.g('Mk_', 'M_k', 2, 'kN·m/m'), binf), m.g('Mk_wcf', 'M_{k,w,cf}', 2, 'kN·m'))
+      : mul(m.g('Mk_', 'M_k', 2, 'kN·m/m'), binf), { casas: 2, unidade: 'kN·m' }),
+    ps('Vk_cf', 'V_{k,cf}', ventoCf
+      ? soma(mul(m.g('Vk_', 'V_k', 2, 'kN/m'), binf), m.g('Vk_wcf', 'V_{k,w,cf}', 2, 'kN'))
+      : mul(m.g('Vk_', 'V_k', 2, 'kN/m'), binf), { casas: 2, unidade: 'kN' }),
     ps('Md_cf', 'M_{d,cf}', mul(gf, m.g('Mk_cf', 'M_{k,cf}', 2, 'kN·m')), { casas: 2, unidade: 'kN·m', ref: tab7 }),
     ps('Vd_cf', 'V_{d,cf}', mul(gf, m.g('Vk_cf', 'V_{k,cf}', 2, 'kN')), { casas: 2, unidade: 'kN', ref: tab7 }),
   ], CRITERIO);
@@ -732,7 +740,9 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
         )
       : div(mul(bw, pot(hcf, 3)), cte(12, 0)), { casas: 0, unidade: 'cm⁴' }),
     ps('Mr_cf', 'M_{r,cf}', div(mul(ftkK, Ig), sub(hcf, y)), { casas: 1, unidade: 'kN·cm', ref: NBR('9.2.3') }),
-    ps('Ma_cf', 'M_{a,cf}', mul(psi, MkCm), { casas: 1, unidade: 'kN·cm' }),
+    // o vento não entra no ELS (combinação quase permanente: ψ2 = 0 para o vento)
+    ps('Ma_cf', 'M_{a,cf}', m.texto('vento_on') === 'Sim'
+      ? mul(psi, par(sub(MkCm, m.g('Mk_wcf', 'M_{k,w,cf}', 1, 'kN·cm', { fator: 100 })))) : mul(psi, MkCm), { casas: 1, unidade: 'kN·cm' }),
   ], NBR('9.2.3'));
 
   // estádio II: armadura comprimida (construtivas) desprezada. LN e III em pedaços, um termo por linha como a planilha:

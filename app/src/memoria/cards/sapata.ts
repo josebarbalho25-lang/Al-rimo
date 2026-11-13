@@ -477,7 +477,9 @@ function cardBiela(r: Parameters<AutorDeCards>[0]): Card {
   const wp0 = soma(div(pot(tCm, 2), cte(2, 0)), mul(cte(100, 0), tCm));
   const muro = secao('Face do muro (faixa de 1 m)', [
     temNumero(m, 'Fw_s') && m.passo('Fw_s', 'F_{Sd,m}', div(mul(cte(1.4, 1), par(soma(nMuro, nTopo))), L), { casas: 2, unidade: 'kN/m' }),
-    temNumero(m, 'Mw_s') && m.passo('Mw_s', 'M_{Sd,m}', mul(cte(1.4, 1), m.g('Mk_', 'M_k', 2, 'kN·m/m')), { casas: 2, unidade: 'kN·m/m' }),
+    temNumero(m, 'Mw_s') && m.passo('Mw_s', 'M_{Sd,m}', m.texto('vento_on') === 'Sim'
+      ? mul(cte(1.4, 1), par(soma(m.g('Mk_', 'M_k', 2, 'kN·m/m'), m.g('Mk_w', 'M_{k,w}', 2, 'kN·m/m'))))
+      : mul(cte(1.4, 1), m.g('Mk_', 'M_k', 2, 'kN·m/m')), { casas: 2, unidade: 'kN·m/m' }),
     temNumero(m, 'tw_s') && m.passo('tw_s', '\\tau_{Sd,m}',
       mul(par(soma(div(Fw, mul(u0, f.d)), div(mul(cte(0.45, 2), Mw, cte(100, 0)), mul(wp0, f.d)))), cte(10, 0)), {
         casas: 3, unidade: 'MPa', ref: NBR('19.5.2.2'),

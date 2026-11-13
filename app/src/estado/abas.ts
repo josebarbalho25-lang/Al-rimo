@@ -107,6 +107,18 @@ export const ABAS: readonly Aba[] = [
     ],
   },
   {
+    // Muro de vedação em cima do arrimo e vento (Jose, 13/11): "não pode ser só arrimo". Tudo junto numa aba —
+    // a conta do vento (aba Muro de cima e vento da planilha) também vale sem o muro de cima, para a parte do
+    // arrimo acima do solo.
+    id: 'murocima', titulo: 'Muro de cima e vento', grupos: [
+      { titulo: 'Muro de cima', campos: ['mc_on', 'h_mc', 't_mc', 'mat_mc', 'g_mc', 'reb_mc', 'reb_mc_esp'] },
+      { titulo: 'Resistência da alvenaria', campos: ['arg_mc', 'ftkn_mc_dir', 'ftkp_mc_dir', 'fvk_mc_dir'] },
+      { titulo: 'Cintas', campos: ['cin_mc'] },
+      { titulo: 'Pilaretes', campos: ['pil_tipo', ['s_pil', B], ['pil_ncf', C], 'b_pil', 'hs_pil', 'fck_pil', 'fbk_pil', 'phi_pil', 'n_pil', 'c_pil'] },
+      { titulo: 'Vento', campos: ['vento_on', 'V0_v', 'S1_v', 'cat_v', 'cls_v', 'S3_v', 'Cf_dir'] },
+    ],
+  },
+  {
     id: 'criterios', titulo: 'Critérios de cálculo', grupos: [
       { titulo: 'Norma', campos: ['gama_f', 'gama_m', 'gama_s', 'FS_tomb', 'FS_desl'] },
       // área de referência do fpk: convenção de cálculo (curso × NBR), não escolha de graute (Jose, 12/10)

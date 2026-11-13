@@ -552,6 +552,9 @@ const grauteTotal = (l: LerValor) => {
 /** O número que a CONTA deu (nome definido da planilha); null sem conta ou com "—". */
 export type LerConta = (nome: string) => number | null;
 
+const comMuroDeCima = (l: LerValor) => l('mc_on') === 'Sim';
+const comVento = (l: LerValor) => l('vento_on') === 'Sim';
+
 const ATIVA_SE: Record<string, (ler: LerValor, conta?: LerConta) => boolean> = {
   alfa_v: (l) => l('Trav_lat') === 'Sim',
   alfa_h: (l) => l('Trav_lat') === 'Sim',
@@ -599,6 +602,16 @@ const ATIVA_SE: Record<string, (ler: LerValor, conta?: LerConta) => boolean> = {
   s_est: (_, conta) => conta?.('Asw_c') !== 0,
   // a tabela de Gerscovich não tem argila: com Argila a planilha escreve "—" na sugestão pela classe
   Classe_G: (l) => l('Tipo_solo') !== 'Argila',
+  // muro de cima (13/11): tudo dele só com o muro de cima ligado; o vento só com o vento ligado (a aba Muro de cima
+  // e vento da planilha zera p_w e P_mc sem eles). Concreto só no pilarete moldado, fbk só no de bloco.
+  ...Object.fromEntries(['h_mc', 't_mc', 'mat_mc', 'g_mc', 'reb_mc', 'arg_mc', 'ftkn_mc_dir', 'ftkp_mc_dir', 'fvk_mc_dir',
+    'cin_mc', 'pil_tipo', 'b_pil', 'hs_pil', 'phi_pil', 'n_pil', 'c_pil'].map((n) => [n, comMuroDeCima])),
+  reb_mc_esp: (l) => comMuroDeCima(l) && l('reb_mc') !== 'Nenhum',
+  s_pil: (l) => comMuroDeCima(l) && soNoBalanco(l),
+  pil_ncf: (l) => comMuroDeCima(l) && !soNoBalanco(l),
+  fck_pil: (l) => comMuroDeCima(l) && String(l('pil_tipo') ?? '').startsWith('Conc'),
+  fbk_pil: (l) => comMuroDeCima(l) && String(l('pil_tipo') ?? '').startsWith('Bloco'),
+  ...Object.fromEntries(['V0_v', 'S1_v', 'cat_v', 'cls_v', 'S3_v', 'Cf_dir'].map((n) => [n, comVento])),
 };
 
 export function entradaAtiva(nome: string, ler: LerValor, conta?: LerConta): boolean {
@@ -637,6 +650,10 @@ export const VALOR_AUTO: Readonly<Record<string, string>> = {
   // traspasse (13/10): vazio = 2,0 × ℓb no graute (NBR 6118). Só o balanço mostra o número — com contrafortes são
   // três barras com traspasses diferentes (painel, contraforte, construtivas) e o campo fica "auto"
   traspasse_dir: 'l0t_v',
+  // muro de cima e vento (13/11): vazio = o coeficiente da NBR 6123 e o ftk da tabela pela argamassa
+  Cf_dir: 'Cf_v',
+  ftkn_mc_dir: 'ftkn_mc',
+  ftkp_mc_dir: 'ftkp_mc',
 };
 
 /** O valor em que o campo fica travado na situação atual, ou undefined (campo livre). */

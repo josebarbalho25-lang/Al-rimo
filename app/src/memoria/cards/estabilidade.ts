@@ -23,7 +23,7 @@
 */
 import type { Resultado } from '@/motor/tipos';
 import type { AutorDeCards, Card, Expr, Passo, Ref } from '../tipos';
-import { abs, cte, div, max, min, mul, neg, nome, pot, rad, soma, sub, tan } from '../expr';
+import { abs, cte, div, max, min, mul, neg, nome, par, pot, rad, soma, sub, tan } from '../expr';
 import { memoriaDe, secao, type Memoria, type PedidoDeVerificacao } from '../passo';
 import { nt } from '../formato';
 import { passoDoGamaCf, passosDoPeso } from './pesoProprio';
@@ -133,6 +133,11 @@ function folhas(m: Memoria) {
     // γ do contraforte e peso da parede: os USADOS (calculados ou digitados — cards/pesoProprio.ts)
     gcf: m.g('gama_cf_us', '\\gamma_{cf}', 2, 'kN/m³'),
     P: m.ent('P_topo', 'P_{topo}'),
+    Pmc: m.g('P_mc', 'P_{mc}', 2, 'kN/m'),
+    Vkw: m.g('Vk_w', 'V_{k,w}', 2, 'kN/m'),
+    Mkw: m.g('Mk_w', 'M_{k,w}', 2, 'kN·m/m'),
+    vento: m.texto('vento_on') === 'Sim',
+    comMc: m.texto('mc_on') === 'Sim',
     // peça pesa na altura do MURO (parede, contraforte); terra e água, na altura de SOLO
     hm: m.ent('H_muro', 'h_{muro}'),
     hso: m.ent('H_solo', 'h_{solo}'),
@@ -265,7 +270,7 @@ function cardCargas(r: Resultado): Card {
       ? sub(mul(f.gama, f.hso, f.btal, f.L), mul(f.gama, f.eenr, min(f.btal, almaCf), f.hso))
       : mul(f.gama, f.hso, f.btal, f.L),
     20: mul(f.q, f.btal, f.L),
-    21: mul(f.P, f.L),
+    21: f.comMc ? mul(par(soma(f.P, f.Pmc)), f.L) : mul(f.P, f.L),
     22: neg(mul(f.gw, max(cte(0, 0), sub(soma(f.hso, f.hs), f.zna)), f.B, f.L)),
     23: contrafortes && !enterrado
       // o contraforte aparente ocupa parte da ponta: desconta o volume dele no aterro (espelho do talão)
@@ -303,7 +308,10 @@ function cardCargas(r: Resultado): Card {
     m.passo('sh_b2', '\\sigma_{h,s}', aguaNaSapata
       ? soma(f.shBase, mul(f.hs, soma(mul(f.Ka, sub(f.gama, f.gw)), f.gw)))
       : soma(f.shBase, mul(f.hs, mul(f.Ka, f.gama))), { casas: 2, unidade: 'kPa' }),
-    m.passo('H_k', 'H_k', mul(soma(f.Vk, mul(div(soma(f.shBase, f.shSap), DOIS), f.hs)), f.L), { casas: 2, unidade: 'kN' }),
+    f.vento && m.passo('Vk_w', 'V_{k,w}', null, { casas: 2, unidade: 'kN/m', origem: 'calculado' }),
+    m.passo('H_k', 'H_k', mul(f.vento
+      ? soma(f.Vk, f.Vkw, mul(div(soma(f.shBase, f.shSap), DOIS), f.hs))
+      : soma(f.Vk, mul(div(soma(f.shBase, f.shSap), DOIS), f.hs)), f.L), { casas: 2, unidade: 'kN' }),
   ], RANKINE);
 
   return {
@@ -370,8 +378,11 @@ function cardTombamento(r: Resultado): Card {
   const desEstab = desenhoDasForcasQueEstabilizam(r);
   if (desEstab) secBracos.desenho = desEstab;
   const fs = secao('Momento de tombamento e fator de segurança', [
+    f.vento && m.passo('Mk_w', 'M_{k,w}', null, { casas: 2, unidade: 'kN·m/m', origem: 'calculado' }),
     m.passo('M_tb', 'M_{tomb}', mul(
-      soma(f.Mk, mul(f.Vk, f.hs), div(mul(pot(f.hs, 2), soma(mul(DOIS, f.shBase), f.shSap)), cte(6, 0))),
+      f.vento
+        ? soma(f.Mk, f.Mkw, mul(par(soma(f.Vk, f.Vkw)), f.hs), div(mul(pot(f.hs, 2), soma(mul(DOIS, f.shBase), f.shSap)), cte(6, 0)))
+        : soma(f.Mk, mul(f.Vk, f.hs), div(mul(pot(f.hs, 2), soma(mul(DOIS, f.shBase), f.shSap)), cte(6, 0))),
       f.L,
     ), { casas: 2, unidade: 'kN·m' }),
     momentoPositivo

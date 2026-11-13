@@ -55,6 +55,7 @@ describe('junção das seções (planilha + modelo)', () => {
       'painel',
       'fundacao',
       'drenagem',
+      'murocima',
       'criterios',
     ]);
   });
