@@ -90,7 +90,16 @@ function medidasDaSapata(s: Solido): MedidasDaSapata {
 
 // ── as sombras das longitudinais ──────────────────────────────────────────────────────────────────────────────────
 
-export type FaceDaSapata = 'inferior' | 'superior';
+// 'dente' (15/11): as longitudinais de montagem do dente — embaixo, depois das da face de baixo, com "(dente)" na
+// legenda (com o mesmo Ø e o mesmo comprimento elas têm o mesmo N das da sapata; sem o nome, seriam a mesma sombra)
+export type FaceDaSapata = 'inferior' | 'superior' | 'dente';
+const ORDEM_DA_FACE: Readonly<Record<FaceDaSapata, number>> = { inferior: 0, dente: 1, superior: 2 };
+
+/** As longitudinais que a armação mostra: as da sapata e as do dente. */
+const ehLongitudinal = (b: Barra): boolean => b.papel === 'SAP_LONG' || b.papel === 'DENTE_LONG';
+/** Os estribos que a armação mostra, na ordem das faixas: a transversal junto da sapata, a torção, o do dente. */
+const ORDEM_DO_ESTRIBO: Partial<Record<PapelBarra, number>> = { SAP_TRANSV: 0, SAP_TORCAO: 1, DENTE_ESTRIBO: 2 };
+const ordemDoEstribo = (a: PapelBarra, b: PapelBarra): number => (ORDEM_DO_ESTRIBO[a] ?? 9) - (ORDEM_DO_ESTRIBO[b] ?? 9);
 
 export interface SombraDaSapata {
   posicao: string;
@@ -124,10 +133,10 @@ export function sombrasDaSapata(m: Modelo): SombraDaSapata[][] {
 
   const grupos = new Map<string, SombraDaSapata>();
   for (const b of m.barras) {
-    if (b.papel !== 'SAP_LONG') continue;
+    if (!ehLongitudinal(b)) continue;
     const [xa, xb] = faixa(b.eixo, 0);
     const z = b.eixo.reduce((s, p) => s + p[2], 0) / Math.max(1, b.eixo.length);
-    const face: FaceDaSapata = z > (meioPorTrecho.get(b.trecho) ?? meioGeral) ? 'superior' : 'inferior';
+    const face: FaceDaSapata = b.papel === 'DENTE_LONG' ? 'dente' : z > (meioPorTrecho.get(b.trecho) ?? meioGeral) ? 'superior' : 'inferior';
     // a estação em cm, como o Pró-Viga (Math.round(x_center·100)): a peça emendada que anda um φ de lado é a mesma
     const k = `${b.trecho}|${face}|${b.posicao}|${Math.round((xa + xb) / 20)}`;
     const g = grupos.get(k);
@@ -140,7 +149,7 @@ export function sombrasDaSapata(m: Modelo): SombraDaSapata[][] {
     }
   }
   const lista = [...grupos.values()].sort((a, b) =>
-    (a.face === b.face ? 0 : a.face === 'inferior' ? -1 : 1) || ordemDoN(a.posicao, b.posicao) || a.trecho - b.trecho || a.xa - b.xa);
+    ORDEM_DA_FACE[a.face] - ORDEM_DA_FACE[b.face] || ordemDoN(a.posicao, b.posicao) || a.trecho - b.trecho || a.xa - b.xa);
 
   // famílias: mesma face e mesmo trecho, x que se sobrepõem (o traspasse); a raiz é sempre o menor índice, e a
   // família sai na ordem dele — sem emenda, a ordem da lista não muda
@@ -169,7 +178,7 @@ export function sombrasDaSapata(m: Modelo): SombraDaSapata[][] {
 
 /** A legenda da sombra: o formato das chamadas, sem "c/" (a sombra conta as barras dela, não a posição inteira). */
 export function legendaDaSombra(s: SombraDaSapata): string {
-  return `${s.posicao} – ${s.ids.length} ${bitola(s.diametro)} C=${Math.round(s.comprimento / 10)}`;
+  return `${s.posicao} – ${s.ids.length} ${bitola(s.diametro)} C=${Math.round(s.comprimento / 10)}${s.face === 'dente' ? ' (dente)' : ''}`;
 }
 
 // ── as faixas de estribo ──────────────────────────────────────────────────────────────────────────────────────────
@@ -185,7 +194,8 @@ interface FaixaDeEstribos {
 }
 
 /**
- * Uma faixa por família de estribo (papel e posição): a transversal (estribo ou reta) e o estribo de torção. Cada
+ * Uma faixa por família de estribo (papel e posição): a transversal (estribo ou reta), o estribo de torção e o
+ * estribo do dente (15/11). Cada
  * trecho é uma zona — a junta de controle interrompe a sapata — e a legenda é uma só, com a quantidade do grupo
  * inteiro (Pró-Viga: "zonas com mesma bitola e mesmo espaçamento são UMA posição só").
  * O passo é o da chamada (chamadas.ts, espacamentoDaPosicao), para a faixa e a sombra do estribo dizerem o mesmo
@@ -214,7 +224,7 @@ function faixasDeEstribos(barras: Barra[]): FaixaDeEstribos[] {
     out.push({ papel: bs[0].papel, posicao: bs[0].posicao, diametro: bs[0].diametro, qtd: bs.length, passo: espacamentoDaPosicao(bs) ?? mediana, zonas });
   }
   // a transversal mais perto da sapata, a torção acima dela
-  return out.sort((a, b) => (a.papel === b.papel ? 0 : a.papel === 'SAP_TRANSV' ? -1 : 1) || ordemDoN(a.posicao, b.posicao));
+  return out.sort((a, b) => ordemDoEstribo(a.papel, b.papel) || ordemDoN(a.posicao, b.posicao));
 }
 
 /** A barra é de pé no plano X (estribo)? Senão é a transversal reta, que de frente é um ponto. */
@@ -304,8 +314,8 @@ function armacaoNaVista(m: Modelo, o: OpcoesDaVista): Prancha {
   // a sombra é a barra em destaque: mais grossa que a de dentro da peça (no Pró-Viga, 1,2φ contra 0,7φ)
   const grossa = (phi: number) => Math.max(1.8, 1.7 * phi * S);
 
-  const longs = m.barras.filter((b) => b.papel === 'SAP_LONG');
-  const transv = m.barras.filter((b) => b.papel === 'SAP_TRANSV' || b.papel === 'SAP_TORCAO');
+  const longs = m.barras.filter(ehLongitudinal);
+  const transv = m.barras.filter((b) => b.papel in ORDEM_DO_ESTRIBO);
   const esperas = m.barras.filter((b) => b.papel === 'ESPERA');
 
   // ── a sapata em elevação ──────────────────────────────────────────────────────────────────────────────────────
@@ -422,7 +432,8 @@ function armacaoNaVista(m: Modelo, o: OpcoesDaVista): Prancha {
   let yMaisAlto = yAlto;
   pr.abrir('data-camada="sombras"');
   for (const face of ['inferior', 'superior'] as const) {
-    const fams = familias.filter((f) => f[0].face === face);
+    // as do dente vão embaixo, nas fileiras depois das da face de baixo
+    const fams = familias.filter((f) => (f[0].face === 'superior') === (face === 'superior'));
     const fileira = arrumarEmFileiras(fams, pegada);
     // embaixo: fileiras descendo a partir da cota; em cima: subindo a partir da faixa mais alta
     const [y0, passo, fora] = face === 'inferior'
@@ -478,7 +489,7 @@ function armacaoNaVista(m: Modelo, o: OpcoesDaVista): Prancha {
     const perto = bs.map(meioEmX).reduce((p, q) => (Math.abs(q - xC) < Math.abs(p - xC) ? q : p));
     representantes.push(bs.filter((b) => Math.abs(meioEmX(b) - perto) < 0.5));
   }
-  representantes.sort((a, b) => (a[0].papel === b[0].papel ? 0 : a[0].papel === 'SAP_TRANSV' ? -1 : 1) || ordemDoN(a[0].posicao, b[0].posicao));
+  representantes.sort((a, b) => ordemDoEstribo(a[0].papel, b[0].papel) || ordemDoN(a[0].posicao, b[0].posicao));
   // a barra marcada `fechada` (o estribo de antes dos ganchos) volta ao primeiro ponto; o de ganchos é aberto
   const forma = (b: Barra): Vec2[] => {
     const pts = projetarPontos(b.eixo, 'X');

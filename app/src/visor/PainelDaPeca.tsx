@@ -43,6 +43,8 @@ export const NOME_DO_PAPEL: Record<PapelBarra, string> = {
   SAP_TRANSV: 'Sapata, transversal',
   SAP_LONG: 'Sapata, longitudinal',
   SAP_TORCAO: 'Sapata, torção',
+  DENTE_ESTRIBO: 'Dente, estribo',
+  DENTE_LONG: 'Dente, longitudinal',
   PIL_LONG: 'Pilarete, longitudinal',
   PIL_ESTRIBO: 'Pilarete, estribo',
   CINTA_MC: 'Cinta do muro de cima',

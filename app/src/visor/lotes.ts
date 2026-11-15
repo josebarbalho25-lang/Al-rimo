@@ -78,7 +78,7 @@ export function categoriasDaPeca(p: Peca): Categoria[] {
 export function categoriasDaBarra(b: Barra): Categoria[] {
   // o U da canaleta (HORIZ) é do painel: entra nos dois contrafortes, mas fica com o muro quando eles somem
   if (b.papel.startsWith('CF_')) return ['armadura', 'contrafortes'];
-  if (b.papel.startsWith('SAP_')) return ['armadura', 'fundacao'];
+  if (b.papel.startsWith('SAP_') || b.papel.startsWith('DENTE_')) return ['armadura', 'fundacao'];
   return ['armadura'];
 }
 

@@ -123,6 +123,7 @@ export type PapelBarra =
   | 'VERT_MURO' | 'ESPERA' | 'HORIZ'
   | 'CF_PRINCIPAL' | 'CF_CONSTRUTIVA' | 'CF_ESTRIBO'
   | 'SAP_TRANSV' | 'SAP_LONG' | 'SAP_TORCAO'
+  | 'DENTE_ESTRIBO' | 'DENTE_LONG'             // dente da sapata (15/11): estribo em pé e longitudinais de montagem
   | 'PIL_LONG' | 'PIL_ESTRIBO' | 'CINTA_MC';   // muro de cima (13/11): pilarete e cinta
 
 export interface Barra {

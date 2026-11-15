@@ -48,7 +48,12 @@ export function sapata(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number): 
     ctx.avisos.push({ codigo: 'SAPATA_ESPACAMENTO', texto: 'Armadura da sapata sem espaçamento na conta — desenhada a cada 20 cm (dedução)' });
   }
   const T = `SAP.T${tr.indice}`;
-  const transversais = p.sapTransv === 'reta' ? sapataReta(ctx, tr, Ype, YbA, s1, s2) : sapataEmEstribos(ctx, tr, Ype, YbA, s1, s2);
+  // as pernas do estribo do dente sobem por dentro da malha da sapata: a longitudinal que cairia em cima de uma
+  // delas encosta ao lado (sem dente, ou sem perna no caminho, nada muda)
+  const dente = estriboDoDente(ctx, Ype, YbA);
+  const pernas = dente ? [dente.yA, dente.yB].map((y) => ({ y, meia: p.phi_den / 2 })) : [];
+  const transversais = p.sapTransv === 'reta' ? sapataReta(ctx, tr, Ype, YbA, s1, s2, pernas) : sapataEmEstribos(ctx, tr, Ype, YbA, s1, s2, pernas);
+  const ocupados: Ocupado[] = transversais.xs.map((x) => ({ x, meia: transversais.meia }));
 
   // torção (contrafortes): estribo fechado em volta de B × h no trecho todo (brief Q11, recomendação — DEDUÇÃO),
   // no espaçamento da aba Fundação ("Ø do estribo de torção: espaçamento", célula sem nome). É outro estribo, à
@@ -65,11 +70,166 @@ export function sapata(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number): 
     xs.forEach((x, k) => {
       // ganchos no canto de cima do lado do pé, como a transversal
       ctx.barras.push(estribo(`${T}.TOR${pad(k + 1, 4)}`, 'SAP_TORCAO', ph, [[x, y0, z1], [x, y1, z1], [x, y1, z0], [x, y0, z0]], tr.indice));
+      ocupados.push({ x, meia: ph });
     });
     avisarMedidasDoEstribo(ctx, 'Estribo de torção da sapata', ph, y1 - y0, z1 - z0, 'TORCAO');
     if (p.s_tor < 50) ctx.avisos.push({ codigo: 'TORCAO_ESPACAMENTO', texto: `Estribo de torção da sapata a cada ${br(p.s_tor / 10, 1)} cm` });
     if (p.Asl_s > 0) ctx.avisos.push({ codigo: 'TORCAO_LONGITUDINAL', texto: `Armadura longitudinal de torção da sapata (Asl ${br(p.Asl_s)} cm²) não desenhada` });
   }
+  if (dente) armarDente(ctx, tr, dente, ocupados);
+}
+
+// ── dente armado ─────────────────────────────────────────────────────────────
+
+/** O que já ocupa um plano ao longo do muro (x) dentro da sapata, e quanto para cada lado. */
+interface Ocupado { x: number; meia: number }
+
+/** O retângulo do EIXO do estribo do dente, na seção: yA do lado da ponta, yB do lado do talão; zI embaixo, zS em cima. */
+export interface EstriboDoDente { yA: number; yB: number; zI: number; zS: number }
+
+/**
+ * A seção do estribo do dente (Jose, 15/11: "similar à da sapata corrida, porém na vertical, com estribos
+ * adentrando a sapata corrida"): fechado, em pé, do cobrimento do fundo do dente ao cobrimento de CIMA da sapata —
+ * as pernas atravessam a sapata inteira, é isso que as ancora (aba Fundação, seção 11: h − c ≥ ℓb,nec). Largura
+ * b do dente − 2c. null = sem dente, ou dente estreito demais para o estribo (com aviso).
+ */
+export function estriboDoDente(ctx: Pick<Ctx, 'p' | 'avisos'>, Ype: number, YbA: number): EstriboDoDente | null {
+  const { p } = ctx;
+  if (!temDente(p)) return null;
+  const c = p.cob_sap;
+  const ph = p.phi_den;
+  const yc = YbA - p.B_sap / 2 - p.x_den;
+  const yA = Math.max(Ype, yc - p.b_den / 2) + c + ph / 2;
+  const yB = Math.min(YbA, yc + p.b_den / 2) - c - ph / 2;
+  // menos que duas bitolas de vão livre entre as pernas: não há estribo que dobre ali
+  if (yB - yA < 3 * ph) {
+    const texto = `Dente de ${br(p.b_den / 10, 1)} cm: estreito para o estribo Ø${br(ph, 1)} com cobrimento de ${br(c / 10, 1)} cm — dente sem armadura`;
+    if (!ctx.avisos.some((a) => a.codigo === 'DENTE_ESTREITO')) ctx.avisos.push({ codigo: 'DENTE_ESTREITO', texto });
+    return null;
+  }
+  return { yA, yB, zI: -p.h_sap - p.h_den + c + ph / 2, zS: -c - ph / 2 };
+}
+
+/**
+ * Estribos e longitudinais do dente num trecho.
+ *   · estribo Ø phi_den c/ s_den (a conta; sem ela, 20 cm com aviso), ganchos no canto de cima do lado da ponta, como
+ *     o da sapata. Cada um num plano LIVRE: o que cairia em cima de um estribo da sapata, de torção ou de uma espera
+ *     vai para o lado, com uma bitola de folga (o armador amarra um ao lado do outro, não um dentro do outro).
+ *   · longitudinais Ø phi_lden por dentro do estribo, nas duas faces do dente: a de baixo no canto, a de cima na raiz
+ *     (face de baixo da sapata) e as do meio repartidas — quantas a conta disser (nf_den); emenda como a da sapata.
+ */
+function armarDente(ctx: Ctx, tr: TrechoModulado, e: EstriboDoDente, ocupados: Ocupado[]): void {
+  const { p } = ctx;
+  const c = p.cob_sap;
+  const ph = p.phi_den;
+  const pl = p.phi_lden;
+  const T = `SAP.T${tr.indice}`;
+  const s = p.s_den && p.s_den > 0 ? p.s_den : 200;
+  if (!(p.s_den && p.s_den > 0) && !ctx.avisos.some((a) => a.codigo === 'DENTE_ESPACAMENTO')) {
+    ctx.avisos.push({ codigo: 'DENTE_ESPACAMENTO', texto: 'Estribo do dente sem espaçamento na conta — desenhado a cada 20 cm (dedução)' });
+  }
+  // as esperas deste trecho descem na sapata (e o nó de cachorro corre a largura toda): também são plano ocupado
+  for (const b of ctx.barras) {
+    if (b.papel === 'ESPERA' && b.trecho === tr.indice) ocupados.push({ x: b.eixo[0][0], meia: 1.5 * b.diametro });
+  }
+  // a volta em espiral ocupa x ± φ: o 1º e o último ficam a c das pontas do trecho
+  const [xa, xb] = [tr.x0 + c + ph, tr.x1 - c - ph];
+  const xs = desviar(distribuir(xa, xb, s), ocupados, 2 * ph, xa, xb, s);
+  xs.forEach((x, k) => {
+    ctx.barras.push(estribo(`${T}.DE${pad(k + 1, 3)}`, 'DENTE_ESTRIBO', ph, [[x, e.yA, e.zS], [x, e.yB, e.zS], [x, e.yB, e.zI], [x, e.yA, e.zI]], tr.indice));
+  });
+  avisarMedidasDoEstribo(ctx, 'Estribo do dente', ph, e.yB - e.yA, e.zS - e.zI, 'DENTE');
+  // Dente do lado da ponta: o momento dele traciona a face de CIMA da sapata, e a conta (seção 11) confere com o aço
+  // do estribo da sapata. Com a transversal reta e o talão sem pedir barra em cima, esse aço não existe.
+  if (p.denteNaPonta && p.sapTransv === 'reta' && !(p.Mk_heel > 0) && !ctx.avisos.some((a) => a.codigo === 'DENTE_SEM_BARRA_EM_CIMA')) {
+    ctx.avisos.push({ codigo: 'DENTE_SEM_BARRA_EM_CIMA', texto: 'Dente do lado da ponta com a transversal reta: a sapata fica sem barra em cima para o momento do dente — usar a transversal em estribo' });
+  }
+
+  // longitudinais: a do canto de baixo encosta no ramo e na dobra, como a da sapata
+  const { raio } = medidasDoEstribo(ph, e.yB - e.yA, e.zS - e.zI);
+  const canto = ph / 2 + Math.max(raio - ph / 2, pl / 2);
+  const nf = Math.max(2, Math.round(p.nf_den ?? Math.max(2, Math.ceil(p.h_den / 330) + 1)));
+  const zs = Array.from({ length: nf }, (_, k) => e.zI + canto + ((-p.h_sap - (e.zI + canto)) * k) / (nf - 1));
+  const l0 = traspasse(ctx, pl, 'concreto');
+  (['P', 'T'] as const).forEach((face) => {
+    zs.forEach((z, k) => {
+      // a do canto fica onde a dobra começa; as de cima, encostadas na perna
+      const dentro = k === 0 ? canto : ph / 2 + pl / 2;
+      const y = face === 'P' ? e.yA + dentro : e.yB - dentro;
+      // a barra emendada deita ao lado da outra, para DENTRO do estribo
+      const lado: Vec3 = [0, face === 'P' ? pl : -pl, 0];
+      ctx.barras.push(...corrida(`${T}.DL${face}${pad(k + 1, 2)}.`, 'DENTE_LONG', pl, tr.x0 + c, tr.x1 - c, y, z, l0, lado, tr.indice));
+    });
+  });
+}
+
+/**
+ * Cada plano pedido (x) num lugar livre: o que cairia a menos de (meia do vizinho + `folga`) de um plano ocupado vai
+ * para o lado — a borda mais perto da faixa proibida em que caiu, dentro de [lo, hi] e sem andar mais que `alcance`
+ * (um espaçamento; e nunca antes do que já foi posto: o estribo não troca de lugar com o vizinho). Sem lugar livre por perto (estribo de torção a
+ * cada 2 ou 3 cm não deixa plano nenhum), vai para o meio do maior vão entre vizinhos ao alcance: encosta o mínimo.
+ * As faixas proibidas são juntadas uma vez, em ordem, e cada x acha a dele por busca — muro de 120 m tem milhares de
+ * planos, e conferir cada candidato contra todos os ocupados custava mais que o resto do muro inteiro.
+ */
+function desviar(xs: number[], ocupados: Ocupado[], folga: number, lo: number, hi: number, alcance: number): number[] {
+  const ordenados = [...ocupados].sort((a, b) => a.x - b.x);
+  const faixas: [number, number][] = [];
+  for (const o of ordenados) {
+    const [a, b] = [o.x - o.meia - folga, o.x + o.meia + folga];
+    const ultima = faixas[faixas.length - 1];
+    if (ultima && a < ultima[1] - 1e-6) ultima[1] = Math.max(ultima[1], b);
+    else faixas.push([a, b]);
+  }
+  // a última faixa que começa antes de q (ou −1): busca binária
+  const antesDe = (lista: number[], q: number): number => {
+    let [e, d] = [0, lista.length - 1];
+    let k = -1;
+    while (e <= d) {
+      const m = (e + d) >> 1;
+      if (lista[m] < q) { k = m; e = m + 1; } else d = m - 1;
+    }
+    return k;
+  };
+  const inicios = faixas.map((f) => f[0]);
+  const centros = ordenados.map((o) => o.x);
+  let anterior = -Infinity;
+  return xs.map((x) => {
+    let q = x;
+    const k = antesDe(inicios, x + 1e-6);
+    if (k >= 0 && x < faixas[k][1] - 1e-6) {
+      const cands = faixas[k].filter((v) => v >= lo - 1e-6 && v <= hi + 1e-6 && Math.abs(v - x) <= alcance && v > anterior + folga);
+      if (cands.length) q = cands.reduce((m, v) => (Math.abs(v - x) < Math.abs(m - x) ? v : m));
+      else {
+        // sem plano livre ao alcance (zona do contraforte, torção cerrada): o meio do MAIOR vão entre vizinhos que
+        // houver ali — encosta o mínimo que dá
+        const [de, ate] = [Math.max(lo, x - alcance, anterior + folga), Math.min(hi, x + alcance)];
+        let melhor: { meio: number; vao: number } | null = null;
+        let borda = de;
+        for (let i = Math.max(0, antesDe(centros, de)); i <= ordenados.length; i++) {
+          const o = ordenados[i];
+          const fim = o ? Math.min(ate, o.x - o.meia) : ate;
+          const vao = fim - borda;
+          if (vao > 0 && (!melhor || vao > melhor.vao + 1e-6)) melhor = { meio: (borda + fim) / 2, vao };
+          if (!o || o.x - o.meia >= ate) break;
+          borda = Math.max(borda, o.x + o.meia);
+        }
+        if (melhor) q = melhor.meio;
+      }
+    }
+    anterior = q;
+    return q;
+  });
+}
+
+/** A longitudinal da sapata que cairia em cima de uma perna do estribo do dente encosta ao lado dela (o lado em que já estava). */
+function foraDasPernas(ys: number[], phi: number, pernas: { y: number; meia: number }[]): number[] {
+  return ys.map((y) => {
+    for (const pn of pernas) {
+      const folga = pn.meia + phi / 2;
+      if (Math.abs(y - pn.y) < folga - 1e-6) return y >= pn.y ? pn.y + folga : pn.y - folga;
+    }
+    return y;
+  });
 }
 
 /** Onde estão as transversais ao longo do trecho (x do plano de cada uma) e quanto cada uma ocupa para cada lado. */
@@ -80,7 +240,7 @@ interface Transversais { xs: number[]; meia: number }
  * quando o talão pede, "mesma armadura nas duas faces"), longitudinal Ø phi_sap2 c/ s_ss sobre ela. Não mexer: a
  * opção existe para reproduzir o desenho de antes, barra por barra (modulacao.test.ts confere contra o de 15/10).
  */
-function sapataReta(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number, s1: number, s2: number): Transversais {
+function sapataReta(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number, s1: number, s2: number, pernas: { y: number; meia: number }[]): Transversais {
   const { p } = ctx;
   const h = p.h_sap;
   const c = p.cob_sap;
@@ -93,7 +253,7 @@ function sapataReta(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number, s1: 
       ctx.barras.push(reta(`${T}.T${face}${pad(k + 1, 3)}`, 'SAP_TRANSV', p.phi_sap, [x, Ype + c, zT], [x, YbA - c, zT], tr.indice));
     });
     const zL = face === 'I' ? -h + c + p.phi_sap + p.phi_sap2 / 2 : -c - p.phi_sap - p.phi_sap2 / 2;
-    distribuir(Ype + c, YbA - c, s2).forEach((y, k) => {
+    foraDasPernas(distribuir(Ype + c, YbA - c, s2), p.phi_sap2, pernas).forEach((y, k) => {
       const bs = corrida(`${T}.L${face}${pad(k + 1, 2)}.`, 'SAP_LONG', p.phi_sap2, tr.x0 + c, tr.x1 - c, y, zL, traspasse(ctx, p.phi_sap2, 'concreto'), [0, p.phi_sap2, 0], tr.indice);
       ctx.barras.push(...bs);
     });
@@ -114,7 +274,7 @@ function sapataReta(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number, s1: 
  * Longitudinal Ø phi_sap2 por DENTRO do estribo: embaixo, c/ s_ss, apoiada no ramo de baixo, a dos cantos dentro da
  * dobra; em cima, a malha c/ s_ss quando o talão pede e, sem ele, só as duas dos cantos (o porta-estribo).
  */
-function sapataEmEstribos(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number, s1: number, s2: number): Transversais {
+function sapataEmEstribos(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number, s1: number, s2: number, pernas: { y: number; meia: number }[]): Transversais {
   const { p } = ctx;
   const h = p.h_sap;
   const c = p.cob_sap;
@@ -141,7 +301,7 @@ function sapataEmEstribos(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number
   const l0 = traspasse(ctx, phi2, 'concreto');
   for (const face of ['I', 'S'] as const) {
     const zL = face === 'I' ? zI + phi / 2 + phi2 / 2 : zS - phi / 2 - phi2 / 2;
-    const ys = face === 'I' || p.Mk_heel > 0 ? distribuir(ya, yb, s2) : [ya, yb];
+    const ys = foraDasPernas(face === 'I' || p.Mk_heel > 0 ? distribuir(ya, yb, s2) : [ya, yb], phi2, pernas);
     ys.forEach((y, k) => {
       // a barra emendada deita ao lado da outra, para DENTRO do estribo (a do canto do talão iria para a dobra)
       const lado: Vec3 = [0, y > (ya + yb) / 2 ? -phi2 : phi2, 0];

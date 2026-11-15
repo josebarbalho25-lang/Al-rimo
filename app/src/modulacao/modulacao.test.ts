@@ -813,6 +813,27 @@ describe('canaleta como a obra deixa: fundo furado onde sobe a barra, T de graut
     }
   }, 120_000);
 
+  // dente armado (15/11): o estribo em pé e as longitudinais, com o dente dos dois lados do muro (os dois primeiros
+  // muros do gabarito de cada lado e os dois alvos do dente), no desenho padrão e no de antes com o nó de cachorro
+  it('armadura do dente: nenhuma barra atravessa bloco, canaleta ou drenagem', () => {
+    const lado = (c: string) => resultadoDoGabarito(c).v('lado_den');
+    const todos = cenariosDoGabarito();
+    const muros = [...new Set([
+      ...todos.filter((c) => lado(c) === 'Ponta').slice(0, 2), ...todos.filter((c) => lado(c) === 'Talão').slice(0, 2),
+      'alvo_dente_ponta_digitado', 'alvo_dente_talao_nao_passa',
+    ])];
+    expect(muros.length).toBeGreaterThanOrEqual(5);
+    for (const c of muros) {
+      const r = resultadoDoGabarito(c);
+      for (const extras of [padroesDoModelo(), { ...padroesDoModelo(), sap_transv: 'Reta', arranque: 'Nó de cachorro' }]) {
+        const m = gerarModelo(r, extras);
+        // só as barras da sapata e do dente (ids SAP.…): muro de alvo pode ter outro defeito que não é daqui
+        expect(m.barras.some((b) => b.papel === 'DENTE_ESTRIBO'), c).toBe(true);
+        expect(barrasEmPecaSolida(m).filter((a) => a.startsWith('SAP.')), c).toEqual([]);
+      }
+    }
+  }, 180_000);
+
   it('as conferências têm dente: com as canaletas inteiras, a barra vertical fura o fundo e a perna do U a parede do muro', () => {
     const m = gerarModelo(resultadoDoGabarito('aula123'), padroesDoModelo());
     const achados = barrasEmPecaSolida(semRecortes(m));

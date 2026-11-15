@@ -89,7 +89,8 @@ const camadaDe = (q: Primitiva): string | undefined =>
 describe.each(MUROS)('%s', (_, m) => {
   const familias = sombrasDaSapata(m);
   const sombras = familias.flat();
-  const longs = m.barras.filter((b) => b.papel === 'SAP_LONG');
+  // as longitudinais da sapata e as do dente (15/11): as do dente têm a sombra delas, embaixo, com "(dente)"
+  const longs = m.barras.filter((b) => b.papel === 'SAP_LONG' || b.papel === 'DENTE_LONG');
 
   it('toda longitudinal da sapata está em UMA sombra, e a sombra é de barras iguais (posição, C, Ø, trecho, estação)', () => {
     const ids = sombras.flatMap((s) => s.ids);
@@ -103,32 +104,36 @@ describe.each(MUROS)('%s', (_, m) => {
         const [xa, xb] = faixa(b.eixo, 0);
         expect(Math.abs((xa + xb) / 2 - (s.xa + s.xb) / 2)).toBeLessThan(10);
       }
-      expect(legendaDaSombra(s)).toBe(`${s.posicao} – ${s.ids.length} Ø${String(s.diametro).replace('.', ',')} C=${Math.round(s.comprimento / 10)}`);
+      expect(legendaDaSombra(s)).toBe(`${s.posicao} – ${s.ids.length} Ø${String(s.diametro).replace('.', ',')} C=${Math.round(s.comprimento / 10)}${s.face === 'dente' ? ' (dente)' : ''}`);
     }
   });
 
   it('a face é a do z da barra; as de cima desenhadas acima da sapata, as de baixo embaixo', () => {
-    const zs = longs.map((b) => b.eixo[0][2]);
+    const zs = longs.filter((b) => b.papel === 'SAP_LONG').map((b) => b.eixo[0][2]);
     const corte = (Math.max(...zs) + Math.min(...zs)) / 2;
     for (const s of sombras) {
       for (const id of s.ids) {
-        const z = longs.find((b) => b.id === id)!.eixo[0][2];
-        // uma camada só (sem a de cima) é a de baixo
-        expect(Math.max(...zs) - Math.min(...zs) > 1 && z > corte ? 'superior' : 'inferior', `${s.posicao} z=${z}`).toBe(s.face);
+        const b = longs.find((q) => q.id === id)!;
+        const z = b.eixo[0][2];
+        // uma camada só (sem a de cima) é a de baixo; a do dente é do dente, esteja onde estiver
+        const esperada = b.papel === 'DENTE_LONG' ? 'dente' : Math.max(...zs) - Math.min(...zs) > 1 && z > corte ? 'superior' : 'inferior';
+        expect(esperada, `${s.posicao} z=${z}`).toBe(s.face);
       }
     }
     const desenhadas = sombrasDesenhadas(desenho(m, 25).svg());
     const y = (face: string) => sombras.filter((s) => s.face === face).map((s) => desenhadas.get(s.ids[0])![0][1]);
     // o topo da sapata é o y = 0 do desenho: as de cima acima dele, as de baixo abaixo do fundo
     for (const q of y('superior')) expect(q).toBeLessThan(0);
-    for (const q of y('inferior')) expect(q).toBeGreaterThan(-m.dims.sapata.z0 * escalaDaVista(25));
+    for (const q of [...y('inferior'), ...y('dente')]) expect(q).toBeGreaterThan(-m.dims.sapata.z0 * escalaDaVista(25));
+    // as do dente depois das da face de baixo (mais longe da sapata)
+    if (y('dente').length && y('inferior').length) expect(Math.min(...y('dente'))).toBeGreaterThan(Math.max(...y('inferior')));
   });
 
   it.each(ESCALAS)('legendas (%s): cada sombra com a sua — a quantidade e o C das barras dela', (_e, e) => {
     const ts = textosDe(desenho(m, e).primitivas()).map((q) => q.t);
     // as das longitudinais (o estribo de torção também sai sem "c/" na chamada — chamadas.ts, DISTRIBUIDA)
     const nsLong = new Set(longs.map((b) => b.posicao));
-    const legendas = ts.filter((t) => /^N\d+ – \d+ Ø[\d,]+ C=\d+$/.test(t) && nsLong.has(t.split(' ')[0]));
+    const legendas = ts.filter((t) => /^N\d+ – \d+ Ø[\d,]+ C=\d+( \(dente\))?$/.test(t) && nsLong.has(t.split(' ')[0]));
     expect(legendas.sort()).toEqual(sombras.map(legendaDaSombra).sort());
     expect(legendas.reduce((s, t) => s + Number(t.split(' ')[2]), 0)).toBe(longs.length);
   });
@@ -149,7 +154,7 @@ describe.each(MUROS)('%s', (_, m) => {
       for (let j = 1; j < fam.length; j++) {
         const [a, b] = [desenhadas.get(fam[j - 1].ids[0])!, desenhadas.get(fam[j].ids[0])!];
         // uma fileira para longe da sapata: para baixo nas de baixo, para cima nas de cima
-        expect(b[0][1] - a[0][1]).toBeCloseTo(fam[0].face === 'inferior' ? 34 : -34, 6);
+        expect(b[0][1] - a[0][1]).toBeCloseTo(fam[0].face === 'superior' ? -34 : 34, 6);
         expect(fam[j].xa).toBeLessThan(fam[j - 1].xb);
       }
     }
@@ -157,7 +162,7 @@ describe.each(MUROS)('%s', (_, m) => {
 
   it('a faixa de cada estribo: a quantidade do grupo e o c/ da chamada', () => {
     const ts = textosDe(desenho(m, 50).primitivas()).map((q) => q.t);
-    const transv = m.barras.filter((b) => b.papel === 'SAP_TRANSV' || b.papel === 'SAP_TORCAO');
+    const transv = m.barras.filter((b) => b.papel === 'SAP_TRANSV' || b.papel === 'SAP_TORCAO' || b.papel === 'DENTE_ESTRIBO');
     const grupos = new Map<string, typeof transv>();
     for (const b of transv) grupos.set(`${b.papel}|${b.posicao}`, [...(grupos.get(`${b.papel}|${b.posicao}`) ?? []), b]);
     expect(grupos.size).toBeGreaterThan(0);
@@ -172,7 +177,7 @@ describe.each(MUROS)('%s', (_, m) => {
 
   it('a sombra do estribo: as pernas da lista de ferros (a maior deitada, a menor em pé) e a legenda da chamada', () => {
     const svg = desenho(m, 25).svg();
-    const posicoes = [...new Set(m.barras.filter((b) => b.papel === 'SAP_TRANSV' || b.papel === 'SAP_TORCAO').map((b) => b.posicao))];
+    const posicoes = [...new Set(m.barras.filter((b) => b.papel === 'SAP_TRANSV' || b.papel === 'SAP_TORCAO' || b.papel === 'DENTE_ESTRIBO').map((b) => b.posicao))];
     expect(posicoes.length).toBeGreaterThan(0);
     for (const n of posicoes) {
       const b = m.barras.find((q) => q.posicao === n)!;
@@ -184,7 +189,10 @@ describe.each(MUROS)('%s', (_, m) => {
         expect(deitados).toContain(String(f.trechos[0]));
         continue;
       }
-      const [W, H] = [Math.max(f.trechos[0], f.trechos[1]), Math.min(f.trechos[0], f.trechos[1])];
+      // o estribo da sapata é deitado (a maior perna na horizontal); o do dente é de pé (a maior na vertical)
+      const dePe = b.papel === 'DENTE_ESTRIBO';
+      const [maior, menor] = [Math.max(f.trechos[0], f.trechos[1]), Math.min(f.trechos[0], f.trechos[1])];
+      const [W, H] = dePe ? [menor, maior] : [maior, menor];
       expect(deitados).toContain(String(W));
       expect(g.filter((q) => q.vertical).map((q) => q.t)).toEqual([String(H)]);
     }
@@ -265,7 +273,7 @@ describe('qualquer muro do gabarito', () => {
       }
       n++;
       const nas = sombrasDaSapata(m).flat().reduce((s, q) => s + q.ids.length, 0);
-      if (nas !== m.barras.filter((b) => b.papel === 'SAP_LONG').length) ruins.push(`${c}: ${nas} longitudinais nas sombras`);
+      if (nas !== m.barras.filter((b) => b.papel === 'SAP_LONG' || b.papel === 'DENTE_LONG').length) ruins.push(`${c}: ${nas} longitudinais nas sombras`);
       for (const [nome, e] of ESCALAS) {
         const pr = desenho(m, e);
         const encavalados = textosSobrepostos(pr.primitivas());

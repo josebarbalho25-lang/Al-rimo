@@ -293,7 +293,7 @@ function passoNaJunta(phi: number): number {
  * O estribo que a seção não comporta (barras.ts, medidasDoEstribo): dobra mais apertada que o pino da NBR, ou
  * ponta do gancho de 135° abaixo da NBR (5φ ≥ 5 cm).
  */
-export function avisarMedidasDoEstribo(ctx: Ctx, quem: string, phi: number, a: number, b: number, prefixo: 'ESTRIBO' | 'SAPATA' | 'TORCAO'): void {
+export function avisarMedidasDoEstribo(ctx: Ctx, quem: string, phi: number, a: number, b: number, prefixo: 'ESTRIBO' | 'SAPATA' | 'TORCAO' | 'DENTE'): void {
   const m = medidasDoEstribo(phi, a, b);
   const avisos: Aviso[] = [];
   if (m.dobraApertada) {

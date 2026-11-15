@@ -108,6 +108,7 @@ const materialDe = (t: TipoPeca): Mat =>
 const TIPO_BARRA: Record<PapelBarra, string> = {
   VERT_MURO: 'MAIN', ESPERA: 'MAIN', HORIZ: 'MAIN', CF_PRINCIPAL: 'MAIN', CF_CONSTRUTIVA: 'MAIN', CF_ESTRIBO: 'SHEAR',
   SAP_TRANSV: 'MAIN', SAP_LONG: 'MAIN', SAP_TORCAO: 'MAIN',
+  DENTE_ESTRIBO: 'MAIN', DENTE_LONG: 'MAIN',   // o estribo do dente é a armadura de flexão dele, não de cortante
   PIL_LONG: 'MAIN', PIL_ESTRIBO: 'SHEAR', CINTA_MC: 'MAIN',
 };
 
@@ -599,7 +600,7 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
   const barrasPorDono = new Map<string, Ref[]>();
   // barra da sapata é da sapata mesmo que a modulação a marque com o contraforte de cima (torção, por exemplo)
   const donoDaBarra = (b: Barra): string => {
-    if (b.papel.startsWith('SAP_')) return `sapata/T${b.trecho}`;
+    if (b.papel.startsWith('SAP_') || b.papel.startsWith('DENTE_')) return `sapata/T${b.trecho}`;
     if (b.papel.startsWith('PIL_') || b.papel === 'CINTA_MC') return `murocima/T${b.trecho}`;
     if (b.contraforte) return `contraforte/C${b.contraforte}`;
     return `muro/T${b.trecho}`;

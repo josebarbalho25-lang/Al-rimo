@@ -28,7 +28,7 @@ import { COR, Prancha, type Pt } from './prancha';
 
 /** Eixo ao longo do qual a posição se distribui (0 = x, 1 = y, 2 = z): só as que vão "a cada tanto" levam c/. */
 const DISTRIBUIDA: Partial<Record<PapelBarra, 0 | 1 | 2>> = {
-  VERT_MURO: 0, ESPERA: 0, SAP_TRANSV: 0, SAP_TORCAO: 0, SAP_LONG: 1, HORIZ: 2, CF_ESTRIBO: 2,
+  VERT_MURO: 0, ESPERA: 0, SAP_TRANSV: 0, SAP_TORCAO: 0, SAP_LONG: 1, HORIZ: 2, CF_ESTRIBO: 2, DENTE_ESTRIBO: 0,
 };
 
 const bitola = (phi: number): string => `Ø${String(Math.round(phi * 10) / 10).replace('.', ',')}`;
@@ -39,7 +39,7 @@ export type ElementoDaBarra = 'muro' | 'contraforte' | 'sapata';
 
 /** O elemento da barra para a chamada: a da sapata é da sapata mesmo marcada com o contraforte de cima (torção). */
 export function elementoDaBarra(b: Pick<Barra, 'papel' | 'contraforte'>): ElementoDaBarra {
-  if (b.papel.startsWith('SAP_')) return 'sapata';
+  if (b.papel.startsWith('SAP_') || b.papel.startsWith('DENTE_')) return 'sapata';   // o dente é da sapata
   return b.contraforte !== undefined ? 'contraforte' : 'muro';
 }
 

@@ -61,6 +61,9 @@ export interface Parametros {
   B_sap: number; h_sap: number; a_ater: number; b_den: number; h_den: number; x_den: number; cob_sap: number;
   phi_sap: number; phi_sap2: number; phi_tor: number; s_ps: number | null; s_ss: number | null; s_tor: number | null;
   Mk_heel: number; T_sd: number; Asl_s: number;
+  // armadura do dente (aba Fundação, seção 11): Ø e espaçamento do estribo em pé, Ø e quantidade (por face) das
+  // longitudinais, e de que lado do muro o dente está (do lado da ponta o momento dele traciona a sapata em cima)
+  phi_den: number; s_den: number | null; phi_lden: number; nf_den: number | null; denteNaPonta: boolean;
   gancho: boolean;
   // traspasse da conta (aba Fundação, seção 10): o de cada espera (mm) e, para as outras emendas, o α0t e o ℓb em
   // diâmetros no graute e no concreto da sapata
@@ -166,6 +169,11 @@ export function lerParametros(r: Resultado, extrasIn: Record<string, Valor>, avi
     Mk_heel: n('Mk_heel') ?? 0,
     T_sd: n('T_sd') ?? 0,
     Asl_s: n('Asl_s') ?? 0,
+    phi_den: n('phi_den') ?? 8,
+    s_den: cm(n('s_den')),
+    phi_lden: n('phi_lden') ?? 6.3,
+    nf_den: n('nf_den'),
+    denteNaPonta: txt('lado_den').trim() === 'Ponta',
     gancho: txt('gancho_').trim().toLowerCase().startsWith('s'),
     l0t: { v: cm(n('l0t_v')), pv: cm(n('l0t_pv')), cf: cm(n('l0t_cf')), cc: cm(n('l0t_cc')) },
     a0t: n('a0t'),
