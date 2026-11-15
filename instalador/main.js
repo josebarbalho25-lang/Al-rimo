@@ -45,6 +45,13 @@ function versaoDoPrograma() {
   }
 }
 
+/* O id do Windows (barra de tarefas, atalhos) vem do pacote: a variante de
+   conferência ("Al-rimo Teste", montar.js --teste) não pode se agrupar com o
+   programa de verdade nem herdar os atalhos fixados dele. */
+function idDoPrograma() {
+  try { return require('./package.json').idDoPrograma || 'com.jbarbalho.alrimo'; } catch (_) { return 'com.jbarbalho.alrimo'; }
+}
+
 const RAIZ_DO_APP = path.join(__dirname, 'gerado', 'app');
 const ICONE = path.join(__dirname, 'gerado', 'icones', 'icon.ico');
 
@@ -545,7 +552,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(() => {
-    app.setAppUserModelId('com.jbarbalho.alrimo');
+    app.setAppUserModelId(idDoPrograma());
     Menu.setApplicationMenu(null);
     lerPrefs();
     anotar('[programa] Al-rimo', versaoDoPrograma(), 'electron', process.versions.electron, 'empacotado', app.isPackaged);

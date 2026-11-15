@@ -13,11 +13,12 @@
     "start": "node ferramentas/montar.js --so-preparar && electron .",
     "icones": "node ferramentas/gerar-icones.js",
     "dist": "node ferramentas/montar.js",
-    "dist:dir": "node ferramentas/montar.js --pasta"
+    "dist:dir": "node ferramentas/montar.js --pasta",
+    "test": "node --test teste/*.test.js"
   },
   "devDependencies": {
     "electron": "42.0.1",
-    "electron-builder": "26.8.1",
+    "electron-builder": "26.18.0",
     "png-to-ico": "3.0.2"
   },
   "build": {
@@ -65,7 +66,8 @@
       "artifactName": "Al-rimo-Setup-${version}.exe",
       "installerIcon": "gerado/icones/icon.ico",
       "uninstallerIcon": "gerado/icones/icon.ico",
-      "license": "gerado/termo/TERMO_DE_USO.txt"
+      "license": "gerado/termo/TERMO_DE_USO.txt",
+      "include": "gerado/instalador.nsh"
     }
   }
 }
