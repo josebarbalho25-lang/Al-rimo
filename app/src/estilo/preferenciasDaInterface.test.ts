@@ -34,10 +34,47 @@ afterEach(() => {
 });
 
 describe('preferências da interface', () => {
-  it('máquina nova: o padrão de fábrica, a 120%', async () => {
+  it('máquina nova: o padrão de fábrica de 15/11 — 90 %, Compacta, Claro', async () => {
     const p = await abrir(new Map());
     expect(p.preferenciasAtuais()).toEqual(p.PADRAO);
-    expect(p.PADRAO.escala).toBe(1.2);
+    expect(p.PADRAO).toMatchObject({ escala: 0.9, densidade: 'compact', tema: 'modern' });
+  });
+
+  // O padrão mudou (120 % / Confortável / Escuro → 90 % / Compacta / Claro, 15/11). Quem escolheu fica com a
+  // escolha; o que ele não escolheu passa ao padrão novo — inclusive quem escolheu só UM dos três.
+  it('quem escolheu tamanho, densidade e tema antes de 15/11 continua com os dele', async () => {
+    const m = new Map([['alrimo.interface.v2', '{"escala":1.2,"densidade":"cozy","tema":"dark"}']]);
+    const p = await abrir(m);
+    expect(p.preferenciasAtuais()).toMatchObject({ escala: 1.2, densidade: 'cozy', tema: 'dark' });
+    // e abrir não regrava nada: o guardado continua sendo só a escolha dele
+    expect(JSON.parse(m.get('alrimo.interface.v2')!)).toEqual({ escala: 1.2, densidade: 'cozy', tema: 'dark' });
+  });
+
+  it('quem escolheu só o tema Escuro fica no Escuro, e o tamanho e a densidade vão ao padrão novo', async () => {
+    const p = await abrir(new Map([['alrimo.interface.v2', '{"tema":"dark"}']]));
+    expect(p.preferenciasAtuais()).toMatchObject({ tema: 'dark', escala: 0.9, densidade: 'compact' });
+  });
+
+  it('quem escolheu só o tamanho fica nele, e o tema e a densidade vão ao padrão novo', async () => {
+    const p = await abrir(new Map([['alrimo.interface.v2', '{"escala":1.3}']]));
+    expect(p.preferenciasAtuais()).toMatchObject({ escala: 1.3, tema: 'modern', densidade: 'compact' });
+  });
+
+  it('a escolha volta igual na abertura seguinte, as três juntas', async () => {
+    const m = new Map<string, string>();
+    const p = await abrir(m);
+    p.definirPreferencia('escala', 1.1);
+    p.definirPreferencia('densidade', 'default');
+    p.definirPreferencia('tema', 'paper');
+    const depois = await abrir(m);
+    expect(depois.preferenciasAtuais()).toMatchObject({ escala: 1.1, densidade: 'default', tema: 'paper' });
+  });
+
+  it('escolher o mesmo valor do padrão também é escolha: guardado, não muda se o padrão mudar', async () => {
+    const m = new Map<string, string>();
+    const p = await abrir(m);
+    p.definirPreferencia('escala', 0.9);
+    expect(JSON.parse(m.get('alrimo.interface.v2')!)).toEqual({ escala: 0.9 });
   });
 
   it('a v1 gravada pelo botão de tema não trava o tamanho novo; só o tema migra', async () => {
@@ -49,7 +86,7 @@ describe('preferências da interface', () => {
     ]);
     const p = await abrir(m);
     const a = p.preferenciasAtuais();
-    expect(a.escala).toBe(1.2);
+    expect(a.escala).toBe(p.PADRAO.escala);
     expect(a.tema).toBe('modern');
     expect(m.has('alrimo.interface.v1')).toBe(false);
     expect(JSON.parse(m.get('alrimo.interface.v2')!)).toEqual({ tema: 'modern' });
@@ -62,7 +99,7 @@ describe('preferências da interface', () => {
     expect(JSON.parse(m.get('alrimo.interface.v2')!)).toEqual({ tema: 'paper' });
     p.definirPreferencia('escala', 1.4);
     const recarregado = await abrir(m);
-    expect(recarregado.preferenciasAtuais()).toMatchObject({ tema: 'paper', escala: 1.4, densidade: 'cozy' });
+    expect(recarregado.preferenciasAtuais()).toMatchObject({ tema: 'paper', escala: 1.4, densidade: p.PADRAO.densidade });
   });
 
   it('campo estragado cai no padrão sem levar os outros', async () => {

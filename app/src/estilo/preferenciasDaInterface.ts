@@ -45,19 +45,22 @@ export interface PreferenciasDaInterface {
 }
 
 /**
- * O PADRÃO DE FÁBRICA. 120%, e não os 110% do A-PORT: o Jose comparou lado a
- * lado com Revit e TQS e achou a letra pequena, duas vezes (09/10). O Al-rimo
- * é um programa de FORMULÁRIO — passa-se o tempo lendo rótulo e número —, e a
- * 120% o rótulo do painel fica em 15 px (12,5 × 1,2), a unidade e o título do
- * grupo em ~14 px, o número do campo em ~15,6 px. Nos 110% herdados o miúdo
- * (unidade, título de grupo, cabeçalho de tabela) ficava em 12,7 px.
- * Os degraus de texto (tokens.css) continuam os do A-PORT de propósito: 120%
- * aqui é o mesmo tamanho que 120% lá.
+ * O PADRÃO DE FÁBRICA: Tamanho 90 %, densidade Compacta, tema Claro (Jose,
+ * 15/11, testando o programa instalado). Era 120 % / Confortável / Escuro desde
+ * 09/10 (ele achara a letra pequena no navegador, lado a lado com Revit e TQS);
+ * no programa instalado, de janela própria e sem a barra do navegador, quis a
+ * tela mais cheia e clara, como o Pró-Viga instalado.
+ * Mudar AQUI chega a todo mundo que nunca mexeu naquele ajuste — quem escolheu
+ * guarda a escolha (o navegador só guarda o que foi escolhido, ver acima).
+ * Os degraus de texto (tokens.css) continuam os do A-PORT de propósito: 90 %
+ * aqui é o mesmo tamanho que 90 % lá.
+ * ⚠️ O index.html repete o tema e a densidade no <body> (o quadro antes do
+ * script) e o instalador/main.js a cor da barra do Claro: mudou aqui, muda lá.
  */
 export const PADRAO: PreferenciasDaInterface = {
-  escala: 1.2,
-  tema: 'dark',
-  densidade: 'cozy',
+  escala: 0.9,
+  tema: 'modern',
+  densidade: 'compact',
   corSelecao: null,
   corAlerta: null,
 };
