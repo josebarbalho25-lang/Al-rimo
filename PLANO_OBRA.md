@@ -302,6 +302,10 @@ aberto dá conflito em tudo.
 > `chk_resiste`/`chk_res_cf` OK com a barra vermelha quando reprova ductilidade ou As (combinação conferida no teste);
 > `chk_ph`, `chk_pvs`, `chk_fl_s`, `chk_fl_den` NÃO OK com a barra azul (As,mín, s < 5 cm etc.). O José ainda não viu
 > na tela.
+> **2ª volta (15/11):** cintas do muro de cima (lateral `Mdl_cT`/`Mdl_cM` × `MRdl_cmc`, gravidade `Mdg_c*` ×
+> `MRdg_cmc`, uso = a interação `ap_c*`; tipo `cintaMc`); fantasma com a seção da sapata (dente); a vista se refaz e
+> reenquadra quando o muro muda de forma (`chaveDoEnquadramento`); números sem se encobrir (`arrumarRotulos`);
+> "Mostrar" por grupo de peça (`BarraAnalitica.grupo`, `GRUPOS`; vai para a prancha em `ocultos`).
 "Um diagrama 2D num esquema 3D com barras analíticas: as barras representando os contrafortes, as canaletas…
 cada barrinha com o seu desenho de momento solicitante e momento resistente."
 - **O que é:** vista nova na Gráfica ("Esforços"): o muro em arame — uma barra para cada peça que a conta
@@ -346,6 +350,7 @@ cada barrinha com o seu desenho de momento solicitante e momento resistente."
   | Painel não armado do balanço | `MRp_pan` / `MRn_pan` kN·m/m (ftd·W) | — | `Mpar` / `Mnor` | `ap_ppan` / `ap_npan` | já (fd) |
   | Subpainel entre contrafortes | `MRp_sp` / `MRn_sp` kN·cm/m (`ftdp_sp`, `ftdn_sp` nomeados) | — | `Mpar_sp` / `Mnor_sp` | `ap_psp` / `ap_nsp` | já |
   | Painéis A/B do muro de cima | `MRp_pA`, `MRn_pA`, `MRp_pB`, `MRn_pB` kN·m/m | — | `Mpa_p*` / `Mno_p*` | `ap_ppA`… | já |
+  | Cintas do muro de cima (15/11, seção 9) | `MRdl_cmc` (lateral, b 20) / `MRdg_cmc` (gravidade, b t) kN·m | `xM_cml` / `xM_cmg` | `Mdl_cT`, `Mdl_cM` / `Mdg_cT`, `Mdg_cM` | `apl_c*`, `apg_c*`, interação `ap_c*` | já |
 
   **Ao longo da peça** (intervalos nomeados; nó 0 em cima/na ponta livre, base/face por último — exceto onde dito):
   perfil do solo (Solo e Empuxo O–Z, 41 nós, z = `perf_z`, y acima da base = `perf_y`): `perf_V`, `perf_M`

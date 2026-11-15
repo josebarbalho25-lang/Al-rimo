@@ -951,6 +951,52 @@ e dizer ao Jose o que mudou e por quê.
   lascas de 3–9 mm e pintinhas claras), rugosidade 1 (fosco de todo), variação de tom 16 % de peça para peça, cor
   #b4623a (estiloVisual TIJOLO_REALISTA); entra pela classe 'tijolo' (materialDoAcabamento recebe a classe).
   BLOCOS CERÂMICOS 3D (9, 11,5, 14 e 19): o Jose modela no Revit e exporta em IFC (13/11: "deixa isso comigo").
+  CINTAS DO MURO DE CIMA VERIFICADAS (Jose, 15/11: "provavelmente ela sofre flexão no plano e fora do plano… vai dar
+  armadura mínima, eu acho. Mas vamos verificar."; FEITO no mesmo dia, ramo `muro-de-cima`): aba Muro de cima e
+  vento, seção 9 (no FIM; nenhum nome de antes mudou nos 81 cenários, 83.349 nomes; o res_mc ganhou o res_cmc).
+  Entradas novas (seção do muro de cima, logo depois de cin_mc): `phi_cin_mc` (ERA do modelo; lista L5:L8 = 6,3 a
+  12,5; arquivo antigo migra de extras para alteracoes, projeto.ts MUDOU_PARA_A_PLANILHA) e `n_cin_mc` (opcional,
+  2/4, lista BC5:BC7; em branco = 2, ou 4 quando 2 não passam → `n_cin_a`). `fck_pil` virou "Pilarete e cintas:
+  concreto" (a cinta é concreto mesmo com pilarete de bloco; no app acende com cinta). Por cinta k = T (topo) / M
+  (meia altura): `on_ck`, carga lateral `wl_ck` = p_w (S3 da ESTRUTURA, como a cinta do topo do arrimo) × `ht_ck`
+  (topo: metade do painel de baixo; meia: metade do de baixo + metade do de cima, ou o de cima INTEIRO com topo
+  livre), gravidade `wg_ck` = (γc·t + reboco)·0,20 + g_mct·`hm_ck` (alvenaria até a próxima cinta ou o topo),
+  `Mdl_ck`/`Mdg_ck` = γf·w·l²/8, `Vdl_ck`/`Vdg_ck` = γf·w·l/2 (l = `l_mc`); flexão NBR 6118 (bloco 0,8x, 0,85fcd)
+  `xl_ck`/`xg_ck`, `Aslc_ck`/`Asgc_ck`, necessária `Asln_ck`/`Asgn_ck` = máx(As; `Asm_cmc` = 0,15 %·20·t — o mesmo
+  número nas duas direções), `xdl_ck`/`xdg_ck` ≤ 0,45; MRd com as barras adotadas (`mrd_ret`, tags `cml` lateral b =
+  20 e `cmg` gravidade b = t) → `MRdl_cmc`, `MRdg_cmc`; interação `ap_ck` = `apl_ck` + `apg_ck` ≤ 1; cortante sem
+  estribo `VR1l_cmc`/`VR1g_cmc` (19.4.1, como a sapata); ancoragem no pilarete da ponta `ra_ck` = mín(1; 1,5·Vd/fyd/As
+  lateral + gravidade), `lbr_ck` (reta, α 1) ≤ `ldr_cmc` = b_pila − 3 → "Reta"; senão `lbg_ck` (α 0,7) ≤ `ldg_cmc` =
+  b_pila − `cg_cmc` − 3φ (perna por dentro do estribo; com 4 barras só se 12φ ≤ h − 6 cm) → "Gancho"; senão "Não
+  cabe" → NÃO OK (`anc_ck`). Lugar da barra: eixo a 3 cm da face, ou por dentro da barra do pilarete quando cairia
+  nela (`pp1_cmc`, `pp2_cmc`, `sc_cmc` → `ce_cmc`; achado: contrafortes em bloco 14 cortava, 3,0 → 3,07 cm) —
+  d lateral `dl_cmc` = t − ce; d de gravidade `dg_cmc` = 10 (2 barras no meio) ou 17 (4). Resumo `res_ck` →
+  `res_cmc` → `res_mc`. DEDUÇÕES: biapoiada entre pilaretes; tributária de metade de painel (topo livre: o painel de
+  cima inteiro); alvenaria apoiada sem arco e sem a parede de baixo; interação linear; VRd1 de laje; aℓ = 1,5d no
+  apoio; concreto = o do pilarete. Números do típico (2,0 m, pilarete 2,4, V0 35, Cf 1,2, S3 1,0, Ø8): t 11,5 só no
+  topo → Mdl 0,70 / Mdg 0,75 kN·m, As calc 0,19/0,18 < As,mín 0,35, 2Ø8, MRd 1,78/3,82, interação 0,59, reta;
+  t 14 → 0,52; as duas (11,5) → topo 0,21; MEIA altura Mdg 2,56 (0,8 m de alvenaria em cima) não passa com 2 barras
+  (d 10) e o automático vai a 4Ø8 (0,58). O "dá armadura mínima" vale para a do topo; a de meia altura pede 4 barras.
+  App: entradas na aba Muro de cima e vento (grupo Cintas; apagam sem cinta), card `murocima.cintas`
+  (`memoria/cards/muroDeCima.ts`, desenho `memoria/desenhoDaCinta.ts`, MRd em `momentoResistente.ts`
+  secoesMRdCintaMc). Modelo (`modulacao/muroDeCima.ts`): n_cin_a barras a ce_cmc, 2 no meio / 4 a 3 cm de cima e
+  de baixo; gancho 90° para baixo no pilarete da ponta quando a conta diz; emenda com o ℓb do concreto da cinta
+  (`lb_cmc`); o estribo do pilarete que cairia na altura de uma barra da cinta anda o mínimo em z; com gancho, o
+  canto dos ganchos do estribo do pilarete da esquerda vai para a face de dentro. `dims.muroDeCima.cintas` (z e
+  qual). Prova: `modulacao/cintasDoMuroDeCima.test.ts` (dentro do concreto, sem cortar barra/estribo do pilarete,
+  camadas, gancho), `esforcos/cintasEVista.test.ts`. Golden: alvo_cmc_topo_t14, _meia, _duas, _duas_t14 (Ø10),
+  _vao_longo (6 m: reprova, auto 4), _sem_vento (4 digitado), _gancho (vão 4,4, Ø6,3, 2 forçadas). A CONFERIR com o
+  Jose: aℓ = 1,5d; a tributária do topo livre; concreto único; hook quase nunca resolve (o ℓb,mín de 10 cm manda —
+  pilarete estreito vira "Não cabe"). Achado sem conserto: pilarete mais largo que o contraforte (b_pil > t) na
+  ponta do trecho sai para fora do muro (o modelo centra no contraforte; a conta não acusa).
+  VISTA ESFORÇOS, 2ª volta (15/11): cada cinta do muro de cima vira duas barras por vão (lateral deitada, gravidade
+  em pé), uso = a interação; o fantasma desenha a sapata pela seção (com o dente, não a caixa cheia); a vista se
+  refaz e reenquadra (mesma direção) quando o muro muda de forma (`chaveDoEnquadramento`; o pedido de quadro agora sai
+  de DENTRO do Canvas — com a Gráfica escondida o de fora caía antes da cena nova); números que se encobririam se
+  apagam pela prioridade (escolhida, mouse, maior uso, MSd antes do MRd — `arrumarRotulos`, também na foto da
+  prancha). "Mostrar" por grupo (Jose, 15/11: "dá pra isolar por esforço?"): Parede, Contrafortes, Painéis, Canaletas
+  e cinta, Sapata, Dente, Muro de cima — só os que o muro tem, "só" em cada linha, Todos/Nenhum; lembrado com as
+  outras escolhas da vista e levado para a prancha (`ocultos` no item); a câmera não pula. `BarraAnalitica.grupo`.
 - **VIRADA DE 90° (Jose, 13/11: "é o que mais é feito; não adianta calcular o muro só num sentido"):** muro em L com
   a quina. A quina dá rigidez (a perna de retorno apoia a outra, como um contraforte), mas traz empuxo nos dois
   sentidos — "uma verificação a mais". OS DOIS CASOS (um cliente tem o L para dentro, o outro para fora): aterro
