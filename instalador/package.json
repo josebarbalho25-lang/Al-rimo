@@ -36,6 +36,7 @@
       "splash.html",
       "splash-preload.js",
       "splashImagem.js",
+      "recentes.js",
       "package.json",
       "gerado/app/**",
       "gerado/splash/**",

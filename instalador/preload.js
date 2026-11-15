@@ -27,6 +27,11 @@ contextBridge.exposeInMainWorld('alrimoPrograma', {
   aoPedirSalvarEFechar: (cb) => { ipcRenderer.on('programa:salvar-e-fechar', () => cb()); },
   fechar: () => ipcRenderer.send('programa:fechar'),
 
+  // Os Recentes do Início (recentes.js no main): a lista, pôr no topo, tirar.
+  recentes: () => ipcRenderer.invoke('recentes:lista'),
+  lembrarRecente: (e) => ipcRenderer.invoke('recentes:lembrar', e),
+  esquecerRecente: (caminho) => ipcRenderer.invoke('recentes:esquecer', caminho),
+
   // A cor e a altura dos botões do Windows sobre o cabeçalho, que é a barra de título (app/src/ui/barraDaJanela.tsx).
   barraDaJanela: (b) => ipcRenderer.send('janela:barra', b),
 });

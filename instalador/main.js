@@ -25,6 +25,7 @@ const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
 const { imagemDaAbertura } = require('./splashImagem');
+const { criarArquivoDeRecentes } = require('./recentes');
 
 const NOME = 'Al-rimo';
 const ESQUEMA = 'app';
@@ -397,6 +398,9 @@ function criarPrincipal() {
      o muro estiver gravado; desistir do diálogo de salvar deixa aberto. */
   principal.on('close', (e) => {
     guardarLugar(principal);
+    // O Chromium grava o armazenamento da página (o último muro, o "salvo" do Ctrl+S de agora há pouco) com atraso:
+    // fechar logo depois de salvar perdia a última gravação, e o muro voltava com o • na próxima abertura.
+    try { session.defaultSession.flushStorageData(); } catch (_) { /* nada a gravar */ }
     if (podeFechar || !estado.sujo) return;
     e.preventDefault();
     if (TESTE_SAIDA) {               // no teste ninguém responde: fecha sem salvar
@@ -562,6 +566,21 @@ function ligarPonte() {
   });
 
   ipcMain.handle('arquivo:ler', async (_e, caminho) => fs.promises.readFile(String(caminho), 'utf8'));
+
+  /* OS RECENTES DO INÍCIO (o padrão do Pró-Viga, 15/11): a lista no perfil, as fotos em PNG ao lado
+     (recentes.js). Cada arquivo lembrado vai também para a lista de recentes do Windows (o botão direito no
+     ícone da barra de tarefas e o menu Iniciar). */
+  const recentes = criarArquivoDeRecentes(app.getPath('userData'), EXTENSAO);
+  ipcMain.handle('recentes:lista', () => recentes.listar());
+  ipcMain.handle('recentes:lembrar', (_e, entrada) => {
+    const lista = recentes.lembrar(entrada);
+    if (entrada && typeof entrada.caminho === 'string' && entrada.caminho.toLowerCase().endsWith(EXTENSAO)) {
+      try { app.addRecentDocument(entrada.caminho); } catch (_) { /* fora do Windows */ }
+    }
+    anotar('[recentes] lembrado', entrada && entrada.caminho, entrada && entrada.miniatura ? 'com foto' : '');
+    return lista;
+  });
+  ipcMain.handle('recentes:esquecer', (_e, caminho) => recentes.esquecer(caminho));
 
   // Grava num temporário ao lado e troca: queda de energia no meio não deixa
   // o .alrimo pela metade.
