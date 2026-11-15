@@ -58,6 +58,8 @@ export interface Ligacoes {
   veredito: JuizDoVeredito | null;
   exportarIfc: ExportadorIfc | null;
   imprimirMemoria: ImpressoraDaMemoria | null;
+  /** O memorial em Word (o mesmo documento, editável). Opcional: o Início mostra o modo só quando ligado. */
+  exportarWord?: ImpressoraDaMemoria | null;
   abas: Partial<Record<IdAba, ConteudoDaAba>>;
 }
 

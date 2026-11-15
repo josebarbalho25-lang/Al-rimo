@@ -20,7 +20,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { aplicarPreferencias, preferenciasAtuais } from './estilo/preferenciasDaInterface';
 import { lembrarUltimoProjeto } from './estado/store';
-import { ligarOPrograma } from './estado/acoesDeArquivo';
+import { ligarOPrograma, ligarOsRecentes } from './estado/acoesDeArquivo';
 import { ligarAsFrentes } from './integracao';
 
 aplicarPreferencias(preferenciasAtuais());
@@ -32,6 +32,8 @@ lembrarUltimoProjeto();
 // No programa instalado: o .alrimo do duplo clique entra DEPOIS do último muro lembrado (e pergunta, se ele tinha
 // alteração não salva). No navegador, nada.
 ligarOPrograma();
+// Os Recentes do Início: a lista guardada (no perfil do programa, ou no navegador com a alça de cada arquivo).
+ligarOsRecentes();
 
 const raiz = document.getElementById('raiz');
 if (raiz) {

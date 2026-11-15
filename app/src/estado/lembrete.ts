@@ -27,6 +27,12 @@ export const CHAVES = {
   /** Largura do painel em px na escala 100% (ver lembrarLarguraDoPainel). */
   largura: 'alrimo.largura.v2',
   ultimoProjeto: 'alrimo.ultimo.v1',
+  /**
+   * Só no programa instalado: o CAMINHO do arquivo do último muro (o lembrete do muro guarda só o nome). Com ele o
+   * Ctrl+S depois de reabrir o programa grava no mesmo arquivo, e o muro que não mudou desde o salvar volta salvo
+   * (estado/acoesDeArquivo.ts, retomarOArquivo).
+   */
+  caminho: 'alrimo.caminho.v1',
   /** A escala, os números e o fantasma do muro da vista Esforços (esforcos/VistaDeEsforcos.tsx). */
   esforcos: 'alrimo.esforcos.v1',
   /** Registro do aceite do Termo de Uso (estado/termo.ts). */

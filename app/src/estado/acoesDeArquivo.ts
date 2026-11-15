@@ -8,7 +8,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { abrirDoDisco, alcaDoCaminho, baixar, foiCancelado, salvarNoDisco, type Alca } from './arquivo';
+import { CHAVES, ehObjeto, esquecer, guardar, lembrar } from './lembrete';
 import { ponteDoPrograma, type ArquivoDoPrograma } from './programa';
+import { carregarRecentes, esquecerRecente, lerRecente, registrarRecente } from './recentes';
 import {
   desserializarProjeto,
   EXTENSAO,
@@ -25,6 +27,32 @@ import { CAMPOS, projetoAtual, useApp, VERSAO_DA_CONTA } from './store';
 
 /** A alça do arquivo aberto (só existe no navegador com janela de arquivo). Não é estado de tela. */
 let alcaAtual: Alca | null = null;
+
+/*
+  O CAMINHO DO ÚLTIMO MURO (programa instalado). O lembrete do muro (store.ts) guarda o texto e o NOME do arquivo;
+  o caminho fica aqui, ao lado, amarrado à identidade e ao nome — se o muro lembrado não for mais o deste caminho,
+  ele não vale. No navegador a alça não sobrevive a fechar e reabrir, e não se guarda nada.
+*/
+interface CaminhoLembrado {
+  id: string;
+  arquivo: string;
+  caminho: string;
+}
+const ehCaminhoLembrado = (x: unknown): x is CaminhoLembrado =>
+  ehObjeto(x) && typeof x.id === 'string' && typeof x.arquivo === 'string' && typeof x.caminho === 'string';
+
+function lembrarOCaminho(): void {
+  const s = useApp.getState();
+  const caminho = (alcaAtual as (Alca & { caminho?: string }) | null)?.caminho;
+  if (caminho && s.arquivo) guardar(CHAVES.caminho, { id: s.idDoProjeto, arquivo: s.arquivo, caminho } satisfies CaminhoLembrado);
+  else esquecer(CHAVES.caminho);
+}
+
+/** O muro da tela veio de (ou foi para) `alca`: o caminho fica lembrado e o arquivo sobe nos Recentes. */
+function noArquivo(alca: Alca | null, nome: string): void {
+  lembrarOCaminho();
+  if (alca) registrarRecente(alca, nome);
+}
 
 const avisar = (recado: string) => {
   if (recado) useApp.getState().dizer(recado);
@@ -63,6 +91,7 @@ export function novoProjeto(): boolean {
   if (!perderAlteracoes('O muro tem alterações não salvas. Começar outro mesmo assim?')) return false;
   alcaAtual = null;
   useApp.getState().carregar(projetoNovo(), null);
+  lembrarOCaminho();
   avisar('Projeto novo');
   return true;
 }
@@ -72,6 +101,7 @@ export function abrirExemplo(): boolean {
   if (!perderAlteracoes('O muro tem alterações não salvas. Abrir o exemplo mesmo assim?')) return false;
   alcaAtual = null;
   useApp.getState().carregar(projetoExemplo(), null);
+  lembrarOCaminho();
   avisar('Exemplo aberto');
   return true;
 }
@@ -90,7 +120,24 @@ function carregarLido(lido: { texto: string; nome: string; alca: Alca | null }):
     // arquivo sem identidade ganhou uma agora: ela só vale de verdade depois de ir para o disco (ver projeto.ts)
     sujo: a.ganhouId,
   });
+  noArquivo(lido.alca, lido.nome);
   avisar(recadoDeAbertura(lido.nome, a));
+}
+
+/** Clique num cartão dos Recentes: abre como o Abrir (a mesma pergunta, a mesma alça para o Ctrl+S). */
+export async function abrirRecente(chave: string, nome: string): Promise<void> {
+  if (!perderAlteracoes(`O muro tem alterações não salvas. Abrir ${nome} mesmo assim?`)) return;
+  try {
+    const lido = await lerRecente(chave);
+    if (!lido) return; // o navegador negou a licença do arquivo: desistência, como fechar a janela de arquivo
+    carregarLido(lido);
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'NotFoundError') {
+      // apagado ou movido: sai da lista, que só serve se abrir
+      void esquecerRecente(chave);
+      avisar(ruim(`${nome}: arquivo não encontrado`));
+    } else if (!foiCancelado(e)) avisar(naoDeuPara('abrir', e));
+  }
 }
 
 export async function abrirProjeto(): Promise<void> {
@@ -132,8 +179,45 @@ export function ligarOPrograma(): void {
       if (!useApp.getState().sujo) ponte.fechar();
     });
   });
-  ponte.aoAbrirArquivo(abrirArquivoDoPrograma);
-  ponte.pronto();
+  // ANTES do pronto(): o .alrimo do duplo clique, que chega depois dele, troca o muro — retomar o caminho do
+  // lembrado por cima seria do muro errado
+  void retomarOArquivo().finally(() => {
+    ponte.aoAbrirArquivo(abrirArquivoDoPrograma);
+    ponte.pronto();
+  });
+}
+
+/*
+  O MURO LEMBRADO VOLTA COMO ESTAVA NO DISCO (Jose, 15/11: fechar o programa logo depois de reabrir perguntava se
+  queria salvar, sem mudança nenhuma). O lembrete do muro é gravado a cada mexida, e o "salvo" do último Ctrl+S
+  pode não chegar ao disco do navegador quando o programa fecha logo em seguida (o Chromium grava o armazenamento
+  da página com atraso; o main agora força a gravação ao fechar, e isto aqui cobre o resto). Então, com o caminho
+  lembrado: lê o arquivo e, se o muro da tela é o mesmo que está nele, fica SALVO; a alça volta, e o Ctrl+S grava
+  no mesmo arquivo sem perguntar onde. Arquivo que mudou no disco, ou muro com alteração de verdade: fica como está.
+  Muro nunca salvo (sem arquivo): fica como está.
+*/
+export async function retomarOArquivo(): Promise<void> {
+  const ponte = ponteDoPrograma();
+  if (!ponte) return;
+  const l = lembrar<CaminhoLembrado | null>(CHAVES.caminho, null, (x): x is CaminhoLembrado | null => x === null || ehCaminhoLembrado(x));
+  const s = useApp.getState();
+  if (!l || !s.arquivo || l.arquivo !== s.arquivo || l.id !== s.idDoProjeto) return;
+  const carregamento = s.carregamento;
+  let texto: string;
+  try {
+    texto = await ponte.lerArquivo(l.caminho);
+  } catch {
+    return; // apagado ou movido: o muro fica com o • e o Ctrl+S pergunta onde
+  }
+  if (useApp.getState().carregamento !== carregamento) return; // outro muro entrou enquanto o disco respondia
+  alcaAtual = alcaDoCaminho(l.caminho, l.arquivo);
+  const a = desserializarProjeto(texto, CAMPOS, VERSAO_DA_CONTA);
+  if (a.ok) useApp.getState().confirmarODisco(a.projeto);
+}
+
+/** Lê os Recentes guardados (uma vez, em main.tsx). */
+export function ligarOsRecentes(): void {
+  void carregarRecentes();
 }
 
 export async function salvarProjeto(comoNovo = false): Promise<void> {
@@ -159,6 +243,7 @@ export async function salvarProjeto(comoNovo = false): Promise<void> {
     if (useApp.getState().carregamento === s.carregamento) {
       alcaAtual = r.alca;
       useApp.getState().marcarSalvo(r.nome, tituloDoArquivo(r.nome), gravado);
+      noArquivo(r.alca, r.nome);
     }
     avisar(`Salvo em ${r.nome}`);
   } catch (e) {
@@ -203,5 +288,21 @@ export async function imprimirMemoria(): Promise<void> {
     await imprimir(s.resultado, { projeto: s.titulo });
   } catch (e) {
     avisar(naoDeuPara('imprimir', e));
+  }
+}
+
+/** O memorial em Word (.doc editável, com as equações do Word): o mesmo documento do imprimir. */
+export async function exportarWordDaMemoria(): Promise<void> {
+  const s = useApp.getState();
+  const exportar = s.ligacoes.exportarWord;
+  if (!exportar) return;
+  if (!s.resultado) {
+    avisar(ruim('Conta com erro: nada a exportar'));
+    return;
+  }
+  try {
+    await exportar(s.resultado, { projeto: s.titulo });
+  } catch (e) {
+    avisar(naoDeuPara('exportar o Word', e));
   }
 }

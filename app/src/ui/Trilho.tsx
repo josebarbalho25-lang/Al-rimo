@@ -7,9 +7,11 @@
 //  Memória de cálculo, Quantitativo e Gráfica. Só ícone: o nome mora no
 //  `title`, como no Pró-Viga.
 //
-//  O cabeçalho é o mesmo em toda seção (o `topbar` de cada tela do Pró-Viga):
-//  o nome do muro com o •, a seção embaixo, e os comandos que valem em
-//  qualquer lugar — salvar, desfazer, refazer.
+//  O cabeçalho é o mesmo em toda seção (o `topbar` de cada tela do Pró-Viga),
+//  numa linha como a dele: o nome da seção em negrito e, depois do ponto, o
+//  contexto apagado — no Início "Projetos do Al-rimo" (o "Início · Projetos do
+//  Pró-Viga 3D"), nas outras o nome do muro com o •. Depois, os comandos que
+//  valem em qualquer lugar — salvar, desfazer, refazer.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import type { ReactNode } from 'react';
@@ -110,13 +112,22 @@ export function CabecalhoDaSecao({ children }: { children?: ReactNode }) {
     <header className="cabecalho">
       <div className="cabecalho-titulo">
         <h1 title={arquivo ?? undefined}>
-          {titulo}
-          {sujo ? ' •' : ''}
-          {/* No programa instalado o cabeçalho é a barra de título: leva o nome do programa, como a do Windows levava.
-              No navegador quem diz "Al-rimo" é a aba. */}
-          {barraPropria && <span className="cabecalho-programa"> — Al-rimo</span>}
+          {NOME_DA_SECAO[secao]}
+          <span className="cabecalho-contexto">
+            {' · '}
+            {secao === 'inicio' ? (
+              'Projetos do Al-rimo'
+            ) : (
+              <>
+                {titulo}
+                {sujo ? ' •' : ''}
+                {/* No programa instalado o cabeçalho é a barra de título: leva o nome do programa, como a do Windows
+                    levava. No navegador quem diz "Al-rimo" é a aba; no Início o nome já está dito. */}
+                {barraPropria && ' — Al-rimo'}
+              </>
+            )}
+          </span>
         </h1>
-        <span className="cabecalho-secao">{NOME_DA_SECAO[secao]}</span>
       </div>
       <div className="separador" />
       <button

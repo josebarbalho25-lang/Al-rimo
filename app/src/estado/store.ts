@@ -123,6 +123,11 @@ export interface EstadoDoApp {
    * navegador), e o usuário pode ter digitado no meio.
    */
   marcarSalvo: (arquivo: string, titulo: string, gravado: Projeto) => void;
+  /**
+   * O arquivo do muro da tela foi lido de novo do disco (o muro lembrado, ao reabrir o programa): se o que está nele
+   * é o que está na tela, o muro fica salvo. Não acende o • nunca. Devolve se ficou salvo.
+   */
+  confirmarODisco: (doDisco: Projeto) => boolean;
   selecionar: (id: string | null) => void;
   /**
    * Toda mudança nas pranchas passa aqui: marca o muro como alterado, como uma entrada. `passo`: as mexidas com a
@@ -471,6 +476,16 @@ export const useApp = create<EstadoDoApp>()((set, get) => ({
     assinaturaSalva = assinatura({ alteracoes: gravado.alteracoes, extras: gravado.extras, pranchas: gravado.pranchas ?? s.pranchas });
     // a identidade é a do arquivo gravado (o "Salvar como" de um muro já salvo grava com uma nova)
     set({ arquivo, titulo, sujo: !igual, contaDoArquivo: null, idDoProjeto: gravado.id });
+  },
+
+  confirmarODisco(doDisco) {
+    const s = get();
+    if (doDisco.id !== s.idDoProjeto) return false;
+    const noDisco = assinatura({ alteracoes: doDisco.alteracoes, extras: doDisco.extras, pranchas: doDisco.pranchas ?? SEM_PRANCHAS });
+    if (noDisco !== assinatura(s)) return false;
+    assinaturaSalva = noDisco;
+    if (s.sujo) set({ sujo: false });
+    return true;
   },
 
   selecionar(id) {

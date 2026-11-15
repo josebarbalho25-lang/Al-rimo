@@ -48,6 +48,7 @@ import { criarDesenhista, type Desenhista } from './desenhista';
 import { logoEmPng, useEscritorio } from './escritorio';
 import { imprimirPranchas } from './pdf';
 import { pacoteDxf } from './dxf';
+import { atenderSaida, usePedidoDeSaida } from './pedidoDeSaida';
 import type { ConteudoDoItem, DadosDaObra, Folha, Formato, ItemDaFolha, Orientacao, PedidoDeVista, PranchasDoProjeto, Pt, VistaDoProjeto } from './tipos';
 
 type Selecao = { tipo: 'item'; id: string } | { tipo: 'carimbo' } | { tipo: 'quadro' } | null;
@@ -317,6 +318,16 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
+
+  // O PDF e o DXF pedidos no Início: atendidos quando o desenhista está de pé (ele faz as fotos do Realista).
+  const pedidoDeSaida = usePedidoDeSaida((st) => st.pedido);
+  useEffect(() => {
+    if (!pedidoDeSaida || !desenhista || !pranchas.folhas.length) return;
+    const p = atenderSaida();
+    if (p === 'pdf') void exportar((c) => imprimirPranchas(c, nomeDeArquivo(`${tituloDoMuro} - pranchas`, '.pdf')));
+    else if (p === 'dxf') void exportar(baixarDxf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pedidoDeSaida, desenhista]);
 
   const mudarObra = (parcial: Partial<DadosDaObra>) => mudar((p) => ({ ...p, obra: { ...p.obra, ...parcial } }));
   const mudarFolha = (f: (x: Folha) => Folha) => folha && mudar((p) => naFolha(p, folha.id, f));

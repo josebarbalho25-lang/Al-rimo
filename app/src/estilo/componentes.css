@@ -1470,91 +1470,362 @@ body[data-theme='dark'] .prancheta-cores svg [stroke='#595959'] { stroke: #b4b4b
   color: var(--muted);
 }
 
-/* ── O INÍCIO (20/10) ───────────────────────────────────────────────────────
-   O "Abrir / Salvar" do Pró-Viga: arquivo em botões grandes, as saídas numa lista. */
+/* ── O INÍCIO (15/11: o do Pró-Viga 3D) ─────────────────────────────────────
+   Cópia do Início do Pró-Viga (Proviga-3D.html, classes home-* / export-* /
+   recent-*), nas mesmas proporções: coluna de 256 px com a marca, os botões
+   empilhados de 36 px e o Exportar em linhas; à direita os Recentes em cartões
+   de ~212 px de largura mínima, foto 16:10. Tudo pela escala da interface. */
 .tela-inicio {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
+  height: 100%;
+  overflow-y: auto;
   display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
   gap: calc(28px * var(--escala-ui));
-  padding: calc(24px * var(--escala-ui)) calc(28px * var(--escala-ui));
+  align-items: flex-start;
+  padding: calc(14px * var(--escala-ui)) calc(18px * var(--escala-ui)) calc(26px * var(--escala-ui));
 }
-.inicio-bloco {
-  flex: 1 1 calc(360px * var(--escala-ui));
-  max-width: calc(520px * var(--escala-ui));
+.inicio-lado {
+  width: calc(256px * var(--escala-ui));
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: calc(8px * var(--escala-ui));
+  gap: calc(10px * var(--escala-ui));
+  position: sticky;
+  top: 0;
 }
-.inicio-titulo {
-  font-size: var(--fs-nota);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.inicio-marca {
+  display: flex;
+  align-items: center;
+  gap: calc(11px * var(--escala-ui));
+  margin: 2px 0 calc(14px * var(--escala-ui));
+}
+.inicio-marca-ladrilho {
+  width: calc(42px * var(--escala-ui));
+  height: calc(42px * var(--escala-ui));
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px var(--shadow-soft);
+}
+.inicio-marca-nome {
+  font-family: var(--font-serif);
+  font-size: var(--fs-titulo);
+  color: var(--ink);
+  line-height: 1.1;
+}
+.inicio-marca-norma {
+  font-size: var(--fs-micro);
   color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 3px;
 }
-.inicio-grade {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: calc(8px * var(--escala-ui));
-}
-.inicio-grande {
-  height: calc(76px * var(--escala-ui));
+.inicio-primario,
+.inicio-botao {
+  width: 100%;
+  height: calc(36px * var(--escala-ui));
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: var(--fs-rotulo);
+  cursor: pointer;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
+  gap: 8px;
+  transition: background 0.12s;
+}
+.inicio-primario {
+  background: var(--accent);
+  color: var(--on-accent);
+  border: 0;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.inicio-primario:hover {
+  background: color-mix(in srgb, var(--accent) 88%, #ffffff);
+}
+.inicio-primario:active {
+  background: color-mix(in srgb, var(--accent) 90%, #000000);
+}
+.inicio-primario > svg {
+  width: calc(14px * var(--escala-ui));
+  height: calc(14px * var(--escala-ui));
+  stroke-width: 1.8;
+}
+.inicio-botao {
   background: var(--surface);
-  color: var(--ink);
-  font-size: var(--fs-rotulo);
-  cursor: pointer;
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  font-weight: 500;
 }
-.inicio-grande > svg {
-  width: calc(22px * var(--escala-ui));
-  height: calc(22px * var(--escala-ui));
-  color: var(--accent);
+.inicio-botao:hover {
+  background: var(--surface-2);
 }
-.inicio-grande:hover,
-.inicio-linha:hover:not(:disabled) {
-  background: var(--sel-bg);
+.inicio-botao:active {
+  background: var(--line-2);
 }
-.inicio-lista {
+.inicio-botao > svg {
+  width: calc(15px * var(--escala-ui));
+  height: calc(15px * var(--escala-ui));
+  stroke-width: 1.5;
+}
+.inicio-exportar {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-  overflow: hidden;
+  gap: 4px;
+  margin-top: calc(8px * var(--escala-ui));
+  padding-top: calc(14px * var(--escala-ui));
+  border-top: 1px solid var(--line);
 }
-.inicio-linha {
-  height: calc(40px * var(--escala-ui));
+.inicio-rotulo,
+.inicio-cabeca h3 {
+  font-size: var(--fs-nota);
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.inicio-rotulo {
+  padding: 0 2px 5px;
+}
+.inicio-saida {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 14px;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  background: transparent;
-  color: var(--ink);
-  font-size: var(--fs-rotulo);
+  gap: 10px;
+  width: 100%;
+  padding: calc(5px * var(--escala-ui)) 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
   cursor: pointer;
   text-align: left;
+  font-family: inherit;
+  transition: background 0.12s, border-color 0.12s;
 }
-.inicio-linha:last-child {
-  border-bottom: 0;
+.inicio-saida:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--accent);
 }
-.inicio-linha:disabled {
+.inicio-saida:disabled {
+  cursor: not-allowed;
+}
+.inicio-saida:disabled .inicio-saida-icone {
+  opacity: 0.5;
+  filter: grayscale(0.4);
+}
+.inicio-saida:disabled .inicio-saida-nome {
   color: var(--muted-2);
-  cursor: default;
 }
-.inicio-formato {
-  font-family: var(--font-mono);
+.inicio-saida-icone {
+  flex-shrink: 0;
+  width: calc(22px * var(--escala-ui));
+  height: calc(22px * var(--escala-ui));
+  display: flex;
+}
+.inicio-saida-icone > svg {
+  width: 100%;
+  height: 100%;
+}
+.inicio-saida-nome {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-corpo);
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.15;
+}
+.inicio-chip {
+  flex-shrink: 0;
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-2);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 2px 5px;
+}
+.inicio-submodos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 2px 15px;
+  padding-left: 10px;
+  border-left: 1px solid var(--line-strong);
+}
+.inicio-submodo {
+  width: 100%;
+  padding: calc(5px * var(--escala-ui)) 9px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-size: var(--fs-rotulo);
+  font-weight: 600;
+  color: var(--ink);
+}
+.inicio-submodo:hover {
+  background: var(--surface-2);
+}
+.inicio-arquivo {
   font-size: var(--fs-nota);
+  color: var(--muted-2);
+  margin-top: 4px;
+  padding: 0 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.inicio-arquivo .ponto {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 2px var(--ok-bg);
+  flex-shrink: 0;
+}
+
+.inicio-recentes {
+  flex: 1;
+  min-width: 0;
+}
+.inicio-cabeca {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 4px 2px 8px;
+}
+.inicio-cabeca h3 {
+  letter-spacing: 0.06em;
+}
+.inicio-cabeca > span {
+  font-size: var(--fs-nota);
+  color: var(--muted-2);
+}
+.inicio-vazio {
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  padding: calc(48px * var(--escala-ui)) 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
   color: var(--muted);
+  font-size: var(--fs-corpo);
+}
+.inicio-vazio-marca,
+.inicio-cartao-marca {
+  width: calc(46px * var(--escala-ui));
+  height: calc(46px * var(--escala-ui));
+  opacity: 0.85;
+}
+.inicio-grade-recentes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(212px * var(--escala-ui)), 1fr));
+  gap: calc(14px * var(--escala-ui));
+}
+.inicio-cartao {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
+}
+.inicio-cartao:hover,
+.inicio-cartao:focus-visible {
+  border-color: var(--accent-3);
+  box-shadow: 0 6px 18px var(--shadow-soft);
+  transform: translateY(-1px);
+}
+.inicio-cartao:active {
+  transform: none;
+}
+.inicio-cartao-foto {
+  aspect-ratio: 16 / 10;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line-2);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.inicio-cartao-foto > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.inicio-cartao-texto {
+  padding: calc(10px * var(--escala-ui)) 12px calc(11px * var(--escala-ui));
+}
+.inicio-cartao-nome {
+  font-size: var(--fs-corpo);
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.inicio-cartao-ficha {
+  font-size: var(--fs-rotulo);
+  color: var(--muted);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.inicio-cartao-data {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-nota);
+  color: var(--muted-2);
+  margin-top: 6px;
+}
+.inicio-cartao-tirar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  border: 0;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--muted);
+  font-size: var(--fs-destaque);
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s;
+  display: grid;
+  place-items: center;
+}
+.inicio-cartao:hover .inicio-cartao-tirar,
+.inicio-cartao:focus-within .inicio-cartao-tirar {
+  opacity: 1;
+}
+.inicio-cartao-tirar:hover {
+  color: var(--err);
+}
+.inicio-menu > button {
+  display: block;
+  width: 100%;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.inicio-menu > button:hover {
+  background: var(--sel-bg);
 }

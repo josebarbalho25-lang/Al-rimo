@@ -124,6 +124,14 @@
   --peca-tubo: #f0f0f0;
   --peca-solo: #8d6e3f;
 
+  /* O TIPO DO ARQUIVO nos ladrilhos do Exportar do Início (os do Pró-Viga: o IFC
+     azul, o DXF âmbar, o PDF vermelho, a planilha verde). Iguais nos três temas,
+     como as cores de material: é a cor do formato, não tinta de tela. */
+  --arq-ifc: #1b5fa8;
+  --arq-dxf: #d2811e;
+  --arq-pdf: #e2231a;
+  --arq-csv: #177245;
+
   /* O PAPEL das pranchetas (figuras e vistas 2D): o branco e a tinta de linha
      das figuras (figlib.py). Não é cor de tema — no escuro a folha inteira é
      invertida por filtro (`.prancheta`, componentes.css), não repintada. */

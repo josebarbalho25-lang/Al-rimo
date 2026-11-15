@@ -35,6 +35,7 @@ import * as THREE from 'three';
 import type { Modelo } from '@/modelo/tipos';
 import type { Camera3d } from '@/pranchas/tipos';
 import { ESCALA_DA_FOTO } from './captura';
+import type { Caixa } from './perfil3d';
 import { construirCena3D, type Cena3D } from './cena3d';
 import { planoDoCorte } from './Corte';
 import { pelesProprias, type FonteDasPeles } from './materiaisDoEstilo';
@@ -54,6 +55,12 @@ export interface OpcoesDoPalco {
   /** Foto para a PRANCHA: fundo transparente em qualquer tema e estilo — a folha é papel branco, e o fundo escuro
    *  do tema (ou o degradê do Cores) saía como um retângulo escuro no meio da prancha. */
   papel?: boolean;
+  /**
+   * O ponto de vista sai da CAIXA do muro montado, e não do guardado (a miniatura dos Recentes: cada muro
+   * enquadrado inteiro, do mesmo lado). Recebe a caixa visível (metro) e a proporção da foto; o estado do visor
+   * (estilo, Armadura, corte, ocultas) continua o do `c` passado.
+   */
+  enquadrar?: (caixa: Caixa, proporcao: number) => Camera3d;
 }
 
 export interface PalcoDaFoto {
@@ -73,8 +80,8 @@ export interface PalcoDaFoto {
  * câmera na proporção `larguraPx` ÷ `alturaPx`. Não desenha: quem desenha é
  * `refazerFoto` (ou o teste, que só confere a montagem).
  */
-export function montarPalcoDaFoto(modelo: Modelo, c: Camera3d, larguraPx: number, alturaPx: number, o: OpcoesDoPalco): PalcoDaFoto {
-  const { estilo, armadura, corte, ocultas } = estadoDoPontoDeVista(c);
+export function montarPalcoDaFoto(modelo: Modelo, c0: Camera3d, larguraPx: number, alturaPx: number, o: OpcoesDoPalco): PalcoDaFoto {
+  const { estilo, armadura, corte, ocultas } = estadoDoPontoDeVista(c0);
   const cena = construirCena3D(modelo, o.paleta, estilo, { peles: o.peles });
 
   // A régua do corte é a do Visor3D: o muro aceso ao montar a cena (antes de ocultar). Um muro que encurtou não
@@ -83,6 +90,8 @@ export function montarPalcoDaFoto(modelo: Modelo, c: Camera3d, larguraPx: number
   cena.aplicarVisibilidade(ocultas);
   cena.aplicarArmadura(armadura);
   if (corte !== null) cena.aplicarCorte([planoDoCorte(Math.min(regua.max[0], Math.max(regua.min[0], corte)))]);
+  // a caixa só existe depois de montar o muro: quem enquadra pela caixa decide a câmera aqui
+  const c = o.enquadrar ? o.enquadrar(cena.caixaVisivel(), larguraPx / alturaPx) : c0;
 
   const total = cena.caixaTotal();
   const camera = cameraDoPontoDeVista(c, larguraPx / alturaPx, total);
@@ -139,20 +148,27 @@ export async function refazerFoto(
   camera: Camera3d,
   larguraPx: number,
   alturaPx: number,
-  opcoes: { papel?: boolean; cancelado?: () => boolean } = {},
+  opcoes: { papel?: boolean; cancelado?: () => boolean; enquadrar?: OpcoesDoPalco['enquadrar'] } = {},
 ): Promise<string> {
   // pedido de quem já não quer (a prancha de um muro que mudou): sai da fila sem desenhar — senão as fotos do muro
   // novo esperam atrás das do muro velho, cada uma com seu toDataURL de até 4000 px
   const vez = fila.then(() => {
     if (opcoes.cancelado?.()) throw new Error('foto refeita: pedido cancelado');
-    return fotografarFora(modelo, camera, larguraPx, alturaPx, opcoes.papel === true);
+    return fotografarFora(modelo, camera, larguraPx, alturaPx, opcoes.papel === true, opcoes.enquadrar);
   });
   // A fila anda mesmo quando uma foto falha (a falha vai para quem pediu aquela foto).
   fila = vez.catch(() => undefined);
   return vez;
 }
 
-async function fotografarFora(modelo: Modelo, camera: Camera3d, larguraPx: number, alturaPx: number, papel: boolean): Promise<string> {
+async function fotografarFora(
+  modelo: Modelo,
+  camera: Camera3d,
+  larguraPx: number,
+  alturaPx: number,
+  papel: boolean,
+  enquadrar?: OpcoesDoPalco['enquadrar'],
+): Promise<string> {
   if (!(larguraPx >= 1 && alturaPx >= 1 && Number.isFinite(larguraPx * alturaPx))) throw new Error(`foto refeita: tamanho inválido (${larguraPx} × ${alturaPx})`);
   const tela = document.createElement('canvas');
   // As mesmas escolhas do Canvas do visor (o r3f liga antisserrilhado, alfa e a placa rápida; o visor liga o corte
@@ -172,7 +188,7 @@ async function fotografarFora(modelo: Modelo, camera: Camera3d, larguraPx: numbe
     const [w, h] = tamanhoQueCabe(larguraPx, alturaPx, lado);
     gl.setPixelRatio(1);
     gl.setSize(w, h, false);
-    palco = montarPalcoDaFoto(modelo, camera, w, h, { paleta: lerPaleta(), maxTextura: gl.capabilities.maxTextureSize, peles: peles.fonte, papel });
+    palco = montarPalcoDaFoto(modelo, camera, w, h, { paleta: lerPaleta(), maxTextura: gl.capabilities.maxTextureSize, peles: peles.fonte, papel, enquadrar });
     // sem fundo, o renderizador com alfa limpa transparente: no papel, o muro fica sobre a folha branca
     if (papel) gl.setClearColor(0x000000, 0);
     gl.toneMapping = palco.exposicao;

@@ -10,7 +10,7 @@ import { useApp } from '@/estado/store';
 import { useInterface } from '@/estado/interface';
 import { gerarModelo } from '@/modulacao';
 import { exportarIfc } from '@/ifc';
-import { imprimirMemorial, vereditoDaMemoria, figuraDoCard } from '@/memoria';
+import { exportarWord, imprimirMemorial, vereditoDaMemoria, figuraDoCard } from '@/memoria';
 import { Memoria } from '@/memoria/Memoria';
 import { Visor3D } from '@/visor/Visor3D';
 import { VistaDeEsforcos } from '@/esforcos/VistaDeEsforcos';
@@ -42,6 +42,7 @@ export function ligarAsFrentes(): void {
     exportarIfc,
     veredito: (r) => vereditoDaMemoria(r),
     imprimirMemoria: (r, i) => imprimirMemorial(r, { info: { projeto: i.projeto }, urlDaFigura, modelo: useApp.getState().modelo }),
+    exportarWord: (r, i) => exportarWord(r, { info: { projeto: i.projeto }, urlDaFigura, modelo: useApp.getState().modelo }),
     abas: {
       '3d': (c) => c.modelo && <Visor3D modelo={c.modelo} selecionado={c.selecionado} onSelecionar={c.selecionar} />,
       frontal: (c) => c.modelo && <Desenhos modelo={c.modelo} vista="frontal" selecionado={c.selecionado} onSelecionar={c.selecionar} />,

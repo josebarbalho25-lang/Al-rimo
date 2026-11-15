@@ -34,6 +34,26 @@ export interface PonteDoPrograma {
    * (ui/barraDaJanela.tsx). Opcional: o programa de antes de 15/11 tinha a barra do Windows e não a oferece.
    */
   barraDaJanela?(b: { color: string; symbolColor: string; height: number; fundo: string }): void;
+  /*
+    OS RECENTES DO INÍCIO (15/11, o padrão do Pró-Viga). O programa sabe o caminho de cada arquivo, então a lista
+    mora no perfil dele (%APPDATA%\Al-rimo\recentes.json, as fotos em recentes\*.png) e não dentro do .alrimo.
+    Cada chamada devolve a lista inteira, já sem os arquivos que sumiram do disco. Opcionais: o programa de antes de
+    15/11 não tem.
+  */
+  recentes?(): Promise<RecenteDoPrograma[]>;
+  /** Põe (ou promove) no topo. `miniatura` = PNG em data URL; sem ela, fica a foto que o recente já tinha. */
+  lembrarRecente?(e: { caminho: string; nome: string; resumo: string; miniatura?: string | null }): Promise<RecenteDoPrograma[]>;
+  esquecerRecente?(caminho: string): Promise<RecenteDoPrograma[]>;
+}
+
+/** Um recente como o programa devolve (a foto já em data URL, lida do perfil). */
+export interface RecenteDoPrograma {
+  caminho: string;
+  nome: string;
+  resumo: string;
+  /** Hora da última abertura ou gravação (ms desde 1970). */
+  quando: number;
+  miniatura: string | null;
 }
 
 export function ponteDoPrograma(): PonteDoPrograma | null {

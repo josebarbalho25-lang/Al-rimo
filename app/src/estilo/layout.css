@@ -90,12 +90,11 @@
 }
 .cabecalho-titulo {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  align-items: center;
   min-width: 0;
-  max-width: 50%;
-  line-height: 1.2;
+  max-width: 60%;
 }
+/* "Início · Projetos do Al-rimo": a seção em negrito e o contexto apagado, numa linha (o h2 do topbar do Pró-Viga). */
 .cabecalho-titulo h1 {
   font-size: var(--fs-destaque);
   font-weight: 600;
@@ -104,9 +103,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.cabecalho-secao {
-  font-size: var(--fs-nota);
+.cabecalho-contexto {
   color: var(--muted);
+  font-weight: 400;
 }
 .cabecalho .btn-icone > svg {
   width: calc(18px * var(--escala-ui));
@@ -150,10 +149,6 @@ html.programa [role='dialog'],
 html.programa [role='menu'],
 html.programa .menu-contexto {
   -webkit-app-region: no-drag;
-}
-.cabecalho-programa {
-  font-weight: 400;
-  color: var(--muted);
 }
 /* antes do aceite do termo: a faixa que faz de cabeçalho (só existe no programa) */
 .faixa-da-janela {
@@ -702,6 +697,53 @@ body[data-theme='dark'] .navegador-aba.on {
   display: flex;
   align-items: center;
   gap: 14px;
+}
+
+/* A FICHA DO MURO e a hora da conta (a barra do Pró-Viga): rótulo em caixa alta e cinza, valor em fonte de número.
+   Os pares que não cabem quebram para uma 2ª linha que fica escondida — some o par inteiro, nunca a metade. */
+.statusbar .ficha {
+  flex: 0 1 auto;
+  min-width: 0;
+  height: var(--status-h);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: flex-start;
+  column-gap: 16px;
+  overflow: hidden;
+}
+.statusbar .par {
+  height: var(--status-h);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.statusbar .par .k {
+  font-size: var(--fs-micro);
+  color: var(--muted-2);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.statusbar .par .valor {
+  font-weight: 500;
+}
+.statusbar .ponto {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ok);
+  flex-shrink: 0;
+}
+.statusbar .campo-estado.arquivo {
+  flex: 0 1 auto;
+  max-width: calc(260px * var(--escala-ui));
+  display: inline-block;
+}
+.statusbar .campo-estado.arquivo .ponto {
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: 1px;
 }
 
 /* O veredito: o selo passa / não passa do A-PORT (`.laje-situacao`), na barra. */
