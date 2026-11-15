@@ -1008,10 +1008,56 @@ e dizer ao Jose o que mudou e por quê.
     5461 verdes, tsc limpo; `modulacao/dente.test.ts`, `memoria/dente.test.ts`; planilha entregue regerada. Ficou:
     a chamada/faixa arredonda o espaçamento para cm inteiro (12,5 sai "c/12"; a conta e a memória dizem 12,5); com
     estribo de torção a menos de 6 cm ou transversal a menos de 8 não sobra plano livre e o do dente encosta.
-  · A CONFIRMAR com o Jose: passivo cheio como carga (decisão 7 do plano); o As,mín de 0,15 % na largura do dente
-    (é ele que manda: Ø8 c/12,5 num dente de 25); cortante na raiz sem descontar d; α = 0,7 na ancoragem; canto dos
-    ganchos em cima, do lado da ponta; longitudinais pelo critério de laje; a verificação da sapata no lugar de
-    somar o momento.
+  · A CONFIRMAR com o Jose: o As,mín de 0,15 % na largura do dente (é ele que manda em dente comum: Ø8 c/12,5 num
+    dente de 25); cortante na raiz sem descontar d; α = 0,7 na ancoragem; longitudinais pelo critério de laje; a
+    verificação da sapata no lugar de somar o momento.
+  · REVISÃO ADVERSARIAL de 15/11 (2 revisores + juiz) — CORRIGIDA no mesmo dia:
+    PLANILHA. (S1, CRITÉRIO ADOTADO em 15/11, a confirmar com o Jose — substitui o "passivo cheio é o máximo"): o
+    solo da frente de um dente debaixo da sapata está confinado pela pressão de contato, o Rankine de superfície
+    livre não é teto. Força de cálculo `Fd_den` = máx(`Fa_den` = 1,4·Ek; `Fb_den` = (FS_desl·H_k − R_at − R_ad)/Lm
+    ≥ 0, já de cálculo, sem outro γf); `gov_den` diz quem manda; Vd = Fd, Md = Fd·y (y = Mk/Ek, o braço do
+    trapézio). (b) manda praticamente só em muro que já não passa no deslizamento (FS 0,03–0,95 nos cenários);
+    exemplo do app (25 × 50, x 0): Fa 18,02 × Fb 8,70 → manda (a), Md 5,19, Vd 18,0, Ø8 c/12,5, como antes.
+    Alvo `alvo_dente_deslizamento_manda` (φ'b 20, δ/φ 0,5, dente 25 × 25): Fa 5,76 × Fb 14,84 → (b). Quatro muros
+    do gabarito com dente passaram a reprovar o dente por isso (alvo_cob_T_na_alma, _contraforte_nao_ductil,
+    _sapata_tensao_talao, sorteio19 — todos com FS ao deslizamento < 0,6). (S2) `pino_den` (3φ/5φ/8φ, Tab. 9.2, o
+    pinoEstribo do modelo) e `bmin_den` = 2c + 2φ + pino; `chk_geo_den` "NÃO OK — dente estreito para o estribo:
+    mínimo X cm" entra no `res_den`; as outras quatro dizem NÃO OK com d ≤ 0 ("dente sem altura útil, d ≤ 0"; o
+    VRd1 de dois negativos dava positivo). O modelo usa a mesma regra (DENTE_ESTREITO). (S3) altura sem largura COM
+    `pass_on` = Sim (o E_p conta o passivo pela altura do dente): `chk_geo_den`/`res_den` = "NÃO OK — digitar a
+    largura do dente ou zerar a altura"; sem a garantia, largura 0 continua "sem dente" (o "0 = sem dente" das
+    Entradas) — muda o res_den de sorteio05 e 06. (S4) espaçamento digitado < 5 cm reprova a flexão. (S5)
+    `sap_transv` (Estribo/Reta) VEIO PARA A PLANILHA (fim da seção Fundação das Entradas, lista na validação,
+    padrão Estribo): `chk_tr_den` com dente na ponta, Reta e Mk_heel ≤ 0 (a regra do modelo para barra em cima) =
+    "NÃO OK — sem armadura em cima da sapata: usar estribo na sapata". O modelo lê do Resultado; arquivo antigo
+    (extras.sap_transv) abre com o valor nas alterações (`MUDOU_PARA_A_PLANILHA` em estado/projeto.ts); testes
+    trocam pelo `comEntradas` (motor/resultadoDoGabarito.ts). (S6) eco "Dente: armadura (seção 11)" = res_den no
+    FIM da lista da seção 9 (só desce o que ninguém lê por endereço). (M2) `lbd_den` = h − c − Ø principal − Ø
+    secundária (o ramo de cima do estribo do dente passa logo abaixo da armadura de cima da sapata). Memória: card
+    com a seção "Largura do dente para o estribo" (verificação dente.largura), Fa/Fb/Fd em linhas, Md = Fd·y,
+    Vd = Fd, aviso com o motivo das reprovações por regra (sem desigualdade escrita); o desenho do passivo ganhou a
+    linha da força de cálculo. Nenhum nome de antes mudou em muro sem dente (golden comparado nome a nome com o
+    HEAD), fora o res_den de S3. Alvos novos: _deslizamento_manda, _estreito, _sem_d, _sem_largura,
+    _largura_vazia, _s_abaixo_de_5, _ponta_reta.
+    MODELO (`modulacao/entorno.ts`). (M1) `planosDoDente`: faixas proibidas para o centro (uma bitola de folga, a
+    maior, de toda barra de plano do trecho que atravessa a caixa do estribo — transversal/estribo da sapata,
+    torção, espera, nó de cachorro — e 3φ entre dois do dente), pontos sem saída (`comSemSaida`: faixa mais larga
+    que s − 3φ) também proibidos, e o estribo posto em sequência no livre mais perto do passo, ≤ s do anterior —
+    pode dar mais estribo que L/s. Sem ponto livre: encostado na barra (aviso DENTE_APERTADO, um por muro); onde
+    nem encostado cabe, pula o feixe de esperas do contraforte (até 40 cm, o vão passa de s ali) ou, com a sapata
+    toda cerrada (torção a 2–3 cm), fica rente à barra mais perto. (M2) ganchos no canto de BAIXO do lado do talão
+    (dentro do dente, face comprimida); ramo de cima abaixo da camada de cima da sapata; no dente estreito a ponta
+    do 2º gancho para antes da longitudinal do outro canto (DENTE_GANCHO diz quanto ficou). (M3) a longitudinal da
+    sapata empurrada pela perna não sai do cobrimento (vai para o outro lado) e a emendada deita para o lado sem
+    perna; a emendada do dente deita para cima (a do canto dos ganchos pela diagonal). (M4) `Barra.espacamento` (o
+    s da conta) no estribo do dente: chamada e faixa dizem "c/12,5" (`textoDoEspacamento`); nas outras famílias o s
+    da conta é cm inteiro e o desenhado ≤ ele, o arredondamento não passa. (M5) corte acha o estribo do dente em
+    qualquer lugar (tolerância s + 40 cm). (M6) elemento 'dente' na chamada (o N continua o mesmo da barra igual).
+    Prova: `modulacao/dente.test.ts` — gabarito com dente + varredura de 96 muros (balanço/contrafortes 14 e 19,
+    torção 2–20 cm, dente 15 × 15 a 40 × 60 nas duas pontas e no centro, Ø 5–12,5, s 5–20, Estribo/Reta,
+    Padrão/nó, 14 m e 20 m com junta) com distância segmento a segmento. Fig. 18 redesenhada (ganchos embaixo, do
+    lado do talão; ramo de cima abaixo da longitudinal de cima). Ficou: a quantidade de estribos do dente no modelo
+    pode passar a da conta (até ~10 % no exemplo).
 - **Revisão adversarial de 15/10 (3 revisores, 16 achados) — CORRIGIDA em 16/10** (`pranchas/__testes__/revisao16.test.ts`
   prova cada um): `Prancha.direita()` é a caixa de REFERÊNCIA (anotação arrastada não empurra a coluna das chamadas
   nem a seção da armação); a armação tem PARTES com origem própria (`RegiaoDoDesenho`: 'secao' e 'estribo:N…'; a
