@@ -1113,6 +1113,59 @@ e dizer ao Jose o que mudou e por quê.
   sentidos — "uma verificação a mais". OS DOIS CASOS (um cliente tem o L para dentro, o outro para fora): aterro
   DENTRO do L (as pernas abrem, a quina trabalha à tração — armadura horizontal virando a quina e ancorada) e aterro
   FORA do L (as pernas se empurram, quina comprimida). A FAZER, junto com o muro de cima.
+- **RAMOS DO ESTRIBO DO CONTRAFORTE: 2 OU 4 (Jose, 15/11 — FEITO 15/11, no main):** "estribos geralmente têm dois
+  ramos, um indo e um voltando… coloca 2 ou 4, 3 ramos não existe; 4 são 2 estribos menores, no Pró-Viga tem um
+  modelo quando a viga tem uma base grande". Antes: entrada livre, a conta usava o digitado e o modelo desenhava
+  SEMPRE 2. Agora:
+  · PLANILHA: `ramos_est` é lista 2 / 4 (Referências BD, `lst_ram`; padrão 2). Contrafortes, fim da seção 6: os
+    RAMOS QUE A CONTA USA (`ram_ef`) — 4 só se os dois estribos cabem, senão 2 (o Asw,ef, o Ø necessário e o resumo
+    usam `ram_ef`: nunca se conta aço que não se monta). Regra do estribo duplo do Pró-Viga (viewer3d.js): cada um
+    com 2/3 da largura do de 2 ramos (eenr − 7, `w4_est`), deslocados ±1/6 (ramos a cada 1/3), ganchos no canto de
+    fora. Duas condições (DEDUÇÃO, as medidas do desenho): (1) o gancho de 135° do estribo menor (`pg4_est` =
+    (w4 − φ − (1 + √2/2)·r)/(√2/2), r = 2φ do pino 3φ) chega a 5φ ≥ 5 cm (`pgn_est`, NBR 6118 9.4.6.1); (2) as n_cf
+    barras cabem no furo comum sem passar sobre os ramos do meio (`nb4_cab`, tabela `mont_n4E`/`mont_n4A` em
+    Referências AT21:BA30, calculada pelo app — `secaoDoContraforte.ts` barrasQueCabem com `faixaDosQuatroRamos` =
+    (t − 70)/6 − φt/2 mm — e conferida pelo teste, como a das barras que cabem). Verificação nova
+    `chk_ram_cf` "Estribo: 4 ramos cabem no contraforte" (NÃO OK — 4 ramos não cabem na largura do contraforte
+    (gancho de 2,6 < 5,0 cm | 8 barras e só 6 cabem entre os ramos do meio)), no card de cisalhamento. Números:
+    BLOCO 14 NUNCA (largura 7 cm → estribo menor 4,67 cm → gancho 2,7 cm com Ø6,3 e 3,5 com Ø5 < 5 cm); BLOCO 19
+    cabe (estribo menor 8,0 cm → gancho 7,4/8,2 cm) com até 15Ø6,3 / 8Ø8 / 6Ø10 / 2Ø12,5 / 2Ø16 / 1Ø20 (enterrado
+    e aparente iguais).
+  · Antes × depois (89 cenários, 104.842 nomes): mudaram só os 4 sorteios com 4 ramos que não cabem (sorteio11,
+    26, 27 no bloco 14 pelo gancho; sorteio14 no 19 com 13Ø10 — Asw,ef 3,93 → 1,96, o 26 passa a reprovar no
+    estribo) e os dois "tudo em branco" (o ramos_est virou lista e saiu dos campos livres: abre com 2). O sorteio
+    não mudou (já tirava 2 ou 4). Alvos novos `alvo_estribo4_cabe` e `alvo_estribo4_barras_demais`.
+  · MODELO (`modulacao/armaduras.ts` estribosDaJunta): com 4, os dois estribos na MESMA junta (no Pró-Viga o 2º
+    anda 2φ ao longo da viga; aqui o eixo da peça é a altura e a junta tem 10 mm), encaixados no plano: o 1º é o de
+    2 ramos estreitado, o 2º anda uma bitola ao longo do contraforte para a ponta (pernas curtas lado a lado no
+    terço do meio, nunca uma sobre a outra; para dentro, a perna da ponta passaria sobre as esperas); os dois são a
+    MESMA posição (espelho; `formaDaBarra` lê o estribo também de cabeça para baixo). Barras principais e
+    construtivas (e esperas) arrumadas DENTRO da faixa do meio e longe do par em planta, ganchos inclusive
+    (`livreDoPar`); as construtivas andam uma bitola (encostam no estribo que anda). Onde um ramo cruza a perna do
+    outro (2 pontos por junta) as barras passam uma sobre a outra, como já passam no canto dos ganchos — A CONFERIR
+    com o Jose. O aviso ESTRIBO_RAMOS saiu. Arquivo antigo com 3, 6… abre com 2 e o recado diz ("ramos do estribo
+    3 → 2", `projeto.ts` ajusteDeLista). Esforços: os estribos da mesma junta somam os ramos (`estribosAoLongo`); o
+    teste do cortante ficou estrito (colocado = Asw,ef em todo muro, 2 e 4). Entradas: escolha com desenho (planta
+    do contraforte com um ou dois estribos). A Fig. 12 não mudou (o estribo é um retângulo tracejado).
+  · Instalador refeito com isto (15/11, 18:30): `instalador/dist/Al-rimo-Setup-0.1.0.exe`, 103,1 MB — NÃO
+    instalado; o Jose instala por cima. Não visto na tela (a conferência é dos testes).
+  · Prova: `modulacao/estriboQuatroRamos.test.ts` (regra × desenho, par do Pró-Viga, mesma posição, nenhum ramo
+    sobre barra/espera/U nos muros do gabarito e em 20 variações), `secaoDoContraforte.test.ts` (tabela mont_n4),
+    `esforcos/acoColocado.test.ts`, `barrasAnaliticas.test.ts`, `estado/projeto.test.ts`.
+  · ACHADO (não é do 4 ramos, ficou): no bloco 14, o gancho do estribo de 2 ramos de hoje passa a ~3 mm do eixo da
+    construtiva do canto (Ø10; alvo_arredcima15_estribos) — a ponta de 135° atravessa a barra no desenho. A
+    conferir com o Jose (mover a construtiva para o canto do estribo, como na viga, ou o gancho para o outro canto).
+- **SAPATA "CURTA DEMAIS PARA ANCORAR NA FACE" (investigado 15/11, nada mudou):** a razão conhecida do teste
+  desenho × conta da vista Esforços (`barrasAnaliticas.test.ts`). Todos os muros do gabarito que caem nela são
+  `sap_transv` = Estribo (o sorteio não varia) e a envoltória JÁ trata a quina do estribo como ponta dobrada (ℓb,nec
+  com α = 0,7, `lbg_s`; NBR 6118 9.4.2.5): não ignora a dobra. Os casos são geometria de sorteio: balanço de 0,5 a
+  3 cm (o muro na beira da sapata) com As pedido ≈ 0 (sorteio26: ponta 3 cm, Md 0,06 kN·m/m, As 0,009 cm²/m ×
+  Ase 3,93; sorteio04: ponta 3 cm, As 0,004; sorteio19: ponta 20,5 cm, c 5, Ø10, a perna reta acaba a 13 cm da
+  face e ℓb,nec = 13,1 cm — chega a 4,58 de 4,62 cm²/m, com Md da ponta 0), ou o muro fora da sapata. Em todos o
+  ℓb,mín (máx(0,3ℓb; 10φ; 10 cm)) manda, porque As,calc/As,ef é quase zero. A planilha NÃO confere a ancoragem da
+  transversal da sapata (só a dobra da espera, o dente e a perna do U). Para o Jose: com `Reta` a barra termina no
+  cobrimento sem gancho — a NBR 6118 22.6.4.1.1 (de memória, conferir) pede a armadura de flexão da sapata de face a
+  face terminando em gancho nas duas pontas; o `Estribo` atende pela forma. Decisão dele se a Reta fica.
 - **CONTRAFORTE SUBINDO NO LUGAR DO PILARETE (Jose, 15/11, testando o instalado: "depois a gente ataca"):**
   ele notou que há a opção de o contraforte subir pelo muro de cima no lugar do pilarete, "não sei como o cálculo
   trata isso", e que as figuras e o 3D NÃO diferenciam os dois casos. A LEVANTAR antes de mexer: qual entrada é
@@ -1178,8 +1231,8 @@ e dizer ao Jose o que mudou e por quê.
   · ACHADOS MODELO × PLANILHA (na seção crítica; o teste exige que cada diferença caia numa razão conhecida):
     balanço e contraforte iguais em todos; dente: o modelo põe MAIS estribo que a conta em 41 de 45 (desvio das
     barras da sapata, já sabido); pilarete com PILARETE_LIGACAO: sem aço ancorado na base (6); sapata: balanço
-    curto demais para ancorar na face (13) e sorteios com o muro fora da sapata (13). Cortante do contraforte: o
-    modelo desenha 2 ramos (com `ramos_est` ≠ 2 o colocado sai a metade — aviso ESTRIBO_RAMOS). Envolve × aba: o
+    curto demais para ancorar na face (13) e sorteios com o muro fora da sapata (13). Cortante do contraforte: ~~o
+    modelo desenha 2 ramos~~ desde 15/11 o modelo desenha os ramos da conta (`ram_ef`, 2 ou 4) e o teste é estrito. Envolve × aba: o
     balanço e o contraforte batem sempre; sobram 5 (ponta curta, dente estreito, pilarete sem barra no arrimo).
     O trecho depois da última barra junto da ponta livre (cobrimento: `Diagrama.fimLivre`) não conta como falta.
   · NÃO VAI PARA A PRANCHA (Jose, 15/11: "os esforços a gente não vai mandar pra prancha, não. Eu nunca vi um projeto
