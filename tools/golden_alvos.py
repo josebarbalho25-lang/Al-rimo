@@ -197,6 +197,16 @@ ALVOS.update({
     'alvo_mc_cf_duas': {**_MC, 'Tipo_muro': 'Contrafortes', 'H_muro': 3.0, 'H_solo': 2.2, 'l_cf': 1.6, 'cin_mc': 'No topo e a meia altura',
                         'pil_tipo': 'Bloco grauteado', 'hs_pil': 39, 'b_pil': 14, 'cls_v': 'B', 'cat_v': 'V'},
     'alvo_vento_sem_mc': {'vento_on': 'Sim', 'mc_on': 'Não', 'H_muro': 2.4, 'H_solo': 1.6, 'V0_v': 40},
+    # cintas do muro de cima (15/11, seção 9): só a do topo, só a de meia altura, as duas; vão longo que reprova (o
+    # automático vai a 4 barras e ainda não basta); sem vento (só gravidade); gancho no pilarete da ponta
+    'alvo_cmc_topo_t14': {**_MC, 'cin_mc': 'No topo', 't_mc': 14, 'g_mc': 1.8},
+    'alvo_cmc_meia': {**_MC, 'cin_mc': 'A meia altura'},
+    'alvo_cmc_duas_t14': {**_MC, 'cin_mc': 'No topo e a meia altura', 't_mc': 14, 'g_mc': 1.8, 'phi_cin_mc': 10},
+    'alvo_cmc_vao_longo': {**_MC, 'cin_mc': 'No topo', 's_pil': 6.0},
+    'alvo_cmc_sem_vento': {**_MC, 'vento_on': 'Não', 'cin_mc': 'No topo e a meia altura', 'n_cin_mc': 4},
+    # gancho: vão longo (4,4 m) com Ø6,3 e 2 barras forçadas — a força a ancorar no apoio passa do reto que cabe
+    'alvo_cmc_gancho': {**_MC, 'cin_mc': 'No topo e a meia altura', 'h_mc': 2.4, 's_pil': 4.4, 'phi_cin_mc': 6.3, 'n_cin_mc': 2},
+    'alvo_cmc_duas': {**_MC, 'cin_mc': 'No topo e a meia altura'},
     # barra horizontal da canaleta: uma encostada em cada face (Jose, 13/11), com laterais engastadas (os dois sinais)
     'alvo_ph_duas_faces': {'Tipo_muro': 'Contrafortes', 'H_muro': 2.6, 'l_cf': 2.4, 'pos_ph': '2 barras (uma em cada face)', 'lat_pan': 'Engastadas', 'phi_ph': 10},
     'alvo_ph_duas_faces_apoiadas': {'Tipo_muro': 'Contrafortes', 'H_muro': 3.0, 'l_cf': 1.6, 'pos_ph': '2 barras (uma em cada face)', 'lat_pan': 'Apoiadas', 't_bloco': 19},

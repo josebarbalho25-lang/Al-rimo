@@ -90,7 +90,7 @@ LST = {  # nome definido → intervalo da lista na aba Referências (preenchido 
     'lst_H': '$AJ$5:$AJ$22', 'lst_lcf': '$AK$5:$AK$21', 'lst_tenr': '$AL$5:$AL$6', 'lst_s': '$AM$5:$AM$11',
     'lst_hpan': '$AN$5:$AN$12', 'lst_sph': '$AO$5:$AO$13', 'lst_phi_est': '$AP$5:$AP$6',
     'lst_phi_sap': '$AQ$5:$AQ$11', 'lst_phi_sap2': '$AR$5:$AR$9', 'lst_phi_esp': '$AS$5:$AS$10',
-    'lst_gr': '$BB$5:$BB$9',
+    'lst_gr': '$BB$5:$BB$9', 'lst_ncin': '$BC$5:$BC$7',
 }
 PHI_BARRAS = (6.3, 8, 10, 12.5, 16, 20)   # Ø de furo e canaleta: Referências L5:L10 e a lista das esperas (AS)
 LST_PHI = '$L$5:$L$10'   # Ø 6,3 a 20 (barras em furo e canaleta): a mesma lista das tabelas de arranjos
@@ -408,6 +408,12 @@ line(E, r, 'Muro de cima: ftk ∥ fiada — opcional', None, 'MPa', 'Tração na
 line(E, r, 'Muro de cima: fvk — opcional', None, 'MPa', 'Cisalhamento. Em branco = NBR 16868-1 Tab. 4 pela argamassa (fvk0, sem pré-compressão).', 'inp', '0.00', 'fvk_mc_dir'); r += 1
 line(E, r, 'Muro de cima: cintas', 'No topo', '', 'Cinta = apoio do painel. No topo; a meia altura; no topo e a meia altura; nenhuma (topo livre). Cada painel entre cintas é verificado e vale o pior.', 'inp', None, 'cin_mc'); r += 1
 dv_cm = DataValidation(type='list', formula1='"No topo,A meia altura,No topo e a meia altura,Nenhuma"'); E.add_data_validation(dv_cm); dv_cm.add(f'B{r-1}')
+# Barras da cinta (15/11): eram entrada só do modelo (Ø) e a quantidade fixa em 2; a conta das cintas (aba Muro de cima e
+# vento, seção 9) passou a depender delas. Em branco, a quantidade sai da conta (2, ou 4 quando 2 não passam).
+line(E, r, 'Muro de cima: Ø das barras da cinta', 8, 'mm', 'Barras corridas, com o eixo a 3 cm das faces.', 'inp', '0.0', 'phi_cin_mc'); r += 1
+lista('$L$5:$L$8', f'B{r-1}')
+line(E, r, 'Muro de cima: barras da cinta — opcional', None, '', 'Em branco = 2 (uma em cada face, no meio da altura) ou 4 (duas em cada face, em cima e embaixo) quando 2 não passam.', 'inp', '0', 'n_cin_mc'); r += 1
+lista(LST['lst_ncin'], f'B{r-1}')
 line(E, r, 'Pilaretes: tipo', 'Concreto moldado', '', 'Concreto moldado (NBR 6118) ou bloco grauteado (NBR 16868-1).', 'inp', None, 'pil_tipo'); r += 1
 dv_pt = DataValidation(type='list', formula1='"Concreto moldado,Bloco grauteado"'); E.add_data_validation(dv_pt); dv_pt.add(f'B{r-1}')
 line(E, r, 'Pilaretes: espaçamento (muro em balanço)', 2.4, 'm', 'Eixo a eixo. Só no balanço; com contrafortes o pilarete fica em cima do contraforte (linha de baixo).', 'inp', '0.00', 's_pil'); r += 1
@@ -415,7 +421,7 @@ line(E, r, 'Pilaretes: a cada quantos contrafortes', 1, '', '1 = um pilarete em 
 dv_pn = DataValidation(type='list', formula1='"1,2"'); E.add_data_validation(dv_pn); dv_pn.add(f'B{r-1}')
 line(E, r, 'Pilarete: largura (ao longo do muro) — opcional', None, 'cm', 'Em branco = balanço: 20 cm (o mínimo de frente para as barras caírem no furo do bloco — Jose, 13/11); contrafortes: a espessura do contraforte (t).', 'inp', '0.0', 'b_pil'); r += 1
 line(E, r, 'Pilarete: altura da seção (na direção do vento) — opcional', None, 'cm', 'Perpendicular ao muro: é a altura que resiste à flexão do vento. Em branco = balanço: a espessura do muro (t, as barras descem nos furos); contrafortes: 25 cm.', 'inp', '0.0', 'hs_pil'); r += 1
-line(E, r, 'Pilarete: concreto (moldado)', 'C25', '', 'Só no pilarete de concreto.', 'inp', None, 'fck_pil'); r += 1
+line(E, r, 'Pilarete e cintas: concreto', 'C25', '', 'Pilarete moldado e cintas do muro de cima.', 'inp', None, 'fck_pil'); r += 1
 dv_fp = DataValidation(type='list', formula1='"C20,C25,C30"'); E.add_data_validation(dv_fp); dv_fp.add(f'B{r-1}')
 line(E, r, 'Pilarete: fbk do bloco (grauteado)', 8, 'MPa', 'Só no pilarete de bloco: prisma cheio (fpk*) da ABCP Tab. 3.2.', 'inp', '0.0', 'fbk_pil'); r += 1
 dv_fb2 = DataValidation(type='list', formula1="='Referências'!$H$5:$H$16"); E.add_data_validation(dv_fb2); dv_fb2.add(f'B{r-1}')
@@ -588,7 +594,7 @@ R['AJ2'] = 'Listas das Entradas (montagens fechadas). Branco no topo = automáti
 _lst_cab = {'AJ': 'Altura (m)', 'AK': 'Eixo a eixo (m)', 'AL': 'Contraforte (cm)', 'AM': 'Barras (cm)',
             'AN': 'Canaletas balanço (m)', 'AO': 'Canaletas contraf. (cm)', 'AP': 'Ø estribo (mm)',
             'AQ': 'Ø sapata (mm)', 'AR': 'Ø sapata secund./torção (mm)', 'AS': 'Ø com espera (mm)',
-            'BB': 'Graute a cada (cm)'}
+            'BB': 'Graute a cada (cm)', 'BC': 'Barras da cinta do muro de cima'}
 _lst_col = {}
 for col, h_ in _lst_cab.items():
     c = R[f'{col}4']; c.value = h_; c.font = fH; c.fill = NAVY; c.alignment = Alignment(horizontal='center', wrap_text=True)
@@ -606,6 +612,8 @@ _lst_col['AL'] = ['=IF(t_bloco=19,59,34)', '=IF(t_bloco=19,79,54)']
 _lst_col['AM'] = [None] + [f'=IF({n}*Graute<=6*t_bloco,{n}*Graute,"")' for n in range(1, 7)]
 # graute a cada: múltiplos de m até 6t (bloco 19: 20 a 100; bloco 14: 20 a 80)
 _lst_col['BB'] = [f'=IF({n}*m_mod<=6*t_bloco,{n}*m_mod,"")' for n in range(1, 6)]
+# barras da cinta do muro de cima (15/11): em branco = automático (2, ou 4 quando 2 não passam)
+_lst_col['BC'] = [None, 2, 4]
 _lst_col['AN'] = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6]
 _lst_col['AO'] = [None] + [20 * n for n in range(1, 9)]
 _lst_col['AP'] = [5, 6.3]

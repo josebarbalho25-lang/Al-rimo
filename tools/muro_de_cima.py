@@ -248,8 +248,8 @@ Lm('Dados do muro de cima', '=IF(mc_on<>"Sim","— (sem muro de cima)",IF(AND(IS
 # Só vale "OK…" ou o "— (motivo)" escrito pela própria conta: o "—" puro é o IFERROR do pós-processamento, ou
 # seja, conta que não fechou — e conta que não fechou não pode passar.
 Lm('Muro de cima e vento: resumo',
-   '=IF(AND(mc_on<>"Sim",vento_on<>"Sim"),"— (sem muro de cima e sem vento)",IF(AND(OR(LEFT(chk_dv,2)="OK",LEFT(chk_dv,3)="— ("),OR(LEFT(chk_dmc,2)="OK",LEFT(chk_dmc,3)="— ("),OR(LEFT(res_pA,2)="OK",LEFT(res_pA,3)="— ("),OR(LEFT(res_pB,2)="OK",LEFT(res_pB,3)="— ("),OR(LEFT(res_pil,2)="OK",LEFT(res_pil,3)="— ("),OR(LEFT(res_lig,2)="OK",LEFT(res_lig,3)="— ("),OR(LEFT(res_cin,2)="OK",LEFT(res_cin,3)="— (")),"OK","NÃO OK"))',
-   '', 'Dados, painéis, pilarete, ligação no arrimo e cinta do topo do arrimo. Vai para as verificações do balanço e do contraforte.', 'key', None, 'res_mc')
+   '=IF(AND(mc_on<>"Sim",vento_on<>"Sim"),"— (sem muro de cima e sem vento)",IF(AND(OR(LEFT(chk_dv,2)="OK",LEFT(chk_dv,3)="— ("),OR(LEFT(chk_dmc,2)="OK",LEFT(chk_dmc,3)="— ("),OR(LEFT(res_pA,2)="OK",LEFT(res_pA,3)="— ("),OR(LEFT(res_pB,2)="OK",LEFT(res_pB,3)="— ("),OR(LEFT(res_pil,2)="OK",LEFT(res_pil,3)="— ("),OR(LEFT(res_lig,2)="OK",LEFT(res_lig,3)="— ("),OR(LEFT(res_cin,2)="OK",LEFT(res_cin,3)="— ("),OR(LEFT(res_cmc,2)="OK",LEFT(res_cmc,3)="— (")),"OK","NÃO OK"))',
+   '', 'Dados, painéis, pilarete, ligação no arrimo, cinta do topo do arrimo e cintas do muro de cima (seção 9). Vai para as verificações do balanço e do contraforte.', 'key', None, 'res_mc')
 r += 1
 # ---------- 8. momentos resistentes e esforços ao longo da altura (15/11, vista "Esforços") ----------
 # No FIM da aba: nada acima muda de lugar. As contas das seções 4 a 6 desfeitas com o aço adotado (mrd_ret,
@@ -329,4 +329,151 @@ for j in range(11):
     r += 1
 for _nm, _cc in (('pt_y', 'B'), ('pt_Mk', 'C'), ('pt_Vk', 'D'), ('pt_Md', 'E'), ('pt_Vd', 'F')):
     wb.defined_names[_nm] = DefinedName(_nm, attr_text=f"'Muro de cima e vento'!${_cc}${_p0}:${_cc}${r-1}")
+r += 1
+
+# ---------- 9. CINTAS DO MURO DE CIMA (15/11) ----------
+# Jose: "verificação da cinta e da armadura mínima… provavelmente ela sofre flexão no plano e fora do plano — no
+# sentido da gravidade e na lateral — mas é uma flexão baixíssima, vai dar armadura mínima, eu acho. Mas vamos
+# verificar." No FIM da aba: nada acima muda de lugar nem de valor (o res_mc só ganha o resumo daqui).
+# Modelo (DEDUÇÃO, a favor da segurança em cada escolha):
+#   - cinta de concreto de 20 cm de altura × espessura do muro de cima, BIAPOIADA entre pilaretes, vão = o eixo a
+#     eixo (l_mc, o mesmo dos painéis). Ela é contínua no trecho (as barras passam pelos pilaretes), mas o vão
+#     biapoiado dá o maior momento de vão e o apoio da ponta sem momento — o que se verifica na ancoragem;
+#   - LATERAL (fora do plano): o vento da ESTRUTURA (p_w, S3 da estrutura — a cinta é peça estrutural, "vedação é
+#     vedação, estrutura é estrutura") na metade de cada painel que se apoia nela. Cinta do topo: metade do painel de
+#     baixo dela. Cinta de meia altura: metade do painel de baixo + metade do de cima (com cinta no topo) ou o painel
+#     de cima INTEIRO (topo livre: a borda livre não leva nada, a cinta leva tudo — mais que a placa daria);
+#   - GRAVIDADE (no plano): peso da cinta (concreto + reboco) + a alvenaria apoiada nela até a próxima cinta ou o
+#     topo, sem o efeito de arco e sem a ajuda da alvenaria de baixo (a parede de baixo apoia a cinta de verdade);
+#   - as duas flexões juntas: interação LINEAR Md,lat/MRd,lat + Md,grav/MRd,grav ≤ 1 (a favor: a seção resiste mais
+#     que isso na flexão oblíqua); cortante sem estribo pela NBR 6118 19.4.1, como a sapata e o dente;
+#   - concreto: o do pilarete (fck_pil). A cinta é concretada junto com os pilaretes; com pilarete de bloco a
+#     cinta continua de concreto e a mesma entrada vale para ela (a linha se chama "Pilarete e cintas: concreto").
+# Barras (o que o app desenha): eixo a 3 cm das faces; 2 barras = uma em cada face, no meio da altura (d da
+# gravidade = 10 cm — a conta usa o d de verdade, não o de uma barra embaixo); 4 barras = duas em cada face, em cima
+# e embaixo (d da gravidade = 17 cm). Em branco, 4 só quando 2 não passam na flexão. Se a barra da cinta cairia em
+# cima de uma barra do pilarete (a mesma distância do eixo do muro), ela entra o suficiente para passar ao lado —
+# por dentro da gaiola do pilarete, como a barra de viga por dentro da de pilar — e o d sai com esse lugar.
+section(MC, r, '9. Cintas do muro de cima (concreto, biapoiadas entre pilaretes)'); r += 1
+_C = 'Tipo_muro="Contrafortes"'
+Lm('Cintas verificadas', '=IF(mc_on<>"Sim","— (sem muro de cima)",IF(cin_mc="Nenhuma","— (sem cintas)",cin_mc))', '', '', 'key')
+Lm('Altura da cinta', 20, 'cm', 'Uma fiada (o app desenha a cinta no lugar de uma fiada de tijolo).', 'res', '0.0', 'hc_cmc')
+Lm('Largura da cinta = espessura do muro de cima', '=t_mc', 'cm', '', 'res', '0.0', 'tc_cmc')
+Lm('Vão = eixo a eixo dos pilaretes', '=l_mc', 'm', 'Biapoiada (dedução, a favor).', 'res', '0.00', 'l_cmc')
+Lm('fck (o do pilarete)', '=VALUE(MID(fck_pil,2,2))', 'MPa', 'Entrada "Pilarete e cintas: concreto".', 'res', '0', 'fck_cmc')
+Lm('fcd = fck/1,4', '=fck_cmc/1.4', 'MPa', '', 'res', '0.00', 'fcd_cmc', 'NBR 6118 12.3.3')
+Lm('fctd = 0,21·fck^(2/3)/1,4', '=0.21*fck_cmc^(2/3)/1.4', 'MPa', '', 'res', '0.000', 'fctd_cmc', 'NBR 6118 8.2.5')
+Lm('fyd', '=fyk_/gama_s', 'MPa', '', 'res', '0.0', 'fyd_cmc')
+Lm('As de uma barra', '=PI()*phi_cin_mc^2/400', 'cm²', '', 'res', '0.000', 'As1_cmc')
+Lm('As,mín = 0,15%·b·h (as duas direções: 20 × t)', '=0.0015*hc_cmc*tc_cmc', 'cm²', 'NBR 6118 Tab. 17.3 (fck ≤ 30), o critério da sapata.', 'res', '0.000', 'Asm_cmc', 'NBR 6118 17.3.5.2.1')
+# Onde a barra da cinta passa: a 3 cm da face, ou mais para dentro se ali já tem barra do pilarete. Distâncias ao
+# EIXO do muro (o muro de cima é centrado no arrimo). Barra do pilarete: balanço — centrado, h/2 − c do eixo;
+# contrafortes — rente a uma face do arrimo (enterrado ou aparente, espelho): |c − t/2| e |h − c − t/2|.
+Lm('Barra do pilarete mais longe do eixo do muro', '=IF(' + _C + ',MAX(ABS(ce_pil-t_bloco/2),ABS(hs_pila-ce_pil-t_bloco/2)),hs_pila/2-ce_pil)', 'cm', '', 'res', '0.00', 'pp1_cmc')
+Lm('Barra do pilarete mais perto do eixo do muro', '=IF(' + _C + ',MIN(ABS(ce_pil-t_bloco/2),ABS(hs_pila-ce_pil-t_bloco/2)),hs_pila/2-ce_pil)', 'cm', '', 'res', '0.00', 'pp2_cmc')
+Lm('Distância mínima entre eixos (barra da cinta × do pilarete)', '=(phi_cin_mc+phi_pil)/20', 'cm', 'As duas se encostam, não se cortam.', 'res', '0.00', 'sc_cmc')
+Lm('Barra da cinta a 3 cm da face: distância ao eixo', '=tc_cmc/2-3', 'cm', '', 'res', '0.00', 'a0_cmc')
+Lm('… depois da barra do pilarete de fora', '=IF(ABS(a0_cmc-pp1_cmc)<sc_cmc,pp1_cmc-sc_cmc,a0_cmc)', 'cm', 'Cai em cima dela: passa por dentro, encostada.', 'res', '0.00', 'a1_cmc')
+Lm('Distância da barra da cinta ao eixo do muro', '=IF(ABS(a1_cmc-pp2_cmc)<sc_cmc,pp2_cmc-sc_cmc,a1_cmc)', 'cm', '', 'res', '0.00', 'ac_cmc')
+Lm('Eixo da barra da cinta à face', '=tc_cmc/2-ac_cmc', 'cm', 'O que o app desenha nas duas faces.', 'key', '0.00', 'ce_cmc')
+Lm('Mínimo ao eixo: φ/2 (as barras das duas faces não se encostam)', '=phi_cin_mc/20', 'cm', '', 'res', '0.00', 'acm_cmc')
+r += 1
+_K = (('T', 'do topo', 'OR(cin_mc="No topo",cin_mc="No topo e a meia altura")'),
+      ('M', 'de meia altura', 'OR(cin_mc="A meia altura",cin_mc="No topo e a meia altura")'))
+for k, desc, cond in _K:
+    MC.cell(row=r, column=1, value=f'Cinta {desc}: cargas e esforços').font = fB; r += 1
+    Lm(f'Cinta {desc} existe?', f'=IF(AND(mc_on="Sim",{cond}),"Sim","Não")', '', '', 'res', None, f'on_c{k}')
+    if k == 'T':
+        Lm('Altura de painel que se apoia nela (lateral)', '=IF(on_cT="Sim",IF(pnB_on="Sim",h_pB,h_pA)/2,0)', 'm', 'Metade do painel de baixo dela.', 'res', '0.00', 'ht_cT')
+        Lm('Alvenaria apoiada nela', '=0', 'm', 'Nada acima: ela é o topo.', 'res', '0.00', 'hm_cT')
+    else:
+        Lm('Altura de painel que se apoia nela (lateral)', '=IF(on_cM="Sim",h_pA/2+IF(cin_mc="No topo e a meia altura",h_pB/2,h_pB),0)', 'm',
+           'Metade do painel de baixo + metade do de cima (com cinta no topo) ou o de cima inteiro (topo livre).', 'res', '0.00', 'ht_cM')
+        Lm('Alvenaria apoiada nela', '=IF(on_cM="Sim",h_pB-IF(cin_mc="No topo e a meia altura",hc_cmc/100,0),0)', 'm', 'Até a cinta do topo ou o topo do muro.', 'res', '0.00', 'hm_cM')
+    Lm('Carga lateral = C·q (estrutura)·altura', f'=IF(on_c{k}="Sim",p_w*ht_c{k},0)', 'kN/m', 'Característica.', 'res', '0.000', f'wl_c{k}')
+    Lm('Carga de gravidade = (γc·t + reboco)·0,20 + parede·altura', f'=IF(on_c{k}="Sim",(gama_c*tc_cmc/100+g_mcr)*hc_cmc/100+g_mct*hm_c{k},0)', 'kN/m', 'Característica.', 'res', '0.000', f'wg_c{k}')
+    Lm('Md lateral = γf·w·l²/8', f'=gama_f*wl_c{k}*l_cmc^2/8', 'kN·m', '', 'key', '0.000', f'Mdl_c{k}')
+    Lm('Vd lateral = γf·w·l/2', f'=gama_f*wl_c{k}*l_cmc/2', 'kN', '', 'res', '0.000', f'Vdl_c{k}')
+    Lm('Md de gravidade = γf·w·l²/8', f'=gama_f*wg_c{k}*l_cmc^2/8', 'kN·m', '', 'key', '0.000', f'Mdg_c{k}')
+    Lm('Vd de gravidade = γf·w·l/2', f'=gama_f*wg_c{k}*l_cmc/2', 'kN', '', 'res', '0.000', f'Vdg_c{k}')
+r += 1
+# Em branco, a quantidade de barras é 2 quando 2 passam na flexão, senão 4. "Passa" = As,mín e a interação com o MRd
+# de 2 barras (MSd ≤ MRd com x ≤ 0,45d já garante As e ductilidade). A conta de 2 barras é a do MRd adotado, numa
+# linha só; a quantidade é uma para as duas cintas (o mesmo detalhe).
+MC.cell(row=r, column=1, value='Quantidade de barras (2 ou 4)').font = fB; r += 1
+Lm('d lateral = t − eixo à face', '=tc_cmc-ce_cmc', 'cm', 'O vento vem dos dois lados: a mesma conta nas duas faces.', 'res', '0.00', 'dl_cmc')
+_MR2 = lambda As, b, d: (f'IF({As}*fyd_cmc/10/(0.68*fcd_cmc/10*{b})<=0.45*{d},{As}*fyd_cmc/10*({d}-0.4*{As}*fyd_cmc/10/(0.68*fcd_cmc/10*{b})),'
+                         f'0.68*fcd_cmc/10*{b}*0.45*{d}*({d}-0.4*0.45*{d}))')
+Lm('Com 2 barras: MRd lateral (1 barra na face, b = 20)', '=' + _MR2('As1_cmc', 'hc_cmc', 'dl_cmc') + '/100', 'kN·m', 'F = As·fyd = 0,68·fcd·b·x; M = F·(d − 0,4x); x ≤ 0,45d.', 'res', '0.000', 'M2l_cmc', 'NBR 6118 17.2.2')
+Lm('Com 2 barras: MRd de gravidade (as 2 no meio da altura, d = 10)', '=' + _MR2('2*As1_cmc', 'tc_cmc', 'hc_cmc/2') + '/100', 'kN·m', '', 'res', '0.000', 'M2g_cmc', 'NBR 6118 17.2.2')
+for k, desc, _ in _K:
+    Lm(f'Cinta {desc}: 2 barras passam?', f'=IF(on_c{k}<>"Sim","Sim",IF(AND(As1_cmc>=Asm_cmc,Mdl_c{k}/M2l_cmc+Mdg_c{k}/M2g_cmc<=1),"Sim","Não"))', '', 'As,mín e Md,lat/MRd,lat + Md,grav/MRd,grav ≤ 1.', 'res', None, f't2_c{k}')
+Lm('Barras da cinta (adotado)', '=IF(ISNUMBER(n_cin_mc),n_cin_mc,IF(AND(t2_cT="Sim",t2_cM="Sim"),2,4))', '', 'Digitado nas Entradas ou o automático. O app desenha esta quantidade.', 'key', '0', 'n_cin_a')
+Lm('d de gravidade', '=IF(n_cin_a=4,hc_cmc-3,hc_cmc/2)', 'cm', '4 barras: a camada de baixo; 2 barras: as do meio da altura.', 'res', '0.00', 'dg_cmc')
+Lm('As lateral (uma face)', '=n_cin_a/2*As1_cmc', 'cm²', '', 'res', '0.000', 'Asl_cmc')
+Lm('As de gravidade (tracionada, embaixo)', '=2*As1_cmc', 'cm²', '', 'res', '0.000', 'Asg_cmc')
+r += 1
+MC.cell(row=r, column=1, value='Momento resistente com as barras adotadas (NBR 6118 17.2.2, conta do As desfeita)').font = fB; r += 1
+mrd_ret(Lm, 'cml', 'Asl_cmc', 'fyd_cmc', '0.68*fcd_cmc', '0.425*fcd_cmc', 'hc_cmc', 'dl_cmc', '0.45', False, '0,45·d (ductilidade)')
+Lm('MRd lateral', '=IFERROR(MRf_cml/100,"—")', 'kN·m', 'Seção 20 × t, uma face tracionada.', 'key', '0.000', 'MRdl_cmc', 'NBR 6118 17.2.2 (conta invertida)')
+mrd_ret(Lm, 'cmg', 'Asg_cmc', 'fyd_cmc', '0.68*fcd_cmc', '0.425*fcd_cmc', 'tc_cmc', 'dg_cmc', '0.45', False, '0,45·d (ductilidade)')
+Lm('MRd de gravidade', '=IFERROR(MRf_cmg/100,"—")', 'kN·m', 'Seção t × 20, tração embaixo.', 'key', '0.000', 'MRdg_cmc', 'NBR 6118 17.2.2 (conta invertida)')
+# Cortante sem estribo como a sapata (NBR 6118 19.4.1, a de laje): a cinta não leva estribo (DEDUÇÃO).
+for k_, desc_, b_, d_, As_ in (('l', 'lateral', 'hc_cmc', 'dl_cmc', 'Asl_cmc'), ('g', 'de gravidade', 'tc_cmc', 'dg_cmc', 'Asg_cmc')):
+    Lm(f'k {desc_} = 1,6 − d ≥ 1', f'=MAX(1,1.6-{d_}/100)', '', '', 'res', '0.000', f'k{k_}_cmc')
+    Lm(f'ρ1 {desc_} = As/(b·d) ≤ 2%', f'=MIN(0.02,{As_}/({b_}*{d_}))', '', '', 'res', '0.0000', f'rho{k_}_cmc')
+    Lm(f'VRd1 {desc_} = 0,25·fctd·k·(1,2 + 40ρ1)·b·d', f'=0.25*fctd_cmc/10*k{k_}_cmc*(1.2+40*rho{k_}_cmc)*{b_}*{d_}', 'kN', 'Sem estribo, como a sapata (dedução).', 'key', '0.00', f'VR1{k_}_cmc', 'NBR 6118 19.4.1')
+r += 1
+# Ancoragem na ponta do trecho: as barras são corridas e só terminam no PILARETE DA PONTA, que é o apoio extremo da
+# viga biapoiada. A força a ancorar no apoio é R = (aℓ/d)·Vd com aℓ = 1,5d (peça sem armadura de cortante — DEDUÇÃO
+# da regra da laje), NBR 6118 18.3.2.4: As,calc = 1,5·Vd/fyd, somando lateral e gravidade na mesma barra (com 2
+# barras a mesma barra leva as duas; com 4, a de baixo da face tracionada leva metade de cada — a soma das razões é a
+# mesma). Reta (α = 1) com a ponta a 3 cm da face de fora do pilarete; se não cabe, gancho de 90° descendo no
+# pilarete (α = 0,7), com a perna por dentro do estribo dele. O ℓb,mín vale nos dois.
+MC.cell(row=r, column=1, value='Ancoragem no pilarete da ponta').font = fB; r += 1
+Lm('fbd = 2,25·η2·η3·fctd', '=2.25*fctd_cmc', 'MPa', 'η1 = 2,25 (nervurada); η2 = 1,0 (boa aderência: peça de 20 cm); η3 = 1,0.', 'res', '0.000', 'fbd_cmc', 'NBR 6118 9.3.2.1')
+Lm('ℓb = φ/4·fyd/fbd', '=fyd_cmc/(4*fbd_cmc)*phi_cin_mc/10', 'cm', '', 'res', '0.0', 'lb_cmc', 'NBR 6118 9.4.2.4')
+Lm('ℓb,mín = máx(0,3·ℓb; 10φ; 10 cm)', '=MAX(0.3*lb_cmc,phi_cin_mc,10)', 'cm', '10φ em cm = φ em mm.', 'res', '0.0', 'lbm_cmc', 'NBR 6118 9.4.2.5')
+Lm('Reta: comprimento dentro do pilarete', '=b_pila-3', 'cm', 'Da face de dentro à ponta, a 3 cm da face de fora.', 'res', '0.0', 'ldr_cmc')
+Lm('Gancho: eixo da perna à face de fora', '=MAX(3,ce_pil-phi_pil/20+phi_cin_mc/20)', 'cm', 'Por dentro do estribo do pilarete.', 'res', '0.00', 'cg_cmc')
+Lm('Gancho: reto até a dobra', '=IF(AND(n_cin_a=4,12*phi_cin_mc>(hc_cmc-6)*10),0,b_pila-cg_cmc-0.3*phi_cin_mc)', 'cm',
+   'Dobra no pino 5φ (raio no eixo 3φ). Com 4 barras a perna de cima desce até a barra de baixo: só cabe com 12φ ≤ h − 6 cm.', 'res', '0.0', 'ldg_cmc', 'NBR 6118 Tab. 9.1')
+for k, desc, _ in _K:
+    MC.cell(row=r, column=1, value=f'Cinta {desc}: verificação').font = fB; r += 1
+    Lm('x lateral', f'=IFERROR(1.25*dl_cmc*(1-SQRT(1-Mdl_c{k}*100/(0.425*hc_cmc*dl_cmc^2*fcd_cmc/10))),"não resiste")', 'cm', 'b = 20.', 'res', '0.00', f'xl_c{k}', 'NBR 6118 17.2.2')
+    Lm('As lateral = Md/(fyd·(d − 0,4x))', f'=IFERROR(Mdl_c{k}*100/(fyd_cmc/10*(dl_cmc-0.4*xl_c{k})),"não resiste")', 'cm²', '', 'res', '0.000', f'Aslc_c{k}')
+    Lm('x de gravidade', f'=IFERROR(1.25*dg_cmc*(1-SQRT(1-Mdg_c{k}*100/(0.425*tc_cmc*dg_cmc^2*fcd_cmc/10))),"não resiste")', 'cm', 'b = t.', 'res', '0.00', f'xg_c{k}', 'NBR 6118 17.2.2')
+    Lm('As de gravidade = Md/(fyd·(d − 0,4x))', f'=IFERROR(Mdg_c{k}*100/(fyd_cmc/10*(dg_cmc-0.4*xg_c{k})),"não resiste")', 'cm²', '', 'res', '0.000', f'Asgc_c{k}')
+    # o necessário de cada direção e o x/d como célula: a memória compara com eles (não refaz a conta)
+    Lm('As lateral necessária = máx(As; As,mín)', f'=IF(ISNUMBER(Aslc_c{k}),MAX(Aslc_c{k},Asm_cmc),"não resiste")', 'cm²', '', 'res', '0.000', f'Asln_c{k}')
+    Lm('As de gravidade necessária = máx(As; As,mín)', f'=IF(ISNUMBER(Asgc_c{k}),MAX(Asgc_c{k},Asm_cmc),"não resiste")', 'cm²', '', 'res', '0.000', f'Asgn_c{k}')
+    Lm('x/d lateral', f'=xl_c{k}/dl_cmc', '', '≤ 0,45 (ductilidade).', 'res', '0.000', f'xdl_c{k}', 'NBR 6118 14.6.4.3')
+    Lm('x/d de gravidade', f'=xg_c{k}/dg_cmc', '', '≤ 0,45 (ductilidade).', 'res', '0.000', f'xdg_c{k}', 'NBR 6118 14.6.4.3')
+    Lm('Md,lat/MRd,lat', f'=Mdl_c{k}/MRdl_cmc', '', '', 'key', '0.000', f'apl_c{k}')
+    Lm('Md,grav/MRd,grav', f'=Mdg_c{k}/MRdg_cmc', '', '', 'key', '0.000', f'apg_c{k}')
+    Lm('Interação: Md,lat/MRd,lat + Md,grav/MRd,grav', f'=apl_c{k}+apg_c{k}', '', '≤ 1 (linear, a favor).', 'key', '0.000', f'ap_c{k}')
+    Lm('As,calc/As,ef no apoio = 1,5·Vd/fyd/As (lateral + gravidade)', f'=MIN(1,1.5*Vdl_c{k}/(fyd_cmc/10)/Asl_cmc+1.5*Vdg_c{k}/(fyd_cmc/10)/Asg_cmc)', '', 'aℓ = 1,5d (dedução).', 'res', '0.000', f'ra_c{k}', 'NBR 6118 18.3.2.4')
+    Lm('ℓb,nec reta = ℓb·As,calc/As,ef ≥ ℓb,mín', f'=MAX(lb_cmc*ra_c{k},lbm_cmc)', 'cm', 'α = 1.', 'res', '0.0', f'lbr_c{k}', 'NBR 6118 9.4.2.5')
+    Lm('ℓb,nec com gancho = 0,7·ℓb·As,calc/As,ef ≥ ℓb,mín', f'=MAX(0.7*lb_cmc*ra_c{k},lbm_cmc)', 'cm', 'α = 0,7.', 'res', '0.0', f'lbg_c{k}', 'NBR 6118 9.4.2.5')
+    Lm('Ancoragem no pilarete da ponta', f'=IF(on_c{k}<>"Sim","— (sem cinta)",IF(lbr_c{k}<=ldr_cmc,"Reta",IF(lbg_c{k}<=ldg_cmc,"Gancho","Não cabe")))', '',
+       'Reta; gancho de 90° descendo no pilarete; ou não cabe. O app desenha a que vale.', 'key', None, f'anc_c{k}')
+    _q = f'NÃO OK — cinta {desc}: '
+    Lm(f'Cinta {desc}: resumo',
+       f'=IF(on_c{k}<>"Sim","— (sem cinta {desc})",'
+       f'IF(ac_cmc<acm_cmc,"{_q}as barras não cabem entre as do pilarete",'
+       f'IF(OR(ISNUMBER(xl_c{k})=FALSE,ISNUMBER(xg_c{k})=FALSE),"{_q}a seção não resiste: Ø maior ou 4 barras",'
+       f'IF(MAX(xl_c{k}/dl_cmc,xg_c{k}/dg_cmc)>0.45,"{_q}x/d > 0,45",'
+       f'IF(Asl_cmc<MAX(Aslc_c{k},Asm_cmc),"{_q}lateral, As "&FIXED(Asl_cmc,2)&" < "&FIXED(MAX(Aslc_c{k},Asm_cmc),2)&" cm²",'
+       f'IF(Asg_cmc<MAX(Asgc_c{k},Asm_cmc),"{_q}gravidade, As "&FIXED(Asg_cmc,2)&" < "&FIXED(MAX(Asgc_c{k},Asm_cmc),2)&" cm²",'
+       f'IF(ap_c{k}>1,"{_q}flexão nas duas direções "&FIXED(ap_c{k},2)&" > 1",'
+       f'IF(Vdl_c{k}>VR1l_cmc,"{_q}cortante lateral "&FIXED(Vdl_c{k},2)&" > "&FIXED(VR1l_cmc,2)&" kN",'
+       f'IF(Vdg_c{k}>VR1g_cmc,"{_q}cortante de gravidade "&FIXED(Vdg_c{k},2)&" > "&FIXED(VR1g_cmc,2)&" kN",'
+       f'IF(anc_c{k}="Não cabe","{_q}ancoragem no pilarete da ponta "&FIXED(lbg_c{k},1)&" > "&FIXED(MAX(ldr_cmc,ldg_cmc),1)&" cm: pilarete mais largo ou Ø menor",'
+       f'"OK (flexão "&FIXED(100*ap_c{k},0)&"%; ancoragem "&IF(anc_c{k}="Reta","reta","com gancho")&")"))))))))))',
+       '', 'Flexão nas duas direções, As,mín, interação, cortante e ancoragem.', 'key', None, f'res_c{k}')
+r += 1
+Lm('Cintas do muro de cima: resumo',
+   '=IF(mc_on<>"Sim","— (sem muro de cima)",IF(cin_mc="Nenhuma","— (sem cintas)",IF(LEFT(res_cT,2)="NÃ",res_cT,IF(LEFT(res_cM,2)="NÃ",res_cM,'
+   'IF(AND(OR(LEFT(res_cT,2)="OK",LEFT(res_cT,3)="— ("),OR(LEFT(res_cM,2)="OK",LEFT(res_cM,3)="— (")),"OK","NÃO OK — a conta da cinta não fechou")))))',
+   '', 'Vai para o resumo do muro de cima (res_mc).', 'key', None, 'res_cmc')
 widths(MC, {'A': 46, 'B': 22, 'C': 9, 'D': 70, 'E': 18, 'H': 10, 'I': 8, 'J': 8, 'K': 8, 'L': 8})
