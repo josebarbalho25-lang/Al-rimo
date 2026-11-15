@@ -137,7 +137,9 @@ export function lerParametros(r: Resultado, extrasIn: Record<string, Valor>, avi
     n_cc: Math.max(0, Math.round(n('n_cc') ?? 2)),
     phi_est: ou('phi_est', 6.3),
     s_est: cm(n('s_est')),
-    ramos_est: Math.max(2, Math.round(n('ramos_est') ?? 2)),
+    // os ramos que a CONTA usa (Contrafortes, seção 6): 4 só quando os dois estribos menores cabem; senão 2 — o
+    // desenho tem o aço que a conta conta, nem mais nem menos (Jose, 15/11: "coloca 2 ou 4, 3 ramos não existe")
+    ramos_est: Math.round(n('ram_ef') ?? 2) === 4 ? 4 : 2,
     // Estribo só quando a conta pede (Jose, 13/10; planilha 05 do Carini): Asw_c = 0 é "dispensa pela conta".
     // Conta sem número ("—": a seção não resiste e o cortante nem chega a ser decidido) continua desenhando o
     // estribo, como antes — sumir com ele ali esconderia a peça justo no muro que precisa de revisão.

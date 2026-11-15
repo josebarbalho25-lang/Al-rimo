@@ -26,7 +26,7 @@ import { CATALOGO, JUNTA, furosDaPeca, meioModulo, pecaDoCatalogo, type NomeFami
 import { ENCAIXES, type ReceitaDaFiada } from './encaixes';
 import { montarHaste } from './fiadas';
 import { arrumarGrupo, type Arranjo } from './arranjo';
-import { COB_GRAUTE } from './contexto';
+import { COB_GRAUTE, RECUO_ESTRIBO_LATERAL } from './contexto';
 import { areaPoligono, distanciaAoFuro, retanguloArredondado } from './perfis';
 import type { Vec2 } from '@/modelo/tipos';
 
@@ -220,14 +220,30 @@ export function arranjoNaSecao(s: SecaoDoContraforte, c: number, n: number, phi:
  * regra do d sugerido do balanço) e a espera ao lado — no T e na ponta ao mesmo tempo, com o eixo no c da montagem.
  * Só INFORMA (decisão do Jose: a régua é o curso; nenhuma verificação nova).
  */
-export function barrasQueCabem(familia: NomeFamilia, tenr: number, posicao: Posicao, phi: number): number {
+export function barrasQueCabem(familia: NomeFamilia, tenr: number, posicao: Posicao, phi: number, faixa = Infinity): number {
   const secoes = [secaoDoContraforte(familia, tenr, posicao, 'T'), secaoDoContraforte(familia, tenr, posicao, 'L')];
-  const f = folgaNoComum(secoes);
+  const f = naFaixa(folgaNoComum(secoes), 0, faixa);
   const eta = etaDaBarra(secoes[0], cDaMontagem(familia, tenr, posicao));
   let n = 0;
   while (n < 99 && arrumarGrupo(f, f, 0, eta, n + 1, phi, 'Y').folga >= COB_GRAUTE) n++;
   return n;
 }
+
+/**
+ * A folga com a FAIXA do meio do estribo de 4 ramos: barra (ou espera) que passa de `faixa` (mm, do eixo do
+ * contraforte `cx` até a superfície da barra) cai sobre o ramo do meio — folga negativa, como fora do furo. Sem
+ * faixa (2 ramos), a folga de sempre.
+ */
+export function naFaixa(f: (x: number, y: number, raio: number) => number, cx: number, faixa: number) {
+  if (!Number.isFinite(faixa)) return f;
+  return (x: number, y: number, raio: number): number => (Math.abs(x - cx) + raio > faixa + 1e-6 ? -1 : f(x, y, raio));
+}
+
+/**
+ * A faixa livre do meio do estribo de 4 ramos (mm, do eixo do contraforte à superfície do ramo do meio): os ramos
+ * do meio ficam a 1/6 da largura do estribo de 2 ramos (t − 2·35 no eixo; armaduras.ts estribosDaJunta).
+ */
+export const faixaDosQuatroRamos = (t: number, phiEst: number): number => (t - 2 * RECUO_ESTRIBO_LATERAL) / 6 - phiEst / 2;
 
 /** Área (mm²) do furo comum à T e à ponta — a que a taxa de 8% com traspasse usa na memória. */
 export function areaDoFuroComum(familia: NomeFamilia, tenr: number, posicao: Posicao): number {

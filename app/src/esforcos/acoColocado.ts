@@ -244,18 +244,30 @@ export function valorEm(pontos: readonly PontoDoDiagrama[], s: number): number {
   return pontos[pontos.length - 1]!.v;
 }
 
+/** Estribos a menos que isto um do outro são da mesma junta (o par do estribo de 4 ramos do contraforte). */
+const MESMA_JUNTA = 15;
+
 /**
- * Estribos ao longo da peça (Asw/s colocado, cm²/m): entre dois estribos seguidos vale ramos·área/distância; fora do
- * primeiro e do último, nada. Degraus exatos (dois pontos no mesmo s).
+ * Estribos ao longo da peça (Asw/s colocado, cm²/m): entre duas juntas seguidas vale ramos·área/distância, com os
+ * ramos de TODOS os estribos da junta (`posicoes` tem um item por estribo; os de uma mesma junta somam — o de 4 ramos
+ * são dois estribos de 2, armaduras.ts estribosDaJunta); entre juntas com números diferentes, vale a de menos. Fora
+ * da primeira e da última, nada. Degraus exatos (dois pontos no mesmo s).
  */
-export function estribosAoLongo(posicoes: readonly number[], areaDoRamo: number, ramos: number, L: number): PontoDoDiagrama[] {
-  const zs = [...new Set(posicoes.map((z) => Math.round(z * 10) / 10))].filter((z) => z >= -TOL && z <= L + TOL).sort((a, b) => a - b);
-  if (zs.length < 2) return [];
+export function estribosAoLongo(posicoes: readonly number[], areaDoRamo: number, ramosPorEstribo: number, L: number): PontoDoDiagrama[] {
+  const ordem = posicoes.filter((z) => z >= -TOL && z <= L + TOL).sort((a, b) => a - b);
+  const juntas: { z: number; n: number }[] = [];
+  for (const z of ordem) {
+    const ultima = juntas[juntas.length - 1];
+    if (ultima && z - ultima.z < MESMA_JUNTA) ultima.n++;
+    else juntas.push({ z: Math.round(z * 10) / 10, n: 1 });
+  }
+  if (juntas.length < 2) return [];
   const out: PontoDoDiagrama[] = [];
-  for (let i = 0; i + 1 < zs.length; i++) {
-    const a = zs[i]!;
-    const b = zs[i + 1]!;
+  for (let i = 0; i + 1 < juntas.length; i++) {
+    const a = juntas[i]!.z;
+    const b = juntas[i + 1]!.z;
     if (!(b > a)) continue;
+    const ramos = ramosPorEstribo * Math.min(juntas[i]!.n, juntas[i + 1]!.n);
     const v = (ramos * areaDoRamo * 1000) / (b - a);
     out.push({ s: a, v }, { s: b, v });
   }

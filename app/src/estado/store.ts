@@ -361,7 +361,7 @@ function projetoInicial(): Inicio {
   const a = desserializarProjeto(u.texto, CAMPOS, VERSAO_DA_CONTA);
   if (!a.ok) return { ...vazio, recado: ruim(`Último muro não reaberto: ${a.motivo}`) };
   const guardada = typeof u.contaDoArquivo === 'string' ? u.contaDoArquivo : null;
-  const fora = a.descartados.length + a.recusados.length;
+  const fora = a.descartados.length + a.recusados.length + a.ajustados.length;
   const arquivo = typeof u.arquivo === 'string' ? u.arquivo : null;
   return {
     p: a.projeto,

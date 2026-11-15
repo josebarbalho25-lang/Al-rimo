@@ -345,18 +345,24 @@ const SIMETRIAS: ((x: number, y: number) => [number, number])[] = [
   (x, y) => [-x, y], (x, y) => [x, -y], (x, y) => [y, x], (x, y) => [-y, -x],
 ];
 
-/** A forma da barra sem a orientação: a menor das leituras (8 simetrias × os dois sentidos do eixo). */
-function formaDaBarra(eixo: Vec3[], fechada: boolean): string {
+/**
+ * A forma da barra sem a orientação: a menor das leituras (8 simetrias × os dois sentidos do eixo). O estribo lê
+ * também virado de cabeça para baixo: o degrau da volta (uma bitola) sobe num e desce no outro, e é a mesma peça de
+ * aço — o par do estribo de 4 ramos do contraforte é um estribo e o seu espelho (armaduras.ts, estribosDaJunta).
+ */
+function formaDaBarra(eixo: Vec3[], fechada: boolean, estribo = false): string {
   const r = (v: number): number => Math.round(v) || 0;
   let melhor: string | null = null;
   for (const s of fechada ? [eixo] : [eixo, [...eixo].reverse()]) {
     const o = s[0];
     for (const T of SIMETRIAS) {
-      const k = s.map((q) => {
-        const [x, y] = T(q[0] - o[0], q[1] - o[1]);
-        return `${r(x)},${r(y)},${r(q[2] - o[2])}`;
-      }).join(';');
-      if (melhor === null || k < melhor) melhor = k;
+      for (const sz of estribo ? [1, -1] : [1]) {
+        const k = s.map((q) => {
+          const [x, y] = T(q[0] - o[0], q[1] - o[1]);
+          return `${r(x)},${r(y)},${r(sz * (q[2] - o[2]))}`;
+        }).join(';');
+        if (melhor === null || k < melhor) melhor = k;
+      }
     }
   }
   return melhor ?? '';
@@ -370,7 +376,7 @@ function formaDaBarra(eixo: Vec3[], fechada: boolean): string {
 export function numerarPosicoes(barras: BarraNova[]): Barra[] {
   const mapa = new Map<string, string>();
   return barras.map((b) => {
-    const forma = formaDaBarra(b.eixo, !!b.fechada);
+    const forma = formaDaBarra(b.eixo, !!b.fechada, !!b.estribo);
     const chave = `${b.diametro}|${b.fechada ? 'F' : b.estribo ? 'E' : ''}|${Math.round(b.comprimento)}|${forma}`;
     let pos = mapa.get(chave);
     if (!pos) {

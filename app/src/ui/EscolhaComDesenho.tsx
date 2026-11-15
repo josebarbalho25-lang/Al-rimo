@@ -117,6 +117,28 @@ function celulaPainel(duas: boolean): ReactNode {
 }
 
 /*
+  Estribo do contraforte em planta (o contraforte deitado, o muro à esquerda): 2 ramos = um estribo fechado; 4 = dois
+  estribos menores sobrepostos, cada um com 2/3 da largura (a regra do Pró-Viga, armaduras.ts estribosDaJunta).
+*/
+function estriboCf(ramos: 2 | 4): ReactNode {
+  const x0 = 22, x1 = 106, y0 = 18, y1 = 42;      // o contraforte (largura = y)
+  const ex0 = x0 + 5, ex1 = x1 - 5, e0 = y0 + 4, e1 = y1 - 4;
+  const e = e1 - e0;
+  const caixas = ramos === 2 ? [[e0, e1]] : [[e0, e0 + (2 * e) / 3], [e1 - (2 * e) / 3, e1]];
+  return (
+    <g>
+      <rect x={8} y={8} width={14} height={44} fill={C.bloco} stroke={C.linha} strokeWidth={1.2} />
+      <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} fill={C.graute} stroke={C.linha} strokeWidth={1.2} />
+      {caixas.map(([a, b], k) => (
+        <rect key={k} x={ex0 + k * 1.6} y={a} width={ex1 - ex0 - 1.6} height={b - a} rx={2}
+          fill="none" stroke={C.aco} strokeWidth={1.4} />
+      ))}
+      {[e0 + e / 2].map((y) => <circle key={y} cx={x1 - 12} cy={y} r={2.6} fill={C.aco} />)}
+    </g>
+  );
+}
+
+/*
   O desenho de cada opção, pelo nome da entrada e pelo VALOR da opção (o mesmo valor que vai para a conta). Opção
   sem desenho aqui faz a entrada voltar ao controle de sempre — nada some por falta de figurinha.
 */
@@ -182,6 +204,7 @@ const DESENHOS: Record<string, (v: Valor) => ReactNode | null> = {
     const s = String(v ?? '');
     return s.startsWith('Centralizada') ? canaleta('centro') : s.startsWith('Encostada') ? canaleta('face') : s.startsWith('2 barras') ? canaleta('duas') : null;
   },
+  ramos_est: (v) => (Number(v) === 2 ? estriboCf(2) : Number(v) === 4 ? estriboCf(4) : null),
 };
 
 /** A entrada tem desenho para TODAS as opções de agora? (senão fica o controle de sempre) */

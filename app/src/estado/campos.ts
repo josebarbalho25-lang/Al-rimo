@@ -153,14 +153,14 @@ const POSITIVO = new Set([
   'bw_dir', 'Ka_dir', 'fyk_', 'd_dir', 'K_dir', 'div_adm',
   // altura de solo (09/10): a conta divide por ela (posição no perfil de 40 fatias) e a planilha só aceita > 0
   'H_solo',
-  'n_cf_dir', 'K_cf', 'ramos_est', 's_est', 'K_pv', 'K_ph', 'bwv_dir', 'bwh_els',
+  'n_cf_dir', 'K_cf', 's_est', 'K_pv', 'K_ph', 'bwv_dir', 'bwh_els',
   'B_sap', 'h_sap', 'gama_f', 'gama_m', 'gama_s',
   // modelo (dedução)
   'L_total', 'barbaca_phi', 'barbaca_s', 'barbaca_z', 'dreno_esp', 'drenof_phi', 'drenof_env', 'traspasse_dir',
 ]);
 
-/** Contagem de barras e de ramos: 2,5 barras não existe. */
-const INTEIRO = new Set(['n_cf_dir', 'n_cc', 'ramos_est']);
+/** Contagem de barras: 2,5 barras não existe. (Os ramos do estribo viraram lista 2 / 4 em 15/11.) */
+const INTEIRO = new Set(['n_cf_dir', 'n_cc']);
 
 /*
   VALOR QUE INVERTE O VEREDITO. A revisão mediu (balanço h = 2,6, com 10

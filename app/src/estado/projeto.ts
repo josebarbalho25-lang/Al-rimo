@@ -131,6 +131,8 @@ export type Aberto =
       descartados: string[];
       /** Nomes conhecidos com valor que o campo não aceitaria (texto, negativo, fora da lista): ficaram no padrão. */
       recusados: string[];
+      /** Valores que o arquivo trazia e a lista de hoje não tem, trocados por um que ela tem ("ramos do estribo 3 → 2"). */
+      ajustados: string[];
       /** A conta que salvou o arquivo não é a de hoje. */
       outraVersao: boolean;
       versaoDaConta: string;
@@ -184,6 +186,20 @@ function renomeado(campo: Campo, v: unknown, todas: Record<string, unknown>): un
   const t = typeof todas.t_bloco === 'number' ? todas.t_bloco : 19;
   const teto = Math.floor((6 * t) / 20) * 20;
   return typeof s === 'number' && s >= 20 && s <= teto && s % 20 === 0 ? s : 40;
+}
+
+/*
+  ENTRADA QUE VIROU LISTA. O arquivo de antes pode ter um número que a lista de hoje não tem; sem a troca ele cairia
+  em "entrada ignorada" sem dizer qual nem para onde foi. Aqui ele vira a opção certa e o recado de abertura diz.
+    · ramos_est (15/11, Jose: "coloca 2 ou 4, 3 ramos não existe"): era número livre; 3, 6… → 2 (o estribo fechado
+      que o desenho sempre teve). O 4 fica: a conta confere se os dois estribos cabem.
+  Só troca se a lista de HOJE não tiver o valor: o app de antes abre como sempre abriu.
+*/
+function ajusteDeLista(campo: Campo, v: unknown): { valor: Valor; nota: string } | null {
+  if (campo.meta.nome !== 'ramos_est') return null;
+  const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v.trim().replace(',', '.')) : NaN;
+  if (!Number.isFinite(n) || campo.opcoes.length === 0 || campo.opcoes.some((o) => mesmoValor(o.valor, n))) return null;
+  return { valor: 2, nota: `ramos do estribo ${String(n).replace('.', ',')} → 2` };
 }
 
 /*
@@ -241,6 +257,7 @@ export function desserializarProjeto(
 
   const descartados: string[] = [];
   const recusados: string[] = [];
+  const ajustados: string[] = [];
   const [fonteAlt, fonteExt] = mudarDeOrigem(a.alteracoes, a.extras, campos);
   const filtrar =(fonte: unknown, origem: Campo['origem']): Record<string, Valor> => {
     const saida: Record<string, Valor> = {};
@@ -249,6 +266,12 @@ export function desserializarProjeto(
       const c = campos.get(k);
       if (!c || c.origem !== origem) {
         descartados.push(k);
+        continue;
+      }
+      const ajuste = ajusteDeLista(c, v);
+      if (ajuste) {
+        saida[k] = ajuste.valor;
+        ajustados.push(ajuste.nota);
         continue;
       }
       const lido = validarValor(c, renomeado(c, v, fonte as Record<string, unknown>));
@@ -285,6 +308,7 @@ export function desserializarProjeto(
     },
     descartados,
     recusados,
+    ajustados,
     outraVersao: versaoDaConta !== versaoDeHoje,
     versaoDaConta,
     ganhouId,
@@ -298,10 +322,15 @@ export function desserializarProjeto(
  */
 export function recadoDeAbertura(
   nome: string,
-  a: { descartados: string[]; recusados: string[]; outraVersao: boolean },
+  a: { descartados: string[]; recusados: string[]; ajustados?: string[]; outraVersao: boolean },
 ): string {
   const fora = a.descartados.length + a.recusados.length;
-  if (fora) return ruim(`${nome} aberto · ${fora} ${fora === 1 ? 'entrada ignorada' : 'entradas ignoradas'}`);
+  const trocas = a.ajustados ?? [];
+  const partes = [
+    ...(fora ? [`${fora} ${fora === 1 ? 'entrada ignorada' : 'entradas ignoradas'}`] : []),
+    ...trocas,
+  ];
+  if (partes.length) return ruim(`${nome} aberto · ${partes.join(' · ')}`);
   if (a.outraVersao) return ruim(`${nome} aberto · salvo com outra versão da conta`);
   return `${nome} aberto`;
 }

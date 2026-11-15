@@ -94,4 +94,14 @@ describe('acoColocado — barras à mão', () => {
     expect(ps[ps.length - 1]!.v).toBe(0);
     expect(estribosAoLongo([100], 1, 2, 1000)).toEqual([]);
   });
+
+  it('estribos de 4 ramos: os dois estribos da mesma junta somam os ramos', () => {
+    // a junta a cada 400 com o par (os dois começam na mesma cota; um deles 1,85 mm acima, o degrau da volta)
+    const ps = estribosAoLongo([5, 5, 405, 406.85, 805, 805], areaDaBarra(6.3), 2, 1000);
+    expect(valorEm(ps, 200)).toBeCloseTo((4 * areaDaBarra(6.3) * 1000) / 400, 12);
+    expect(valorEm(ps, 600)).toBeCloseTo((4 * areaDaBarra(6.3) * 1000) / 400, 12);
+    // junta com um estribo só ao lado de uma com o par: vale a de menos
+    const meio = estribosAoLongo([5, 5, 405], areaDaBarra(5), 2, 1000);
+    expect(valorEm(meio, 200)).toBeCloseTo((2 * areaDaBarra(5) * 1000) / 400, 12);
+  });
 });

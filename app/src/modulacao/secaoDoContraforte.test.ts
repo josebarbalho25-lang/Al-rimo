@@ -13,7 +13,7 @@
 import { describe, expect, it } from 'vitest';
 import dados from '@/motor/planilha.gerada.json';
 import type { PlanilhaExportada } from '@/motor/tipos';
-import { MONTAGENS, areaDoFuroComum, barrasQueCabem, cDaMontagem, secaoDoContraforte, arranjoNaSecao } from './secaoDoContraforte';
+import { MONTAGENS, areaDoFuroComum, barrasQueCabem, cDaMontagem, faixaDosQuatroRamos, secaoDoContraforte, arranjoNaSecao } from './secaoDoContraforte';
 
 const P = dados as unknown as PlanilhaExportada;
 
@@ -103,6 +103,21 @@ describe('tabela da planilha (Referências, montagens do contraforte) = seção 
         expect(nE[i][k], `enterrado Ø${phi}`).toBe(barrasQueCabem(familia, tenr, 'enterrado', phi));
         expect(nA[i][k], `aparente Ø${phi}`).toBe(barrasQueCabem(familia, tenr, 'aparente', phi));
       });
+    });
+
+    // estribo de 4 ramos (15/11): as barras fora dos ramos do meio — com o estribo Ø6,3 e com o Ø5 (a mesma tabela)
+    it(`${familia} · ${tenr / 10}: barras que cabem entre os ramos do meio do estribo de 4 ramos`, () => {
+      const n4E = intervalo('mont_n4E');
+      const n4A = intervalo('mont_n4A');
+      const t = Number(ts[i]) * 10;
+      for (const phiEst of [5, 6.3]) {
+        phis.forEach((phi, k) => {
+          expect(n4E[i][k], `enterrado Ø${phi} estribo Ø${phiEst}`).toBe(barrasQueCabem(familia, tenr, 'enterrado', phi, faixaDosQuatroRamos(t, phiEst)));
+          expect(n4A[i][k], `aparente Ø${phi} estribo Ø${phiEst}`).toBe(barrasQueCabem(familia, tenr, 'aparente', phi, faixaDosQuatroRamos(t, phiEst)));
+          // a faixa só tira barra: nunca cabe mais que sem ela
+          expect(n4E[i][k]).toBeLessThanOrEqual(nE[i][k] as number);
+        });
+      }
     });
   });
 });

@@ -102,7 +102,12 @@ export const SIMBOLOS_CONTRAFORTE: Readonly<Record<string, string>> = {
   '(A_{sw}/s)_{calc}': 'estribo de cálculo por metro',
   '\\phi_{est}': 'diâmetro do estribo do contraforte',
   'n_{ram}': 'número de ramos do estribo',
-  's_{est}': 'espaçamento dos estribos',
+  'n_{ram,ef}': 'ramos do estribo que a conta usa (4 só se os dois estribos cabem)',
+  'w_{4}': 'largura de cada estribo do par de 4 ramos (de eixo a eixo dos ramos)',
+  'r_{dobra}': 'raio da dobra do estribo no eixo (pino 3φ)',
+  '\\ell_{gancho}': 'ponta do gancho de 135° que cabe no estribo menor',
+  '\\ell_{gancho,m\\acute{\\imath}n}': 'ponta do gancho de 135° exigida (5φ ≥ 5 cm)',
+  'n_{cabe,4}': 'barras do Ø adotado que cabem entre os ramos do meio',  's_{est}': 'espaçamento dos estribos',
   '\\phi_{est,nec}': 'diâmetro de estribo necessário com os ramos e o s adotados',
   '(A_{sw}/s)_{ef}': 'estribo efetivo por metro',
   'V_{Rd3,cf}': 'cortante resistente com os estribos adotados',
@@ -166,6 +171,7 @@ const ROTULOS_DO_VEREDITO = {
   bielas: 'Contraforte: bielas Vd ≤ Vrd2',
   estribos: 'Contraforte: estribos',
   junta: 'Estribo cabe na junta (Ø ≤ 6,3 mm)',
+  ramos: 'Estribo: 4 ramos cabem no contraforte',
   els: 'Contraforte: ELS δ∞ ≤ δadm',
 } as const;
 type Veredito = keyof typeof ROTULOS_DO_VEREDITO;
@@ -599,7 +605,8 @@ function cardCisalhamento(r: Parameters<AutorDeCards>[0]): Card {
   const Aswm = m.g('Asw_m', '(A_{sw}/s)_{m\\acute{\\imath}n}', 2, 'cm²/m');
   const Aswc = m.g('Asw_c', '(A_{sw}/s)_{calc}', 2, 'cm²/m');
   const Aswe = m.g('Asw_e', '(A_{sw}/s)_{ef}', 2, 'cm²/m');
-  const nram = m.ent('ramos_est', 'n_{ram}');
+  // os ramos que a conta USA (ram_ef): 4 só se os dois estribos menores cabem; senão 2 (Contrafortes, seção 6)
+  const nram = m.g('ram_ef', 'n_{ram,ef}', 0);
   const s = m.ent('s_est', 's_{est}');
   const phiEstCm = m.ent('phi_est', '\\phi_{est}', { fator: 0.1, casas: 2, unidade: 'cm' });
 
@@ -658,6 +665,7 @@ function cardCisalhamento(r: Parameters<AutorDeCards>[0]): Card {
           verif: verifica(m, 'junta', { chave: 'contraforte.estriboJunta', rotulo: 'Estribo na junta Ø ≤ 6,3', limite: 6.3, relacao: '<=', casasLimite: 1 }),
         }),
         m.entrada('ramos_est', 'n_{ram}'),
+        ...passosDosQuatroRamos(m, ps),
         m.entrada('s_est', 's_{est}'),
         ps('Asw_e', '(A_{sw}/s)_{ef}', mul(div(mul(nram, pi(), pot(phiEstCm, 2)), mul(cte(4, 0), s)), cte(100, 0)), {
           casas: 2,
@@ -677,6 +685,39 @@ function cardCisalhamento(r: Parameters<AutorDeCards>[0]): Card {
     avisos: [],
     aplicavel: aplicavel(m),
   };
+}
+
+/*
+  4 RAMOS (Jose, 15/11): dois estribos menores sobrepostos, a regra do estribo duplo do Pró-Viga — cada um com 2/3
+  da largura do de 2 ramos (eenr − 7), deslocados ±1/6. Conta só se cabem: o gancho de 135° do estribo menor chega
+  a 5φ ≥ 5 cm, e as n_cf barras cabem no furo comum sem passar sobre os ramos do meio (tabela das montagens, como a
+  das barras que cabem). Com 2 ramos pedidos, nada disso entra e n_ram,ef = n_ram.
+*/
+function passosDosQuatroRamos(m: Memoria, ps: Montador): (Passo | null)[] {
+  if (m.num('ramos_est') !== 4) return [];
+  const eenr = m.g('eenr', 'e_{enr}', 1, 'cm');
+  const phiMm = m.ent('phi_est', '\\phi_{est}', { unidade: 'mm' });
+  const phiCm = m.ent('phi_est', '\\phi_{est}', { fator: 0.1, casas: 2, unidade: 'cm' });
+  const w4 = m.g('w4_est', 'w_{4}', 2, 'cm');
+  const r4 = m.g('rd4_est', 'r_{dobra}', 2, 'cm');
+  const s2 = div(raiz(cte(2, 0)), cte(2, 0));
+  return [
+    ps('w4_est', 'w_{4}', mul(div(cte(2, 0), cte(3, 0)), sub(eenr, cte(7, 0))), { casas: 2, unidade: 'cm', ref: CRITERIO }),
+    ps('rd4_est', 'r_{dobra}', div(soma(div(mul(cte(3, 0), phiMm), cte(2, 0)), div(phiMm, cte(2, 0))), cte(10, 0)), {
+      casas: 2, unidade: 'cm', ref: { fonte: 'NBR 6118', item: 'Tab. 9.2' },
+    }),
+    ps('pg4_est', '\\ell_{gancho}', div(sub(sub(w4, phiCm), mul(soma(cte(1, 0), s2), r4)), s2), { casas: 2, unidade: 'cm' }),
+    ps('pgn_est', '\\ell_{gancho,m\\acute{\\imath}n}', max(mul(cte(5, 0), phiCm), cte(5, 0)), {
+      casas: 2, unidade: 'cm', ref: { fonte: 'NBR 6118', item: '9.4.6.1' },
+    }),
+    ps('nb4_cab', 'n_{cabe,4}', null, { casas: 0, origem: 'tabela', ref: { fonte: 'Template do Revit' } }),
+    ps('n_cf', 'n_{b,cf}', null, { casas: 0, origem: 'calculado' }),
+    ps('ram_ef', 'n_{ram,ef}', null, {
+      casas: 0,
+      origem: 'calculado',
+      verif: verifica(m, 'ramos', { chave: 'contraforte.ramos', rotulo: '4 ramos cabem no contraforte', limite: 4, relacao: '>=', casasLimite: 0 }),
+    }),
+  ];
 }
 
 // ───────────────────────────── 5 · ELS ─────────────────────────────

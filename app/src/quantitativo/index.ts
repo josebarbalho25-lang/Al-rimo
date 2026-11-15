@@ -123,7 +123,6 @@ const AVISOS_QUE_MUDAM_QUANTIDADE = new Set([
   'TRASPASSE_ADOTADO',     // conta do traspasse sem número → emendas com 50φ, comprimento de barra deduzido
   'CONTA_SEM_VALOR',       // peça desenhada com valor de obra porque a conta não deu número
   // Os de baixo vieram com a modulação dos gabaritos do Revit (09/10) e não chegavam ao CSV:
-  'ESTRIBO_RAMOS',         // a conta pede mais ramos que o estribo fechado desenhado → aço de estribo a menos
   'CANALETA_SEM_ESPACAMENTO', // só a cinta do topo: as canaletas intermediárias (peça, graute e aço) ficam fora
   'HASTE_SEM_GABARITO',    // haste mais comprida que os modelos do Revit: peças da haste deduzidas
   'BALANCO_ALEM_DO_CF',    // o balanço da conta além do contraforte da ponta não está no desenho

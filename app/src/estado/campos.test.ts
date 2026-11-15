@@ -284,7 +284,9 @@ describe('zero e fração onde a conta não aguenta', () => {
   });
   it('contagem de barras só inteira', () => {
     expect(lerDoCampo('2,5', c('n_cc'))).toEqual({ ok: false });
-    expect(lerDoCampo('1,5', c('ramos_est'))).toEqual({ ok: false });
+    // ramos do estribo (15/11): lista 2 / 4, escolha de botões
+    expect(c('ramos_est').opcoes.map((o) => o.valor)).toEqual([2, 4]);
+    expect(c('ramos_est').controle).toBe('escolha');
     expect(lerDoCampo('3', c('n_cf_dir'))).toEqual({ ok: true, valor: 3 });
     expect(lerDoCampo('', c('n_cf_dir'))).toEqual({ ok: true, valor: null });
     expect(lerDoCampo('2,5', c('B_sap')).ok).toBe(true);

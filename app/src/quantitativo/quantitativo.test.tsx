@@ -169,17 +169,16 @@ describe('quantificar — variações', () => {
     expect(quantificar(m).avisos).toEqual(['Armadura longitudinal de torção da sapata não desenhada']);
   });
 
-  it('avisos novos da modulação dos gabaritos (estribo com ramos a menos, balanço) também vêm', () => {
+  it('avisos novos da modulação dos gabaritos (balanço, canaletas) também vêm', () => {
     const m = modeloAMao();
     m.avisos = [
-      { codigo: 'ESTRIBO_RAMOS', texto: 'Estribo do contraforte com 4 ramos: desenhado fechado, 2 ramos' },
       { codigo: 'BALANCO_ALEM_DO_CF', texto: 'Balanço além do contraforte de ponta não desenhado' },
       { codigo: 'CANALETA_SEM_ESPACAMENTO', texto: 'Canaletas intermediárias: só a cinta do topo' },
       // a perna do U mais curta que o ℓb é aviso de projeto: a quantidade é a desenhada
       { codigo: 'CANALETA_U_PERNA', texto: 'Barra em U da canaleta: perna reta no contraforte de 20,3 cm, menor que ℓb,nec = α·ℓb = 0,7 × 54,6 = 38,2 cm no graute (dobra como gancho, α = 0,7, NBR 6118 9.4.2.5)' },
       { codigo: 'D_GEOMETRICO_CF', texto: 'Contraforte: barra a 10 cm da face' },
     ];
-    expect(quantificar(m).avisos).toEqual(m.avisos.slice(0, 3).map((a) => a.texto));
+    expect(quantificar(m).avisos).toEqual(m.avisos.slice(0, 2).map((a) => a.texto));
   });
 
   it('canaleta sobre canaleta: a junta horizontal é só a das duas paredes do U de baixo (o miolo é graute)', () => {

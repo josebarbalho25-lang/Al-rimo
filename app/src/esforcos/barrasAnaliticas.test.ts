@@ -228,6 +228,7 @@ describe('barras analíticas — o aço necessário e o colocado', () => {
   it('cortante: contraforte com Asw/s × estribos do modelo; sem estribo pela conta, nenhum estribo desenhado', () => {
     const difs: string[] = [];
     let n = 0;
+    let n4 = 0;
     for (const c of casos) {
       for (const b of doTipo(c, 'contraforte')) {
         const d = b.cortante!;
@@ -238,8 +239,10 @@ describe('barras analíticas — o aço necessário e o colocado', () => {
         const dispensa = (c.r.num('Asw_c') ?? 0) === 0;
         if (dispensa && f.colocado.some((p) => p.v > 0)) difs.push(`${c.cenario} ${b.id}: estribo desenhado com a conta dispensando`);
         // com estribo: entre o 1º e o último, o colocado é o Asw/s da planilha quando o modelo segue o s da conta
-        // o modelo desenha o estribo fechado de 2 ramos (aviso ESTRIBO_RAMOS quando a conta usa outro número)
-        if (!dispensa && f.colocado.length && (c.r.num('ramos_est') ?? 2) === 2) {
+        // 2 ramos = um estribo; 4 = dois estribos menores na mesma junta (só quando cabem: a planilha conta os ramos
+        // que cabem, ram_ef, e o modelo desenha esses) — o colocado bate com o Asw,ef nos dois casos
+        if (!dispensa && f.colocado.length) {
+          if (c.r.num('ram_ef') === 4) n4++;
           const meio = valorEm(f.colocado, (f.colocado[1]!.s + f.colocado[2]!.s) / 2);
           const sEst = c.r.num('s_est')!;
           if (Math.abs(sEst / 20 - Math.round(sEst / 20)) < 1e-9 && Math.abs(meio - c.r.num('Asw_e')!) > 0.01) difs.push(`${c.cenario} ${b.id}: Asw/s ${meio} × Asw_e ${c.r.num('Asw_e')}`);
@@ -248,6 +251,7 @@ describe('barras analíticas — o aço necessário e o colocado', () => {
     }
     expect(difs).toEqual([]);
     expect(n).toBeGreaterThan(20);
+    expect(n4).toBeGreaterThan(0);   // há muros do gabarito com 4 ramos que cabem (bloco 19)
   });
 
   it('peça sem verificação de cortante não desenha nada no modo Cortante', () => {

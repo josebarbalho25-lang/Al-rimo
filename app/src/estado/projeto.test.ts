@@ -167,6 +167,27 @@ describe('salvar e abrir — ida e volta', () => {
     expect(recadoDeAbertura('Editado.alrimo', a)).toBe('⚠ Editado.alrimo aberto · 5 entradas ignoradas');
   });
 
+  it('ramos do estribo fora da lista (15/11, só 2 ou 4): 3, 6… abrem com 2 e o recado diz; 2 e 4 ficam', () => {
+    const abreCom = (v: unknown) => abrir(serializarProjeto({ ...muro, alteracoes: { ...muro.alteracoes, ramos_est: v } as never }, VERSAO));
+    const a3 = abreCom(3);
+    expect(a3.ok).toBe(true);
+    if (!a3.ok) return;
+    expect(a3.projeto.alteracoes.ramos_est).toBe(2);
+    expect(a3.recusados).toEqual([]);
+    expect(a3.ajustados).toEqual(['ramos do estribo 3 → 2']);
+    expect(recadoDeAbertura('Velho.alrimo', a3)).toBe('⚠ Velho.alrimo aberto · ramos do estribo 3 → 2');
+    const a6 = abreCom('6');
+    expect(a6.ok && a6.projeto.alteracoes.ramos_est).toBe(2);
+    for (const v of [2, 4]) {
+      const a = abreCom(v);
+      expect(a.ok && a.projeto.alteracoes.ramos_est).toBe(v);
+      expect(a.ok && a.ajustados).toEqual([]);
+    }
+    // com entrada ignorada junto, as duas notícias
+    expect(recadoDeAbertura('V.alrimo', { descartados: ['x'], recusados: [], ajustados: ['ramos do estribo 3 → 2'], outraVersao: false }))
+      .toBe('⚠ V.alrimo aberto · 1 entrada ignorada · ramos do estribo 3 → 2');
+  });
+
   it('a barra de estado diz o que aconteceu ao abrir', () => {
     const limpo = { descartados: [], recusados: [], outraVersao: false };
     expect(recadoDeAbertura('A.alrimo', limpo)).toBe('A.alrimo aberto');

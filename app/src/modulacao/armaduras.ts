@@ -5,7 +5,7 @@
   (d) e o furo não deixa (graute < 15 mm, ou a barra sai do furo), o desenho mostra onde ela cabe e avisa. O
   desenho não esconde o que a conta não viu — mas também não desenha barra dentro do bloco.
 */
-import type { Aviso } from '@/modelo/tipos';
+import type { Aviso, Vec3 } from '@/modelo/tipos';
 import { H_FIADA, JUNTA, pecaDoCatalogo, secaoDaPecaCanaleta } from './catalogo';
 import type { MapaDeCavidades } from './cavidades';
 import { br, type TrechoModulado } from './modular';
@@ -17,7 +17,7 @@ import {
 import type { FiadaMontada } from './fiadas';
 import { arred } from './perfis';
 import { arrumarGrupo, type Arranjo } from './arranjo';
-import { cDaMontagem } from './secaoDoContraforte';
+import { cDaMontagem, faixaDosQuatroRamos, naFaixa } from './secaoDoContraforte';
 
 export interface Vertical {
   barra: BarraNova;
@@ -138,22 +138,51 @@ export function barrasDoPainel(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidad
 
 // ── contraforte ──────────────────────────────────────────────────────────────
 
-/** O grupo no muro: a barra tem de caber em todas as fiadas que atravessa; a espera, nas do traspasse. */
-function arranjar(ctx: Ctx, mapa: MapaDeCavidades, cx: number, cy: number, n: number, phi: number, eixo: 'X' | 'Y', l0: number): Arranjo {
+/**
+ * O grupo no muro: a barra tem de caber em todas as fiadas que atravessa; a espera, nas do traspasse. Com o estribo
+ * de 4 ramos, também dentro da `faixa` do meio (nenhuma barra sobre os ramos do meio — secaoDoContraforte.ts naFaixa,
+ * a mesma regra da tabela de barras que cabem da planilha).
+ */
+function arranjar(ctx: Ctx, mapa: MapaDeCavidades, cx: number, cy: number, n: number, phi: number, eixo: 'X' | 'Y', l0: number, livre?: Livre): Arranjo {
   const z1 = zTopoBarra(ctx);
+  const so = (f: (x: number, y: number, raio: number) => number) => (livre ? (x: number, y: number, raio: number) => (livre(x, y, raio) ? f(x, y, raio) : -1) : f);
   return arrumarGrupo(
-    (x, y, raio) => mapa.folga(x, y, raio, 0, z1),
-    (x, y, raio) => mapa.folga(x, y, raio, 0, l0),
+    so((x, y, raio) => mapa.folga(x, y, raio, 0, z1)),
+    so((x, y, raio) => mapa.folga(x, y, raio, 0, l0)),
     cx, cy, n, phi, eixo,
   );
+}
+
+/** Onde uma barra vertical pode ficar (além do furo): o par do estribo de 4 ramos tira o lugar dos ramos e ganchos. */
+type Livre = (x: number, y: number, raio: number) => boolean;
+
+/**
+ * 4 ramos: a barra (ou espera) fica entre os ramos do meio (a faixa da planilha, secaoDoContraforte.ts naFaixa — a
+ * mesma regra da tabela de barras que cabem) e longe de qualquer pedaço do par de estribos em planta, ganchos
+ * inclusive: a ponta de 135° entra na seção a 45° e a construtiva do lado do muro, com a espera, fica ali.
+ */
+function livreDoPar(xc: number, faixa: number, par: BarraNova[], phiEst: number): Livre {
+  const dentroDaFaixa = naFaixa(() => 0, xc, faixa);
+  const segs: [number, number, number, number][] = [];
+  for (const b of par) for (let i = 0; i + 1 < b.eixo.length; i++) segs.push([b.eixo[i][0], b.eixo[i][1], b.eixo[i + 1][0], b.eixo[i + 1][1]]);
+  return (x, y, raio) => {
+    if (dentroDaFaixa(x, y, raio) < 0) return false;
+    for (const [ax, ay, bx, by] of segs) {
+      const dx = bx - ax, dy = by - ay;
+      const L2 = dx * dx + dy * dy;
+      const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)) : 0;
+      if (Math.hypot(x - ax - t * dx, y - ay - t * dy) < raio + phiEst / 2 - 1e-6) return false;
+    }
+    return true;
+  };
 }
 
 /**
  * As barras de um papel do contraforte, distribuídas pelos furos em ordem (o 1º é o da conta): todas no 1º se
  * couberem; senão o máximo que cabe em cada um, do 1º para dentro. Devolve a arrumação e quantos furos usou.
  */
-function distribuir(ctx: Ctx, mapa: MapaDeCavidades, cx: number, alvos: number[], n: number, phi: number, eixo: 'X' | 'Y', l0: number): { pares: { b: [number, number]; e: [number, number] }[]; furos: number; folga: number } {
-  const tudo = arranjar(ctx, mapa, cx, alvos[0], n, phi, eixo, l0);
+function distribuir(ctx: Ctx, mapa: MapaDeCavidades, cx: number, alvos: number[], n: number, phi: number, eixo: 'X' | 'Y', l0: number, livre?: Livre): { pares: { b: [number, number]; e: [number, number] }[]; furos: number; folga: number } {
+  const tudo = arranjar(ctx, mapa, cx, alvos[0], n, phi, eixo, l0, livre);
   const pares = (a: Arranjo) => a.barras.map((b, k) => ({ b, e: a.esperas[k] }));
   if (tudo.folga >= 0 || alvos.length < 2) return { pares: pares(tudo), furos: 1, folga: tudo.folga };
   const out: { b: [number, number]; e: [number, number] }[] = [];
@@ -168,7 +197,7 @@ function distribuir(ctx: Ctx, mapa: MapaDeCavidades, cx: number, alvos: number[]
     let achado: Arranjo | null = null;
     while (lo < hi) {
       const mid = Math.ceil((lo + hi) / 2);
-      const a = arranjar(ctx, mapa, cx, cy, mid, phi, eixo, l0);
+      const a = arranjar(ctx, mapa, cx, cy, mid, phi, eixo, l0, livre);
       if (a.folga >= 0) {
         lo = mid;
         achado = a;
@@ -177,7 +206,7 @@ function distribuir(ctx: Ctx, mapa: MapaDeCavidades, cx: number, alvos: number[]
       }
     }
     if (lo > 0) {
-      if (!achado || achado.barras.length !== lo) achado = arranjar(ctx, mapa, cx, cy, lo, phi, eixo, l0);
+      if (!achado || achado.barras.length !== lo) achado = arranjar(ctx, mapa, cx, cy, lo, phi, eixo, l0, livre);
       out.push(...pares(achado));
       folga = Math.min(folga, achado.folga);
       resta -= lo;
@@ -215,14 +244,20 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
   const furosCompressao = [...furosTracao].reverse();
   const l0P = traspasse(ctx, p.phi_cf, 'cf');
   const l0C = traspasse(ctx, p.phi_cc, 'cc');
+  // 4 ramos: as barras e as esperas ficam entre os ramos do meio do par de estribos
+  const faixa = p.estribos && p.ramos_est === 4 ? faixaDosQuatroRamos(t, p.phi_est) : Infinity;
 
   for (const no of tr.nos) {
     const base = `T${tr.indice}.CF${no.cf}`;
+    const par = Number.isFinite(faixa)
+      ? estribosDaJunta(4, no.xc, yDe, mod.tenr, t, 0, p.phi_est).map((c, k) => estribo(`par${k}`, 'CF_ESTRIBO', p.phi_est, c, tr.indice, no.cf, passoNaJunta(p.phi_est)))
+      : [];
+    const livre = Number.isFinite(faixa) ? livreDoPar(no.xc, faixa, par, p.phi_est) : undefined;
     // principal: tracionada; o 1º alvo é o c da conta, os seguintes o centro dos furos
     const alvoConta = enterrado ? mod.tenr - cCf : cCf;
-    let g = distribuir(ctx, mapa, no.xc, [yDe(alvoConta), ...furosTracao.slice(1).map(yDe)], p.n_cf, p.phi_cf, 'Y', l0P);
+    let g = distribuir(ctx, mapa, no.xc, [yDe(alvoConta), ...furosTracao.slice(1).map(yDe)], p.n_cf, p.phi_cf, 'Y', l0P, livre);
     if (g.folga < 0 || g.furos > 1) {
-      const g2 = distribuir(ctx, mapa, no.xc, furosTracao.map(yDe), p.n_cf, p.phi_cf, 'Y', l0P);
+      const g2 = distribuir(ctx, mapa, no.xc, furosTracao.map(yDe), p.n_cf, p.phi_cf, 'Y', l0P, livre);
       if (g2.furos < g.furos || (g2.furos === g.furos && g2.folga > g.folga)) g = g2;
     }
     const idsP: string[] = [];
@@ -243,11 +278,13 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
       }
     }
 
-    // construtivas: na outra ponta do estribo (aula 12.3: estribo 50 × 7 com 2Ø10 numa ponta e 3Ø10 na outra)
+    // construtivas: na outra ponta do estribo (aula 12.3: estribo 50 × 7 com 2Ø10 numa ponta e 3Ø10 na outra). Com 4
+    // ramos o estribo de dentro passa uma bitola mais para dentro nessa ponta (os dois lado a lado, abaixo): a
+    // construtiva anda junto, encostada nele.
     if (p.n_cc > 0) {
-      const dC = RECUO_ESTRIBO + p.phi_est + p.phi_cc / 2;
+      const dC = RECUO_ESTRIBO + (p.ramos_est === 4 ? 2 : 1) * p.phi_est + p.phi_cc / 2;
       const etaC = enterrado ? dC : mod.tenr - dC;
-      const gc = distribuir(ctx, mapa, no.xc, [yDe(etaC), ...furosCompressao.slice(1).map(yDe)], p.n_cc, p.phi_cc, 'X', l0C);
+      const gc = distribuir(ctx, mapa, no.xc, [yDe(etaC), ...furosCompressao.slice(1).map(yDe)], p.n_cc, p.phi_cc, 'X', l0C, livre);
       const idsC: string[] = [];
       gc.pares.forEach(({ b, e }, k) => {
         const id = `${base}.C${k + 1}`;
@@ -262,21 +299,46 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
     // conta pede (leitura.ts, `estribos`): estribo sem necessidade não é usual em alvenaria (Jose, 13/10).
     // Os ganchos ficam no canto do lado do MURO (ya): é a ponta comprimida do contraforte, a das construtivas — o
     // gancho fora da zona tracionada, como na viga do Pró-Viga (ganchos em cima)
-    const meia = t / 2 - RECUO_ESTRIBO_LATERAL;
-    const ya = yDe(RECUO_ESTRIBO);
-    const yb = yDe(mod.tenr - RECUO_ESTRIBO);
     const passoJ = Math.max(1, Math.round(mod.s_est / H_FIADA));
     for (let i = 0; p.estribos && i < mod.n_fiadas; i += passoJ) {
       const z = i * H_FIADA + JUNTA / 2;
-      ctx.barras.push(estribo(`${base}.E${pad(i, 2)}`, 'CF_ESTRIBO', p.phi_est,
-        [[no.xc - meia, ya, z], [no.xc + meia, ya, z], [no.xc + meia, yb, z], [no.xc - meia, yb, z]], tr.indice, no.cf, passoNaJunta(p.phi_est)));
+      estribosDaJunta(p.ramos_est, no.xc, yDe, mod.tenr, t, z, p.phi_est).forEach((cantos, k) => {
+        ctx.barras.push(estribo(`${base}.E${pad(i, 2)}${k ? 'b' : ''}`, 'CF_ESTRIBO', p.phi_est, cantos, tr.indice, no.cf, passoNaJunta(p.phi_est)));
+      });
     }
   }
   if (!p.estribos) return;
   if (p.phi_est > 6.3) ctx.avisos.push({ codigo: 'ESTRIBO_NA_JUNTA', texto: `Estribo Ø${br(p.phi_est, 1)} na junta de 10 mm` });
-  avisarMedidasDoEstribo(ctx, 'Estribo do contraforte', p.phi_est, 2 * (t / 2 - RECUO_ESTRIBO_LATERAL), mod.tenr - 2 * RECUO_ESTRIBO, 'ESTRIBO');
-  // na largura do bloco só cabe um estribo fechado (2 ramos); mais ramos não têm desenho simples — DEDUÇÃO
-  if (p.ramos_est !== 2) ctx.avisos.push({ codigo: 'ESTRIBO_RAMOS', texto: `Estribo do contraforte com ${p.ramos_est} ramos: desenhado fechado, 2 ramos` });
+  const [a0, a1, , a3] = estribosDaJunta(p.ramos_est, 0, (eta) => eta, mod.tenr, t, 0, p.phi_est)[0];
+  avisarMedidasDoEstribo(ctx, 'Estribo do contraforte', p.phi_est, Math.abs(a1[0] - a0[0]), Math.abs(a3[1] - a0[1]), 'ESTRIBO');
+}
+
+/**
+ * Os estribos de uma junta do contraforte (cantos do EIXO, o 1º é o dos ganchos). 2 ramos: um estribo fechado com
+ * o eixo a 35 mm das faces laterais e a 45 mm da face do muro e da ponta (a planilha: eenr − 7 × tenr − 9 cm).
+ * 4 ramos (Jose, 15/11: "4 são 2 estribos menores — no Pró-Viga tem um modelo quando a viga tem uma base grande"):
+ * a regra do estribo duplo do Pró-Viga (viewer3d.js) — dois estribos de 2/3 da largura do de 2 ramos, deslocados
+ * ±1/6 dela (os quatro ramos a cada 1/3), cada um com os ganchos no seu canto de FORA. No Pró-Viga o 2º anda 2φ
+ * ao longo da viga para não ocupar o lugar do 1º; aqui o eixo da peça é a altura e a junta tem 10 mm — não há para
+ * onde andar. Então os dois ficam na mesma junta, encaixados no plano: o 1º é o estribo de 2 ramos estreitado (as
+ * mesmas pontas) e o 2º anda uma bitola ao longo do contraforte, para a ponta — as pernas curtas no terço do meio
+ * ficam lado a lado, nunca uma sobre a outra, e os dois são a MESMA barra (espelhada), uma posição só na lista de
+ * ferros. Para a ponta e não para dentro: lá as esperas das principais encostam no estribo (o de dentro passaria
+ * sobre elas); na ponta do muro ele encosta nas construtivas, que andam junto (barrasDosContrafortes).
+ * Onde um ramo cruza a perna do outro (dois pontos por junta) as barras passam uma sobre a outra, como já passam no
+ * canto dos ganchos. Só com 4 na conta (`ram_ef`, que confere se cabem); a planilha diz por que não cabem.
+ */
+export function estribosDaJunta(ramos: number, xc: number, yDe: (eta: number) => number, tenr: number, t: number, z: number, phi = 0): [Vec3, Vec3, Vec3, Vec3][] {
+  const e = t - 2 * RECUO_ESTRIBO_LATERAL;
+  const ya = yDe(RECUO_ESTRIBO);
+  const yb = yDe(tenr - RECUO_ESTRIBO);
+  if (ramos !== 4) return [[[xc - e / 2, ya, z], [xc + e / 2, ya, z], [xc + e / 2, yb, z], [xc - e / 2, yb, z]]];
+  const sinal = Math.sign(yb - ya) || 1;
+  const d = phi * sinal;
+  return [
+    [[xc - e / 2, ya, z], [xc + e / 6, ya, z], [xc + e / 6, yb, z], [xc - e / 2, yb, z]],
+    [[xc + e / 2, ya + d, z], [xc - e / 6, ya + d, z], [xc - e / 6, yb + d, z], [xc + e / 2, yb + d, z]],
+  ];
 }
 
 /**

@@ -30,9 +30,12 @@ const unit = (a: Vec3): Vec3 => {
 const cordas = (e: Vec3[]): number => e.slice(1).reduce((s, q, k) => s + Math.hypot(...sub(q, e[k])), 0);
 
 // sap_transv é da planilha desde 15/11: vai para o Resultado (comEntradas), o resto para as entradas do modelo
+// ram_ef também (15/11): o desenho de 15/10 era sempre com 2 ramos; o sorteio de 4 ramos que cabem mudou as barras do
+// contraforte de lugar (estriboQuatroRamos.test.ts) — a comparação com o de antes é com os 2 ramos de antes
 const muro = (c: string, extras: Record<string, Valor> = {}): Modelo => {
-  const { sap_transv, ...resto } = extras;
-  const r = sap_transv === undefined ? resultadoDoGabarito(c) : comEntradas(resultadoDoGabarito(c), { sap_transv });
+  const { sap_transv, ram_ef, ...resto } = extras;
+  const trocas: Record<string, Valor> = { ...(sap_transv === undefined ? {} : { sap_transv }), ...(ram_ef === undefined ? {} : { ram_ef }) };
+  const r = Object.keys(trocas).length ? comEntradas(resultadoDoGabarito(c), trocas) : resultadoDoGabarito(c);
   return gerarModelo(r, { ...padroesDoModelo(), ...resto });
 };
 
@@ -284,7 +287,7 @@ describe('o desenho de 15/10 continua disponível, barra por barra', () => {
       const [c, extras] = caso(chave);
       const era = FIXTURE[chave].filter((l) => l.includes('|ESPERA|'));
       expect(era.length, chave).toBeGreaterThan(0);
-      const padrao = muro(c, extras);
+      const padrao = muro(c, { ...extras, ram_ef: 2 });
       expect(padrao.barras.filter((b) => b.papel === 'ESPERA').map(linha), chave).toEqual(era);
       expect(padrao.avisos.some((a) => a.codigo.startsWith('NO_DE_CACHORRO')), chave).toBe(false);
     }
