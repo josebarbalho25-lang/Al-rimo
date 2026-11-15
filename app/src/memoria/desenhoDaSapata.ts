@@ -468,3 +468,98 @@ export function desenhoDoCortanteDaSapata(r: Resultado): DesenhoDoCard | null {
   partes.push(texto(xPe, yTxt + 4, 'em destaque: o trecho cuja carga passa pela seção a d da face', FS - 2, 'start', COTA));
   return { svg: svgDe(partes, yTxt + 16), titulo: 'Cortante: a seção a d da face do muro, nos dois balanços', largura: LARGURA };
 }
+
+// ───────────────────────────── o dente armado ─────────────────────────────
+
+/*
+  O DENTE COMO BALANÇO PENDURADO NA SAPATA (15/11; aba Fundação, seção 11). Dois desenhos, no padrão dos de cima:
+    1. o corte do dente com o passivo cheio na face da FRENTE (o pé à esquerda, como nos outros cortes): o trapézio de
+       p1 (na raiz) a p2 (no fundo), a resultante Ek e o braço y dela medido da RAIZ — Mk = Ek × y;
+    2. a seção da raiz vista de cima, 100 × b do dente: as pernas dos estribos nas duas faces, a cada s; o d medido da
+       face de trás (comprimida) até a perna da frente (tracionada) e o bloco comprimido 0,8x.
+  Só números das células (p1_den, p2_den, Ek_den, y_den, Mk_den, d_den, xln_den, s_den): nada aqui é conta nova.
+*/
+export function desenhoDasForcasNoDente(r: Resultado): DesenhoDoCard | null {
+  const g = geometria(r);
+  const p1 = r.num('p1_den'), p2 = r.num('p2_den'), Ek = r.num('Ek_den'), y = r.num('y_den'), Mk = r.num('Mk_den');
+  if (!g || !g.dente || !ok(p1) || !ok(p2) || !ok(Ek) || !ok(y) || !ok(Mk) || !(p2 > 0)) return null;
+  const d = g.dente;
+  const aba = 0.3;                                           // quanto de sapata aparece de cada lado do dente, m
+  const s = Math.min(300 / (g.h + d.h), 260 / (d.b + 2 * aba));
+  const xF = 330;                                            // face da frente do dente (lado da ponta, à esquerda)
+  const yTopo = 40;
+  const yBase = yTopo + g.h * s;                             // a raiz: face de baixo da sapata
+  const yFundo = yBase + d.h * s;
+  const xT = xF + d.b * s;                                   // face de trás
+  const [xa, xb] = [xF - aba * s, xT + aba * s];
+  const partes: string[] = [];
+  // o solo de apoio em volta do dente, embaixo da sapata
+  partes.push(rect(xa - 150, yBase, xF - xa + 150, yFundo - yBase + 26, SOLO, 'none', 0, ' fill-opacity="0.5"'));
+  partes.push(rect(xT, yBase, xb - xT + 40, yFundo - yBase + 26, SOLO, 'none', 0, ' fill-opacity="0.5"'));
+  partes.push(rect(xF, yFundo, xT - xF, 26, SOLO, 'none', 0, ' fill-opacity="0.5"'));
+  // o pedaço da sapata (interrompida dos dois lados) e o dente
+  partes.push(rect(xa, yTopo, xb - xa, yBase - yTopo, CONCRETO, 'none', 0));
+  partes.push(lin(xa, yTopo, xb, yTopo, TINTA, 1.4), lin(xa, yBase, xF, yBase, TINTA, 1.4), lin(xT, yBase, xb, yBase, TINTA, 1.4));
+  for (const x of [xa, xb]) partes.push(`<path d="M ${f2(x)} ${f2(yTopo - 6)} l -5 ${f2((yBase - yTopo) / 3)} l 10 ${f2((yBase - yTopo) / 3)} l -5 ${f2((yBase - yTopo) / 3 + 12)}" fill="none" stroke="${TINTA}" stroke-width="0.8"/>`);
+  partes.push(rect(xF, yBase, xT - xF, yFundo - yBase, CONCRETO, 'none', 0));
+  partes.push(lin(xF, yBase, xF, yFundo, TINTA, 1.4), lin(xF, yFundo, xT, yFundo, TINTA, 1.4), lin(xT, yFundo, xT, yBase, TINTA, 1.4));
+  partes.push(texto(xa + 4, yTopo - 10, '← ponta', FS - 1, 'start', COTA), texto(xb - 4, yTopo - 10, 'talão →', FS - 1, 'end', COTA));
+  // a raiz
+  partes.push(lin(xF, yBase, xT, yBase, COTA, 0.8, ' stroke-dasharray="6 4"'));
+  // o passivo cheio na face da frente: trapézio de p1 a p2, empurrando o dente para trás
+  const kp = 130 / p2;
+  partes.push(poli([[xF, yBase], [xF - p1 * kp, yBase], [xF - p2 * kp, yFundo], [xF, yFundo]], EMPUXO, LARANJA, 1));
+  for (let k = 1; k <= 3; k++) {
+    const yy = yBase + (k / 4) * (yFundo - yBase);
+    const w = (p1 + ((p2 - p1) * k) / 4) * kp;
+    if (w > 16) partes.push(seta(xF - w + 2, yy, xF - 3, yy, LARANJA, 1));
+  }
+  partes.push(texto(xF - p1 * kp - 14, yBase + 17, `p1 = ${m2(p1)} kPa`, FS - 1, 'end'));
+  partes.push(texto(xF - p2 * kp - 8, yFundo + 5, `p2 = ${m2(p2)} kPa`, FS - 1, 'end'));
+  // a resultante, a y da raiz
+  const yR = yBase + y * s;
+  const xIni = xF - p2 * kp - 150;
+  partes.push(seta(xIni, yR, xF - 2, yR, LARANJA, 3));
+  partes.push(texto(xIni + 2, yR - 9, `Ek = ${m2(Ek)} kN/m`, FS, 'start', LARANJA, 'bold'));
+  const xC = xb + 40;
+  partes.push(chamada(xT, yR, xC + 4, yR), chamada(xT, yBase, xC + 124, yBase), chamada(xT, yFundo, xC + 124, yFundo));
+  partes.push(cotaV(xC, yBase, yR, `y = ${nbr(y, 3)} m`, 1));
+  partes.push(cotaV(xC + 120, yBase, yFundo, `${m2(d.h)} m`, 1));
+  partes.push(cotaH(xF, xT, yFundo + 22, `${m2(d.b)} m`));
+  partes.push(texto(xT + 6, yBase - 6, 'raiz', FS - 1, 'start', COTA));
+  const yRod = yFundo + 58;
+  partes.push(texto(40, yRod, `Mk = Ek × y = ${m2(Ek)} × ${nbr(y, 3)} = ${m2(Mk)} kN·m/m (na raiz; traciona a face da frente)`, FS, 'start', TINTA, 'bold'));
+  return { svg: svgDe(partes, yRod + 14), titulo: 'Dente: passivo na face da frente e braço até a raiz', largura: LARGURA };
+}
+
+/** 2. A seção da raiz do dente vista de cima: 100 × b, as pernas dos estribos nas duas faces, d e o bloco 0,8x. */
+export function desenhoDaSecaoDoDente(r: Resultado): DesenhoDoCard | null {
+  const b = r.num('b_den'), d = r.num('d_den'), s = r.num('s_den'), phi = r.num('phi_den'), x = r.num('xln_den');
+  if (!ok(b) || !(b > 0) || !ok(d) || !ok(s) || !(s > 0) || !ok(phi)) return null;
+  const k = Math.min(4.4, 190 / (b * 100));                  // px por cm
+  const x0 = 150, y0 = 50;
+  const [w, h] = [100 * k, b * 100 * k];
+  const partes: string[] = [];
+  partes.push(rect(x0, y0, w, h, CONCRETO, TINTA, 1.4));
+  // face de trás em cima (comprimida), face da frente embaixo (tracionada): o bloco 0,8x encostado na de trás
+  if (ok(x) && x > 0) partes.push(rect(x0, y0, w, Math.max(2, 0.8 * x * k), AZUL_CLARO, AZUL, 0.8));
+  const yFrente = y0 + d * k;                                // eixo da perna da frente, a d da face de trás
+  const yTras = y0 + h - d * k;
+  const n = Math.max(1, Math.floor(100 / s + 1e-9));
+  const folga = (100 - (n - 1) * s) / 2;
+  const xs = Array.from({ length: n }, (_, i) => x0 + (folga + i * s) * k);
+  const raio = Math.max(2.5, (phi / 20) * k);
+  for (const xx of xs) {
+    partes.push(`<circle cx="${f2(xx)}" cy="${f2(yFrente)}" r="${f2(raio)}" fill="${TINTA}"/>`);
+    partes.push(`<circle cx="${f2(xx)}" cy="${f2(yTras)}" r="${f2(raio)}" fill="#8a8a8a"/>`);
+  }
+  partes.push(texto(x0, y0 - 8, 'face de trás', FS - 1, 'start', COTA));
+  partes.push(texto(x0 + w, y0 + h + 16, 'face da frente (ponta)', FS - 1, 'end', COTA));
+  partes.push(chamada(x0, y0, x0 - 44, y0), chamada(xs[0], yFrente, x0 - 44, yFrente));
+  partes.push(chamada(x0 + w, y0, x0 + w + 34, y0), chamada(x0 + w, y0 + h, x0 + w + 34, y0 + h));
+  partes.push(cotaV(x0 - 40, y0, yFrente, `d = ${nbr(d, 1)} cm`, -1));
+  partes.push(cotaV(x0 + w + 30, y0, y0 + h, `${nbr(b * 100, 0)} cm`, 1));
+  partes.push(cotaH(x0, x0 + w, y0 + h + 44, '100 cm'));
+  if (n >= 2) partes.push(cotaH(xs[0], xs[1], y0 + h + 20, `${nbr(s, s === Math.round(s) ? 0 : 1)}`));
+  return { svg: svgDe(partes, y0 + h + 62), titulo: 'Dente: seção da raiz, vista de cima', largura: LARGURA };
+}
