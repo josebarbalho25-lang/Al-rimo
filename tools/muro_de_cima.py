@@ -250,4 +250,83 @@ Lm('Dados do muro de cima', '=IF(mc_on<>"Sim","— (sem muro de cima)",IF(AND(IS
 Lm('Muro de cima e vento: resumo',
    '=IF(AND(mc_on<>"Sim",vento_on<>"Sim"),"— (sem muro de cima e sem vento)",IF(AND(OR(LEFT(chk_dv,2)="OK",LEFT(chk_dv,3)="— ("),OR(LEFT(chk_dmc,2)="OK",LEFT(chk_dmc,3)="— ("),OR(LEFT(res_pA,2)="OK",LEFT(res_pA,3)="— ("),OR(LEFT(res_pB,2)="OK",LEFT(res_pB,3)="— ("),OR(LEFT(res_pil,2)="OK",LEFT(res_pil,3)="— ("),OR(LEFT(res_lig,2)="OK",LEFT(res_lig,3)="— ("),OR(LEFT(res_cin,2)="OK",LEFT(res_cin,3)="— (")),"OK","NÃO OK"))',
    '', 'Dados, painéis, pilarete, ligação no arrimo e cinta do topo do arrimo. Vai para as verificações do balanço e do contraforte.', 'key', None, 'res_mc')
+r += 1
+# ---------- 8. momentos resistentes e esforços ao longo da altura (15/11, vista "Esforços") ----------
+# No FIM da aba: nada acima muda de lugar. As contas das seções 4 a 6 desfeitas com o aço adotado (mrd_ret,
+# build_new.py), cada uma com o limite que a verificação dela usa: pilarete e ligação conferem x/d ≤ 0,45; a cinta do
+# topo não confere (fim da conta, 1,25d). γf: Md_pil = γf·Mk_pil; a cinta soma Md_cin (γf) e Mde_cin (Libânio, já de
+# cálculo); os painéis já vêm com fd = γf·C·q.
+section(MC, r, '8. Momentos resistentes com a armadura adotada e esforços ao longo da altura (diagrama de momentos)'); r += 1
+_conc = 'LEFT(pil_tipo,4)="Conc"'
+MC.cell(row=r, column=1, value='Pilarete (seção 5): concreto NBR 6118 ou bloco grauteado NBR 16868-1').font = fB; r += 1
+mrd_ret(Lm, 'pil', 'As_pile', 'fyd_pil', f'IF({_conc},0.68*fcd_pil,0.8*Kfd_pil)', f'IF({_conc},0.425*fcd_pil,0.5*Kfd_pil)',
+        'b_pila', 'd_pil', '0.45', 'LEFT(pil_tipo,4)<>"Conc"', '0,45·d (ductilidade)')
+Lm('MRd do pilarete', '=IFERROR(MRf_pil/100,"—")', 'kN·m', 'Compara com o Md do pilarete (seção 5). Uma face (o vento vem dos dois lados).', 'key', '0.00', 'MRd_pil', 'NBR 6118 17.2.2 / NBR 16868-1 11.3 (conta invertida)')
+Lm('MSd/MRd do pilarete', '=IFERROR(Md_pil/MRd_pil,"—")', '', '', 'key', '0.000', 'ap_pil')
+MC.cell(row=r, column=1, value='Ligação do pilarete no arrimo (seção 5b)').font = fB; r += 1
+mrd_ret(Lm, 'lig', 'As_pile', 'fyd_pil', '0.8*Kfd_lig', '0.5*Kfd_lig', 'b_lig', 'd_lig', '0.45', True, '0,45·d (ductilidade)')
+Lm('MRd da ligação', '=IFERROR(MRf_lig/100,"—")', 'kN·m', 'Compara com o Md do pilarete.', 'key', '0.00', 'MRd_lig', 'NBR 16868-1 11.3 (conta invertida)')
+Lm('MSd/MRd da ligação', '=IFERROR(Md_pil/MRd_lig,"—")', '', '', 'key', '0.000', 'ap_lig')
+MC.cell(row=r, column=1, value='Cinta do topo do arrimo (seção 6): a seção da barra horizontal do painel (aba Contrafortes, seção 16)').font = fB; r += 1
+Lm('MSd da canaleta do topo = Md do vento + Md do empuxo', '=Md_cin+Mde_cin', 'kN·cm', 'Na faixa s da canaleta.', 'key', '0.0', 'Msd_cin')
+Lm('MRd da canaleta do topo (na faixa s)', '=IFERROR(IF(Tipo_muro="Contrafortes",MRf_ph,"—"),"—")', 'kN·cm', 'Mesma faixa, d, K·fd e uma barra Ø horizontal: o MRd da faixa da aba Contrafortes.', 'key', '0.0', 'MRd_cin', 'NBR 16868-1 11.3 (conta invertida)')
+Lm('MSd/MRd da canaleta do topo', '=IFERROR(Msd_cin/MRd_cin,"—")', '', '', 'key', '0.000', 'ap_cin')
+MC.cell(row=r, column=1, value='Painéis do muro de cima (seção 4): resistência como momento, MRd = ftd·W (por metro, sem pré-compressão)').font = fB; r += 1
+for k, desc in (('A', 'de baixo'), ('B', 'de cima')):
+    Lm(f'Painel {desc}: MRd,par = ftd∥·W', '=ftdp_mc*W_mc*1000', 'kN·m/m', 'Compara com o Md,par do painel.', 'key', '0.0000', f'MRp_p{k}')
+    Lm(f'Painel {desc}: MRd,nor = ftd⊥·W', '=ftdn_mc*W_mc*1000', 'kN·m/m', 'Compara com o Md,nor do painel.', 'key', '0.0000', f'MRn_p{k}')
+    Lm(f'Painel {desc}: Md,par/MRd,par', f'=Mpa_p{k}/MRp_p{k}', '', '', 'res', '0.000', f'ap_pp{k}')
+    Lm(f'Painel {desc}: Md,nor/MRd,nor', f'=Mno_p{k}/MRn_p{k}', '', '', 'res', '0.000', f'ap_np{k}')
+r += 1
+# ---- VENTO AO LONGO DA ALTURA DO ARRIMO: 11 nós, do topo do muro (nó 0) à base (nó 10), y = altura acima da base ----
+# O vento é uniforme (p_w) na altura livre (do topo do solo ao topo do muro de cima). Num ponto y do arrimo:
+#   balanço (por metro):  y ≤ h solo: Mw = Vk_w·(h solo + h livre/2 − y), Vw = Vk_w   (toda a carga está acima)
+#                         y > h solo: Mw = p_w·(h solo + h livre − y)²/2, Vw = p_w·(h solo + h livre − y)
+#   contraforte:          Mwc = F_wpc·(h muro + h mc/2 − y) + [y ≤ h solo: F_wec·(h solo + h exp/2 − y);
+#                         y > h solo: p_w·binf·(h muro − y)²/2]  (o do muro de cima chega inteiro no topo do contraforte)
+# Na base (y = 0) Mw = Mk_w e Mwc = Mk_wcf, bit a bit (as mesmas operações). De cálculo: × γf (colunas I–K). Dentro do
+# solo o perfil de Solo e Empuxo (colunas O–Z) já soma o vento ao empuxo; esta tabela serve à parte ACIMA do solo e ao
+# vento como parcela própria.
+_CF = 'Tipo_muro="Contrafortes"'
+MC.cell(row=r, column=1, value='Vento ao longo da altura do arrimo (característico; × γf nas três últimas colunas)').font = fB; r += 1
+header(MC, r, ['Nó', 'y acima da base (m)', 'M vento — balanço (kN·m/m)', 'V vento — balanço (kN/m)', 'M vento — contraforte (kN·m)',
+               'V vento — contraforte (kN)', 'M vento — outro contraforte (kN·m)', 'V vento — outro contraforte (kN)',
+               'MSd vento — balanço', 'MSd vento — contraforte', 'MSd vento — outro contraforte']); r += 1
+_v0 = r
+_ie = lambda f: '=IFERROR(' + f + ',"—")'
+for j in range(11):
+    MC.cell(row=r, column=1, value=j)
+    MC[f'B{r}'] = _ie(f'H_muro*(10-A{r})/10')
+    MC[f'C{r}'] = _ie(f'IF(B{r}<=H_solo,Vk_w*(H_solo+h_liv/2-B{r}),p_w*(H_solo+h_liv-B{r})^2/2)')
+    MC[f'D{r}'] = _ie(f'IF(B{r}<=H_solo,Vk_w,p_w*(H_solo+h_liv-B{r}))')
+    for cM, cV, Fp, Fe, bi in (('E', 'F', 'F_wpc', 'F_wec', 'binf'), ('G', 'H', 'Fpo_cf', 'Feo_cf', 'binf_o')):
+        MC[f'{cM}{r}'] = _ie(f'{Fp}*(H_muro+h_mce/2-B{r})+IF(B{r}<=H_solo,{Fe}*(H_solo+h_exp/2-B{r}),IF({_CF},p_w*{bi}*(H_muro-B{r})^2/2,0))')
+        MC[f'{cV}{r}'] = _ie(f'{Fp}+IF(B{r}<=H_solo,{Fe},IF({_CF},p_w*{bi}*(H_muro-B{r}),0))')
+    MC[f'I{r}'] = _ie(f'gama_f*C{r}'); MC[f'J{r}'] = _ie(f'gama_f*E{r}'); MC[f'K{r}'] = _ie(f'gama_f*G{r}')
+    for cc in 'ABCDEFGHIJK':
+        c = MC[f'{cc}{r}']; c.font = fN; c.border = BOX; c.fill = RES
+        if cc != 'A': c.number_format = '0.000'
+    r += 1
+for _nm, _cc in (('vt_y', 'B'), ('vt_Mw', 'C'), ('vt_Vw', 'D'), ('vt_Mc', 'E'), ('vt_Vc', 'F'), ('vt_Mo', 'G'),
+                 ('vt_Vo', 'H'), ('vt_Md', 'I'), ('vt_Mdc', 'J'), ('vt_Mdo', 'K')):
+    wb.defined_names[_nm] = DefinedName(_nm, attr_text=f"'Muro de cima e vento'!${_cc}${_v0}:${_cc}${r-1}")
+r += 1
+# ---- PILARETE AO LONGO DA ALTURA: 11 nós, do topo do muro de cima (nó 0) ao topo do arrimo (nó 10, a base dele) ----
+# Balanço engastado, vento uniforme p_w·eixo a eixo: com ρ = (h mc − y)/h mc (y acima do topo do arrimo),
+#   M = Mk_pil·ρ·ρ, V = Vk_pil·ρ — na base ρ = h/h = 1 e M = Mk_pil, bit a bit (ρ·ρ e não ρ², para não passar pela potência). De cálculo: × γf (= Md_pil na base).
+MC.cell(row=r, column=1, value='Pilarete ao longo da altura (do topo do muro de cima à base, no topo do arrimo)').font = fB; r += 1
+header(MC, r, ['Nó', 'y acima do topo do arrimo (m)', 'Mk (kN·m)', 'Vk (kN)', 'MSd = γf·Mk (kN·m)', 'VSd = γf·Vk (kN)']); r += 1
+_p0 = r
+for j in range(11):
+    MC.cell(row=r, column=1, value=j)
+    MC[f'B{r}'] = _ie(f'h_mce*(10-A{r})/10')
+    MC[f'C{r}'] = _ie(f'IF(h_mce>0,Mk_pil*((h_mce-B{r})/h_mce)*((h_mce-B{r})/h_mce),0)')
+    MC[f'D{r}'] = _ie(f'IF(h_mce>0,Vk_pil*((h_mce-B{r})/h_mce),0)')
+    MC[f'E{r}'] = _ie(f'gama_f*C{r}'); MC[f'F{r}'] = _ie(f'gama_f*D{r}')
+    for cc in 'ABCDEF':
+        c = MC[f'{cc}{r}']; c.font = fN; c.border = BOX; c.fill = RES
+        if cc != 'A': c.number_format = '0.000'
+    r += 1
+for _nm, _cc in (('pt_y', 'B'), ('pt_Mk', 'C'), ('pt_Vk', 'D'), ('pt_Md', 'E'), ('pt_Vd', 'F')):
+    wb.defined_names[_nm] = DefinedName(_nm, attr_text=f"'Muro de cima e vento'!${_cc}${_p0}:${_cc}${r-1}")
 widths(MC, {'A': 46, 'B': 22, 'C': 9, 'D': 70, 'E': 18, 'H': 10, 'I': 8, 'J': 8, 'K': 8, 'L': 8})

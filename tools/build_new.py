@@ -794,6 +794,52 @@ for i in range(41):
         S[f'N{rr}'] = f'=J{rr}*K{rr}^2/2'
     for cc in 'ABCDEFGHIJKLMN':
         c = S[f'{cc}{rr}']; c.font = fN; c.number_format = '0.000' if cc != 'A' else '0'
+# --- esforços AO LONGO da altura (15/11, diagrama de momentos da vista "Esforços") — colunas O a Z, à direita de tudo
+# o que o app lê por endereço (A–N): nenhuma célula de antes muda de lugar nem de valor.
+# Por que existe: a planilha só dava o total na base (Mk_, Vk_); o diagrama precisa de M e V em cada nó do perfil.
+# Nó i (linha 44 + i, i = 0 no topo do solo, 40 na base): o que está ACIMA dele, balanço engastado lido de cima.
+#   V(i) = Σ das fatias acima (coluna J)                      — na base = Vk_, bit a bit (a mesma SOMA, na mesma ordem)
+#   M(i) = Σ J·braço à base (coluna L) − y(i)·V(i)            — y(i) = altura do nó acima da base = (40 − i)/40·h solo:
+#          o braço da fatia até o nó é o braço até a base menos y. Na base y = 0·h = 0 e M = SOMA(L) = Mk_, bit a bit.
+# Característicos, por metro, empuxo de solo + água + sobrecarga (o mesmo perfil das colunas A–N). O vento vem como
+# parcela própria (colunas R–T, da aba Muro de cima e vento): o vento todo está acima do topo do solo, então dentro do
+# solo o V do vento é constante (Vk_w no balanço, Vk_wcf no contraforte) e o M cresce linear até a base:
+#   balanço:     Mw(y) = Vk_w·(h solo + h livre/2 − y)                         — na base = Mk_w, bit a bit
+#   contraforte: Mwc(y) = F_wpc·(h muro + h mc/2 − y) + F_wec·(h solo + h exp/2 − y) — na base = Mk_wcf
+# DE CÁLCULO (colunas U–Z), o γf que a aba de cada peça usa (gama_f, nas Entradas):
+#   balanço:     MSd(y) = γf·(M + Mw); na BASE o Md_ ainda soma o M2d (2ª ordem, Muro em balanço, M2d_us) — o M2d é da
+#                seção da base: Md_ = coluna U da linha 84 + M2d_us (decomposição publicada na aba Muro em balanço);
+#                VSd(y) = γf·(V + Vk_w)  (na base = Vsd_);
+#   contraforte: MSd(y) = γf·(M·binf + Mwc) (na base = Md_cf); VSd = γf·(V·binf + Vk_wcf) (= Vd_cf); o do OUTRO tipo
+#                (intermediário × extremidade, aba Contrafortes, seção 16) com binf_o e o vento dele (Md_cfo, Vd_cfo).
+# Acima do topo do solo (h muro > h solo) o empuxo é zero e só há vento: a tabela de nós do vento na aba Muro de cima e
+# vento (vt_*) cobre a altura inteira do muro.
+S['O41'] = 'Esforços ao longo da altura (nó i = o que está acima dele). Característicos (O–T) e de cálculo com γf (U–Z).'; S['O41'].font = fB
+header(S, 42, ['V solo (kN/m)', 'M solo (kN·m/m)', 'y acima da base (m)', 'M vento — balanço (kN·m/m)', 'M vento — contraforte (kN·m)',
+               'M vento — outro contraforte (kN·m)', 'MSd balanço (kN·m/m)', 'VSd balanço (kN/m)', 'MSd contraforte (kN·m)',
+               'VSd contraforte (kN)', 'MSd outro contraforte (kN·m)', 'VSd outro contraforte (kN)'], start=15)
+for i in range(41):
+    rr = 44 + i
+    _ie = lambda f: '=IFERROR(' + f + ',"—")'
+    S[f'O{rr}'] = 0 if i == 0 else _ie(f'SUM(J$44:J{rr-1})')
+    S[f'Q{rr}'] = _ie(f'(40-A{rr})/40*H_solo')
+    S[f'P{rr}'] = 0 if i == 0 else _ie(f'SUM(L$44:L{rr-1})-Q{rr}*O{rr}')
+    S[f'R{rr}'] = _ie(f'Vk_w*(H_solo+h_liv/2-Q{rr})')
+    S[f'S{rr}'] = _ie(f'F_wpc*(H_muro+h_mce/2-Q{rr})+F_wec*(H_solo+h_exp/2-Q{rr})')
+    S[f'T{rr}'] = _ie(f'Fpo_cf*(H_muro+h_mce/2-Q{rr})+Feo_cf*(H_solo+h_exp/2-Q{rr})')
+    S[f'U{rr}'] = _ie(f'gama_f*(P{rr}+R{rr})')
+    S[f'V{rr}'] = _ie(f'gama_f*(O{rr}+Vk_w)')
+    S[f'W{rr}'] = _ie(f'gama_f*(P{rr}*binf+S{rr})')
+    S[f'X{rr}'] = _ie(f'gama_f*(O{rr}*binf+Vk_wcf)')
+    S[f'Y{rr}'] = _ie(f'gama_f*(P{rr}*binf_o+T{rr})')
+    S[f'Z{rr}'] = _ie(f'gama_f*(O{rr}*binf_o+Vk_wcfo)')
+    for cc in 'OPQRSTUVWXYZ':
+        c = S[f'{cc}{rr}']; c.font = fN; c.number_format = '0.000'
+for _nm, _cc in (('perf_z', 'B'), ('perf_V', 'O'), ('perf_M', 'P'), ('perf_y', 'Q'), ('perf_Mw', 'R'), ('perf_Mwc', 'S'),
+                 ('perf_Mwo', 'T'), ('perf_Md', 'U'), ('perf_Vd', 'V'), ('perf_Mdc', 'W'), ('perf_Vdc', 'X'),
+                 ('perf_Mdo', 'Y'), ('perf_Vdo', 'Z')):
+    wb.defined_names[_nm] = DefinedName(_nm, attr_text=f"'Solo e Empuxo'!${_cc}$44:${_cc}$84")
+widths(S, {'T': 14, 'U': 14, 'V': 12, 'W': 14, 'X': 12, 'Y': 14, 'Z': 12})
 widths(S, {'A': 34, 'B': 14, 'C': 10, 'D': 40, 'E': 14, 'F': 9, 'G': 10, 'H': 12, 'I': 12, 'J': 12, 'K': 12, 'L': 14, 'M': 16, 'N': 12,
            'O': 14, 'P': 10, 'Q': 10, 'R': 10, 'S': 10})
 
@@ -935,6 +981,31 @@ for lab, f, src in checks:
     line(B, r, lab, f, '', '', 'key', None, NOME_CHK_B.get(lab), src); r += 1
 r += 1
 B.cell(row=r, column=1, value='Escolha do arranjo de barras: aba Arranjos. Painel entre barras: aba Painel não armado. Fissuração e flecha: aba ELS.').font = fS
+r += 2
+# ---- MOMENTO RESISTENTE COM A ARMADURA ADOTADA (15/11, para o diagrama MSd × MRd da vista "Esforços") ----
+# No FIM da aba: as linhas de cima não mudam de lugar. A conta da flexão (seção "Flexão") vai do Md ao As; aqui ela é
+# DESFEITA: qual é o momento para o qual a MESMA conta pediria exatamente o As efetivo? Mesma seção (parede do bloco
+# como mesa com K·fd_m, furos grauteados como almas com K·fd_g, bloco 0,8x), mesmo d, mesmo fyd:
+#   F = As,ef·fyd (= C, a compressão que equilibra a barra)
+#   F ≤ mesa inteira (K·fd_m·100·hf): só a mesa, x = F/(0,8·K·fd_m·100) e M = F·z, z = d − 0,4x — e, como na conta,
+#        z ≤ 0,95d (x ≤ 0,125d: M = F·0,95d, o que a conta faz com o mesmo M);
+#   F > mesa inteira: seção T, y = (F − mesa)/(K·fd_g·b_almas), M = mesa·(d − hf/2) + (F − mesa)·(d − hf − y/2).
+# Limitado ao x/d = 0,45 que a verificação "Ductilidade" exige: acima dele vale o M com x = 0,45d. Sem iteração.
+# γf: o MSd que se compara é o Md_ da seção Esforços (γf·(Mk + Mk vento) + M2d). Ao longo da altura, Solo e Empuxo,
+# colunas O–Z (perf_Md = γf·(M solo + M vento)); na base o Md_ soma o M2d_us abaixo.
+section(B, r, 'Momento resistente com a armadura adotada (diagrama de momentos)'); r += 1
+line(B, r, 'M2d somado ao Md', '=IF(M2d_on="Não",0,M2d_)', 'kN·m/m', '2ª ordem da base (zero se "Somar M2d" = Não).', 'res', '0.000', 'M2d_us'); r += 1
+line(B, r, 'Md da base pela decomposição = γf·(Mk + Mk vento) + M2d', '=gama_f*(Mk_+Mk_w)+M2d_us', 'kN·m/m', 'Igual ao Md (seção Esforços): γf·(Mk + Mk vento) é a coluna U da base no perfil (Solo e Empuxo).', 'res', '0.00', 'Md_dec'); r += 1
+line(B, r, 'Força no aço F = As,ef·fyd', '=As_ef*fyd_/10', 'kN/m', '', 'res', '0.00', 'Fas_bal'); r += 1
+line(B, r, 'Mesa inteira comprimida = K·fd_m·b·hf', '=ffd_m/10*100*hf_bl', 'kN/m', 'Até ela, só a parede do bloco comprime.', 'res', '0.00', 'Fm_bal'); r += 1
+line(B, r, 'x com As,ef (equilíbrio C = F)', '=IFERROR(IF(Fas_bal<=Fm_bal,Fas_bal/(0.8*ffd_m/10*100),(hf_bl+(Fas_bal-Fm_bal)/(ffd_g/10*bw_m))/0.8),"—")', 'cm', 'Mesa: F/(0,8·K·fd_m·b). Seção T: 0,8x = hf + y, y = (F − mesa)/(K·fd_g·b almas).', 'res', '0.00', 'xas_bal'); r += 1
+line(B, r, 'M com As,ef (sem o limite de x/d)', '=IFERROR(IF(Fas_bal<=Fm_bal,Fas_bal*IF(xas_bal<=0.125*d_util,0.95*d_util,d_util-0.4*xas_bal),Fm_bal*(d_util-hf_bl/2)+(Fas_bal-Fm_bal)*(d_util-hf_bl-(0.8*xas_bal-hf_bl)/2)),"—")', 'kN·cm/m', 'Mesa: F·z, z = d − 0,4x ≤ 0,95d. Seção T: mesa·(d − hf/2) + almas·(d − hf − y/2).', 'res', '0.00', 'Mas_bal'); r += 1
+line(B, r, 'x limite = 0,45·d', '=0.45*d_util', 'cm', 'Ductilidade (verificação x/d ≤ 0,45).', 'res', '0.00', 'xlim_bal'); r += 1
+line(B, r, 'Força no limite', '=IF(0.8*xlim_bal<=hf_bl,ffd_m/10*100*0.8*xlim_bal,Fm_bal+ffd_g/10*bw_m*(0.8*xlim_bal-hf_bl))', 'kN/m', '', 'res', '0.00', 'Flim_bal'); r += 1
+line(B, r, 'M no limite (x = 0,45d)', '=IF(0.8*xlim_bal<=hf_bl,ffd_m/10*100*0.8*xlim_bal*(d_util-0.4*xlim_bal),Fm_bal*(d_util-hf_bl/2)+ffd_g/10*bw_m*(0.8*xlim_bal-hf_bl)*(d_util-hf_bl-(0.8*xlim_bal-hf_bl)/2))', 'kN·cm/m', '', 'res', '0.00', 'Mlim_bal'); r += 1
+line(B, r, 'MRd — faixa de 1 m', '=IFERROR(IF(AND(ISNUMBER(Fas_bal),d_util>0),IF(Fas_bal<=Flim_bal,Mas_bal,Mlim_bal)/100,"—"),"—")', 'kN·m/m', 'Momento que a conta da flexão resiste com a armadura adotada. Compara com o Md.', 'key', '0.00', 'MRd_bal', 'NBR 16868-1 11.3 (conta da flexão invertida)'); r += 1
+line(B, r, 'x no MRd', '=IFERROR(IF(Fas_bal<=Flim_bal,IF(Fas_bal<=Fm_bal,1.25*d_util*(1-SQRT(1-MRd_bal*100/(0.5*100*d_util^2*ffd_m/10))),xas_bal),xlim_bal),"—")', 'cm', 'O x que a conta da flexão daria com Md = MRd.', 'res', '0.00', 'xM_bal'); r += 1
+line(B, r, 'MSd/MRd', '=IFERROR(Md_/MRd_bal,"—")', '', 'Aproveitamento da flexão (≤ 1 resiste; o As,mín é verificação à parte).', 'key', '0.000', 'ap_bal'); r += 1
 widths(B, {'A': 36, 'B': 44, 'C': 9, 'D': 60, 'E': 16})
 
 # ================= ARRANJOS =================
@@ -1045,6 +1116,15 @@ for lab, f in [('σtd,par ≤ ftd,par', '=IF(st_par<=ftd_par,"OK ("&TEXT(st_par/
     line(P, r, lab, f, '', '', 'key', None, None); r += 1
 r += 1
 P.cell(row=r, column=1, value='Exemplo (padrão da planilha): βf 0,118; Md,par 26,2 e Md,nor 13,1 kN·cm/m; σtd,par 0,004 < 0,02 e σtd,nor 0,002 < 0,01 kN/cm² — OK. O βf sai da Tab. E.1 da NBR 16868-1 (Anexo E), interpolado em h/l e μ.').font = fS
+r += 2
+# Momento resistente do painel não armado como MOMENTO (15/11, diagrama da vista "Esforços"): a verificação compara
+# tensões (σtd = Md/W ≤ ftd); aqui a mesma desigualdade escrita em momento, MRd = ftd·W (W por metro, seção bruta).
+# Sem pré-compressão na flexão (a σ do painel só entra no cisalhamento). Os Md,par e Md,nor já são de cálculo (fd com γf).
+section(P, r, 'Momento resistente (diagrama de momentos)'); r += 1
+line(P, r, 'MRd,par = ftd,par·W', '=IFERROR(ftd_par*W_pan*1000,"—")', 'kN·m/m', 'Compara com o Md,par.', 'key', '0.0000', 'MRp_pan'); r += 1
+line(P, r, 'MRd,nor = ftd,nor·W', '=IFERROR(ftd_nor*W_pan*1000,"—")', 'kN·m/m', 'Compara com o Md,nor.', 'key', '0.0000', 'MRn_pan'); r += 1
+line(P, r, 'Md,par/MRd,par', '=IFERROR(Mpar/MRp_pan,"—")', '', '', 'res', '0.000', 'ap_ppan'); r += 1
+line(P, r, 'Md,nor/MRd,nor', '=IFERROR(Mnor/MRn_pan,"—")', '', '', 'res', '0.000', 'ap_npan'); r += 1
 widths(P, {'A': 36, 'B': 22, 'C': 9, 'D': 70, 'E': 16})
 
 # ================= ELS =================
@@ -1106,6 +1186,32 @@ line(L_, r, 'δ∞ ≤ δadm', '=IF(delta_<=dadm_,"OK ("&TEXT(delta_/dadm_,"0%")
 r += 1
 L_.cell(row=r, column=1, value='Limite (critério adotado): vão/250, com vão 2L no balanço — comparado com a flecha final δ∞ (a favor da segurança).').font = fS
 widths(L_, {'A': 40, 'B': 22, 'C': 9, 'D': 70, 'E': 22})
+
+# ---- MOMENTO RESISTENTE de seção RETANGULAR com a armadura adotada (15/11; vista "Esforços") ----
+# Usado nas abas Contrafortes, Fundação e Muro de cima e vento. Cada aba dimensiona do Md para o As com a conta do bloco
+# retangular (x = 1,25·d·[1 − √(1 − Md/(kq·b·d²))], As = Md/(fsd·z)); aqui a MESMA conta é desfeita, sem iteração:
+#   F = As,ef·fsd = C = kc·b·x  →  x = F/(kc·b)  →  M = F·z, z = d − 0,4x
+#   kc = 0,8·K·fd (alvenaria) ou 0,85·fcd·0,8 = 0,68·fcd (concreto, NBR 6118); kq = kc/1,6 (0,5·K·fd ou 0,425·fcd)
+#   cap: a conta da aba limita z ≤ 0,95d (só a de alvenaria): com x ≤ 0,125d o mesmo As sai de M = F·0,95d.
+# Limitado pelo x que a VERIFICAÇÃO da aba exige: 0,45d quando ela confere a ductilidade; 1,25d (o fim da conta, a
+# raiz do "não resiste") quando ela não confere — e então o MRd é o da seção como a aba a calcula, sem ductilidade.
+# Devolve o nome do MRd da seção em kN·cm, na largura b da conta (a faixa); quem chama converte para a unidade do MSd.
+def mrd_ret(L, tag, As, fsd, kc, kq, b, d, xlim, cap, rot_lim, wrap=lambda f: f):
+    W = lambda f: '=IFERROR(' + wrap(f) + ',"—")'
+    L('Força no aço F = As,ef·fsd', W(f'{As}*{fsd}/10'), 'kN', 'Na largura da conta (b).', 'res', '0.00', f'Fas_{tag}')
+    L('x com As,ef (equilíbrio C = F)', W(f'Fas_{tag}/({kc}/10*{b})'), 'cm', 'x = F/(kc·b).', 'res', '0.00', f'xas_{tag}')
+    _z = f'{d}-0.4*xas_{tag}'
+    if cap is True:
+        _z = f'IF(xas_{tag}<=0.125*{d},0.95*{d},{_z})'
+    elif cap:
+        _z = f'IF(AND({cap},xas_{tag}<=0.125*{d}),0.95*{d},{_z})'
+    L('M com As,ef = F·z (sem o limite de x)', W(f'Fas_{tag}*({_z})'), 'kN·cm', 'z = d − 0,4x' + (' ≤ 0,95d, como na conta.' if cap else '.'), 'res', '0.00', f'Mas_{tag}')
+    L(f'x limite = {rot_lim}', W(f'{xlim}*{d}'), 'cm', '0,45d: a verificação de ductilidade da aba. 1,25d: a aba não confere a ductilidade; é o fim da conta ("não resiste").', 'res', '0.00', f'xlim_{tag}')
+    L('M no limite', W(f'{kc}/10*{b}*xlim_{tag}*({d}-0.4*xlim_{tag})'), 'kN·cm', '', 'res', '0.00', f'Mlim_{tag}')
+    L('MRd da seção (na largura b)', W(f'IF(AND(ISNUMBER(xas_{tag}),{d}>0),IF(xas_{tag}<=xlim_{tag},Mas_{tag},Mlim_{tag}),"—")'), 'kN·cm', 'Com As,ef; acima do x limite, o M do limite.', 'key', '0.00', f'MRf_{tag}')
+    L('x no MRd', W(f'IF(ISNUMBER(MRf_{tag})=FALSE,"—",IF(xas_{tag}<=xlim_{tag},1.25*{d}*(1-SQRT(1-MRf_{tag}/({kq}/10*{b}*{d}^2))),xlim_{tag}))'), 'cm', 'O x que a conta da aba daria com Md = MRd.', 'res', '0.00', f'xM_{tag}')
+    return f'MRf_{tag}'
+
 
 # ================= CONTRAFORTES (aula 12.3) =================
 import os as _os_cf

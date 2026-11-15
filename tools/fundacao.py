@@ -206,7 +206,14 @@ CHKF = [
 NOME_CHK = {'Tombamento: FS ≥ mínimo': 'chk_fs_t', 'Tombamento: |e| ≤ B/4': 'chk_e_t',
             'Deslizamento: FS ≥ mínimo': 'chk_fs_d', 'Tensão: σ máx ≤ σadm': 'chk_sig',
             'Sapata rígida: h ≥ (B − t)/3': 'chk_rig', 'Compressão diagonal na face do muro': 'chk_bw',
-            'Compressão diagonal junto ao contraforte': 'chk_bc'}
+            'Compressão diagonal junto ao contraforte': 'chk_bc',
+            # nomes de 15/11 (diagrama de esforços): as demais verificações, que só tinham rótulo
+            'Muro apoiado na sapata': 'chk_apoio_s', 'Contraforte apoiado na sapata': 'chk_cf_s',
+            'Tombamento: resultado (vale o pior)': 'chk_tomb', 'Tensão: sapata toda comprimida (|e| ≤ B/6)': 'chk_comp_s',
+            'Flexão da sapata': 'chk_fl_s', 'Cortante sem estribo (ponta e talão)': 'chk_v_s',
+            'Torção: TSd ≤ TRd2': 'chk_tor_s', 'Dente dentro da sapata': 'chk_den_in',
+            'Torção: espessura equivalente he': 'chk_he_s', 'Dente: armadura (seção 11)': 'chk_den_s'}
+assert set(NOME_CHK) == {lab for lab, _ in CHKF}, 'verificação sem nome na aba Fundação'
 for lab, f in CHKF:
     Lf(lab, f, '', '', 'key', None, NOME_CHK.get(lab))
 r += 1
@@ -274,7 +281,14 @@ def sig(xc):
     d_ = f'IF(e_f>=0,B_sap-{xc},{xc})'
     return f'IF(ABS(e_f)<=B_sap/6,s_hi-(s_hi-s_lo)*{d_}/B_sap,MAX(0,s_hi*(1-{d_}/c_len)))'
 for tag, lab in (('T', 'Ponta'), ('H', 'Talão')):
-    header(Fd, r, [f'{lab}: fatia', 'x (m)', 'σ (kPa)', 'q líquida (kPa)', 'braço à face (m)', 'dM (kN·m/m)', 'dV além de d (kN/m)']); r += 1
+    # Colunas H–L (15/11, diagrama de esforços): M e V ACUMULADOS da ponta livre até a face do muro, na seção do lado
+    # da face de cada fatia (distância e da face: ponta (i − 1)·L/20, talão (20 − i)·L/20). Na face (e = 0) o M é a
+    # SOMA das 20 fatias, a mesma do Mk_toe / Mk_heel, bit a bit; na ponta livre (e = L) é zero (não tem linha).
+    #   M(e) = Σ dM das fatias além da seção − e·V(e);  V(e) = Σ q·L/20 das fatias além da seção
+    # Característicos, por metro (+ = o sentido da armadura da peça: ponta traciona embaixo, talão em cima). De
+    # cálculo: × 1,4 (a seção 7 usa 1,4 fixo, Md = 1,4·máx(0; Mk)); colunas K e L, sem o máx(0; …).
+    header(Fd, r, [f'{lab}: fatia', 'x (m)', 'σ (kPa)', 'q líquida (kPa)', 'braço à face (m)', 'dM (kN·m/m)', 'dV além de d (kN/m)',
+                   'e: seção a partir da face (m)', 'M acumulado (kN·m/m)', 'V acumulado (kN/m)', 'MSd = 1,4·M (kN·m/m)', 'VSd = 1,4·V (kN/m)']); r += 1
     r0 = r
     for i in range(1, 21):
         Fd.cell(row=r, column=1, value=i)
@@ -292,10 +306,22 @@ for tag, lab in (('T', 'Ponta'), ('H', 'Talão')):
             Fd[f'E{r}'] = f'=(a_ater-t_m/2)-B{r}'
             Fd[f'F{r}'] = f'=D{r}*heel/20*E{r}'
             Fd[f'G{r}'] = f'=IF(E{r}>d_s/100,D{r}*heel/20,0)'
-        for cc in 'ABCDEFG':
+        _L = 'toe' if tag == 'T' else 'heel'
+        _ie = lambda f: '=IFERROR(' + f + ',"—")'
+        if tag == 'T':    # fatia 1 junto à face; as de índice maior ficam além da seção
+            Fd[f'H{r}'] = _ie(f'({i}-1)*toe/20'); _rg = f'{r}:{{c}}{r0 + 19}'
+        else:             # fatia 20 junto à face; as de índice menor ficam além da seção
+            Fd[f'H{r}'] = _ie(f'(20-{i})*heel/20'); _rg = f'{r0}:{{c}}{r}'
+        Fd[f'J{r}'] = _ie(f'SUM(D{_rg.format(c="D")})*{_L}/20')
+        Fd[f'I{r}'] = _ie(f'SUM(F{_rg.format(c="F")})-H{r}*J{r}')
+        Fd[f'K{r}'] = _ie(f'1.4*I{r}')
+        Fd[f'L{r}'] = _ie(f'1.4*J{r}')
+        for cc in 'ABCDEFGHIJKL':
             c = Fd[f'{cc}{r}']; c.border = BOX; c.font = fN
             if cc != 'A': c.number_format = '0.000'
         r += 1
+    for _sf, _cc in (('e', 'H'), ('Mk', 'I'), ('Vk', 'J'), ('Md', 'K'), ('Vd', 'L')):
+        wb.defined_names[f'{tag}_{_sf}'] = DefinedName(f'{tag}_{_sf}', attr_text=f"'Fundação'!${_cc}${r0}:${_cc}${r-1}")
     wb.defined_names[f'{tag}_dM'] = DefinedName(f'{tag}_dM', attr_text=f"'Fundação'!$F${r0}:$F${r-1}")
     wb.defined_names[f'{tag}_dV'] = DefinedName(f'{tag}_dV', attr_text=f"'Fundação'!$G${r0}:$G${r-1}")
     r += 1
@@ -436,5 +462,28 @@ for _lab, _nm, _ in reversed(CHKD): _qual = f'IF(LEFT({_nm},2)<>"OK","{_lab.spli
 # sem dente: o que a geometria disse ("— (sem dente)" ou "NÃO OK — digitar a largura do dente")
 Lf('Dente: resultado', f'=IF(tem_den<>"Sim",chk_geo_den,IF(ISNUMBER(p2_den)=FALSE,"NÃO OK — digitar o φ\' do solo de apoio (sondagem)",IF({_okd},"OK — estribo "&{_fden}&" + "&FIXED(n_lden,0)&" Ø"&{fphi("phi_lden")}&" corridas","NÃO OK — "&{_qual})))', '',
    'Largura, flexão, cortante, ancoragem do estribo e momento passado à sapata.', 'key', None, 'res_den')
-widths(Fd, {'A': 46, 'B': 24, 'C': 12, 'D': 66, 'E': 18, 'F': 14, 'G': 16})
+r += 1
+# ---------- 12. momentos resistentes com a armadura adotada (15/11, vista "Esforços") ----------
+# No FIM da aba, pela mesma razão da seção 11. A conta da seção 7 (NBR 6118, bloco 0,8x com 0,85·fcd, b = 100) e a da
+# seção 11 (dente, b = 100) desfeitas com o aço adotado (mrd_ret, build_new.py). γf: os MSd destas peças usam 1,4
+# FIXO (seção 7: Md = 1,4·máx(0; Mk); dente: Md_den já é de cálculo). Ao longo da ponta e do talão: as colunas K e L
+# das fatias (T_Md, H_Md…). A flexão da sapata (seção 9) não confere a ductilidade: limite = fim da conta (1,25d);
+# o dente confere (x/d ≤ 0,45).
+section(Fd, r, '12. Momentos resistentes com a armadura adotada (diagrama de momentos)'); r += 1
+Lf('As,ef da sapata = Ø principal no espaçamento adotado', '=PI()*phi_sap^2/400/s_ps*100', 'cm²/m', 'Seção 7. A mesma barra embaixo (ponta) e, quando há, em cima (talão).', 'res', '0.00', 'Ase_s')
+# Barra em cima: a MESMA regra do chk_tr_den (seção 11) e do modelo (entorno.ts, sapataReta): estribo põe o ramo de
+# cima sempre; reta só quando o talão pede (Mk_heel > 0). Sem barra em cima o talão não tem MRd (zero).
+Lf('Há armadura em cima (talão)?', '=IF(LEFT(sap_transv,4)="Reta",IF(ISNUMBER(Mk_heel),IF(Mk_heel>0,"Sim","Não"),"Não"),"Sim")', '', 'Estribo: o ramo de cima. Reta: só quando o talão pede (Mk do talão > 0).', 'res', None, 'sup_s')
+mrd_ret(Lf, 's', 'Ase_s', 'fyk_/gama_s', '0.68*fcd_s', '0.425*fcd_s', '100', 'd_s', '1.25', False, '1,25·d (fim da conta)')
+Lf('MRd da ponta (barra de baixo)', '=IFERROR(MRf_s/100,"—")', 'kN·m/m', 'Compara com o Md da ponta (seção 7).', 'key', '0.00', 'MRd_toe', 'NBR 6118 17.2.2 (conta da flexão invertida)')
+Lf('MRd do talão (barra de cima)', '=IFERROR(IF(sup_s="Sim",MRf_s/100,0),"—")', 'kN·m/m', 'Compara com o Md do talão. Zero sem barra em cima.', 'key', '0.00', 'MRd_heel', 'NBR 6118 17.2.2 (conta da flexão invertida)')
+Lf('MSd/MRd da ponta', '=IF(Md_ts<=0,0,Md_ts/MRd_toe)', '', '', 'key', '0.000', 'ap_toe')
+Lf('MSd/MRd do talão', '=IF(Md_hs<=0,0,Md_hs/MRd_heel)', '', '', 'key', '0.000', 'ap_heel')
+Lf('VSd/VRd1 (ponta e talão, a d da face)', '=MAX(Vsd_t,Vsd_h)/VRd1_s', '', 'A verificação "Cortante sem estribo".', 'res', '0.000', 'apV_s')
+Fd.cell(row=r, column=1, value='Dente (seção 11)').font = fB; r += 1
+mrd_ret(Lf, 'den', 'Ase_den', 'fyk_/gama_s', '0.68*fcd_s', '0.425*fcd_s', '100', 'd_den', '0.45', False, '0,45·d (ductilidade)',
+        wrap=lambda f: f'IF(tem_den="Sim",{f},"—")')
+Lf('MRd do dente (na raiz)', _D('MRf_den/100'), 'kN·m/m', 'Compara com o Md do dente (seção 11).', 'key', '0.00', 'MRd_den', 'NBR 6118 17.2.2 (conta da flexão invertida)')
+Lf('MSd/MRd do dente', _D('Md_den/MRd_den'), '', '', 'key', '0.000', 'ap_den')
+widths(Fd, {'A': 46, 'B': 24, 'C': 12, 'D': 66, 'E': 18, 'F': 14, 'G': 16, 'H': 14, 'I': 14, 'J': 14, 'K': 14, 'L': 14})
 Fd.freeze_panes = 'A4'

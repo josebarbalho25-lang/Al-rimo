@@ -409,9 +409,9 @@ Lc('βf (caso 13)', '=(1-ty_sp)*((1-tx_sp)*INDEX(tabela_13,i_sp,j_sp)+tx_sp*INDE
 Lc('Md,par = βf·fd·l²', '=bf_sp*fd_sp*l_sp^2*100', 'kN·cm/m', '', 'res', '0.0', 'Mpar_sp')
 Lc('Md,nor = μ·Md,par', '=mu_pan*Mpar_sp', 'kN·cm/m', '', 'res', '0.0', 'Mnor_sp')
 Lc('σtd,par = Md,par/W', '=Mpar_sp/(100*t_bloco^2/6)*10', 'MPa', '', 'res', '0.000', 'st_psp')
-Lc('ftd,par = ftk∥/γm', '=ftk_par/gama_m', 'MPa', '', 'res', '0.000')
+Lc('ftd,par = ftk∥/γm', '=ftk_par/gama_m', 'MPa', '', 'res', '0.000', 'ftdp_sp')
 Lc('σtd,nor = Md,nor/W', '=Mnor_sp/(100*t_bloco^2/6)*10', 'MPa', '', 'res', '0.000', 'st_nsp')
-Lc('ftd,nor = ftk⊥/γm', '=ftk_nor/gama_m', 'MPa', '', 'res', '0.000')
+Lc('ftd,nor = ftk⊥/γm', '=ftk_nor/gama_m', 'MPa', '', 'res', '0.000', 'ftdn_sp')
 r += 1
 section(C, r, '12. Painel — ELS nas duas direções'); r += 1
 Lc('Em do painel = (Em/fpk)·fpk', '=Em_coef*fpk_pn', 'MPa', 'Seção I ↔ fpk líquido ou bruto; seção cheia ↔ fpk*.', 'res', '0', 'Em_pn')
@@ -527,8 +527,86 @@ CHK = [
     ('POSIÇÃO DAS BARRAS DO PAINEL', '=IF(nb_pv=2,"ATENÇÃO — verticais: uma barra encostada em CADA face (a "&'+fphi('c_pv')+'&" cm), não centralizar. Horizontais: "&IF(LEFT(pos_ph,4)="Cent","centralizadas na canaleta.",IF(nb_ph=2,"uma encostada em CADA face da canaleta.","encostadas na face externa.")),"Verticais centralizadas."&IF(nb_ph=2," Horizontais: uma encostada em CADA face da canaleta.",""))'),
     ('Muro de cima e vento', '=res_mc'),
 ]
+# Nome em todas as verificações (15/11): a memória do app as achava pelo rótulo da coluna A; o diagrama de esforços
+# precisa do veredito de cada peça pelo nome. Dar nome a uma célula que já existe não muda valor nenhum.
+NOME_CHK_CF = {
+    'Esbeltez λ ≤ 30 (armada)': 'chk_esb_cf', 'hf ≤ 0,5d (largura colaborante)': 'chk_hf_cf',
+    'Contraforte: seção resiste': 'chk_res_cf', 'Contraforte: ductilidade x/d ≤ 0,45': 'chk_duc_cf',
+    'Contraforte: As,ef ≥ As de cálculo': 'chk_As_cf', 'Contraforte: As ≤ As,máx do furo': 'chk_Asx_cf',
+    'Contraforte: bielas Vd ≤ Vrd2': 'chk_bie_cf', 'Contraforte: estribos': 'chk_est_cf',
+    'Estribo cabe na junta (Ø ≤ 6,3 mm)': 'chk_estj_cf', 'Contraforte: ELS δ∞ ≤ δadm': 'chk_els_cf',
+    'Painel: γ dentro da tabela (0,30–2,00)': 'chk_gam_p', 'Painel vertical: barra do lado do solo': 'chk_pvs',
+    'Painel vertical: barra do lado externo': 'chk_pve', 'Painel vertical: As ≤ As,máx do furo': 'chk_pvx',
+    'Painel horizontal: barra na canaleta': 'chk_ph', 'Painel não armado: σtd,par ≤ ftd,par': 'chk_spp',
+    'Painel não armado: σtd,nor ≤ ftd,nor': 'chk_spn', 'Painel não armado: dimensões-limite': 'chk_spd',
+    'Painel: ELS δ∞ ≤ δadm': 'chk_els_p', 'Painel: ábaco simplificado da NBR': 'chk_ab_p',
+    'POSIÇÃO DAS BARRAS DO PAINEL': 'chk_pos_p', 'Muro de cima e vento': 'chk_mc_cf'}
+assert set(NOME_CHK_CF) == {lab for lab, _ in CHK}, 'verificação sem nome na aba Contrafortes'
 for lab, f in CHK:
-    Lc(lab, f, '', '', 'key')
+    Lc(lab, f, '', '', 'key', None, NOME_CHK_CF[lab])
+r += 1
+# ---------- 16. momentos resistentes e o outro contraforte (15/11, vista "Esforços") ----------
+# No FIM da aba: nada acima muda de lugar (a memória do app acha as linhas de cima pelo rótulo da coluna A, a 1ª vez
+# que ele aparece — os rótulos daqui não repetem os de cima).
+# γf: os MSd de cada peça já são de cálculo nesta aba (Md_cf = γf·Mk_cf; Mdy/Mdyei/Mdx = γf·μ·p·l², seção 8). Ao longo
+# da altura do contraforte: Solo e Empuxo, colunas W (este tipo) e Y (o outro), = γf·(M solo·binf + M vento).
+section(C, r, '16. Momentos resistentes com a armadura adotada (diagrama de momentos) e o outro contraforte'); r += 1
+# O OUTRO TIPO: a aba dimensiona só o contraforte escolhido em "Contraforte calculado" (intermediário OU extremidade),
+# mas o muro tem os dois e a armadura é a mesma em todos. O diagrama precisa do MSd dos dois. Mesma conta da seção 1
+# (e do vento, aba Muro de cima e vento, seção 3) com a largura de influência do outro tipo; e a seção T do outro tipo
+# muda a aba do lado do balanço (bf_b), por isso o MRd dele sai com a bm dele.
+Lc('Contraforte do outro tipo', '=IF(LEFT(tipo_cf,5)="Inter","Extremidade","Intermediário")', '', '', 'res', None, 'tipo_cfo')
+Lc('Largura de influência do outro tipo', '=IF(LEFT(tipo_cf,5)="Inter",l_cf_adot/2+bal_cf,l_cf_adot)', 'm', 'Intermediário = l; extremidade = l/2 + balanço do muro.', 'res', '0.00', 'binf_o', 'Critério adotado (área de influência)')
+Lc('Aba do lado do balanço no outro tipo', '=IF(LEFT(tipo_cf,5)="Inter",MIN(6*t_bloco,bal_cf*100),bf_a)', 'cm', '', 'res', '0.0', 'bf_bo')
+Lc('bm do outro tipo', '=IF(cf_T=1,MIN(bw_cf+bf_a+bf_bo,H_muro*100/3),bw_cf)', 'cm', 'bm ≤ bw + abas e ≤ altura do muro/3.', 'res', '0.0', 'bm_cfo', 'NBR 16868-1 11.3.4 e 10.1.3')
+Lc('Abas da mesa do outro tipo = Kfd·(bm − bw)·hf', '=Kfd_cf/10*(bm_cfo-bw_cf)*hf_cf', 'kN', '', 'res', '0.00', 'Cf_cfo')
+Lc('Outro tipo: vento do muro de cima', '=IF(Tipo_muro="Contrafortes",p_w*h_mce*pil_ncf*binf_o,0)', 'kN', 'Como o F_wpc (aba Muro de cima e vento) com a largura do outro tipo.', 'res', '0.00', 'Fpo_cf')
+Lc('Outro tipo: vento no arrimo acima do solo', '=IF(Tipo_muro="Contrafortes",p_w*h_exp*binf_o,0)', 'kN', '', 'res', '0.00', 'Feo_cf')
+Lc('Outro tipo: Vk do vento', '=Fpo_cf+Feo_cf', 'kN', '', 'res', '0.00', 'Vk_wcfo')
+Lc('Outro tipo: Mk do vento na base', '=Fpo_cf*(H_muro+h_mce/2)+Feo_cf*(H_solo+h_exp/2)', 'kN·m', '', 'res', '0.00', 'Mk_wcfo')
+Lc('Outro tipo: Mk na base', '=Mk_*binf_o+Mk_wcfo', 'kN·m', '', 'res', '0.00', 'Mk_cfo')
+Lc('Outro tipo: Vk na base', '=Vk_*binf_o+Vk_wcfo', 'kN', '', 'res', '0.00', 'Vk_cfo')
+Lc('Outro tipo: Md = γf·Mk', '=gama_f*Mk_cfo', 'kN·m', '', 'key', '0.00', 'Md_cfo')
+Lc('Outro tipo: Vd = γf·Vk', '=gama_f*Vk_cfo', 'kN', '', 'key', '0.00', 'Vd_cfo')
+# MRd do contraforte: a conta da seção 5 desfeita (x com As,ef pelo equilíbrio). T quando a força no aço passa da
+# mesa inteira (bm·hf): Cf = abas (bm − bw)·hf e a alma de cima a 0,8x, como o x_cfw da seção 5; retangular (bm × d,
+# ou só a alma no aparente) com z ≤ 0,95d. Limite x/d = 0,45 (verificação "ductilidade").
+Lc('Força no aço F = As,ef·fsd', '=As_cfe*fsd_cf/10', 'kN', 'Barras principais do contraforte (Nº × Ø).', 'res', '0.00', 'Fas_cf')
+Lc('x limite = 0,45·d (contraforte)', '=0.45*d_cf', 'cm', 'Ductilidade (verificação x/d ≤ 0,45).', 'res', '0.00', 'xlim_cf')
+for _sx, _bm, _cfm, _rot in (('cf', 'bm_cf', 'Cf_cf', 'este tipo'), ('cfo', 'bm_cfo', 'Cf_cfo', 'outro tipo')):
+    _T = f'AND(cf_T=1,Fas_cf>Fb_{_sx})'          # seção T além da mesa
+    _TL = 'AND(cf_T=1,0.8*xlim_cf>hf_cf)'         # o limite de ductilidade cai na alma
+    Lc(f'Mesa inteira comprimida Kfd·bm·hf ({_rot})', f'=Kfd_cf/10*{_bm}*hf_cf', 'kN', 'Zero na seção retangular.', 'res', '0.00', f'Fb_{_sx}')
+    Lc(f'x com As,ef ({_rot})', f'=IF({_T},(Fas_cf-{_cfm})/(0.8*Kfd_cf/10*bw_cf),Fas_cf/(0.8*Kfd_cf/10*{_bm}))', 'cm', 'T: F = abas + Kfd·bw·0,8x; retangular: F = Kfd·bm·0,8x.', 'res', '0.00', f'xas_{_sx}')
+    Lc(f'M com As,ef ({_rot})', f'=IF({_T},{_cfm}*(d_cf-hf_cf/2)+(Fas_cf-{_cfm})*(d_cf-0.4*xas_{_sx}),Fas_cf*IF(xas_{_sx}<=0.125*d_cf,0.95*d_cf,d_cf-0.4*xas_{_sx}))', 'kN·cm', 'T: abas·(d − hf/2) + alma·(d − 0,4x); retangular: F·z, z ≤ 0,95d.', 'res', '0.00', f'Mas_{_sx}')
+    Lc(f'Força no limite ({_rot})', f'=IF({_TL},{_cfm}+0.8*Kfd_cf/10*bw_cf*xlim_cf,0.8*Kfd_cf/10*{_bm}*xlim_cf)', 'kN', '', 'res', '0.00', f'Flim_{_sx}')
+    Lc(f'M no limite ({_rot})', f'=IF({_TL},{_cfm}*(d_cf-hf_cf/2)+0.8*Kfd_cf/10*bw_cf*xlim_cf*(d_cf-0.4*xlim_cf),0.8*Kfd_cf/10*{_bm}*xlim_cf*(d_cf-0.4*xlim_cf))', 'kN·cm', '', 'res', '0.00', f'Mlim_{_sx}')
+    Lc(f'MRd do contraforte ({_rot})', f'=IF(AND(ISNUMBER(Fas_cf),d_cf>0),IF(Fas_cf<=Flim_{_sx},Mas_{_sx},Mlim_{_sx})/100,"—")', 'kN·m', 'Compara com o Md ' + ('(seção 1).' if _sx == 'cf' else 'do outro tipo (acima).'), 'key', '0.00', f'MRd_{_sx}', 'NBR 16868-1 11.3 (conta da flexão invertida)')
+    Lc(f'x no MRd ({_rot})', f'=IF(Fas_cf<=Flim_{_sx},IF({_T},xas_{_sx},1.25*d_cf*(1-SQRT(1-MRd_{_sx}*100/(0.5*{_bm}*d_cf^2*Kfd_cf/10)))),xlim_cf)', 'cm', '', 'res', '0.00', f'xM_{_sx}')
+    Lc(f'MSd/MRd ({_rot})', f'=Md_{_sx}/MRd_{_sx}', '', '', 'key', '0.000', f'ap_{_sx}')
+# Cortante: a resistência que as verificações usam — Vrd3 (Va + estribos; = Va sem estribo) e as bielas Vrd2.
+Lc('VRd do contraforte = mín(Vrd3; Vrd2)', '=MIN(Vrd3_cf,Vrd2_cf)', 'kN', 'Sem estribo (dispensa pela conta), Vrd3 = Va. Vale para os dois tipos (mesma seção e mesmo aço).', 'key', '0.00', 'VRd_cf', 'NBR 16868-1 11.4.3')
+Lc('VSd/VRd (este tipo)', '=Vd_cf/VRd_cf', '', '', 'res', '0.000', 'apV_cf')
+Lc('VSd/VRd (outro tipo)', '=Vd_cfo/VRd_cf', '', 'Os estribos são os deste tipo: se o outro pedir estribo e este não, passa de 1.', 'res', '0.000', 'apV_cfo')
+# Painel: a conta das seções 9 e 10 é por FAIXA (b = espaçamento das barras) com o momento por metro × faixa; o MRd
+# sai na faixa e volta por metro (kN·cm/m, a unidade dos Mdy/Mdyei/Mdx de Libânio). As verificações do painel não
+# conferem a ductilidade: o limite é o fim da conta (x = 1,25d), como a aba faz.
+r += 1
+C.cell(row=r, column=1, value='Painel — flexão vertical (uma barra de cada face por faixa s; a mesma seção nos dois sinais)').font = fB; r += 1
+mrd_ret(Lc, 'pv', 'a_pv', 'fsd_pv', '0.8*Kfd_pv', '0.5*Kfd_pv', 's_pv', 'd_pv', '1.25', True, '1,25·d (fim da conta)')
+Lc('MRd vertical — barra do lado do solo (por metro)', '=IFERROR(MRf_pv*100/s_pv,"—")', 'kN·cm/m', 'Compara com o momento da barra do lado do solo (Mdyei; centralizada: o maior dos dois).', 'key', '0.0', 'MRd_pvs', 'NBR 16868-1 11.3 (conta da flexão invertida)')
+Lc('MRd vertical — barra do lado externo (por metro)', '=IFERROR(MRd_pvs,"—")', 'kN·cm/m', 'Mesma barra, mesmo d (2 barras simétricas ou 1 centralizada). Compara com o Mdy.', 'key', '0.0', 'MRd_pve')
+Lc('MSd/MRd vertical — lado do solo', '=IFERROR(M_pvs/MRd_pvs,"—")', '', '', 'key', '0.000', 'ap_pvs')
+Lc('MSd/MRd vertical — lado externo', '=IFERROR(M_pve/MRd_pve,"—")', '', '', 'key', '0.000', 'ap_pve')
+C.cell(row=r, column=1, value='Painel — flexão horizontal (uma barra Ø horizontal por faixa de canaleta; com 2 barras, uma em cada face)').font = fB; r += 1
+mrd_ret(Lc, 'ph', 'a_ph', 'fsd_ph', '0.8*Kfd_ph', '0.5*Kfd_ph', 's_ph', 'd_ph', '1.25', True, '1,25·d (fim da conta)')
+Lc('MRd horizontal (por metro)', '=IFERROR(MRf_ph*100/s_ph,"—")', 'kN·cm/m', 'Compara com o momento horizontal de cálculo (seção 10). Todas as canaletas têm o mesmo.', 'key', '0.0', 'MRd_ph', 'NBR 16868-1 11.3 (conta da flexão invertida)')
+Lc('MSd/MRd horizontal', '=IFERROR(M_ph/MRd_ph,"—")', '', '', 'key', '0.000', 'ap_ph')
+C.cell(row=r, column=1, value='Painel não armado entre barras e canaletas (seção 11) — resistência como momento').font = fB; r += 1
+Lc('MRd,par = ftd,par·W (W = 100·t²/6)', '=ftdp_sp*(100*t_bloco^2/6)/10', 'kN·cm/m', 'A verificação σtd ≤ ftd escrita em momento; compara com o Md,par (seção 11).', 'key', '0.0', 'MRp_sp')
+Lc('MRd,nor = ftd,nor·W', '=ftdn_sp*(100*t_bloco^2/6)/10', 'kN·cm/m', 'Compara com o Md,nor.', 'key', '0.0', 'MRn_sp')
+Lc('Md,par/MRd,par (subpainel)', '=Mpar_sp/MRp_sp', '', '', 'res', '0.000', 'ap_psp')
+Lc('Md,nor/MRd,nor (subpainel)', '=Mnor_sp/MRn_sp', '', '', 'res', '0.000', 'ap_nsp')
 widths(C, {'A': 46, 'B': 24, 'C': 10, 'D': 72, 'E': 22, 'G': 16})
 for _cc in 'LMNOPQ':
     C.column_dimensions[_cc].hidden = True
