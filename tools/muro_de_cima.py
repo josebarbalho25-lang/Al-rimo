@@ -304,12 +304,19 @@ for j in range(11):
         MC[f'{cM}{r}'] = _ie(f'{Fp}*(H_muro+h_mce/2-B{r})+IF(B{r}<=H_solo,{Fe}*(H_solo+h_exp/2-B{r}),IF({_CF},p_w*{bi}*(H_muro-B{r})^2/2,0))')
         MC[f'{cV}{r}'] = _ie(f'{Fp}+IF(B{r}<=H_solo,{Fe},IF({_CF},p_w*{bi}*(H_muro-B{r}),0))')
     MC[f'I{r}'] = _ie(f'gama_f*C{r}'); MC[f'J{r}'] = _ie(f'gama_f*E{r}'); MC[f'K{r}'] = _ie(f'gama_f*G{r}')
-    for cc in 'ABCDEFGHIJK':
+    # (15/11, 2ª versão da vista Esforços) cortante de cálculo e o As necessário em cada nó — acima do solo o vento é a
+    # única carga, e o diagrama do aço precisa da conta lá em cima também (a do perfil do solo para no topo do solo).
+    # Mesmas contas das abas (build_new.py, cadeias_da_haste), colunas O em diante; L–N = γf·V.
+    MC[f'L{r}'] = _ie(f'gama_f*D{r}'); MC[f'M{r}'] = _ie(f'gama_f*F{r}'); MC[f'N{r}'] = _ie(f'gama_f*H{r}')
+    _cv = cadeias_da_haste(MC, r, 15, f'I{r}', f'J{r}', f'K{r}', f'M{r}', f'N{r}')
+    for cc in 'ABCDEFGHIJKLMN':
         c = MC[f'{cc}{r}']; c.font = fN; c.border = BOX; c.fill = RES
         if cc != 'A': c.number_format = '0.000'
     r += 1
+header(MC, _v0 - 1, ['VSd vento — balanço', 'VSd vento — contraforte', 'VSd vento — outro contraforte'] + ROTULOS_DA_HASTE, start=12)
 for _nm, _cc in (('vt_y', 'B'), ('vt_Mw', 'C'), ('vt_Vw', 'D'), ('vt_Mc', 'E'), ('vt_Vc', 'F'), ('vt_Mo', 'G'),
-                 ('vt_Vo', 'H'), ('vt_Md', 'I'), ('vt_Mdc', 'J'), ('vt_Mdo', 'K')):
+                 ('vt_Vo', 'H'), ('vt_Md', 'I'), ('vt_Mdc', 'J'), ('vt_Mdo', 'K'), ('vt_Vd', 'L'), ('vt_Vdc', 'M'), ('vt_Vdo', 'N'),
+                 ('vt_As', _cv[0]), ('vt_Asc', _cv[1]), ('vt_Aso', _cv[2]), ('vt_Aswc', _cv[3]), ('vt_Aswo', _cv[4])):
     wb.defined_names[_nm] = DefinedName(_nm, attr_text=f"'Muro de cima e vento'!${_cc}${_v0}:${_cc}${r-1}")
 r += 1
 # ---- PILARETE AO LONGO DA ALTURA: 11 nós, do topo do muro de cima (nó 0) ao topo do arrimo (nó 10, a base dele) ----
@@ -324,11 +331,17 @@ for j in range(11):
     MC[f'C{r}'] = _ie(f'IF(h_mce>0,Mk_pil*((h_mce-B{r})/h_mce)*((h_mce-B{r})/h_mce),0)')
     MC[f'D{r}'] = _ie(f'IF(h_mce>0,Vk_pil*((h_mce-B{r})/h_mce),0)')
     MC[f'E{r}'] = _ie(f'gama_f*C{r}'); MC[f'F{r}'] = _ie(f'gama_f*D{r}')
-    for cc in 'ABCDEF':
+    # (15/11, vista Esforços) x e As do momento no nó: a conta da seção 5 (concreto NBR 6118 ou bloco grauteado), com o
+    # Md do nó; na base = Asc_pil / Asb_pil (o As sem o mínimo, como o As,nec das outras peças)
+    MC[f'G{r}'] = _ie(f'IF({_concreto},IFERROR(1.25*d_pil*(1-SQRT(1-E{r}*100/(0.425*b_pila*d_pil^2*fcd_pil/10))),"não resiste"),'
+                      f'IFERROR(1.25*d_pil*(1-SQRT(1-E{r}*100/(0.5*b_pila*d_pil^2*Kfd_pil/10))),"não resiste"))')
+    MC[f'H{r}'] = _ie(f'IF({_concreto},IFERROR(E{r}*100/(fyd_pil/10*(d_pil-0.4*G{r})),"—"),IFERROR(E{r}*100/(fyd_pil/10*MIN(d_pil-0.4*G{r},0.95*d_pil)),"—"))')
+    for cc in 'ABCDEFGH':
         c = MC[f'{cc}{r}']; c.font = fN; c.border = BOX; c.fill = RES
         if cc != 'A': c.number_format = '0.000'
     r += 1
-for _nm, _cc in (('pt_y', 'B'), ('pt_Mk', 'C'), ('pt_Vk', 'D'), ('pt_Md', 'E'), ('pt_Vd', 'F')):
+header(MC, _p0 - 1, ['x (cm)', 'As do momento (cm²)'], start=7)
+for _nm, _cc in (('pt_y', 'B'), ('pt_Mk', 'C'), ('pt_Vk', 'D'), ('pt_Md', 'E'), ('pt_Vd', 'F'), ('pt_As', 'H')):
     wb.defined_names[_nm] = DefinedName(_nm, attr_text=f"'Muro de cima e vento'!${_cc}${_p0}:${_cc}${r-1}")
 r += 1
 
@@ -477,4 +490,12 @@ Lm('Cintas do muro de cima: resumo',
    '=IF(mc_on<>"Sim","— (sem muro de cima)",IF(cin_mc="Nenhuma","— (sem cintas)",IF(LEFT(res_cT,2)="NÃ",res_cT,IF(LEFT(res_cM,2)="NÃ",res_cM,'
    'IF(AND(OR(LEFT(res_cT,2)="OK",LEFT(res_cT,3)="— ("),OR(LEFT(res_cM,2)="OK",LEFT(res_cM,3)="— (")),"OK","NÃO OK — a conta da cinta não fechou")))))',
    '', 'Vai para o resumo do muro de cima (res_mc).', 'key', None, 'res_cmc')
+r += 1
+# ---------- 10. o que o diagrama do aço precisa (15/11, 2ª versão da vista "Esforços") ----------
+# No FIM da aba (nada acima muda de lugar). As resistências ao cortante que os resumos das seções 5 e 5b comparam,
+# escritas como força, e o As,mín que a seção 5 usa — os números com que o diagrama envolve o solicitante.
+section(MC, r, '10. Resistências e mínimos para o diagrama do aço (vista Esforços)'); r += 1
+Lm('Pilarete: As,mín usado', f'=IF({_concreto},Asm_pil,Asmb_pil)', 'cm²', 'Concreto: 0,15%·b·h; bloco: 0,15%·b·d (seção 5).', 'res', '0.00', 'Asmu_pil')
+Lm('Pilarete: VRd que o resumo compara', f'=IF({_concreto},VR2c_pil,fvd_pil/10*b_pila*d_pil)', 'kN', 'Concreto: VRd2 (biela); bloco: fvd·b·d (τvd ≤ fvd).', 'res', '0.00', 'VRd_pil')
+Lm('Ligação: VRd = fvd·b·d', '=fvd_lig/10*b_lig*d_lig', 'kN', 'τvd ≤ fvd da seção 5b, escrito como força.', 'res', '0.00', 'VRd_lig')
 widths(MC, {'A': 46, 'B': 22, 'C': 9, 'D': 70, 'E': 18, 'H': 10, 'I': 8, 'J': 8, 'K': 8, 'L': 8})

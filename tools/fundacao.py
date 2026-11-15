@@ -316,10 +316,22 @@ for tag, lab in (('T', 'Ponta'), ('H', 'Talão')):
         Fd[f'I{r}'] = _ie(f'SUM(F{_rg.format(c="F")})-H{r}*J{r}')
         Fd[f'K{r}'] = _ie(f'1.4*I{r}')
         Fd[f'L{r}'] = _ie(f'1.4*J{r}')
-        for cc in 'ABCDEFGHIJKL':
+        # Colunas M–R (15/11, 2ª versão da vista Esforços): o As da seção 7 em cada seção, com o Md da seção —
+        # Md = 1,4·máx(0; M), x pelo bloco 0,8x com 0,85fcd, As = Md/(fyd·(d − 0,4x)). Na face (e = 0) o M é o Mk_toe /
+        # Mk_heel bit a bit e as três colunas dão o Md_ts/x_ts/As_ts (Md_hs…) da seção 7. M–O: a face que a peça
+        # arma (ponta embaixo, talão em cima); P–R: a face oposta, com o M de sinal trocado.
+        for c0, sinal in (('MNO', ''), ('PQR', '-')):
+            cM, cX, cA = c0
+            Fd[f'{cM}{r}'] = _ie(f'1.4*MAX(0,{sinal}I{r})')
+            Fd[f'{cX}{r}'] = _ie(f'IFERROR(1.25*d_s*(1-SQRT(1-{cM}{r}*100/(0.425*100*d_s^2*fcd_s/10))),"não resiste")')
+            Fd[f'{cA}{r}'] = _ie(f'{cM}{r}*100/(fyk_/gama_s/10*(d_s-0.4*{cX}{r}))')
+        for cc in 'ABCDEFGHIJKLMNOPQR':
             c = Fd[f'{cc}{r}']; c.border = BOX; c.font = fN
             if cc != 'A': c.number_format = '0.000'
         r += 1
+    header(Fd, r0 - 1, ['Md = 1,4·máx(0; M)', 'x (cm)', 'As (cm²/m)', 'Md face oposta', 'x (cm)', 'As face oposta (cm²/m)'], start=13)
+    for _sf, _cc in (('As', 'O'), ('Aso', 'R')):
+        wb.defined_names[f'{tag}_{_sf}'] = DefinedName(f'{tag}_{_sf}', attr_text=f"'Fundação'!${_cc}${r0}:${_cc}${r-1}")
     for _sf, _cc in (('e', 'H'), ('Mk', 'I'), ('Vk', 'J'), ('Md', 'K'), ('Vd', 'L')):
         wb.defined_names[f'{tag}_{_sf}'] = DefinedName(f'{tag}_{_sf}', attr_text=f"'Fundação'!${_cc}${r0}:${_cc}${r-1}")
     wb.defined_names[f'{tag}_dM'] = DefinedName(f'{tag}_dM', attr_text=f"'Fundação'!$F${r0}:$F${r-1}")
@@ -485,5 +497,51 @@ mrd_ret(Lf, 'den', 'Ase_den', 'fyk_/gama_s', '0.68*fcd_s', '0.425*fcd_s', '100',
         wrap=lambda f: f'IF(tem_den="Sim",{f},"—")')
 Lf('MRd do dente (na raiz)', _D('MRf_den/100'), 'kN·m/m', 'Compara com o Md do dente (seção 11).', 'key', '0.00', 'MRd_den', 'NBR 6118 17.2.2 (conta da flexão invertida)')
 Lf('MSd/MRd do dente', _D('Md_den/MRd_den'), '', '', 'key', '0.000', 'ap_den')
+r += 1
+# ---------- 13. dente ao longo da altura e comprimentos de ancoragem (15/11, 2ª versão da vista "Esforços") ----------
+# No FIM da aba, como as seções 11 e 12. O DENTE em 11 seções, da raiz (ζ = 0) ao fundo: a carga abaixo da seção ζ é o
+# mesmo trapézio do passivo da seção 11 (pressão pζ na seção, p2 no fundo, comprimento L = h − ζ), e a força de
+# cálculo Fd se distribui como ele: Md(ζ) = Md·Mk(ζ)/Mk(0), Vd(ζ) = Vd·Ek(ζ)/Ek(0). Na raiz as operações são as do
+# Mk_den e do Ek_den (bit a bit) e a razão é 1: Md(0) = Md_den, Vd(0) = Vd_den. x e As: a conta da seção 11.
+section(Fd, r, '13. Dente ao longo da altura e comprimentos de ancoragem (diagrama do aço)'); r += 1
+header(Fd, r, ['Seção', 'ζ da raiz (m)', 'pζ (kPa)', 'L = h − ζ (m)', 'Mk abaixo (kN·m/m)', 'Ek abaixo (kN/m)', 'Md (kN·m/m)', 'Vd (kN/m)', 'x (cm)', 'As (cm²/m)']); r += 1
+_d0 = r
+_ie = lambda f: '=IFERROR(' + f + ',"—")'
+for j in range(11):
+    Fd.cell(row=r, column=1, value=j)
+    _x = lambda f: _ie(f'IF(tem_den="Sim",{f},"—")')
+    Fd[f'B{r}'] = _x(f'h_den*A{r}/10')
+    Fd[f'C{r}'] = _x(f'p1_den+(p2_den-p1_den)*B{r}/h_den')
+    Fd[f'D{r}'] = _x(f'h_den-B{r}')
+    Fd[f'E{r}'] = _x(f'C{r}*D{r}^2/2+(p2_den-C{r})*D{r}^2/3')
+    Fd[f'F{r}'] = _x(f'(C{r}+p2_den)/2*D{r}')
+    Fd[f'G{r}'] = _x(f'Md_den*(E{r}/Mk_den)')
+    Fd[f'H{r}'] = _x(f'Vd_den*(F{r}/Ek_den)')
+    Fd[f'I{r}'] = _x(f'IFERROR(1.25*d_den*(1-SQRT(1-G{r}*100/(0.425*100*d_den^2*fcd_s/10))),"não resiste")')
+    Fd[f'J{r}'] = _x(f'G{r}*100/(fyk_/gama_s/10*(d_den-0.4*I{r}))')
+    for cc in 'ABCDEFGHIJ':
+        c = Fd[f'{cc}{r}']; c.border = BOX; c.font = fN
+        if cc != 'A': c.number_format = '0.000'
+    r += 1
+for _nm, _cc in (('den_z', 'B'), ('den_Md', 'G'), ('den_Vd', 'H'), ('den_As', 'J')):
+    wb.defined_names[_nm] = DefinedName(_nm, attr_text=f"'Fundação'!${_cc}${_d0}:${_cc}${r-1}")
+r += 1
+# Comprimentos com que cada barra GANHA força no diagrama (o As colocado sobe de zero ao cheio ao longo deles, como no
+# Pró-Viga e no TQS): a ponta reta ancora em ℓb,nec = ℓb·As,calc/As,ef ≥ ℓb,mín; a ponta dobrada (gancho, dobra do
+# estribo) em α·ℓb·As,calc/As,ef ≥ ℓb,mín, α = 0,7 — NBR 6118 9.4.2.5, a regra que a planilha já usa no dente, na
+# perna do U e na cinta do muro de cima. ℓb no material onde a barra está: graute (lbphi_gr) para as do muro, do
+# contraforte e do pilarete (a regra do ℓ0t_pil); concreto da sapata (lbphi_c). As,calc = o As do momento (sem o
+# mínimo), como o r_anc e o r_cf. Emendas por traspasse: os ℓ0t da seção 10 (l0t_v, l0t_pv, l0t_cf, l0t_cc) e do
+# muro de cima (l0t_pil).
+Lf('Sapata: As,calc/As,ef da principal', '=IFERROR(MIN(1,MAX(IF(ISNUMBER(As_ts),As_ts,0),IF(ISNUMBER(As_hs),As_hs,0))/Ase_s),1)', '', 'O maior As do momento (ponta ou talão).', 'res', '0.000', 'r_sap')
+_LBS = [('Balanço: barra vertical', 'v', 'lbphi_gr', 'phi_v', 'r_anc'),
+        ('Contraforte: barra principal', 'cf', 'lbphi_gr', 'phi_cf', 'r_cf'),
+        ('Sapata: barra principal', 's', 'lbphi_c', 'phi_sap', 'r_sap'),
+        ('Pilarete: barra longitudinal', 'pil', 'lbphi_gr', 'phi_pil', 'IFERROR(MIN(1,IF(LEFT(pil_tipo,4)="Conc",Asc_pil,Asb_pil)/As_pile),1)')]
+for _lab, _sx, _lbphi, _ph, _rz in _LBS:
+    _lb = f'{_lbphi}*{_ph}/10'
+    _mn = f'MAX(0.3*{_lb},{_ph},10)'
+    Lf(f'{_lab}: ℓb,nec ponta reta = ℓb·As,calc/As,ef ≥ ℓb,mín', f'=MAX({_lb}*{_rz},{_mn})', 'cm', 'ℓb,mín = máx(0,3·ℓb; 10Ø; 10 cm).', 'res', '0.0', f'lbn_{_sx}', 'NBR 6118 9.4.2.5')
+    Lf(f'{_lab}: ℓb,nec ponta dobrada = 0,7·ℓb·As,calc/As,ef ≥ ℓb,mín', f'=MAX(0.7*{_lb}*{_rz},{_mn})', 'cm', 'α = 0,7 (gancho ou dobra).', 'res', '0.0', f'lbg_{_sx}', 'NBR 6118 9.4.2.5')
 widths(Fd, {'A': 46, 'B': 24, 'C': 12, 'D': 66, 'E': 18, 'F': 14, 'G': 16, 'H': 14, 'I': 14, 'J': 14, 'K': 14, 'L': 14})
 Fd.freeze_panes = 'A4'

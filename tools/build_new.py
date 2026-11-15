@@ -1221,6 +1221,87 @@ def mrd_ret(L, tag, As, fsd, kc, kq, b, d, xlim, cap, rot_lim, wrap=lambda f: f)
     return f'MRf_{tag}'
 
 
+# ---- AÇO NECESSÁRIO AO LONGO DA PEÇA (15/11, 2ª versão da vista "Esforços") ----
+# Por que: o Jose viu o MSd azul com o MRd em linha e disse que não era isso — "quando falei sobre esforço solicitante
+# e esforço resistente gostaria de visualizar algo nesse sentido" (o diagrama do Pró-Viga: As necessário em vermelho
+# e As colocado em verde por cima, "o solicitante de uma cor e o resistente englobando ele"). O As colocado é
+# geometria (as barras do modelo); o As NECESSÁRIO é conta, e conta só a planilha faz: aqui a MESMA sequência de linhas
+# que cada aba usa na seção crítica, refeita em cada nó com o momento daquele nó. Na base (seção crítica) as operações
+# são as mesmas, na mesma ordem, com o mesmo Md: o número é o da aba bit a bit (o teste do app confere).
+# Cada passo vira uma coluna (auditável na planilha, como a conta da aba); `passos` = [(chave, fórmula com {chave})].
+def cadeia(ws, rr, col0, passos, fmt='0.000'):
+    from openpyxl.utils import get_column_letter as _gl
+    cols = {ch: f'{_gl(col0 + k)}{rr}' for k, (ch, _) in enumerate(passos)}
+    for ch, f in passos:
+        c = ws[cols[ch]]
+        c.value = '=IFERROR(' + f.format(**cols) + ',"—")'
+        c.font = fN; c.number_format = fmt
+    return {ch: cols[ch][:-len(str(rr))] for ch in cols}   # chave → letra da coluna
+
+
+def passos_bal(Md):
+    """Muro em balanço, seção 'Flexão (b = 100 cm)': mesa (parede do bloco) ou seção T (almas grauteadas)."""
+    return [
+        ('Md', Md),
+        ('arg', '{Md}*100/(0.5*100*d_util^2*ffd_m/10)'),
+        ('xr', 'IF({arg}<1,1.25*d_util*(1-SQRT(1-{arg})),"não resiste")'),
+        ('ln', 'IF(ISNUMBER({xr}),IF(0.8*{xr}<=hf_bl,"Sim","Não"),"Não")'),
+        ('ya', 'IF({ln}="Sim",0,IFERROR((d_util-hf_bl)-SQRT((d_util-hf_bl)^2-2*MAX(0,{Md}*100-M_mesa)/(ffd_g/10*bw_m)),"não resiste"))'),
+        ('x', 'IF({ln}="Sim",{xr},IF(ISNUMBER({ya}),(hf_bl+{ya})/0.8,"não resiste"))'),
+        ('C', 'IF({ln}="Sim",ffd_m/10*100*0.8*{xr},IF(ISNUMBER({ya}),ffd_m/10*100*hf_bl+ffd_g/10*bw_m*{ya},"—"))'),
+        ('z', 'MIN({Md}*100/{C},0.95*d_util)'),
+        ('sig', 'MIN(210000*IFERROR(MIN(1,0.3*(d_util-{x})/{x}),"—")/100,fyd_)'),
+        ('As', 'IF({Md}<=0,0,IFERROR({Md}*100/({sig}/10*{z}),"—"))'),
+    ]
+
+
+def passos_cf(Md, bm, Cf):
+    """Contrafortes, seção 5: retangular bm × d ou T além da mesa (abas Cf + alma)."""
+    return [
+        ('Md', Md),
+        ('arg', '{Md}*100/(0.5*' + bm + '*d_cf^2*Kfd_cf/10)'),
+        ('xr', 'IF({arg}<1,1.25*d_cf*(1-SQRT(1-{arg})),"não resiste")'),
+        ('TT', 'IF(AND(cf_T=1,ISNUMBER({xr})),IF(0.8*{xr}>hf_cf,1,0),0)'),
+        ('xw', 'IF(AND(cf_T=1,ISNUMBER({xr})),IF(0.8*{xr}>hf_cf,IFERROR(1.25*d_cf*(1-SQRT(1-({Md}*100-' + Cf + '*(d_cf-hf_cf/2))/(0.5*bw_cf*d_cf^2*Kfd_cf/10))),"não resiste"),"— (não precisa)"),"—")'),
+        ('x', 'IF({TT}=1,{xw},{xr})'),
+        ('z', 'MIN(d_cf-0.4*{x},0.95*d_cf)'),
+        ('As', 'IF({Md}<=0,0,IF({TT}=1,(' + Cf + '+Kfd_cf/10*bw_cf*0.8*{xw})/(fsd_cf/10),{Md}*100/(fsd_cf/10*{z})))'),
+    ]
+
+
+# Asw/s do contraforte (seção 6): zero se Vd ≤ Va (dispensa pela conta); senão o maior entre o cálculo e o mínimo.
+PASSO_ASW = 'IF({Vd}<=Va_cf,0,MAX(MAX(0,({Vd}-Va_cf)/(0.75*fywd/10*d_cf)*100),Asw_m))'
+
+
+def cadeias_da_haste(ws, rr, col0, Md_bal, Md_cf, Md_cfo, Vd_cf, Vd_cfo):
+    """As quatro contas de um nó da haste (balanço; contraforte deste tipo e do outro; Asw/s dos dois). Devolve as
+    colunas do As de cada uma, na ordem: balanço, este, outro, Asw este, Asw outro."""
+    cb = cadeia(ws, rr, col0, passos_bal(Md_bal))
+    cc = cadeia(ws, rr, col0 + 10, passos_cf(Md_cf, 'bm_cf', 'Cf_cf'))
+    co = cadeia(ws, rr, col0 + 18, passos_cf(Md_cfo, 'bm_cfo', 'Cf_cfo'))
+    w1 = cadeia(ws, rr, col0 + 26, [('Vd', Vd_cf), ('Asw', PASSO_ASW)])
+    w2 = cadeia(ws, rr, col0 + 28, [('Vd', Vd_cfo), ('Asw', PASSO_ASW)])
+    return cb['As'], cc['As'], co['As'], w1['Asw'], w2['Asw']
+
+
+ROTULOS_DA_HASTE = (
+    ['Md balanço', 'Md/(0,5·b·d²·K·fd mesa)', 'x só na mesa', 'Só a mesa?', 'y nas almas', 'x', 'C', 'z', 'σs', 'As balanço (cm²/m)']
+    + [f'{k} ({q})' for q in ('este contraforte', 'outro contraforte') for k in ('Md', 'arg', 'x ret.', 'T além da mesa?', 'x na alma', 'x', 'z', 'As (cm²)')]
+    + ['Vd este', 'Asw/s este (cm²/m)', 'Vd outro', 'Asw/s outro (cm²/m)'])
+
+# Solo e Empuxo, linhas 44–84 (o perfil de 41 nós), colunas AA em diante — à direita de tudo o que existe.
+# Md do balanço no nó = coluna U (γf·(M solo + M vento)); na BASE soma o M2d (o da seção da base, Muro em balanço,
+# M2d_us), como o Md_. Contraforte: colunas W/Y (MSd deste/do outro tipo) e X/Z (VSd).
+S['AA41'] = ('As necessário ao longo da altura (vista Esforços): a conta de As de cada aba refeita em cada nó com o Md '
+             'do nó. Na base = As,nec do balanço (As_nec), do contraforte (As_cfn) e o Asw/s de cálculo (Asw_c).'); S['AA41'].font = fB
+header(S, 42, ROTULOS_DA_HASTE, start=27)
+for i in range(41):
+    rr = 44 + i
+    _cols = cadeias_da_haste(S, rr, 27, f'U{rr}' + ('+M2d_us' if i == 40 else ''), f'W{rr}', f'Y{rr}', f'X{rr}', f'Z{rr}')
+for _nm, _cc in zip(('perf_As', 'perf_Asc', 'perf_Aso', 'perf_Aswc', 'perf_Aswo'), _cols):
+    wb.defined_names[_nm] = DefinedName(_nm, attr_text=f"'Solo e Empuxo'!${_cc}$44:${_cc}$84")
+
+
 # ================= CONTRAFORTES (aula 12.3) =================
 import os as _os_cf
 from openpyxl.utils import get_column_letter as _gl

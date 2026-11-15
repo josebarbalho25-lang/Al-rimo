@@ -607,6 +607,18 @@ Lc('MRd,par = ftd,par·W (W = 100·t²/6)', '=ftdp_sp*(100*t_bloco^2/6)/10', 'kN
 Lc('MRd,nor = ftd,nor·W', '=ftdn_sp*(100*t_bloco^2/6)/10', 'kN·cm/m', 'Compara com o Md,nor.', 'key', '0.0', 'MRn_sp')
 Lc('Md,par/MRd,par (subpainel)', '=Mpar_sp/MRp_sp', '', '', 'res', '0.000', 'ap_psp')
 Lc('Md,nor/MRd,nor (subpainel)', '=Mnor_sp/MRn_sp', '', '', 'res', '0.000', 'ap_nsp')
+r += 1
+# ---------- 17. aço do painel por metro (15/11, 2ª versão da vista "Esforços") ----------
+# As seções 9 e 10 dão o As na FAIXA (b = espaçamento das barras); o diagrama do aço é por metro, como o do balanço e
+# o da sapata: a mesma área dividida pela faixa. Só os picos (a placa de Libânio não dá o momento ao longo do vão).
+section(C, r, '17. Aço do painel por metro (diagrama do aço)'); r += 1
+Lc('Vertical, lado do solo: As necessário por metro', '=As_pvs*100/s_pv', 'cm²/m', 'Seção 9 (o As do momento, sem o mínimo).', 'res', '0.00', 'Amv_s')
+Lc('Vertical, lado externo: As necessário por metro', '=As_pve*100/s_pv', 'cm²/m', 'Só com 2 barras por furo.', 'res', '0.00', 'Amv_e')
+Lc('Vertical: As,mín por metro', '=As_pvm*100/s_pv', 'cm²/m', '', 'res', '0.00', 'Amv_m')
+Lc('Vertical: As colocado por metro, em cada face', '=a_pv*100/s_pv', 'cm²/m', 'Uma barra por faixa em cada face (ou a centralizada).', 'res', '0.00', 'Amv_ef')
+Lc('Horizontal: As necessário por metro', '=As_phc*100/s_ph', 'cm²/m', 'Seção 10 (o As do momento, sem o mínimo).', 'res', '0.00', 'Amh_n')
+Lc('Horizontal: As,mín por metro', '=As_phm*100/s_ph', 'cm²/m', '', 'res', '0.00', 'Amh_m')
+Lc('Horizontal: As colocado por metro, em cada face', '=a_ph*100/s_ph', 'cm²/m', 'Uma barra por canaleta (com 2 barras, uma em cada face).', 'res', '0.00', 'Amh_ef')
 widths(C, {'A': 46, 'B': 24, 'C': 10, 'D': 72, 'E': 22, 'G': 16})
 for _cc in 'LMNOPQ':
     C.column_dimensions[_cc].hidden = True
