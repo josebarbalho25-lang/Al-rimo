@@ -59,6 +59,7 @@ export const ABAS: ReadonlyArray<{ id: IdAba; nome: string }> = [
   { id: 'planta', nome: 'Planta' },
   { id: 'iso', nome: 'Isométrico' },
   { id: 'armacao', nome: 'Armação' },
+  { id: 'pilarete', nome: 'Armação do pilarete' },
   { id: 'esforcos', nome: 'Esforços' },
   { id: 'memoria', nome: 'Memória' },
   { id: 'quantitativo', nome: 'Quantitativo' },

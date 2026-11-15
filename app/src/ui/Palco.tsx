@@ -34,6 +34,7 @@ export const ICONE_DA_ABA: Record<IdAba, Icone> = {
   planta: IconePlantaDoMuro,
   iso: IconeIsometrico,
   armacao: IconeArmacao,
+  pilarete: IconeArmacao,
   esforcos: IconeEsforcos,
   memoria: IconeMemoria,
   quantitativo: IconeQuantitativo,
@@ -50,9 +51,11 @@ export const abaDaGrafica = (aba: IdAba): IdAba => (FORA_DA_GRAFICA.has(aba) ? '
 export function AbasDoPalco() {
   const aba = useApp((s) => abaDaGrafica(s.aba));
   const escolher = useApp((s) => s.escolherAba);
+  // a armação do pilarete só existe com muro de cima (15/11)
+  const comPilarete = useApp((s) => !!s.modelo?.dims.muroDeCima);
   return (
     <div className="abas-vista" role="tablist">
-      {ABAS_DA_GRAFICA.map(({ id, nome }) => {
+      {ABAS_DA_GRAFICA.filter((a) => a.id !== 'pilarete' || comPilarete).map(({ id, nome }) => {
         const I = ICONE_DA_ABA[id];
         return (
           <div

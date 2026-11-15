@@ -13,13 +13,28 @@
 */
 import type { Barra, Modelo, Vec2, Vec3 } from '@/modelo/tipos';
 import { cm, cmCheio } from './formato';
-import { ALVENARIA, contrafortesDoModelo, cruzamentos, faixa, secao, solidosDoModelo, type Regiao } from './geometria';
+import { ALVENARIA, contrafortesDoModelo, cruzamentos, faixa, projetarPontos, secao, solidosDoModelo, type Regiao } from './geometria';
 import { CAMADA_DA_SOMBRA, FILEIRA, LEGENDA_FORA, T, arrumarEmFileiras, escreverMedidas, grossa, medidasDasPernas, zDoMaiorTrecho, type Pegada } from './sombras';
 import { estiloDaSecao } from './corteLateral';
 import { desenharLegenda, estiloPintado, itensDasTintas, tintaDaPeca, tintasPresentes } from './cores';
 import { cadeia } from './vistaFrontal';
 import { COR, Prancha, escalaPara, type OpcoesDaVista, type Pt } from './prancha';
 import { aparece as apareceNa, corDoAcoNoDesenho, naVista, pecaAparece } from './graficos';
+
+/**
+ * As fiadas que a planta oferece: as do arrimo e, com muro de cima (15/11), as dele em seguida — a fiada n_fiadas é a
+ * 1ª do muro de cima (as fiadas dele são de 20 cm e começam no topo do arrimo: o z da meia altura segue a mesma conta).
+ */
+export function fiadasDaPlanta(m: Modelo): number {
+  const mc = m.dims.muroDeCima;
+  return m.dims.n_fiadas + (mc ? Math.max(0, Math.round((mc.z1 - mc.z0) / 200)) : 0);
+}
+
+/** "3ª fiada" ou, acima do arrimo, "2ª fiada do muro de cima". */
+export function rotuloDaFiada(m: Modelo, f: number): string {
+  const n = m.dims.n_fiadas;
+  return f >= n && m.dims.muroDeCima ? `${f - n + 1}ª fiada do muro de cima` : `${f + 1}ª fiada`;
+}
 
 /** `fiada` conta de 0 (0 = 1ª fiada). `o`: escala fixa, sem título e prefixo dos ids — o pedido do modo prancha. */
 /** A planta com a tabela de gráficos dela (planta: graficos.ts, naVista). */
@@ -33,7 +48,9 @@ function plantaNaVista(m: Modelo, fiada: number, o: OpcoesDaVista): Prancha {
   const sol = solidosDoModelo(m).filter((s) => s.peca.grupo !== 'terreno');
   const t = m.familia.t;
   const { trechos, sapata, L_real, n_fiadas } = m.dims;
-  const f = Math.max(0, Math.min(n_fiadas - 1, Math.round(fiada)));
+  const f = Math.max(0, Math.min(fiadasDaPlanta(m) - 1, Math.round(fiada)));
+  // fiada do muro de cima (15/11): tijolo, pilaretes cortados com as barras e o estribo, a cinta quando a fiada é dela
+  const mc = f >= n_fiadas ? m.dims.muroDeCima : undefined;
   const zc = 200 * f + 105;            // meia altura do bloco da fiada
   const zBaixo = 200 * f;              // o que está entre a base da fiada e o plano aparece em vista
   const xIni = trechos.length ? Math.min(...trechos.map((r) => r.x0)) : 0;
@@ -110,9 +127,9 @@ function plantaNaVista(m: Modelo, fiada: number, o: OpcoesDaVista): Prancha {
     pr.texto(X(xj), yBase + 22, 'JC', { tam: 11, negrito: true, camada: 'eixos' });
   }
   pr.silenciar(!aparece('cotas'));
-  // eixo a eixo dos contrafortes, por cima (lado do solo)
+  // eixo a eixo dos contrafortes, por cima (lado do solo); na fiada do muro de cima, o dos PILARETES
   for (const r of trechos) {
-    const xs = cfs.filter((c) => c.x >= r.x0 && c.x <= r.x1).map((c) => c.x);
+    const xs = mc ? mc.pilaretes.filter((x) => x >= r.x0 && x <= r.x1) : cfs.filter((c) => c.x >= r.x0 && c.x <= r.x1).map((c) => c.x);
     if (xs.length) pr.cadeiaH(cadeia([r.x0, ...xs, r.x1]).map((c) => ({ a: X(c.a), b: X(c.b), rotulo: c.rotulo })), yTopo - 16);
   }
   // comprimento por trecho e total, por baixo
@@ -130,10 +147,11 @@ function plantaNaVista(m: Modelo, fiada: number, o: OpcoesDaVista): Prancha {
   const linhaLegenda = fimDasSombras + 30;
   pr.abrir('data-camada="cotas"');
   pr.silenciar(!aparece('cotas'));
-  // espessura do muro, na ponta esquerda
-  pr.cotaV(X(xIni) - 18, Y(0), Y(t), `t = ${cm(t)}`, { de: [X(xIni), X(xIni)] });
+  // espessura do muro, na ponta esquerda (na fiada do muro de cima, a do tijolo, centrado no arrimo)
+  if (mc) pr.cotaV(X(xIni) - 18, Y(t / 2 - mc.t / 2), Y(t / 2 + mc.t / 2), `t = ${cm(mc.t)}`, { de: [X(xIni), X(xIni)] });
+  else pr.cotaV(X(xIni) - 18, Y(0), Y(t), `t = ${cm(t)}`, { de: [X(xIni), X(xIni)] });
   // comprimento do contraforte: no primeiro, por fora da ponta esquerda (dentro do desenho cairia em cima do dreno)
-  const cf = cfs[0];
+  const cf = mc ? undefined : cfs[0];
   if (cf) {
     const [ya, yb] = cf.aparente ? [cf.min[1], t] : [0, cf.max[1]];
     const xCota = Math.min(X(cf.min[0]), X(xIni)) - 50;
@@ -145,7 +163,7 @@ function plantaNaVista(m: Modelo, fiada: number, o: OpcoesDaVista): Prancha {
   // na prancha o título é dela (embaixo do desenho, com a escala); o PROVISÓRIO fica, é aviso e não título
   const yTit = yTopo - (cfs.length ? 66 : 30);
   if (!o.semTitulo) {
-    pr.texto(X(xIni), yTit, `Planta — ${f + 1}ª fiada`, { tam: 15, ancora: 'start', negrito: true });
+    pr.texto(X(xIni), yTit, `Planta — ${rotuloDaFiada(m, f)}`, { tam: 15, ancora: 'start', negrito: true });
     pr.texto(X(xIni), yTit + 16, 'cotas em cm', { tam: 10, ancora: 'start', cor: COR.nota });
   }
   if (m.familia.provisoria && cfs.length) pr.texto(X(xIni) + (o.semTitulo ? 0 : 190), yTit, 'PROVISÓRIO', { tam: 13, ancora: 'start', negrito: true, cor: COR.especial });
@@ -172,7 +190,9 @@ interface SombraDaPlanta {
  * do que a sombra mais baixa ocupa (a legenda das cores vem depois).
  */
 function desenharSombrasDaPlanta(pr: Prancha, m: Modelo, zBaixo: number, zc: number, yCota: number, S: number): number {
-  const naFiada = m.barras.filter((b) => b.papel === 'HORIZ' && b.eixo.every((p) => p[2] >= zBaixo - 1 && p[2] <= zc));
+  // a barra da cinta do muro de cima (15/11) entra pelo trecho comprido: o gancho da ponta desce abaixo da fiada
+  const naFiada = m.barras.filter((b) => (b.papel === 'HORIZ' && b.eixo.every((p) => p[2] >= zBaixo - 1 && p[2] <= zc))
+    || (b.papel === 'CINTA_MC' && ((z) => z >= zBaixo - 1 && z <= zc)(zDoMaiorTrecho(projetarPontos(b.eixo, 'Y')))));
   const grupos = new Map<string, SombraDaPlanta>();
   for (const b of naFiada) {
     const [xa, xb] = faixa(b.eixo, 0);

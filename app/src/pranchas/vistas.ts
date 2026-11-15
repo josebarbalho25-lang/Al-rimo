@@ -24,6 +24,7 @@ export const NOMES_DO_CONTEUDO: Record<ConteudoDoItem['tipo'], string> = {
   planta: 'Planta',
   iso: 'Isométrico',
   armacao: 'Armação da sapata',
+  pilarete: 'Armação do pilarete',
   '3d': 'Perspectiva',
   detalhe: 'Detalhe',
   tabela: 'Tabela',
@@ -31,10 +32,10 @@ export const NOMES_DO_CONTEUDO: Record<ConteudoDoItem['tipo'], string> = {
 };
 
 /** Escala de partida de cada vista: o corte é a peça que se cota miúdo. */
-export const ESCALA_INICIAL: Record<PedidoDeVista['tipo'], number> = { frontal: 50, corte: 25, planta: 50, iso: 50, armacao: 25 };
+export const ESCALA_INICIAL: Record<PedidoDeVista['tipo'], number> = { frontal: 50, corte: 25, planta: 50, iso: 50, armacao: 25, pilarete: 20 };
 
 /** Os tipos de vista 2D, na ordem das abas. */
-export const TIPOS_2D: readonly PedidoDeVista['tipo'][] = ['frontal', 'corte', 'planta', 'iso', 'armacao'];
+export const TIPOS_2D: readonly PedidoDeVista['tipo'][] = ['frontal', 'corte', 'planta', 'iso', 'armacao', 'pilarete'];
 
 /**
  * O projetista DEU nome à vista? ("Corte A" sim; "Corte", "Corte (2)" — os de fábrica e os da cópia — não.) Com nome
@@ -50,7 +51,7 @@ export function nomeDado(nome: string, tipo: ConteudoDoItem['tipo']): boolean {
 
 /** O id fixo da vista de fábrica de cada tipo (a virtual ganha este id quando é gravada). */
 const ID_DE_FABRICA: Record<PedidoDeVista['tipo'], string> = {
-  frontal: 'vista-frontal', corte: 'corte', planta: 'planta', iso: 'isometrico', armacao: 'armacao',
+  frontal: 'vista-frontal', corte: 'corte', planta: 'planta', iso: 'isometrico', armacao: 'armacao', pilarete: 'armacao-do-pilarete',
 };
 
 export const ehConteudoDeVista = (c: ConteudoDoItem): c is ConteudoDaVista => c.tipo !== 'tabela' && c.tipo !== 'detalhe';

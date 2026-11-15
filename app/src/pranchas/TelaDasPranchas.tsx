@@ -29,6 +29,7 @@ import { ruim } from '@/estado/recadoRuim';
 import { nomeDeArquivo } from '@/estado/projeto';
 import { comporFolha, numeroDoItem, ondeVaiOTitulo, type ChamadaNaFolha, type ContextoDaFolha, type FolhaComposta, type ItemPosto } from './folha';
 import { cantosDoTexto } from '@/desenhos/chamadas';
+import { fiadasDaPlanta } from '@/desenhos/planta';
 import { CARIMBO_MIN, ESCALAS, LETRA, ORDEM_DOS_FORMATOS, quadroLateralPadrao, quadroUtil, rotuloDaEscala, tamanhoDaFolha } from './formatos';
 import { encaixar } from './encaixe';
 import { novaFolha } from './padrao';
@@ -549,10 +550,13 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
   };
 
   const desenhosDaFolha = composta?.itens ?? [];
+  // a armação do pilarete só existe com muro de cima (15/11)
+  const comPilarete = !!modelo?.dims.muroDeCima;
+  const tiposDoMuro = useMemo(() => TIPOS_2D.filter((t) => t !== 'pilarete' || comPilarete), [comPilarete]);
   // as vistas que não estão em folha nenhuma, de todos os tipos (as de fábrica que ninguém pôs também), na ordem das abas
   const vistasLivres = useMemo(
-    () => [...TIPOS_2D, '3d' as const].flatMap((t) => vistasDoTipo(guardadas, t)).filter((v) => !ondeEstaAVista(guardadas, v.id)),
-    [guardadas],
+    () => [...tiposDoMuro, '3d' as const].flatMap((t) => vistasDoTipo(guardadas, t)).filter((v) => !ondeEstaAVista(guardadas, v.id)),
+    [guardadas, tiposDoMuro],
   );
   // as vistas 3D fora das folhas: o 3D não tem aba, então é aqui que a câmera guardada se apaga (cada "Enviar para a
   // prancha" do visor cria uma; sem isto elas se acumulam no arquivo para sempre)
@@ -654,7 +658,7 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
             {itemSel.conteudo.tipo === 'planta' && modelo && (
               <Linha rotulo="Fiada">
                 <select className="campo" value={itemSel.conteudo.fiada} onChange={(e) => mudarItem((i) => ({ ...i, conteudo: { tipo: 'planta', fiada: Number(e.target.value) } }))}>
-                  {Array.from({ length: modelo.dims.n_fiadas }, (_, k) => <option key={k} value={k}>{k + 1}ª</option>)}
+                  {Array.from({ length: fiadasDaPlanta(modelo) }, (_, k) => <option key={k} value={k}>{k < modelo.dims.n_fiadas ? `${k + 1}ª` : `${k - modelo.dims.n_fiadas + 1}ª muro de cima`}</option>)}
                 </select>
               </Linha>
             )}
@@ -782,7 +786,7 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
                 </optgroup>
               )}
               <optgroup label="Nova vista">
-                {TIPOS_2D.map((t) => <option key={t} value={`nova:${t}`}>{NOMES_DO_CONTEUDO[t]}</option>)}
+                {tiposDoMuro.map((t) => <option key={t} value={`nova:${t}`}>{NOMES_DO_CONTEUDO[t]}</option>)}
               </optgroup>
               <optgroup label="Tabela">
                 <option value="tabela:blocos">Blocos e canaletas</option>

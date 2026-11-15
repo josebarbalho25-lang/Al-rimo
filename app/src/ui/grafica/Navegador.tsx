@@ -44,20 +44,23 @@ function extraDaVista(p: PranchasDoProjeto, v: VistaDoProjeto): string {
   return partes.filter(Boolean).join(' · ');
 }
 
-const PASTAS_2D: ReadonlyArray<[Exclude<IdAba, '3d' | 'esforcos' | 'pranchas' | 'memoria' | 'quantitativo'>, string]> = [
-  ['frontal', 'Elevações'],
-  ['corte', 'Cortes'],
-  ['planta', 'Plantas'],
-  ['iso', 'Isométricos'],
-  ['armacao', 'Armação'],
+// a pasta Armação junta a da sapata e a do pilarete (15/11); a do pilarete só existe com muro de cima
+const PASTAS_2D: ReadonlyArray<[Exclude<IdAba, '3d' | 'esforcos' | 'pranchas' | 'memoria' | 'quantitativo'>[], string]> = [
+  [['frontal'], 'Elevações'],
+  [['corte'], 'Cortes'],
+  [['planta'], 'Plantas'],
+  [['iso'], 'Isométricos'],
+  [['armacao', 'pilarete'], 'Armação'],
 ];
 
 /** As pastas do navegador, na ordem do protótipo de 20/10. */
-export function pastasDoNavegador(p: PranchasDoProjeto): Pasta[] {
+export function pastasDoNavegador(p: PranchasDoProjeto, comPilarete = false): Pasta[] {
   const vistas3d = vistasDoTipo(p, '3d').map<Item>((v) => ({ aberta: { aba: '3d', id: null }, id: v.id, nome: v.nome, extra: extraDaVista(p, v) }));
   const pastas: Pasta[] = [{ nome: '3D', itens: [{ aberta: { aba: '3d', id: null }, id: null, nome: 'Visor 3D', extra: '' }, ...vistas3d] }];
-  for (const [tipo, nome] of PASTAS_2D) {
-    pastas.push({ nome, itens: vistasDoTipo(p, tipo).map((v) => ({ aberta: { aba: tipo, id: v.id }, id: v.id, nome: v.nome, extra: extraDaVista(p, v) })) });
+  for (const [tipos, nome] of PASTAS_2D) {
+    const itens = tipos.filter((tipo) => tipo !== 'pilarete' || comPilarete)
+      .flatMap((tipo) => vistasDoTipo(p, tipo).map((v): Item => ({ aberta: { aba: tipo, id: v.id }, id: v.id, nome: v.nome, extra: extraDaVista(p, v) })));
+    pastas.push({ nome, itens });
   }
   // os esforços são uma vista só (o muro inteiro em barras), como o visor 3D
   pastas.push({ nome: 'Esforços', itens: [{ aberta: { aba: 'esforcos', id: null }, id: null, nome: 'Esforços', extra: '' }] });
@@ -120,7 +123,8 @@ function Arvore() {
   const renomear = useGrafica((s) => s.renomear);
   const [fechadas, setFechadas] = useState<ReadonlySet<string>>(new Set());
   const [escolhido3d, setEscolhido3d] = useState<string | null>(null);
-  const pastas = pastasDoNavegador(pranchas);
+  const comPilarete = useApp((s) => !!s.modelo?.dims.muroDeCima);
+  const pastas = pastasDoNavegador(pranchas, comPilarete);
   const chaveDaFrente = frente ? chaveDaAberta(frente) : null;
 
   return (

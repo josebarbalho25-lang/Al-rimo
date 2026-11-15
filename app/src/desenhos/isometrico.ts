@@ -166,9 +166,22 @@ export function sombrear(hex: string, f: number): string {
  * dreno fatiado por fiada (ver fatiarEmZ). Exportada para o teste conferir a ordem com o modelo de verdade.
  */
 export function pecasDoIsometrico(todos: Solido[], corte: number | null, manterMenor: boolean): Solido[] {
-  let pecas = todos.filter((s) => TIPOS_ISO.has(s.peca.tipo) && pecaAparece('iso', s.peca.tipo));
+  let pecas = todos.filter((s) => TIPOS_ISO.has(s.peca.tipo) && pecaAparece('iso', s.peca.tipo)).map(tijoloEmCaixa);
   if (corte !== null) pecas = pecas.map((s) => recortarEmX(s, corte, manterMenor)).filter((s): s is Solido => !!s);
   return pecas.flatMap((s) => (s.peca.tipo === 'DRENO' ? fatiarEmZ(s, 200) : [s]));
+}
+
+/**
+ * O tijolo do muro de cima no isométrico vira a CAIXA dele (15/11): o perfil do Revit tem os cantos arredondados e os
+ * furos (dezenas de faces por peça), e de fora do muro só se vê a face e o topo — o isométrico de um muro de 20 m com
+ * muro de cima saía ~5× mais pesado que sem. O 3D, o corte e a planta seguem com o tijolo de verdade.
+ */
+function tijoloEmCaixa(s: Solido): Solido {
+  if ((s.peca.tipo !== 'TIJOLO' && s.peca.tipo !== 'TIJOLO_CORTADO') || s.eixo !== 'X') return s;
+  const [x0, y0, z0] = s.min;
+  const [x1, y1, z1] = s.max;
+  const anel = (x: number): Vec3[] => [[x, y0, z0], [x, y1, z0], [x, y1, z1], [x, y0, z1]];
+  return { ...s, base: anel(x0), topo: anel(x1), furosBase: [], furosTopo: [] };
 }
 
 /** O isométrico com a tabela de gráficos dela (iso: graficos.ts, naVista). */

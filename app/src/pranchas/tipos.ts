@@ -128,7 +128,8 @@ export type PedidoDeVista =
   | { tipo: 'corte'; x?: number }                 // mm ao longo do muro; sem x = o corte padrão (meio do painel)
   | { tipo: 'planta'; fiada: number }
   | { tipo: 'iso'; vista?: VistaIso; corteX?: number | null }
-  | { tipo: 'armacao' };                          // armação da sapata: elevação, sombras, seção e estribo
+  | { tipo: 'armacao' }                           // armação da sapata: elevação, sombras, seção e estribo
+  | { tipo: 'pilarete' };                         // armação do pilarete do muro de cima (15/11): elevação, seção, sombras
 
 export interface VistaParaPrancha {
   /** Corpo SVG (sem <svg>), em px de desenho, e os <defs> que ele usa (padrões, marcadores). */

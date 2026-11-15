@@ -21,6 +21,7 @@ import { desenharCorteLateral } from './corteLateral';
 import { desenharPlanta } from './planta';
 import { desenharIsometrico } from './isometrico';
 import { desenharArmacaoDaSapata } from './armacaoDaSapata';
+import { desenharArmacaoDoPilarete } from './armacaoDoPilarete';
 import { aparece, naVista } from './graficos';
 import { desenharVista3d, larguraProjetada, semArestasEscondidas } from './vista3d';
 import type { OpcoesDaVista, Prancha } from './prancha';
@@ -70,6 +71,9 @@ export function vistaParaPrancha(
       break;
     case 'armacao':
       pr = desenharArmacaoDaSapata(m, o);
+      break;
+    case 'pilarete':
+      pr = desenharArmacaoDoPilarete(m, o);
       break;
     case 'iso':
       pr = desenharIsometrico(m, { ...o, vista: pedido.vista, corteX: pedido.corteX ?? null });

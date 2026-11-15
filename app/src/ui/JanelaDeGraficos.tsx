@@ -105,7 +105,7 @@ function categoriasDe(alvo: AlvoDosGraficos, aba: Aba): Categoria[] {
   }
   if (aba === 'anotacao') {
     const tem = (i?: ItemDaVista) => !tipo || !i || ITENS_DA_VISTA[tipo].includes(i);
-    const r: Categoria[] = ANOTACOES.filter((a) => tem(a.item) && (a.id !== 'sombras' || !tipo || tipo === 'armacao')).map((a) => ({
+    const r: Categoria[] = ANOTACOES.filter((a) => tem(a.item) && (a.id !== 'sombras' || !tipo || tipo === 'armacao' || tipo === 'pilarete')).map((a) => ({
       id: a.id, nome: a.rotulo, anotacao: a.id, item: a.item, colunas: { linhas: true },
     }));
     for (const i of ['fiadas', 'legenda'] as const) if (tem(i)) r.push({ id: i, nome: rotuloDoItem(i), item: i, colunas: {} });

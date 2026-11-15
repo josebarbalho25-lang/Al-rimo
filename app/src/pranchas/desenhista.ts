@@ -25,6 +25,7 @@ import { fotoDosEsforcos } from '@/esforcos/fotoDosEsforcos';
 import { refazerFoto } from '@/visor/fotoRefeita';
 import { vista3dParaPrancha, vistaParaPrancha } from '@/desenhos/paraPrancha';
 import { cortesPadrao } from '@/desenhos/corteLateral';
+import { rotuloDaFiada } from '@/desenhos/planta';
 import { metros } from '@/desenhos/formato';
 import { quantificar, type Quantitativo } from '@/quantitativo';
 import type { ItemDesenhado } from './folha';
@@ -211,7 +212,7 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
         const largura = Math.round(item.largura ?? 160);
         return vetor(`3d|${JSON.stringify(c.camera)}|${largura}|${prefixo}|${leg}|${vet}`, () => ({ tipo: 'vetor', vista: vista3dParaPrancha(modelo, c.camera, largura, prefixo, { legendaDeCores: leg, hachuraVetorial: vet }) }));
       }
-      if (c.tipo === 'frontal' || c.tipo === 'corte' || c.tipo === 'planta' || c.tipo === 'iso' || c.tipo === 'armacao') {
+      if (c.tipo === 'frontal' || c.tipo === 'corte' || c.tipo === 'planta' || c.tipo === 'iso' || c.tipo === 'armacao' || c.tipo === 'pilarete') {
         // isométrico sem escala: a projeção isométrica encurta as medidas (0,82), então não há "1:50" verdadeiro —
         // desenha-se na letra de 1:50 e a folha encaixa no tamanho pedido
         const escala = item.escala ?? 50;
@@ -248,11 +249,13 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
           return x === undefined ? 'Corte' : `Corte em x = ${metros(x)} m`;
         }
         case 'planta':
-          return `Planta — ${c.fiada + 1}ª fiada`;
+          return `Planta — ${modelo ? rotuloDaFiada(modelo, c.fiada) : `${c.fiada + 1}ª fiada`}`;
         case 'iso':
           return 'Isométrico';
         case 'armacao':
           return 'Armação da sapata';
+        case 'pilarete':
+          return 'Armação do pilarete';
         case '3d':
           return 'Perspectiva';
         case 'tabela':

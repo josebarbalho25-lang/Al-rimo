@@ -90,7 +90,7 @@ export const MATERIAIS: readonly { id: Material; rotulo: string }[] = [
 export type ItemDaVista =
   | 'blocos' | 'graute' | 'armadura' | 'sapata' | 'drenagem' | 'terreno' | 'cotas' | 'eixos' | 'fiadas' | 'chamadas' | 'legenda';
 
-export type TipoDeVista = 'frontal' | 'corte' | 'planta' | 'iso' | 'armacao';
+export type TipoDeVista = 'frontal' | 'corte' | 'planta' | 'iso' | 'armacao' | 'pilarete';
 
 /** O 3D e os tipos de vista 2D. */
 export type VistaDosGraficos = '3d' | TipoDeVista;
@@ -102,6 +102,7 @@ export const VISTAS_DOS_GRAFICOS: readonly { id: VistaDosGraficos; rotulo: strin
   { id: 'planta', rotulo: 'Planta' },
   { id: 'iso', rotulo: 'Isométrico' },
   { id: 'armacao', rotulo: 'Armação da sapata' },
+  { id: 'pilarete', rotulo: 'Armação do pilarete' },
 ];
 
 const ROTULO_DO_ITEM: Record<ItemDaVista, string> = {
@@ -125,6 +126,8 @@ export const ITENS_DA_VISTA: Readonly<Record<TipoDeVista, readonly ItemDaVista[]
   planta: ['blocos', 'graute', 'armadura', 'sapata', 'drenagem', 'cotas', 'eixos', 'legenda'],
   iso: ['blocos', 'graute', 'armadura', 'sapata', 'drenagem', 'legenda'],
   armacao: ['cotas'],
+  // o tijolo e o arrimo em volta do pilarete (o contexto) e as cotas
+  pilarete: ['blocos', 'cotas'],
 };
 
 /** As CATEGORIAS de modelo da janela (o que se liga e desliga) e os materiais (as subcategorias) de cada uma. */
@@ -144,6 +147,7 @@ export const MATERIAIS_DA_VISTA: Readonly<Record<TipoDeVista, readonly ItemDaVis
   planta: ['blocos', 'graute', 'armadura', 'sapata', 'drenagem'],
   iso: ['blocos', 'graute', 'armadura', 'sapata', 'drenagem'],
   armacao: ['armadura', 'sapata'],
+  pilarete: ['blocos', 'armadura'],
 };
 
 export const rotuloDoItem = (i: ItemDaVista): string => ROTULO_DO_ITEM[i];

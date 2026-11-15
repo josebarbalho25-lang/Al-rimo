@@ -47,7 +47,9 @@ export function estiloDaAlvenaria(s: Solido): Estilo {
   return t ? estiloPintado(t) : { fill: COR.blocoFundo, stroke: COR.linha, sw: 0.7, camada: 'alvenaria' };
 }
 
-const PAPEIS_VISTOS = new Set<Barra['papel']>(['VERT_MURO', 'ESPERA', 'HORIZ', 'CF_PRINCIPAL', 'CF_CONSTRUTIVA']);
+// o muro de cima (15/11): as longitudinais e o estribo do pilarete e as barras da cinta, com a chamada do elemento
+// delas (chamadas.ts, elementoDaBarra)
+const PAPEIS_VISTOS = new Set<Barra['papel']>(['VERT_MURO', 'ESPERA', 'HORIZ', 'CF_PRINCIPAL', 'CF_CONSTRUTIVA', 'PIL_LONG', 'PIL_ESTRIBO', 'CINTA_MC']);
 
 
 /** Uma coluna de furo grauteado na elevação: o x dela e as alturas em que ela corre sem parar (mm). */

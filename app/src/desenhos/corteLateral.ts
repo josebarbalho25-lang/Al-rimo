@@ -48,6 +48,16 @@ export function cortesPadrao(m: Modelo): CortePadrao[] {
     const i = k >= 0 ? k : 0;
     out.push({ rotulo: `Contraforte C${i + 1}`, x: cfs[i].x });
   }
+  // muro de cima (15/11): um corte num pilarete — numa barra dele, para o corte mostrar as longitudinais descendo o
+  // traspasse no arrimo. O de dentro do 1º trecho (o da ponta tem o gancho da cinta, mas o do meio é o comum); com
+  // contrafortes, o pilarete fica em cima de um contraforte: quando o corte do contraforte já passa num, não se repete
+  const pil = m.dims.muroDeCima?.pilaretes.filter((x) => x > tr.x0 && x < tr.x1) ?? [];
+  if (pil.length && !out.some((c) => pil.some((x) => Math.abs(x - c.x) < 150))) {
+    const xp = pil[Math.min(1, pil.length - 1)];
+    const barras = m.barras.filter((q) => q.papel === 'PIL_LONG' && Math.abs(q.eixo[0][0] - xp) < 400).map((q) => q.eixo[0][0]);
+    const x = barras.length ? barras.reduce((p, q) => (Math.abs(q - xp) < Math.abs(p - xp) ? q : p)) : xp;
+    out.push({ rotulo: 'Pilarete', x });
+  }
   return out;
 }
 
@@ -283,8 +293,11 @@ function corteNaVista(m: Modelo, xCorte: number | undefined, o: OpcoesDaVista): 
   const cotas = aparece('corte', 'cotas');
   pr.abrir('data-camada="cotas"');
   const topo = V(H_muro);
+  // com muro de cima (15/11) as cotas do alto do muro sobem para cima dele: no topo do arrimo elas cruzariam o muro de
+  // cima (as linhas de chamada continuam saindo do topo do arrimo)
+  const alto = m.dims.muroDeCima ? V(m.dims.muroDeCima.z1) : topo;
   // t e d no alto do muro
-  if (cotas) pr.cotaH(U(0), U(t), topo - 16, `t = ${cm(t)}`, { de: [topo, topo] });
+  if (cotas) pr.cotaH(U(0), U(t), alto - 16, `t = ${cm(t)}`, { de: [topo, topo] });
   let yd: number | null = null;
   let faceComprimida = 0;
   if (cfCortado) {
@@ -296,10 +309,10 @@ function corteNaVista(m: Modelo, xCorte: number | undefined, o: OpcoesDaVista): 
     if (ys.length) yd = Math.max(...ys);
   }
   // d: as chamadas param acima do rótulo do t (a face já está marcada pela cota do t; a barra não chega ao topo)
-  if (cotas && yd !== null) pr.cotaH(U(faceComprimida), U(yd), topo - 40, `d = ${cm(Math.abs(yd - faceComprimida))}`, { de: [topo - 30, topo - 30] });
+  if (cotas && yd !== null) pr.cotaH(U(faceComprimida), U(yd), alto - 40, `d = ${cm(Math.abs(yd - faceComprimida))}`, { de: [alto - 30, alto - 30] });
   if (cotas && cfCortado) {
     const [ya, yb] = cfCortado.aparente ? [cfCortado.min[1], t] : [0, cfCortado.max[1]];
-    pr.cotaH(U(ya), U(yb), topo - 64, `contraforte ${cm(yb - ya)}`, { de: [topo, V(cfCortado.max[2])] });
+    pr.cotaH(U(ya), U(yb), alto - 64, `contraforte ${cm(yb - ya)}`, { de: [topo, V(cfCortado.max[2])] });
   }
   // alturas: muro (lado da frente) e solo (lado do aterro)
   const uFace = U(Math.min(0, cfCortado?.aparente ? cfCortado.min[1] : 0));
@@ -364,7 +377,7 @@ function corteNaVista(m: Modelo, xCorte: number | undefined, o: OpcoesDaVista): 
 
   // ── título ─────────────────────────────────────────────────────────────────────────────────────────────────────
   // na prancha o título é dela (embaixo do desenho, com a escala); o PROVISÓRIO fica, é aviso e não título
-  const yTit = topo - (cfCortado ? 100 : 76);
+  const yTit = alto - (cfCortado ? 100 : 76);
   if (!o.semTitulo) {
     pr.texto(U(yLonge), yTit, `Corte em x = ${metros(x0)} m${cfCortado ? ` · C${cfCortado.numero}` : ''}`, { tam: 15, ancora: 'start', negrito: true });
     pr.texto(U(yLonge), yTit + 16, 'cotas em cm', { tam: 10, ancora: 'start', cor: COR.nota });
@@ -374,7 +387,8 @@ function corteNaVista(m: Modelo, xCorte: number | undefined, o: OpcoesDaVista): 
 }
 
 /** As barras de pé no plano do corte que ganham sombra: a vertical do muro, o arranque e as do contraforte. */
-const SOBEM = new Set<Barra['papel']>(['ESPERA', 'VERT_MURO', 'CF_PRINCIPAL', 'CF_CONSTRUTIVA']);
+// a longitudinal do pilarete (15/11) também: no corte que passa por ele, ela desce o traspasse no arrimo
+const SOBEM = new Set<Barra['papel']>(['ESPERA', 'VERT_MURO', 'CF_PRINCIPAL', 'CF_CONSTRUTIVA', 'PIL_LONG']);
 /** Da borda do desenho à primeira sombra, e de uma sombra à outra, px. */
 const ANTES_DAS_SOMBRAS = 30;
 const ENTRE_SOMBRAS = 18;
@@ -439,7 +453,7 @@ function desenharSombrasDoCorte(pr: Prancha, m: Modelo, linhas: BarrasNoCorte['l
     if (!uma.has(k)) uma.set(k, l.barra);
   }
   // o muro antes do contraforte; a espera antes da que sobe nela; depois pelo N
-  const ordemDoPapel = (b: Barra) => ['ESPERA', 'VERT_MURO', 'CF_PRINCIPAL', 'CF_CONSTRUTIVA'].indexOf(b.papel);
+  const ordemDoPapel = (b: Barra) => ['ESPERA', 'VERT_MURO', 'CF_PRINCIPAL', 'CF_CONSTRUTIVA', 'PIL_LONG'].indexOf(b.papel);
   const barras = [...uma.values()].sort((a, b) =>
     (elementoDaBarra(a) === 'muro' ? 0 : 1) - (elementoDaBarra(b) === 'muro' ? 0 : 1) || ordemDoPapel(a) - ordemDoPapel(b) ||
     a.posicao.localeCompare(b.posicao, 'pt-BR', { numeric: true }));

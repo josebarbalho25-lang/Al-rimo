@@ -75,6 +75,8 @@ export function lerConteudo(v: unknown): ConteudoDoItem | null {
       return { tipo: 'planta', fiada: Math.max(0, Math.round(num(c.fiada, 0))) };
     case 'armacao':
       return { tipo: 'armacao' };
+    case 'pilarete':
+      return { tipo: 'pilarete' };
     case 'iso': {
       const vistas = ['frente-direita', 'frente-esquerda', 'fundo-direita', 'fundo-esquerda'] as const;
       const vista = vistas.find((x) => x === c.vista);

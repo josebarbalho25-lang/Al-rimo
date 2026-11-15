@@ -35,6 +35,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import type { Modelo } from '@/modelo/tipos';
 import { metros } from './formato';
 import { cortesPadrao } from './corteLateral';
+import { fiadasDaPlanta } from './planta';
 import type { VistaIso } from './isometrico';
 import { vistaParaPrancha } from './paraPrancha';
 import { enviarParaPrancha } from '@/pranchas/envio';
@@ -61,6 +62,7 @@ const ABAS: [AbaDesenho, string][] = [
   ['planta', 'Planta'],
   ['iso', 'Isométrico'],
   ['armacao', 'Armação da sapata'],
+  ['pilarete', 'Armação do pilarete'],
 ];
 
 const VISTAS_ISO: [VistaIso, string][] = [
@@ -76,6 +78,7 @@ const NOME_DO_ARQUIVO: Record<AbaDesenho, string> = {
   planta: 'planta',
   iso: 'isometrico',
   armacao: 'armacao-da-sapata',
+  pilarete: 'armacao-do-pilarete',
 };
 
 /** Azul da seleção na folha (papel branco nos dois temas). */
@@ -226,7 +229,7 @@ export function Desenhos({ modelo, vista: tipoFixo, selecionado = null, onSeleci
   const limitar = (x: number) => Math.min(L, Math.max(0, x));
   const c = vista.conteudo;
   const xC = c.tipo === 'corte' ? limitar(c.x ?? cortes[0]?.x ?? L / 2) : 0;
-  const fiada = c.tipo === 'planta' ? Math.max(0, Math.min(modelo.dims.n_fiadas - 1, c.fiada)) : 0;
+  const fiada = c.tipo === 'planta' ? Math.max(0, Math.min(fiadasDaPlanta(modelo) - 1, c.fiada)) : 0;
   const isoCortado = c.tipo === 'iso' && c.corteX != null;
   const xI = c.tipo === 'iso' ? limitar(c.corteX ?? cortes[0]?.x ?? L / 2) : 0;
 
@@ -432,7 +435,8 @@ export function Desenhos({ modelo, vista: tipoFixo, selecionado = null, onSeleci
     parametros.push(campo('Fiada', (
       <select className="campo" style={s.lista} value={fiada}
         onChange={(e) => mudarConteudo<Extract<PedidoDeVista, { tipo: 'planta' }>>((q) => ({ ...q, fiada: Number(e.target.value) }))}>
-        {Array.from({ length: modelo.dims.n_fiadas }, (_, i) => <option key={i} value={i}>{`${i + 1}ª`}</option>)}
+        {/* com muro de cima (15/11) as fiadas dele vêm depois das do arrimo */}
+        {Array.from({ length: fiadasDaPlanta(modelo) }, (_, i) => <option key={i} value={i}>{i < modelo.dims.n_fiadas ? `${i + 1}ª` : `${i - modelo.dims.n_fiadas + 1}ª muro de cima`}</option>)}
       </select>
     )));
   }

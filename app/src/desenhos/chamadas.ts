@@ -28,7 +28,7 @@ import { COR, Prancha, type Pt } from './prancha';
 
 /** Eixo ao longo do qual a posição se distribui (0 = x, 1 = y, 2 = z): só as que vão "a cada tanto" levam c/. */
 const DISTRIBUIDA: Partial<Record<PapelBarra, 0 | 1 | 2>> = {
-  VERT_MURO: 0, ESPERA: 0, SAP_TRANSV: 0, SAP_TORCAO: 0, SAP_LONG: 1, HORIZ: 2, CF_ESTRIBO: 2, DENTE_ESTRIBO: 0,
+  VERT_MURO: 0, ESPERA: 0, SAP_TRANSV: 0, SAP_TORCAO: 0, SAP_LONG: 1, HORIZ: 2, CF_ESTRIBO: 2, DENTE_ESTRIBO: 0, PIL_ESTRIBO: 2,
 };
 
 const bitola = (phi: number): string => `Ø${String(Math.round(phi * 10) / 10).replace('.', ',')}`;
@@ -38,7 +38,7 @@ export const textoDoEspacamento = (s: number): string => String(Math.round(s * 1
 
 const media = (b: Barra, k: 0 | 1 | 2): number => b.eixo.reduce((s, p) => s + p[k], 0) / Math.max(1, b.eixo.length);
 
-export type ElementoDaBarra = 'muro' | 'contraforte' | 'sapata' | 'dente';
+export type ElementoDaBarra = 'muro' | 'contraforte' | 'sapata' | 'dente' | 'pilarete' | 'cinta';
 
 /**
  * O elemento da barra para a chamada: a da sapata é da sapata mesmo marcada com o contraforte de cima (torção). O
@@ -48,6 +48,9 @@ export type ElementoDaBarra = 'muro' | 'contraforte' | 'sapata' | 'dente';
 export function elementoDaBarra(b: Pick<Barra, 'papel' | 'contraforte'>): ElementoDaBarra {
   if (b.papel.startsWith('DENTE_')) return 'dente';
   if (b.papel.startsWith('SAP_')) return 'sapata';
+  // o muro de cima (15/11): o pilarete e a cinta são elementos dele — a chamada conta as barras de cada um
+  if (b.papel.startsWith('PIL_')) return 'pilarete';
+  if (b.papel === 'CINTA_MC') return 'cinta';
   return b.contraforte !== undefined ? 'contraforte' : 'muro';
 }
 
