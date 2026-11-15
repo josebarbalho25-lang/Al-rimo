@@ -24,6 +24,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
+const { imagemDaAbertura } = require('./splashImagem');
 
 const NOME = 'Al-rimo';
 const ESQUEMA = 'app';
@@ -235,7 +236,15 @@ let estado = { sujo: false, titulo: '' };
 let rendererPronto = false;
 const pendentes = [];       // .alrimo pedidos antes de o app estar de pé
 
+const IMAGENS_DO_SPLASH = 3;   // gerado/splash/splash-bg1..3.png (montar.js)
+
 function criarSplash() {
+  // Cada abertura começa noutra imagem (splashImagem.js): guardada antes de
+  // mostrar, para a próxima já sair diferente mesmo se esta fechar no meio.
+  const imagem = imagemDaAbertura(prefs.splash, IMAGENS_DO_SPLASH);
+  prefs.splash = imagem;
+  gravarPrefs();
+  anotar('[splash] imagem', imagem + 1);
   splash = new BrowserWindow({
     width: 987,
     height: 610,
@@ -252,7 +261,7 @@ function criarSplash() {
       nodeIntegration: false,
       sandbox: true,
       preload: path.join(__dirname, 'splash-preload.js'),
-      additionalArguments: [`--alrimo-versao=${versaoDoPrograma()}`],
+      additionalArguments: [`--alrimo-versao=${versaoDoPrograma()}`, `--alrimo-imagem=${imagem}`],
     },
   });
   splash.loadFile(path.join(__dirname, 'splash.html'));

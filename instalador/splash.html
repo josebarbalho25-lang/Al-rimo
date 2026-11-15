@@ -142,10 +142,18 @@
     const ponte = window.splashPonte;
     document.getElementById('versao').textContent = (ponte && ponte.versao) || '';
 
-    // As imagens: 4,5 s cada, a transição de 2 s está no CSS.
+    // As imagens: 4,5 s cada, a transição de 2 s está no CSS. Cada abertura
+    // começa noutra (o main escolhe em roda e guarda a última, splashImagem.js):
+    // a primeira entra já acesa, sem esmaecer, e a roda segue dela.
     (function () {
       const slides = document.querySelectorAll('.slide');
-      let atual = 0;
+      const n = slides.length;
+      let atual = ((ponte && Number.isInteger(ponte.imagem) ? ponte.imagem : 0) % n + n) % n;
+      slides.forEach((s, i) => {
+        s.style.transition = 'none';
+        s.classList.toggle('ativo', i === atual);
+      });
+      requestAnimationFrame(() => requestAnimationFrame(() => slides.forEach((s) => { s.style.transition = ''; })));
       setInterval(() => {
         slides[atual].classList.remove('ativo');
         atual = (atual + 1) % slides.length;
@@ -154,7 +162,9 @@
     })();
 
     // A barra anda sozinha até 82 % e espera o app; quando ele avisa, fecha em
-    // cerca de 1 s. O caminho sozinho dura ~1,6 s: abaixo disso a tela piscaria.
+    // cerca de 1 s. O caminho sozinho dura ~3 s (o app fica pronto antes e
+    // espera): com o fechamento, ~4 s de splash — perto do Pró-Viga (~5 a
+    // 6 s). Com 2,6 s (o de antes) a tela só piscava e a imagem mal se via.
     (function () {
       const barra = document.getElementById('barra');
       const situacao = document.getElementById('situacao');
@@ -163,10 +173,10 @@
       let esperando = false;
 
       const passos = [
-        { p: 12, t: 'Carregando o motor de cálculo…', ms: 350 },
-        { p: 31, t: 'NBR 16868-1 e NBR 6118…', ms: 350 },
-        { p: 52, t: 'Blocos, figuras e tabelas…', ms: 350 },
-        { p: 70, t: 'Desenhos e 3D…', ms: 300 },
+        { p: 12, t: 'Carregando o motor de cálculo…', ms: 650 },
+        { p: 31, t: 'NBR 16868-1 e NBR 6118…', ms: 700 },
+        { p: 52, t: 'Blocos, figuras e tabelas…', ms: 750 },
+        { p: 70, t: 'Desenhos e 3D…', ms: 650 },
         { p: 82, t: 'Abrindo a interface…', ms: 0 },
       ];
 
