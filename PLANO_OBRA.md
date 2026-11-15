@@ -295,7 +295,34 @@ aberto dá conflito em tudo.
 > `Fas_ → xas_ → Mas_ → xlim_ → Mlim_ → MRf_/MRd_ → ap_`) nos cards de flexão de cada peça e ftd·W nos não armados
 > (`memoria/cards/momentoResistente.ts`), sem `verif`. Prova `esforcos/barrasAnaliticas.test.ts` (todos os
 > cenários do gabarito).
-> **PENDENTE:** a prancha leva IMAGEM (vetor e DXF ficam para depois); com a obra (etapa 2), uma malha por trecho na
+> **2ª VERSÃO (15/11) — o aço, como no Pró-Viga.** O Jose viu a 1ª ("quando falei sobre esforço solicitante e
+> esforço resistente gostaria de visualizar algo nesse sentido"; "o solicitante de uma cor e o resistente englobando
+> ele"): MSd azul + MRd em linha SAIU; agora As necessário (vermelho, planilha) × As colocado (verde, barras do
+> modelo, com rampas de ancoragem e traspasse), Flexão ↔ Cortante. Os diagramas NÃO vão para a prancha (Jose: "nunca
+> vi um projeto com um diagrama em prancha… a gente guarda nas memórias"): o item da folha saiu (o de projeto antigo
+> entra no recado de abertura) e o desenho vai para o card da memória de cada peça (`memoria/desenhoDosEsforcos.ts`).
+> A pendência "vetor/DXF dos esforços" está CANCELADA. Detalhes e achados no CLAUDE.md.
+>
+> **PUBLICADO na 2ª versão** (só colunas/linhas novas; os 101.193 nomes e 261.215 células de antes iguais nos 89
+> cenários; na seção crítica bit a bit):
+>
+> | Nome | O que é | Onde | Na seção crítica = |
+> |---|---|---|---|
+> | `perf_As` / `vt_As` | As do momento (cm²/m) do balanço nos 41 nós do perfil / nos 11 do vento (acima do solo) | Solo e Empuxo AA–AJ; Muro de cima e vento O–X | `As_nec` (base, com M2d) |
+> | `perf_Asc`, `perf_Aso` / `vt_Asc`, `vt_Aso` | As do momento (cm²) do contraforte deste tipo / do outro | Solo e Empuxo AK–AZ; vento Y–AN | `As_cfn` (este tipo) |
+> | `perf_Aswc`, `perf_Aswo` / `vt_Aswc`, `vt_Aswo` | Asw/s de cálculo (cm²/m), com a dispensa Vd ≤ Va e o mínimo | Solo e Empuxo BA–BD; vento AO–AR | `Asw_c` |
+> | `vt_Vd`, `vt_Vdc`, `vt_Vdo` | γf·V do vento nos nós (kN/m, kN) | Muro de cima e vento L–N | — |
+> | `T_As`, `H_As` / `T_Aso`, `H_Aso` | As (cm²/m) da face armada da ponta/talão / da face oposta, nas 20 fatias | Fundação M–R das fatias | `As_ts`, `As_hs` |
+> | `den_z`, `den_Md`, `den_Vd`, `den_As` | dente em 11 seções da raiz ao fundo | Fundação, seção 13 | `Md_den`, `Vd_den`, `As_den` |
+> | `pt_As` | As do momento do pilarete nos 11 nós | Muro de cima e vento, H da tabela do pilarete | `Asc_pil` / `Asb_pil` |
+> | `lbn_v/cf/s/pil`, `lbg_v/cf/s/pil`, `r_sap` | ℓb,nec da ponta reta / dobrada (α 0,7), cm, das barras do muro, do contraforte, da sapata e do pilarete | Fundação, seção 13 | — |
+> | `Asmu_pil`, `VRd_pil`, `VRd_lig` | As,mín do pilarete; resistência ao cortante que os resumos comparam, como força | Muro de cima e vento, seção 10 | — |
+> | `Amv_s`, `Amv_e`, `Amv_m`, `Amv_ef`, `Amh_n`, `Amh_m`, `Amh_ef` | As do painel por metro (necessário por face, mínimo, colocado) | Contrafortes, seção 17 | — |
+>
+> As,mín de cada peça: `As_min`, `As_cfm`, `As_ms`, `Asm_den`, `Asmu_pil`, `Asm_cmc`, `Amv_m`, `Amh_m`; Asw,mín `Asw_m`.
+> Traspasses: `l0t_v`, `l0t_cf`, `l0t_pil` (já existiam). Decalagem aℓ: não aplicada (nenhuma aba aplica).
+>
+> **PENDENTE:** ~~a prancha leva IMAGEM (vetor e DXF ficam para depois)~~ (cancelado: vai para a memória); com a obra (etapa 2), uma malha por trecho na
 > pose dele; a forma esquemática do painel vertical (zero a 1/4 da altura, pico a 5/8) é ilustrativa — a planilha
 > não publica onde fica o pico; o dente sem conta (φ' da base em branco) não desenha barra. Diferenças
 > barra × `chk_*` da aba que NÃO são erro (a aba confere mais que MSd ≤ MRd: As,mín, espaçamento, ductilidade):

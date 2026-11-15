@@ -1069,6 +1069,11 @@ e dizer ao Jose o que mudou e por quê.
   sentidos — "uma verificação a mais". OS DOIS CASOS (um cliente tem o L para dentro, o outro para fora): aterro
   DENTRO do L (as pernas abrem, a quina trabalha à tração — armadura horizontal virando a quina e ancorada) e aterro
   FORA do L (as pernas se empurram, quina comprimida). A FAZER, junto com o muro de cima.
+- **CONTRAFORTE SUBINDO NO LUGAR DO PILARETE (Jose, 15/11, testando o instalado: "depois a gente ataca"):**
+  ele notou que há a opção de o contraforte subir pelo muro de cima no lugar do pilarete, "não sei como o cálculo
+  trata isso", e que as figuras e o 3D NÃO diferenciam os dois casos. A LEVANTAR antes de mexer: qual entrada é
+  essa (pil_tipo "Bloco grauteado"? pil_ncf?), o que a conta faz de diferente (seção, d, ligação) e o que o modelo
+  desenha. Só anotado; não iniciado.
 - **PLANO "DO MURO PARA A OBRA" (Jose, 15/11 — sessão de arquitetura; implementação depois, etapa a etapa):**
   roteiro em `PLANO_OBRA.md` (raiz): obra com vários trechos (cada trecho = a conta de hoje + posição em planta),
   traçado em polilinha, degraus da base, quina a 90° (a outra perna como contraforte; flexão oblíqua pelo motor do
@@ -1097,13 +1102,58 @@ e dizer ao Jose o que mudou e por quê.
   canaletas, cinta, ligação) com contorno TRACEJADO — a tela diz pelo traço, sem texto. Escala "Aproveitamento"
   (todo MRd na mesma altura) ou "Valor" (mesma unidade, mesma escala); Valores e Muro (fantasma) ligam e desligam,
   lembrados. Clique: rótulo + valor (MSd, MRd, Uso) e "Memória", que abre o card da peça (`abrirNoCard`). Prancha:
-  IMAGEM refeita do ponto de vista (como o Realista), cores de papel; vetor/DXF PENDENTE. Memória: seção "Momento
+  ~~IMAGEM refeita do ponto de vista; vetor/DXF PENDENTE~~ — SAIU em 15/11 (ver "2ª VERSÃO" abaixo). Memória: seção "Momento
   resistente com a armadura adotada" (`Fas_` → `xas_` → `Mas_` → `xlim_` → `Mlim_` → `MRd_` → uso) nos cards de flexão
   e ftd·W nos não armados, sem verificação nova (veredito igual). Código `app/src/esforcos/`, prova
   `esforcos/barrasAnaliticas.test.ts`. Nomes que cada barra lê, o que é esquemático e as diferenças barra × `chk_*`
   (não são erro: a aba confere As,mín, espaçamento, ductilidade) no PLANO_OBRA, etapa 1b. A conferir com ele: a forma
   ilustrativa do painel vertical (zero a 1/4, pico a 5/8 da altura); o talão com Md negativo usa o MRd da barra de
   baixo; diagramas a 30 % da altura do muro.
+- **VISTA "ESFORÇOS", 2ª VERSÃO — O AÇO, COMO NO PRÓ-VIGA (15/11; o Jose viu a 1ª e disse que não era isso: "quando
+  falei sobre esforço solicitante e esforço resistente gostaria de visualizar algo nesse sentido" — o gráfico de As
+  do Pró-Viga, `proviga-3d-limpo/app/dimensionamento.jsx` AsChart — "o solicitante de uma cor e o resistente
+  englobando ele"):** a 1ª versão (MSd azul cheio, MRd em linha branca constante) SAIU. Em cada barra, deitado no
+  plano de flexão, as duas faces dos dois lados do eixo: o As NECESSÁRIO em vermelho por dentro e o As COLOCADO em
+  verde envolvendo (verde ao fundo, vermelho por cima), vermelho forte onde falta, "não resiste" cheio, contorno
+  tracejado de cada posição N, linha tracejada do As,mín, régua (1/3, 2/3, máx, com a unidade) só na barra escolhida
+  ou com o mouse, números do necessário e do colocado na seção crítica (botão Valores). Botões Flexão ↔ Cortante;
+  Aproveitamento (o colocado na mesma altura) / Valor (mesma escala por unidade). Clique: MSd, MRd, Uso e As
+  necessário/colocado na seção crítica. Legenda só com rótulos.
+  · PLANILHA PRIMEIRO (nenhum nome de antes mudou: 89 cenários, 101.193 nomes e 261.215 células iguais; 41 nomes
+    novos): a conta de As de cada aba refeita nó a nó, com as MESMAS linhas da seção crítica (`cadeia`, `passos_bal`,
+    `passos_cf`, `PASSO_ASW` no build_new.py) — na seção crítica bit a bit (teste). Tabela nome → significado no
+    PLANO_OBRA, etapa 1b ("2ª VERSÃO"). Decalagem aℓ: NÃO aplicada (nenhuma aba aplica; as barras destes muros só
+    param em traspasse/ancoragem).
+  · AÇO COLOCADO = GEOMETRIA (`esforcos/acoColocado.ts`, pura): só os trechos de barra do modelo paralelos ao eixo
+    e dentro do recorte (faixa por metro com um nº inteiro de espaçamentos e as bordas entre barras; a seção do
+    contraforte; a face); cada barra sobe de 0 à área cheia ao longo de ℓb,nec da ponta reta (`lbn_*`) ou dobrada
+    (`lbg_*`, α 0,7); ponta que passa do começo da peça (espera na sapata) chega cheia; traspasse = rampas de ℓ0t e a
+    soma do par limitada à maior área. Contraforte: principais + as esperas delas. Estribos do contraforte:
+    2·área/distância entre dois seguidos. Peças esquemáticas (painel vertical, canaleta, cinta do topo, cintas do
+    muro de cima, ligação): o colocado é o As efetivo da planilha, tracejado. Não armados: Md × ftd·W.
+  · ACHADOS MODELO × PLANILHA (na seção crítica; o teste exige que cada diferença caia numa razão conhecida):
+    balanço e contraforte iguais em todos; dente: o modelo põe MAIS estribo que a conta em 41 de 45 (desvio das
+    barras da sapata, já sabido); pilarete com PILARETE_LIGACAO: sem aço ancorado na base (6); sapata: balanço
+    curto demais para ancorar na face (13) e sorteios com o muro fora da sapata (13). Cortante do contraforte: o
+    modelo desenha 2 ramos (com `ramos_est` ≠ 2 o colocado sai a metade — aviso ESTRIBO_RAMOS). Envolve × aba: o
+    balanço e o contraforte batem sempre; sobram 5 (ponta curta, dente estreito, pilarete sem barra no arrimo).
+    O trecho depois da última barra junto da ponta livre (cobrimento: `Diagrama.fimLivre`) não conta como falta.
+  · NÃO VAI PARA A PRANCHA (Jose, 15/11: "os esforços a gente não vai mandar pra prancha, não. Eu nunca vi um projeto
+    com um diagrama em prancha. Geralmente a gente guarda nas memórias"): saiu o botão, o item da folha, a foto fora
+    da tela (`fotoDosEsforcos.ts`) e o parâmetro da conta no desenhista; projeto de antes com o item: o item sai e
+    entra no recado de abertura ("prancha: esforcos"). A pendência "Esforços em vetor no DXF" está CANCELADA.
+  · VAI PARA A MEMÓRIA (`memoria/desenhoDosEsforcos.ts`, `comDiagramasDosEsforcos`): o mesmo diagrama, chapado em 2D,
+    na seção do MRd de cada card de flexão (e no de cortante quando há: balanço, contraforte, sapata, dente,
+    pilarete, cintas) — os MESMOS dados da vista e as MESMAS áreas (`esforcos/areas.ts`, usado pela cena 3D e pela
+    memória); régua dos desenhos gerados (fundo branco, tema escuro pela .prancheta), tela, impressão e Word (o
+    modelo vai junto: `Memoria`, `MemorialImpresso`, `imprimirMemorial`/`exportarWord`). Sem conta nova, veredito
+    igual (teste).
+  · "MOSTRAR" com o muro de cima em três (Jose, 15/11): "Muro de cima: painéis", "…: cintas", "…: pilaretes" (a
+    ligação vai com os pilaretes); o "muroDeCima" guardado antes vira os três (`lerGrupos`).
+  · Prova: `esforcos/acoColocado.test.ts` (barras à mão), `esforcos/barrasAnaliticas.test.ts` (gabarito inteiro),
+    `esforcos/cintasEVista.test.ts`, `memoria/desenhoDosEsforcos.test.ts`. A CONFERIR com o Jose: a forma
+    ilustrativa do painel; o α 0,7 na dobra do estribo da sapata; o vermelho que sobra no topo do balanço com muro
+    de cima (o momento do muro de cima chega no topo e a barra do muro acaba 3 cm abaixo — as do pilarete levam).
 - **DENTE ARMADO (Jose, 15/11: "a forma de armar é similar à da sapata corrida, porém na vertical, com estribos
   adentrando a sapata corrida e armadura de montagem / mínima no sentido longitudinal do dente; o esforço seria o de
   deslizamento / tombamento" — FEITO 15/11, etapa 1 do `PLANO_OBRA.md`, ramo `muro-de-cima`; o Jose ainda NÃO viu na
