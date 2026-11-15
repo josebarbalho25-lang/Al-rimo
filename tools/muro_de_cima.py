@@ -214,8 +214,9 @@ Lm('Ligação: montagem',
    '=IF(OR(mc_on<>"Sim",h_mce<=0),"— (sem muro de cima)",'
    'IF(AND(Tipo_muro<>"Contrafortes",t_bloco=14),"NÃO OK — balanço em bloco 14 não leva muro de cima: bloco 19 ou contrafortes",'
    'IF(AND(Tipo_muro<>"Contrafortes",b_pila<20),"NÃO OK — pilarete com menos de 20 cm de frente",'
-   'IF(hs_pila>h_lig,IF(' + CF + ',"NÃO OK — pilarete passa da ponta do contraforte","NÃO OK — pilarete mais grosso que o muro: as barras não caem nos furos"),"OK"))))',
-   '', 'Balanço: bloco 19 e 20 cm de frente (Jose, 13/11). Pilarete dentro da ligação.', 'key', None, 'chk_ligg')
+   'IF(AND(' + CF + ',b_pila>t_bloco),"NÃO OK — pilarete mais largo que o contraforte: na ponta do muro ele passa do fim do muro",'
+   'IF(hs_pila>h_lig,IF(' + CF + ',"NÃO OK — pilarete passa da ponta do contraforte","NÃO OK — pilarete mais grosso que o muro: as barras não caem nos furos"),"OK")))))',
+   '', 'Balanço: bloco 19 e 20 cm de frente (Jose, 13/11). Contrafortes: largura até t (o da ponta não passa do fim do muro). Pilarete dentro da ligação.', 'key', None, 'chk_ligg')
 Lm('Ligação: resumo',
    '=IF(LEFT(chk_ligg,2)<>"OK",chk_ligg,'
    'IF(p_w<=0,"— (sem vento)",'

@@ -143,7 +143,11 @@ export function pilaretesDoTrecho(tr: TrechoModulado, contrafortes: boolean, mc:
     const xs = tr.nos.filter((_, k) => k % mc.nCf === 0).map((n) => n.xc);
     const ultimo = tr.nos[tr.nos.length - 1].xc;
     if (xs[xs.length - 1] !== ultimo) xs.push(ultimo);
-    return xs;
+    // pilarete mais largo que o contraforte (15/11): no da ponta ele passaria do fim do muro (ou entraria na junta,
+    // no vizinho). A planilha reprova (chk_ligg); o desenho não põe peça fora do muro — ela chega para dentro, rente à
+    // ponta, e as barras que saírem da haste caem no aviso da ligação
+    const [a, b] = [tr.x0 + mc.b / 2, tr.x1 - mc.b / 2];
+    return a <= b ? xs.map((x) => arred(Math.min(b, Math.max(a, x)))) : xs;
   }
   const a = tr.x0 + mc.b / 2;
   const b = tr.x1 - mc.b / 2;
@@ -244,7 +248,9 @@ export function barrasDosPilaretes(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaL
     // (aviso) — não se desenha barra no ar nem enterrada no aterro. Com contrafortes, dentro da haste (toda
     // grauteada, na largura dele); no balanço, dentro dos furos do bloco o traspasse inteiro (fiada a fiada)
     const hf = mod.cat.hf;
-    const naHaste = (x: number, y: number) => Math.abs(x - xc) + mc.phi / 2 <= tA / 2 - hf
+    // o eixo do CONTRAFORTE embaixo (o pilarete da ponta pode ter chegado para dentro, pilaretesDoTrecho)
+    const xCf = tr.nos.length ? tr.nos.map((n) => n.xc).reduce((m, q) => (Math.abs(q - xc) < Math.abs(m - xc) ? q : m)) : xc;
+    const naHaste = (x: number, y: number) => Math.abs(x - xCf) + mc.phi / 2 <= tA / 2 - hf
       && (ctx.p.enterrado ? y - mc.phi / 2 >= hf && y + mc.phi / 2 <= mod.tenr - hf : y - mc.phi / 2 >= tA - mod.tenr + hf && y + mc.phi / 2 <= tA - hf);
     const dentro = ctx.p.contrafortes
       ? barras.every(([x, y]) => naHaste(x, y))
