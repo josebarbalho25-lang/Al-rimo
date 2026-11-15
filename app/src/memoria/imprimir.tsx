@@ -7,6 +7,7 @@
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import type { Resultado } from '@/motor/tipos';
+import { ponteDoPrograma } from '@/estado/programa';
 import { MemorialImpresso, type InfoDoMemorial } from './MemorialImpresso';
 import { LARG_LAYOUT, baixarDoc, nomeDoArquivo, traduzirParaWord } from './word';
 
@@ -129,6 +130,17 @@ export async function imprimirMemorial(resultado: Resultado, opcoes: OpcoesDoMem
     await Promise.all([carregarFontesDoKatex(), esperarImagens(host)]);
   } catch {
     // sem a API de fontes, imprime assim mesmo
+  }
+  // No programa instalado o memorial vai direto para PDF em arquivo (o mesmo Chromium que desenhou a tela, sem a
+  // impressora virtual no meio — no Pró-Viga ela comia as letras gregas); o programa abre o PDF para imprimir.
+  const ponte = ponteDoPrograma();
+  if (ponte) {
+    try {
+      await ponte.gravarPdf(nomeDoArquivo(opcoes.info?.projeto).replace(/\.doc$/, '.pdf'));
+    } finally {
+      desmontar();
+    }
+    return;
   }
   // Desmonta no afterprint, nunca por relógio: onde o print() não segura a página (Safari), desmontar cedo
   // imprimiria a folha em branco.

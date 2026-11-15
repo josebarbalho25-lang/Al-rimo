@@ -6,8 +6,13 @@
 
   Mesmo cuidado do memorial: a folha é filha direta do body e o resto do app some no papel; o esquema de cor é
   forçado para claro (no tema escuro o Chrome pintava a margem de preto).
+
+  A folha impressa é `.pr-folha`, NUNCA `.folha`: o componentes.css tem um `.folha { position: absolute; inset: 0 }`
+  da tela, e a folha absoluta perdia a página nomeada — o PDF saía em Carta, com uma página em branco na frente
+  (achado no programa instalado, 15/11).
 */
 import type { FolhaComposta } from './folha';
+import { ponteDoPrograma } from '@/estado/programa';
 
 const CLASSE = 'pr-impressao';
 let anterior: (() => void) | null = null;
@@ -25,9 +30,9 @@ export function cssDaImpressao(folhas: readonly Pick<FolhaComposta, 'largura' | 
   html, body { margin: 0 !important; padding: 0 !important; height: auto !important; overflow: visible !important; background: #fff !important; color-scheme: light !important; }
   body > *:not(.${CLASSE}) { display: none !important; }
   .${CLASSE} { position: static !important; left: auto !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .${CLASSE} .folha { overflow: hidden; break-after: page; }
-  .${CLASSE} .folha:last-child { break-after: auto; }
-  .${CLASSE} .folha > svg { display: block; width: 100%; height: 100%; }
+  .${CLASSE} .pr-folha { overflow: hidden; break-after: page; }
+  .${CLASSE} .pr-folha:last-child { break-after: auto; }
+  .${CLASSE} .pr-folha > svg { display: block; width: 100%; height: 100%; }
 }
 ${paginas}`;
 }
@@ -48,8 +53,11 @@ async function esperarImagens(host: HTMLElement): Promise<void> {
   await Promise.race([Promise.all(pendentes), new Promise<void>((ok) => setTimeout(ok, 5000))]);
 }
 
-/** Abre o diálogo de impressão com todas as folhas (impressora ou "Salvar como PDF"). */
-export async function imprimirPranchas(folhas: readonly FolhaComposta[]): Promise<void> {
+/**
+ * Abre o diálogo de impressão com todas as folhas (impressora ou "Salvar como PDF"). No programa instalado, o PDF vai
+ * direto para o arquivo (`nome` sugerido no diálogo de salvar) e o programa o abre no leitor do sistema.
+ */
+export async function imprimirPranchas(folhas: readonly FolhaComposta[], nome = 'Pranchas.pdf'): Promise<void> {
   if (!folhas.length) return;
   anterior?.();
   const estilo = document.createElement('style');
@@ -57,7 +65,7 @@ export async function imprimirPranchas(folhas: readonly FolhaComposta[]): Promis
   document.head.appendChild(estilo);
   const host = document.createElement('div');
   host.className = CLASSE;
-  host.innerHTML = folhas.map((f, i) => `<div class="folha f${i}">${f.svg}</div>`).join('');
+  host.innerHTML = folhas.map((f, i) => `<div class="pr-folha f${i}">${f.svg}</div>`).join('');
   document.body.appendChild(host);
   let feito = false;
   const desmontar = () => {
@@ -69,6 +77,15 @@ export async function imprimirPranchas(folhas: readonly FolhaComposta[]): Promis
   };
   anterior = desmontar;
   await esperarImagens(host);
+  const ponte = ponteDoPrograma();
+  if (ponte) {
+    try {
+      await ponte.gravarPdf(nome);
+    } finally {
+      desmontar();
+    }
+    return;
+  }
   // desmonta no afterprint, nunca por relógio (onde o print() não segura a página, desmontar cedo sai em branco)
   window.addEventListener('afterprint', desmontar, { once: true });
   window.print();

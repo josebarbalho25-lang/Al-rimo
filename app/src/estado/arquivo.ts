@@ -7,7 +7,11 @@
 //   · os outros: abrir pelo seletor de arquivo e salvar como DOWNLOAD (cada
 //     Salvar baixa uma cópia, que é o que o navegador permite).
 //  O resto do app não sabe qual dos dois foi usado.
+//  No programa instalado (instalador/), um terceiro com a cara do primeiro:
+//  os diálogos do Windows pela ponte de estado/programa.ts.
 // ═══════════════════════════════════════════════════════════════════════════
+
+import { desistencia, ponteDoPrograma, type PonteDoPrograma } from './programa';
 
 /* A janela de arquivo do sistema (File System Access) ainda não está nos tipos
    do TypeScript; só o pedaço que usamos. */
@@ -30,7 +34,60 @@ export type Alca = AlcaDeArquivo;
 
 const TIPO_ALRIMO: TipoDeArquivo = { description: 'Muro do Al-rimo', accept: { 'application/json': ['.alrimo'] } };
 
-const janela = () => window as unknown as JanelaComArquivos;
+/*
+  O PROGRAMA INSTALADO (estado/programa.ts) entra como um terceiro caminho com
+  a MESMA cara da janela de arquivo do navegador: alças com nome, ler e gravar.
+  Por que não a janela de arquivo do próprio Chromium, que o Electron também
+  tem? Porque ela não dá alça a partir de um caminho — e o .alrimo aberto com
+  duplo clique precisa voltar ao mesmo arquivo no Ctrl+S.
+*/
+interface AlcaDoPrograma extends AlcaDeArquivo {
+  caminho: string;
+}
+
+const mesmoCaminho = (a: string, b: string) => a.replace(/\//g, '\\').toLowerCase() === b.replace(/\//g, '\\').toLowerCase();
+
+/** A alça de um arquivo do disco, pelo caminho (só no programa instalado). */
+export function alcaDoCaminho(caminho: string, nome: string): Alca | null {
+  const ponte = ponteDoPrograma();
+  if (!ponte) return null;
+  const alca: AlcaDoPrograma = {
+    name: nome,
+    caminho,
+    getFile: async () => new File([await ponte.lerArquivo(caminho)], nome, { type: 'application/json' }),
+    isSameEntry: async (outra) => 'caminho' in outra && mesmoCaminho((outra as AlcaDoPrograma).caminho, caminho),
+    createWritable: async () => {
+      const partes: string[] = [];
+      return {
+        write: async (d) => {
+          partes.push(typeof d === 'string' ? d : await d.text());
+        },
+        close: () => ponte.gravarArquivo(caminho, partes.join('')),
+      };
+    },
+  };
+  return alca;
+}
+
+function janelaDoPrograma(ponte: PonteDoPrograma): JanelaComArquivos {
+  return {
+    showOpenFilePicker: async () => {
+      const a = await ponte.abrirProjeto();
+      if (!a) throw desistencia();
+      return [alcaDoCaminho(a.caminho, a.nome) as AlcaDeArquivo];
+    },
+    showSaveFilePicker: async ({ suggestedName }) => {
+      const d = await ponte.escolherDestino(suggestedName);
+      if (!d) throw desistencia();
+      return alcaDoCaminho(d.caminho, d.nome) as AlcaDeArquivo;
+    },
+  };
+}
+
+const janela = (): JanelaComArquivos => {
+  const ponte = ponteDoPrograma();
+  return ponte ? janelaDoPrograma(ponte) : (window as unknown as JanelaComArquivos);
+};
 
 /** O usuário fechou a janela de arquivo — não é erro, é desistência. */
 export function foiCancelado(e: unknown): boolean {

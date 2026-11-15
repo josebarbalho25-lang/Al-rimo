@@ -856,7 +856,7 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
             <button type="button" style={s.botao} onClick={() => setZoom((z) => Math.min(ZOOM_MAX, z * 1.25))} title="Aumentar" aria-label="Aumentar">+</button>
           </div>
           <div className="cad-escolha">
-            <button type="button" style={s.botao} disabled={!pranchas.folhas.length || exportando} onClick={() => void exportar((c) => imprimirPranchas(c))}>
+            <button type="button" style={s.botao} disabled={!pranchas.folhas.length || exportando} onClick={() => void exportar((c) => imprimirPranchas(c, nomeDeArquivo(`${tituloDoMuro} - pranchas`, '.pdf')))}>
               PDF
             </button>
             <button type="button" style={s.botao} disabled={!pranchas.folhas.length || exportando} onClick={() => void exportar(baixarDxf)}>
@@ -874,7 +874,7 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
               {ferramentas}
             </GrupoDaFaixa>
             <GrupoDaFaixa faixa="exportar" nome="Pranchas">
-              <BotaoDaFaixa nome="PDF" dica="Imprimir as pranchas em PDF" desenho={ICONES.pdf} desligado={!pranchas.folhas.length || exportando} aoClicar={() => void exportar((c) => imprimirPranchas(c))} />
+              <BotaoDaFaixa nome="PDF" dica="Imprimir as pranchas em PDF" desenho={ICONES.pdf} desligado={!pranchas.folhas.length || exportando} aoClicar={() => void exportar((c) => imprimirPranchas(c, nomeDeArquivo(`${tituloDoMuro} - pranchas`, '.pdf')))} />
               <BotaoDaFaixa nome="DXF" dica="Baixar as pranchas em DXF (.zip)" desenho={ICONES.dxf} desligado={!pranchas.folhas.length || exportando} aoClicar={() => void exportar(baixarDxf)} />
             </GrupoDaFaixa>
             <NoEncaixe em="rodape">

@@ -7,7 +7,8 @@
 //  clique é o pior defeito que um programa pode ter.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { abrirDoDisco, baixar, foiCancelado, salvarNoDisco, type Alca } from './arquivo';
+import { abrirDoDisco, alcaDoCaminho, baixar, foiCancelado, salvarNoDisco, type Alca } from './arquivo';
+import { ponteDoPrograma, type ArquivoDoPrograma } from './programa';
 import {
   desserializarProjeto,
   EXTENSAO,
@@ -75,27 +76,64 @@ export function abrirExemplo(): boolean {
   return true;
 }
 
+/** Põe na tela um .alrimo já lido do disco (pelo Abrir ou pelo duplo clique no programa instalado). */
+function carregarLido(lido: { texto: string; nome: string; alca: Alca | null }): void {
+  const a = desserializarProjeto(lido.texto, CAMPOS, VERSAO_DA_CONTA);
+  if (!a.ok) {
+    avisar(ruim(`${lido.nome}: ${a.motivo}`));
+    return;
+  }
+  alcaAtual = lido.alca;
+  const projeto = { ...a.projeto, titulo: tituloDoArquivo(lido.nome) };
+  useApp.getState().carregar(projeto, lido.nome, {
+    contaDoArquivo: a.outraVersao ? a.versaoDaConta : null,
+    // arquivo sem identidade ganhou uma agora: ela só vale de verdade depois de ir para o disco (ver projeto.ts)
+    sujo: a.ganhouId,
+  });
+  avisar(recadoDeAbertura(lido.nome, a));
+}
+
 export async function abrirProjeto(): Promise<void> {
   if (!perderAlteracoes('O muro tem alterações não salvas. Abrir outro mesmo assim?')) return;
   try {
     const lido = await abrirDoDisco();
     if (!lido) return;
-    const a = desserializarProjeto(lido.texto, CAMPOS, VERSAO_DA_CONTA);
-    if (!a.ok) {
-      avisar(ruim(`${lido.nome}: ${a.motivo}`));
-      return;
-    }
-    alcaAtual = lido.alca;
-    const projeto = { ...a.projeto, titulo: tituloDoArquivo(lido.nome) };
-    useApp.getState().carregar(projeto, lido.nome, {
-      contaDoArquivo: a.outraVersao ? a.versaoDaConta : null,
-      // arquivo sem identidade ganhou uma agora: ela só vale de verdade depois de ir para o disco (ver projeto.ts)
-      sujo: a.ganhouId,
-    });
-    avisar(recadoDeAbertura(lido.nome, a));
+    carregarLido(lido);
   } catch (e) {
     if (!foiCancelado(e)) avisar(naoDeuPara('abrir', e));
   }
+}
+
+/** Duplo clique num .alrimo (ou "Abrir com") no programa instalado: abre como o Abrir, com a alça do arquivo. */
+export function abrirArquivoDoPrograma(a: ArquivoDoPrograma): void {
+  if (!perderAlteracoes(`O muro tem alterações não salvas. Abrir ${a.nome} mesmo assim?`)) return;
+  carregarLido({ texto: a.texto, nome: a.nome, alca: alcaDoCaminho(a.caminho, a.nome) });
+}
+
+/**
+ * No programa instalado: recebe os .alrimo de fora, mantém o título da janela e o • em dia (a pergunta ao fechar é
+ * do programa) e atende o "Salvar" dessa pergunta. No navegador não faz nada. Chamado uma vez em main.tsx.
+ */
+export function ligarOPrograma(): void {
+  const ponte = ponteDoPrograma();
+  if (!ponte) return;
+  let antes = '';
+  const informar = () => {
+    const s = useApp.getState();
+    const agora = `${s.sujo ? 1 : 0}${s.titulo}`;
+    if (agora === antes) return;
+    antes = agora;
+    ponte.informarEstado({ sujo: s.sujo, titulo: s.titulo });
+  };
+  useApp.subscribe(informar);
+  informar();
+  ponte.aoPedirSalvarEFechar(() => {
+    void salvarProjeto().then(() => {
+      if (!useApp.getState().sujo) ponte.fechar();
+    });
+  });
+  ponte.aoAbrirArquivo(abrirArquivoDoPrograma);
+  ponte.pronto();
 }
 
 export async function salvarProjeto(comoNovo = false): Promise<void> {
