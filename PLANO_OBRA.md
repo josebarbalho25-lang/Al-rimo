@@ -295,15 +295,52 @@ cada barrinha com o seu desenho de momento solicitante e momento resistente."
   nenhuma peça armada tem MRd de ELU como célula (as abas só comparam As,ef ≥ As,calc e x/d); o `Mr_` do ELS é
   momento de fissuração por faixa, não serve. Não há M ao longo da barra: o perfil de 40 fatias
   (`Solo e Empuxo` linhas 44–84; coluna L = M da fatia em torno da BASE, característico, por metro) e as 20
-  fatias da ponta/talão (`T_dM`, `H_dM`, em torno da face) só dão o total. A publicar, com nome definido:
-  (1) MRd com a armadura adotada — balanço, contraforte, painel vertical (barra do solo e de fora), painel
-  horizontal, cinta do topo, ponta e talão da sapata, dente, pilarete e ligação — pelo equilíbrio da MESMA seção
-  que a aba já usa (x com As,ef, mesa/alma no T), limitado ao x/d da norma; (2) momento resistente dos painéis
-  não armados (ftd·W) como momento; (3) colunas acumuladas M(z) e V(z) no perfil (balanço; × `binf` no
-  contraforte) e M(x) nas fatias da sapata; vento como parcela própria ao longo da altura; (4) o OUTRO
-  contraforte (hoje só se calcula o do `tipo_cf` escolhido: publicar ao menos o MSd do outro com a mesma seção);
-  (5) nome para as verificações que hoje só têm rótulo (Contrafortes, flexão/cortante/torção da Fundação).
-  Momento por canaleta não existe (um `M_ph` para todas): todas as barras horizontais levam o mesmo diagrama;
+  fatias da ponta/talão (`T_dM`, `H_dM`, em torno da face) só dão o total.
+- **PUBLICADO (15/11)** — só nomes e linhas novas, no fim de cada aba ou à direita do que se lê por endereço;
+  todo nome que já existia ficou igual nos 81 cenários do gabarito (67.311 nomes e 149.769 células, zero
+  diferença). MRd = a conta de As da própria aba DESFEITA com o aço adotado (F = As,ef·fsd = C → x → M = F·z),
+  sem iteração, limitada pelo x que a verificação da aba confere (0,45d; onde a aba não confere ductilidade, o fim
+  da conta, 1,25d). Ida e volta (o As da aba no MRd = As,ef) e "MRd ≥ MSd ⇔ verificações OK" conferidos nos 81
+  cenários, sem exceção. Helper do gerador: `mrd_ret` (build_new.py); linhas de apoio de cada peça
+  `Fas_*` (força no aço), `xas_*` (x com As,ef), `Mas_*`, `xlim_*`, `Mlim_*`, `MRf_*` (MRd na largura da conta, kN·cm).
+
+  | Peça | MRd (unid.) | x no MRd | MSd que pareia | MSd/MRd | γf |
+  |---|---|---|---|---|---|
+  | Balanço, faixa 1 m (mesa/T real) | `MRd_bal` kN·m/m | `xM_bal` | `Md_` | `ap_bal` | já em `Md_` (γf·(Mk+Mk vento) + `M2d_us`; `Md_dec` = a soma, = `Md_`) |
+  | Contraforte, este tipo (T/ret.) | `MRd_cf` kN·m | `xM_cf` | `Md_cf` | `ap_cf` | já em `Md_cf` |
+  | Contraforte, o outro tipo (bm dele) | `MRd_cfo` kN·m | `xM_cfo` | `Md_cfo` (`Vd_cfo`, `binf_o`, `bm_cfo`, `tipo_cfo`) | `ap_cfo` | γf·`Mk_cfo` |
+  | Contraforte, cortante | `VRd_cf` = mín(Vrd3; Vrd2) kN | — | `Vd_cf`, `Vd_cfo` | `apV_cf`, `apV_cfo` | já |
+  | Painel vertical, barra do solo / de fora | `MRd_pvs` / `MRd_pve` kN·cm/m (iguais: mesma barra e d) | `xM_pv` | `M_pvs` / `M_pve` | `ap_pvs` / `ap_pve` | já (Libânio com γf) |
+  | Painel horizontal (todas as canaletas) | `MRd_ph` kN·cm/m (`MRf_ph` na faixa s) | `xM_ph` | `M_ph` | `ap_ph` | já |
+  | Canaleta do topo (cinta) | `MRd_cin` kN·cm na faixa s_ph | `xM_ph` | `Msd_cin` = Md_cin + Mde_cin | `ap_cin` | já |
+  | Ponta / talão da sapata | `MRd_toe` / `MRd_heel` kN·m/m (talão 0 sem barra em cima, `sup_s`) | `xM_s` | `Md_ts` / `Md_hs` | `ap_toe` / `ap_heel` (`apV_s` = VSd/VRd1) | 1,4 FIXO (seção 7) |
+  | Dente | `MRd_den` kN·m/m | `xM_den` | `Md_den` | `ap_den` | já |
+  | Pilarete / ligação no arrimo | `MRd_pil` / `MRd_lig` kN·m | `xM_pil` / `xM_lig` | `Md_pil` | `ap_pil` / `ap_lig` | já |
+  | Painel não armado do balanço | `MRp_pan` / `MRn_pan` kN·m/m (ftd·W) | — | `Mpar` / `Mnor` | `ap_ppan` / `ap_npan` | já (fd) |
+  | Subpainel entre contrafortes | `MRp_sp` / `MRn_sp` kN·cm/m (`ftdp_sp`, `ftdn_sp` nomeados) | — | `Mpar_sp` / `Mnor_sp` | `ap_psp` / `ap_nsp` | já |
+  | Painéis A/B do muro de cima | `MRp_pA`, `MRn_pA`, `MRp_pB`, `MRn_pB` kN·m/m | — | `Mpa_p*` / `Mno_p*` | `ap_ppA`… | já |
+
+  **Ao longo da peça** (intervalos nomeados; nó 0 em cima/na ponta livre, base/face por último — exceto onde dito):
+  perfil do solo (Solo e Empuxo O–Z, 41 nós, z = `perf_z`, y acima da base = `perf_y`): `perf_V`, `perf_M`
+  (característicos, por metro; na base = `Vk_`, `Mk_` bit a bit), vento `perf_Mw` (balanço), `perf_Mwc` (este
+  contraforte), `perf_Mwo` (o outro); de cálculo `perf_Md`/`perf_Vd` (balanço; + `M2d_us` só na base = `Md_`),
+  `perf_Mdc`/`perf_Vdc` (= `Md_cf`/`Vd_cf` na base), `perf_Mdo`/`perf_Vdo` (o outro). Vento na altura inteira do
+  muro (aba Muro de cima e vento, 11 nós do topo do muro à base): `vt_y`, `vt_Mw`/`vt_Vw`, `vt_Mc`/`vt_Vc`,
+  `vt_Mo`/`vt_Vo`, de cálculo `vt_Md`, `vt_Mdc`, `vt_Mdo` (na base = `Mk_w`, `Mk_wcf`, `Mk_wcfo`) — acima do solo é
+  a única carga; fórmula: y ≤ h solo → Vk_w·(h solo + h livre/2 − y); y > h solo → p_w·(h solo + h livre − y)²/2
+  (contraforte: F_wpc·(h muro + h mc/2 − y) + o do arrimo exposto). Pilarete (11 nós do topo do muro de cima à
+  base dele): `pt_y`, `pt_Mk`, `pt_Vk`, `pt_Md`, `pt_Vd` (na base = `Mk_pil`, `Md_pil`). Sapata (colunas H–L das
+  fatias, 20 linhas; ponta: linha 1 = face; talão: linha 20 = face; a ponta livre, M = 0, não tem linha):
+  `T_e`/`H_e` (distância da seção à face), `T_Mk`/`H_Mk` (na face = `Mk_toe`/`Mk_heel` bit a bit), `T_Vk`/`H_Vk`,
+  de cálculo ×1,4 `T_Md`/`H_Md`, `T_Vd`/`H_Vd` (sem o máx(0; …) do Md da seção 7).
+  **Vereditos com nome** (antes só rótulo): Contrafortes `chk_esb_cf`, `chk_hf_cf`, `chk_res_cf`, `chk_duc_cf`,
+  `chk_As_cf`, `chk_Asx_cf`, `chk_bie_cf`, `chk_est_cf`, `chk_estj_cf`, `chk_els_cf`, `chk_gam_p`, `chk_pvs`,
+  `chk_pve`, `chk_pvx`, `chk_ph`, `chk_spp`, `chk_spn`, `chk_spd`, `chk_els_p`, `chk_ab_p`, `chk_pos_p`,
+  `chk_mc_cf`; Fundação `chk_fl_s` (flexão), `chk_v_s` (cortante), `chk_tor_s` e `chk_he_s` (torção),
+  `chk_apoio_s`, `chk_cf_s`, `chk_tomb`, `chk_comp_s`, `chk_den_in`, `chk_den_s`.
+  **A saber na tela:** os painéis (vertical, horizontal, canaleta do topo) e a sapata não têm verificação de
+  ductilidade na planilha — o MRd deles é o da conta até x = 1,25d (o `xM_*` mostra o x); ponta e talão com a
+  MESMA barra (o As principal é um só). Momento por canaleta não existe (um `M_ph` para todas): todas as barras horizontais levam o mesmo diagrama;
   posições das canaletas vêm do modelo. Leitura de intervalo no app: padrão de `memoria/desenhoDaSapata.ts:336`.
   Registro da vista: `estado/ligacoes.ts:45`, `store.ts:55`, `ui/Palco.tsx:29/42`, `ui/grafica/Navegador.tsx:47`,
   `integracao.tsx:38`; 3D em vetor da prancha: `desenhos/vista3d.ts:416`.

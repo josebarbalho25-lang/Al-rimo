@@ -962,6 +962,17 @@ e dizer ao Jose o que mudou e por quê.
   All Sec), dente armado, topografia por DXF, sondagens com camadas, corte e aterro, tela reorganizada na ordem da
   obra. Nove decisões do Jose listadas no plano, AINDA NÃO RESPONDIDAS. Nada implementado. Ler o plano antes de
   qualquer uma dessas frentes; etapa que mudar de estado se anota lá.
+- **MRd E ESFORÇOS AO LONGO DA PEÇA NA PLANILHA (15/11, 1ª metade da etapa 1b do PLANO_OBRA, ramo `muro-de-cima`):**
+  a planilha publica, só com nomes e linhas novas (no fim das abas; perfil do solo nas colunas O–Z; fatias da sapata
+  nas colunas H–L), o MRd de cada peça armada com o aço adotado (`MRd_bal`, `MRd_cf`, `MRd_cfo`, `MRd_pvs`/`pve`,
+  `MRd_ph`, `MRd_cin`, `MRd_toe`/`heel`, `MRd_den`, `MRd_pil`, `MRd_lig`) com `ap_*` = MSd/MRd e `xM_*`; o resistente
+  dos não armados como momento (`MRp_*`, `MRn_*`); M e V ao longo da altura (`perf_*`, vento `vt_*`, pilarete
+  `pt_*`) e da ponta/talão (`T_Mk`, `H_Mk`…); o OUTRO contraforte (`Md_cfo`, `Vd_cfo`, `binf_o`, `bm_cfo`); nome em
+  todas as verificações da aba Contrafortes e da Fundação (`chk_*_cf`, `chk_fl_s`, `chk_v_s`, `chk_tor_s`…). Tabela
+  completa no PLANO_OBRA ("PUBLICADO (15/11)"). Conta = a de As da própria aba DESFEITA (helper `mrd_ret`), limitada
+  pelo x que a verificação da aba confere (0,45d; painéis e sapata, que não conferem ductilidade, até 1,25d). Prova:
+  zero diferença nos nomes/células de antes (81 cenários), base bit a bit (Vk_, Mk_, Mk_w, Md_cf, Mk_toe… = último
+  nó), ida e volta e "MRd ≥ MSd ⇔ verificações OK" sem exceção. Falta a vista "Esforços" no app (2ª metade).
 - **DENTE ARMADO (Jose, 15/11: "a forma de armar é similar à da sapata corrida, porém na vertical, com estribos
   adentrando a sapata corrida e armadura de montagem / mínima no sentido longitudinal do dente; o esforço seria o de
   deslizamento / tombamento" — FEITO 15/11, etapa 1 do `PLANO_OBRA.md`, ramo `muro-de-cima`; o Jose ainda NÃO viu na
@@ -1008,11 +1019,13 @@ e dizer ao Jose o que mudou e por quê.
     5461 verdes, tsc limpo; `modulacao/dente.test.ts`, `memoria/dente.test.ts`; planilha entregue regerada. Ficou:
     a chamada/faixa arredonda o espaçamento para cm inteiro (12,5 sai "c/12"; a conta e a memória dizem 12,5); com
     estribo de torção a menos de 6 cm ou transversal a menos de 8 não sobra plano livre e o do dente encosta.
-  · A CONFIRMAR com o Jose: o As,mín de 0,15 % na largura do dente (é ele que manda em dente comum: Ø8 c/12,5 num
-    dente de 25); cortante na raiz sem descontar d; α = 0,7 na ancoragem; longitudinais pelo critério de laje; a
+  · CONFIRMADO pelo Jose (15/11: "confirmo o critério do esforço do dente maior dos 2 e armadura mínima"): a
+    força de cálculo = o maior entre o passivo cheio e o que falta no deslizamento (S1 abaixo) e o As,mín de 0,15 %
+    na largura do dente (é ele que manda em dente comum: Ø8 c/12,5 num dente de 25). Não reabrir sem fonte.
+    Seguem como DEDUÇÃO minha, sem pergunta a ele: cortante na raiz sem descontar d; α = 0,7 na ancoragem; longitudinais pelo critério de laje; a
     verificação da sapata no lugar de somar o momento.
   · REVISÃO ADVERSARIAL de 15/11 (2 revisores + juiz) — CORRIGIDA no mesmo dia:
-    PLANILHA. (S1, CRITÉRIO ADOTADO em 15/11, a confirmar com o Jose — substitui o "passivo cheio é o máximo"): o
+    PLANILHA. (S1, CRITÉRIO ADOTADO em 15/11 e confirmado pelo Jose no mesmo dia — substitui o "passivo cheio é o máximo"): o
     solo da frente de um dente debaixo da sapata está confinado pela pressão de contato, o Rankine de superfície
     livre não é teto. Força de cálculo `Fd_den` = máx(`Fa_den` = 1,4·Ek; `Fb_den` = (FS_desl·H_k − R_at − R_ad)/Lm
     ≥ 0, já de cálculo, sem outro γf); `gov_den` diz quem manda; Vd = Fd, Md = Fd·y (y = Mk/Ek, o braço do
