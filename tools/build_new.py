@@ -90,7 +90,7 @@ LST = {  # nome definido → intervalo da lista na aba Referências (preenchido 
     'lst_H': '$AJ$5:$AJ$22', 'lst_lcf': '$AK$5:$AK$21', 'lst_tenr': '$AL$5:$AL$6', 'lst_s': '$AM$5:$AM$11',
     'lst_hpan': '$AN$5:$AN$12', 'lst_sph': '$AO$5:$AO$13', 'lst_phi_est': '$AP$5:$AP$6',
     'lst_phi_sap': '$AQ$5:$AQ$11', 'lst_phi_sap2': '$AR$5:$AR$9', 'lst_phi_esp': '$AS$5:$AS$10',
-    'lst_gr': '$BB$5:$BB$9', 'lst_ncin': '$BC$5:$BC$7',
+    'lst_gr': '$BB$5:$BB$9', 'lst_ncin': '$BC$5:$BC$7', 'lst_ram': '$BD$5:$BD$6',
 }
 PHI_BARRAS = (6.3, 8, 10, 12.5, 16, 20)   # Ø de furo e canaleta: Referências L5:L10 e a lista das esperas (AS)
 LST_PHI = '$L$5:$L$10'   # Ø 6,3 a 20 (barras em furo e canaleta): a mesma lista das tabelas de arranjos
@@ -301,7 +301,10 @@ lista(LST['lst_phi_esp'], f'B{r-1}')
 line(E, r, 'Barras construtivas: quantidade', 2, '', '', 'inp', '0', 'n_cc'); r += 1
 line(E, r, 'Estribo: Ø', 6.3, 'mm', 'Vai na junta de assentamento: Ø ≤ 6,3 (NBR 16868-1 12.4; lista: 5 ou 6,3).', 'inp', '0.0', 'phi_est'); r += 1
 lista(LST['lst_phi_est'], f'B{r-1}')
-line(E, r, 'Estribo: nº de ramos', 2, '', '', 'inp', '0', 'ramos_est'); r += 1
+# 2 ou 4 (Jose, 15/11: "3 ramos não existe; 4 são 2 estribos menores"): 4 só conta se os dois estribos couberem
+# na largura do contraforte (aba Contrafortes, seção 6, ram_ef) — senão a conta fica com 2 e a verificação reprova.
+line(E, r, 'Estribo: nº de ramos', 2, '', '2 = um estribo fechado; 4 = dois estribos menores sobrepostos.', 'inp', '0', 'ramos_est'); r += 1
+lista(LST['lst_ram'], f'B{r-1}')
 line(E, r, 'Estribo: espaçamento', 20, 'cm', 'Múltiplo da altura da fiada (20 cm).', 'inp', '0', 's_est'); r += 1
 r += 1
 section(E, r, 'Painel entre contrafortes'); r += 1
@@ -594,7 +597,7 @@ R['AJ2'] = 'Listas das Entradas (montagens fechadas). Branco no topo = automáti
 _lst_cab = {'AJ': 'Altura (m)', 'AK': 'Eixo a eixo (m)', 'AL': 'Contraforte (cm)', 'AM': 'Barras (cm)',
             'AN': 'Canaletas balanço (m)', 'AO': 'Canaletas contraf. (cm)', 'AP': 'Ø estribo (mm)',
             'AQ': 'Ø sapata (mm)', 'AR': 'Ø sapata secund./torção (mm)', 'AS': 'Ø com espera (mm)',
-            'BB': 'Graute a cada (cm)', 'BC': 'Barras da cinta do muro de cima'}
+            'BB': 'Graute a cada (cm)', 'BC': 'Barras da cinta do muro de cima', 'BD': 'Ramos do estribo'}
 _lst_col = {}
 for col, h_ in _lst_cab.items():
     c = R[f'{col}4']; c.value = h_; c.font = fH; c.fill = NAVY; c.alignment = Alignment(horizontal='center', wrap_text=True)
@@ -614,6 +617,8 @@ _lst_col['AM'] = [None] + [f'=IF({n}*Graute<=6*t_bloco,{n}*Graute,"")' for n in 
 _lst_col['BB'] = [f'=IF({n}*m_mod<=6*t_bloco,{n}*m_mod,"")' for n in range(1, 6)]
 # barras da cinta do muro de cima (15/11): em branco = automático (2, ou 4 quando 2 não passam)
 _lst_col['BC'] = [None, 2, 4]
+# ramos do estribo do contraforte (15/11): um estribo (2) ou dois sobrepostos (4); 3 não existe
+_lst_col['BD'] = [2, 4]
 _lst_col['AN'] = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6]
 _lst_col['AO'] = [None] + [20 * n for n in range(1, 9)]
 _lst_col['AP'] = [5, 6.3]

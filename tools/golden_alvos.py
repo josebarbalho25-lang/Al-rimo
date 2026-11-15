@@ -214,6 +214,16 @@ ALVOS.update({
     'alvo_ph_duas_faces_apoiadas': {'Tipo_muro': 'Contrafortes', 'H_muro': 3.0, 'l_cf': 1.6, 'pos_ph': '2 barras (uma em cada face)', 'lat_pan': 'Apoiadas', 't_bloco': 19},
 })
 
+# Estribo do contraforte com 4 ramos (15/11): dois estribos menores, só se couberem (aba Contrafortes, seção 6). Os
+# sorteios já tiram 2 ou 4 (o 4 que cabe no bloco 19 e o gancho que não cabe no 14); faltavam as barras demais para
+# a faixa entre os ramos do meio (8Ø10 no 19, cabem 6) e o 4 com Ø6,3 que cabe.
+_E4 = {'Tipo_muro': 'Contrafortes', 't_bloco': 19, 'H_muro': 4.0, 'H_solo': 4.0, 'l_cf': 2.6, 'tenr_': 79,
+       'ramos_est': 4, 'phi_est': 6.3, 's_est': 40, 'phi_cf': 10, 'phi_cc': 10, 'n_cf_dir': 4}
+ALVOS.update({
+    'alvo_estribo4_cabe': dict(_E4),
+    'alvo_estribo4_barras_demais': {**_E4, 'n_cf_dir': 8},
+})
+
 
 # Cenários de ENTRADA EM BRANCO. O app deixa o usuário apagar qualquer campo numérico (o motor grava null, como o
 # Excel grava célula vazia), e a sonda do Excel mostrou que o vazio não se comporta igual em toda função: o

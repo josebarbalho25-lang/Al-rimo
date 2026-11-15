@@ -83,6 +83,29 @@ for nm_, rg in (('mont_ch', '$AT$5:$AT$8'), ('mont_t', '$AU$5:$AU$8'), ('mont_cE
                 ('mont_AE', '$AY$5:$AY$8'), ('mont_AA', '$AZ$5:$AZ$8'), ('mont_phi', '$AV$11:$BA$11'),
                 ('mont_nE', '$AV$12:$BA$15'), ('mont_nA', '$AV$16:$BA$19')):
     wb.defined_names[nm_] = DefinedName(nm_, attr_text=f"'Referências'!{rg}")
+# Estribo de 4 ramos (15/11): as mesmas barras do furo comum, agora sem passar sobre os ramos do meio do par de
+# estribos (a 1/6 da largura do estribo de 2 ramos, t − 2·3,5 cm, do eixo: a superfície da barra e da espera fica a
+# até (t − 7)/6 − φt/2 do eixo). Quem calcula é o app (secaoDoContraforte.ts, barrasQueCabem com a faixa
+# faixaDosQuatroRamos), com o estribo Ø6,3 — o Ø5 dá a mesma tabela (o teste confere as duas); o 3D arruma as
+# barras dentro da mesma faixa. A espera pode ir para o lado ao longo do contraforte (no eixo): por isso o bloco 14
+# ainda leva barra na faixa estreita.
+MONT_N4 = {  # chave → barras que cabem por Ø (MONT_PHI), enterrado / aparente
+    '14x34': ((5, 4, 3, 2, 2, 0), (2, 1, 1, 1, 0, 0)),
+    '14x54': ((5, 4, 3, 2, 2, 0), (2, 1, 1, 1, 0, 0)),
+    '19x59': ((15, 8, 6, 2, 2, 1), (15, 8, 6, 2, 2, 1)),
+    '19x79': ((15, 8, 6, 2, 2, 1), (15, 8, 6, 2, 2, 1)),
+}
+R['AT21'] = 'Estribo de 4 ramos: barras que cabem no furo comum sem passar sobre os ramos do meio (15 mm de graute, espera ao lado).'; R['AT21'].font = fB
+for j, h_ in enumerate(['Montagem', 'Posição'] + list(MONT_PHI)):
+    c = R.cell(row=22, column=46 + j, value=h_); c.font = fH; c.fill = NAVY; c.border = BOX; c.alignment = Alignment(horizontal='center')
+for i, (ch, *_resto) in enumerate(MONT_CF):
+    for blk, ns in ((23, MONT_N4[ch][0]), (27, MONT_N4[ch][1])):
+        R.cell(row=blk + i, column=46, value=ch).font = fN
+        R.cell(row=blk + i, column=47, value='enterrado' if blk == 23 else 'aparente').font = fN
+        for k, v in enumerate(ns):
+            c = R.cell(row=blk + i, column=48 + k, value=v); c.font = fN; c.border = BOX; c.alignment = Alignment(horizontal='center')
+for nm_, rg in (('mont_n4E', '$AV$23:$BA$26'), ('mont_n4A', '$AV$27:$BA$30')):
+    wb.defined_names[nm_] = DefinedName(nm_, attr_text=f"'Referências'!{rg}")
 for _cc, _w in (('AT', 10), ('AU', 9), ('AV', 9), ('AW', 11), ('AX', 11), ('AY', 13), ('AZ', 13), ('BA', 9)):
     R.column_dimensions[_cc].width = _w
 
@@ -237,15 +260,34 @@ Lc('fgk do graute', '=fgk_', 'MPa', 'Entradas ou tabela pelo fbk.', 'res', '0.0'
 Lc('ρw,mín (0,07% em fgk 15 a 0,14% em fgk 40)', '=MIN(0.14,MAX(0.07,0.07+(fgk_-15)*0.07/25))', '%', '', 'res', '0.000', 'rhow_cf', 'NBR 16868-1 12.2')
 Lc('Asw,mín = ρw·bw', '=rhow_cf/100*bw_cf*100', 'cm²/m', '', 'res', '0.00', 'Asw_m')
 Lc('Asw/s de cálculo', '=IF(Vd_cf<=Va_cf,0,MAX(Asw_n,Asw_m))', 'cm²/m', 'Zero se Vd ≤ Va (dispensa estribo pela conta).', 'key', '0.00', 'Asw_c')
-Lc('Ø necessário com os ramos e o espaçamento das Entradas', '=SQRT(s_est*4*Asw_c/100/(ramos_est*PI()))*10', 'mm', '', 'res', '0.0', 'phi_wn')
+Lc('Ø necessário com os ramos e o espaçamento das Entradas', '=SQRT(s_est*4*Asw_c/100/(ram_ef*PI()))*10', 'mm', 'Ramos que a conta usa (abaixo).', 'res', '0.0', 'phi_wn')
 # Estribo só quando a conta pede (Jose, 13/10; planilha 05 do Carini: "Dispensa Estribos" se fvd ≥ τvd, que é o
 # mesmo Vd ≤ Va daqui; o mínimo ρw·bw só vale do lado "com armadura"). Em alvenaria não se põe estribo sem
 # necessidade: com Asw_c = 0 o muro sai SEM estribo — Asw,ef, Vrd3 = Va, nº de estribos 0 — e o app não desenha nenhum.
-Lc('Asw/s efetivo', '=IF(Asw_c=0,0,ramos_est*PI()*phi_est^2/400/s_est*100)', 'cm²/m', 'Zero sem estribo (dispensa pela conta).', 'res', '0.00', 'Asw_e')
+Lc('Asw/s efetivo', '=IF(Asw_c=0,0,ram_ef*PI()*phi_est^2/400/s_est*100)', 'cm²/m', 'Zero sem estribo (dispensa pela conta). Com os ramos que cabem (abaixo).', 'res', '0.00', 'Asw_e')
 Lc('Vrd3 = Va + 0,75·fywd·d·Asw/s', '=Va_cf+0.75*fywd/10*d_cf*Asw_e/100', 'kN', '', 'res', '0.00', 'Vrd3_cf')
 Lc('Estribo fechado (sugestão): largura × altura', '=IF(Asw_c=0,"Sem estribo (dispensa pela conta)",FIXED(eenr-7,0)&" × "&FIXED(h_cf-9,0)&" cm")', '', 'Largura = eenr − 7; altura = tenr − 9.', 'res')
 Lc('Perímetro do estribo (sem ganchos)', '=IF(Asw_c=0,0,2*((eenr-7)+(h_cf-9)))', 'cm', 'Somar os ganchos do detalhe.', 'res', '0')
 Lc('Nº de estribos na altura', '=IF(Asw_c=0,0,ROUNDUP(H_muro*100/s_est,0))', '', 'Um por junta de assentamento a cada s, na altura do muro; zero sem estribo (dispensa pela conta).', 'res', '0', 'n_est')
+# 4 RAMOS = DOIS ESTRIBOS MENORES SOBREPOSTOS (Jose, 15/11: "3 ramos não existe; 4 são 2 estribos menores — no
+# Pró-Viga tem um modelo quando a viga tem uma base grande"). A regra do Pró-Viga (viewer3d.js, estribo duplo): cada
+# estribo tem 2/3 da largura do de 2 ramos e fica deslocado ±1/6 dela — os quatro ramos a cada 1/3, os ganchos no
+# canto de FORA de cada um. Aqui a largura do de 2 ramos é eenr − 7 (o eixo a 3,5 cm das faces, linha acima), o
+# mesmo estribo que o app desenha (modulacao/armaduras.ts). Só se conta o aço que se monta: os dois estribos têm de
+# caber, senão a conta fica com 2 ramos e a verificação "Estribo: 4 ramos cabem no contraforte" reprova dizendo.
+# Duas condições (DEDUÇÃO, as medidas que o app desenha):
+#   · o gancho de 135° do estribo menor: a ponta sai do canto a 45° e vai até encostar no ramo do outro lado
+#     (barras.ts, medidasDoEstribo) — tem de chegar a 5φ ≥ 5 cm (NBR 6118 9.4.6.1), com o pino 3φ (Tab. 9.2);
+#   · o ramo do meio (a 1/6 da largura do eixo do contraforte) não passa sobre as barras principais nem sobre as
+#     esperas delas: as n_cf barras cabem no furo comum dentro da faixa entre os dois ramos do meio (tabela
+#     mont_n4E/A da aba Referências, como a das barras que cabem) — a espera vai até o traspasse, e o 1º estribo fica
+#     na junta sobre a sapata. As construtivas, do lado do muro, o 3D arruma na mesma faixa (na fila, no eixo).
+Lc('4 ramos: largura de cada estribo (dois sobrepostos)', '=2*(eenr-7)/3', 'cm', 'De eixo a eixo dos ramos: 2/3 da largura do estribo de 2 ramos, deslocados ±1/6 (ramos a cada 1/3).', 'res', '0.00', 'w4_est', 'Critério adotado (estribo duplo)')
+Lc('4 ramos: raio da dobra no eixo (pino 3φ)', '=(3*phi_est/2+phi_est/2)/10', 'cm', '', 'res', '0.00', 'rd4_est', 'NBR 6118 Tab. 9.2')
+Lc('4 ramos: ponta do gancho de 135° que cabe no estribo menor', '=(w4_est-phi_est/10-(1+SQRT(2)/2)*rd4_est)/(SQRT(2)/2)', 'cm', 'Do canto, a 45°, até encostar no ramo do outro lado.', 'res', '0.00', 'pg4_est')
+Lc('Ponta do gancho de 135° exigida = 5φ ≥ 5 cm', '=MAX(5*phi_est/10,5)', 'cm', '', 'res', '0.00', 'pgn_est', 'NBR 6118 9.4.6.1')
+Lc('4 ramos: barras do Ø das Entradas que cabem entre os ramos do meio', '=IF(cf_T=1,INDEX(mont_n4E,k_mont,MATCH(phi_cf,mont_phi,0)),INDEX(mont_n4A,k_mont,MATCH(phi_cf,mont_phi,0)))', '', 'Furo comum, 15 mm de graute, espera ao lado; nenhuma barra sobre os ramos do meio. Montagens do Revit.', 'res', '0', 'nb4_cab', 'Montagens do Revit (medido)')
+Lc('Ramos que a conta usa', '=IF(ramos_est=4,IF(AND(pg4_est>=pgn_est-0.005,n_cf<=nb4_cab),4,2),IF(ramos_est>0,2,ramos_est))', '', '4 só se os dois estribos couberem; senão 2.', 'key', '0', 'ram_ef')
 r += 1
 section(C, r, '7. ELS do contraforte'); r += 1
 Lc('Em = (Em/fpk)·fpk', '=Em_coef*fpk_cf', 'MPa', 'T: seção bruta ↔ fpk bruto.', 'res', '0', 'Em_cf', 'NBR 16868-1 6.2.1 (Tab. 1)')
@@ -498,7 +540,7 @@ Lc('Momento da base do painel (engaste na sapata)', '=Mdyei_p', 'kN·cm/m', 'De 
 Lc('Md e Vd na base do contraforte', '=FIXED(Md_cf,2)&" kN·m  /  "&FIXED(Vd_cf,2)&" kN"', '', '', 'res')
 r += 1
 section(C, r, '14. Detalhamento (resumo)'); r += 1
-Lc('Contraforte', '=n_cf&"Ø"&'+fphi('phi_cf')+'&" na ponta (d = "&FIXED(d_cf,1)&" cm) + "&n_cc&"Ø"&'+fphi('phi_cc')+'&" construtivas; "&IF(Asw_c=0,"sem estribos (dispensa pela conta)","estribos Ø"&'+fphi('phi_est')+'&" c/"&FIXED(s_est,0)&" ("&ramos_est&" ramos) nas juntas")', '', '', 'key')
+Lc('Contraforte', '=n_cf&"Ø"&'+fphi('phi_cf')+'&" na ponta (d = "&FIXED(d_cf,1)&" cm) + "&n_cc&"Ø"&'+fphi('phi_cc')+'&" construtivas; "&IF(Asw_c=0,"sem estribos (dispensa pela conta)","estribos Ø"&'+fphi('phi_est')+'&" c/"&FIXED(s_est,0)&" ("&ram_ef&" ramos) nas juntas")', '', '', 'key')
 Lc('Painel — vertical', '=IF(nb_pv=2,"Ø"&'+fphi('phi_pv')+'&" c/"&FIXED(s_pv,0)&" em CADA face (2 barras por furo, a "&'+fphi('c_pv')+'&" cm das faces)","Ø"&'+fphi('phi_pv')+'&" c/"&FIXED(s_pv,0)&" centralizada")', '', '', 'key')
 Lc('Painel — horizontal', '="Ø"&'+fphi('phi_ph')+'&" c/"&FIXED(s_ph,0)&" em canaleta grauteada, "&IF(LEFT(pos_ph,4)="Cent","centralizada",IF(nb_ph=2,"uma em cada face","encostada na face externa"))', '', '', 'key')
 r += 1
@@ -513,6 +555,7 @@ CHK = [
     ('Contraforte: bielas Vd ≤ Vrd2', '=IF(Vd_cf<=Vrd2_cf,"OK ("&FIXED(Vd_cf,1)&" ≤ "&FIXED(Vrd2_cf,1)&")","NÃO OK — aumentar a seção")'),
     ('Contraforte: estribos', '=IF(Asw_c=0,"Dispensa pela conta (Vd ≤ Va)",IF(Asw_e>=Asw_c-0.005,"OK ("&FIXED(Asw_e,2)&" ≥ "&FIXED(Asw_c,2)&" cm²/m)","NÃO OK — aumentar Ø, ramos ou reduzir s"))'),
     ('Estribo cabe na junta (Ø ≤ 6,3 mm)', '=IF(Asw_c=0,"— (sem estribo)",IF(phi_est<=6.3,"OK","NÃO OK — Ø > 6,3 não cabe na junta de assentamento"))'),
+    ('Estribo: 4 ramos cabem no contraforte', '=IF(Asw_c=0,"— (sem estribo)",IF(ramos_est<>4,"— (2 ramos)",IF(ram_ef=4,"OK (gancho "&FIXED(pg4_est,1)&" ≥ "&FIXED(pgn_est,1)&" cm; "&n_cf&" ≤ "&nb4_cab&" barras)","NÃO OK — 4 ramos não cabem na largura do contraforte ("&IF(pg4_est<pgn_est-0.005,"gancho de "&FIXED(pg4_est,1)&" < "&FIXED(pgn_est,1)&" cm",n_cf&" barras e só "&nb4_cab&" cabem entre os ramos do meio")&")")))'),
     ('Contraforte: ELS δ∞ ≤ δadm', '=IF(dinf_cf<=dadm_cf,"OK ("&FIXED(dinf_cf,1)&" ≤ "&FIXED(dadm_cf,1)&" mm)","NÃO OK")'),
     ('Painel: γ dentro da tabela (0,30–2,00)', '=IF(AND(gam_p>=0.3,gam_p<=2),"OK","NÃO OK — fora da tabela: mudar espaçamento dos contrafortes")'),
     ('Painel vertical: barra do lado do solo', '=IF(ISNUMBER(As_pvs),IF(a_pv>=MAX(As_pvs,As_pvm)-0.0005,"OK","NÃO OK"),"NÃO OK — não resiste")'),
@@ -534,7 +577,8 @@ NOME_CHK_CF = {
     'Contraforte: seção resiste': 'chk_res_cf', 'Contraforte: ductilidade x/d ≤ 0,45': 'chk_duc_cf',
     'Contraforte: As,ef ≥ As de cálculo': 'chk_As_cf', 'Contraforte: As ≤ As,máx do furo': 'chk_Asx_cf',
     'Contraforte: bielas Vd ≤ Vrd2': 'chk_bie_cf', 'Contraforte: estribos': 'chk_est_cf',
-    'Estribo cabe na junta (Ø ≤ 6,3 mm)': 'chk_estj_cf', 'Contraforte: ELS δ∞ ≤ δadm': 'chk_els_cf',
+    'Estribo cabe na junta (Ø ≤ 6,3 mm)': 'chk_estj_cf', 'Estribo: 4 ramos cabem no contraforte': 'chk_ram_cf',
+    'Contraforte: ELS δ∞ ≤ δadm': 'chk_els_cf',
     'Painel: γ dentro da tabela (0,30–2,00)': 'chk_gam_p', 'Painel vertical: barra do lado do solo': 'chk_pvs',
     'Painel vertical: barra do lado externo': 'chk_pve', 'Painel vertical: As ≤ As,máx do furo': 'chk_pvx',
     'Painel horizontal: barra na canaleta': 'chk_ph', 'Painel não armado: σtd,par ≤ ftd,par': 'chk_spp',
