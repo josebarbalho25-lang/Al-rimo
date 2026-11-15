@@ -273,6 +273,7 @@ function cardMuroDeCima(r: Parameters<AutorDeCards>[0]): Card {
   const m = memoriaDe(r);
   const comMc = ligado(m, 'mc_on');
   const faces = m.texto('reb_mc') === 'Nas duas faces' ? 2 : m.texto('reb_mc') === 'Só na frente' ? 1 : 0;
+  const largo = m.texto('chk_ligg').includes('mais largo que o contraforte');
   const hmc = m.ent('h_mc', 'h_{mc}');
   const tmc = m.ent('t_mc', 't_{mc}');
   const gmc = m.ent('g_mc', 'g_{mc}');
@@ -303,10 +304,15 @@ function cardMuroDeCima(r: Parameters<AutorDeCards>[0]): Card {
     m.passo('s_trib', 's_{pil}', null, { casas: 2, unidade: 'm', origem: 'adotado' }),
     // a seção do pilarete (em branco = a que o tipo de muro pede) e a MONTAGEM dele no arrimo: balanço só em bloco 19
     // e com 20 cm de frente (Jose, 13/11) — reprova com ou sem vento
-    m.passo('b_pila', 'b_{pil}', null, { casas: 1, unidade: 'cm', origem: m.num('b_pil') !== null ? 'entrada' : 'adotado' }),
+    // com contrafortes, o pilarete mais largo que o contraforte (15/11) passa do fim do muro no da ponta: a montagem
+    // se escreve na largura (b ≤ t); nos outros casos, na altura da seção (h ≤ a da ligação)
+    m.passo('b_pila', 'b_{pil}', null, {
+      casas: 1, unidade: 'cm', origem: m.num('b_pil') !== null ? 'entrada' : 'adotado',
+      ...(largo ? { verif: { chave: 'murocima.pilarete.montagem', rotulo: 'Pilarete: largura no contraforte', limite: m.ent('t_bloco', 't'), relacao: '<=' as const, celula: 'chk_ligg', aplicavel: comMc } } : {}),
+    }),
     m.passo('hs_pila', 'h_{pil}', null, {
       casas: 1, unidade: 'cm', origem: m.num('hs_pil') !== null ? 'entrada' : 'adotado',
-      verif: { chave: 'murocima.pilarete.montagem', rotulo: 'Pilarete: montagem no arrimo', limite: m.g('h_lig', 'h_{lig}', 1, 'cm'), relacao: '<=', celula: 'chk_ligg', aplicavel: comMc },
+      ...(largo ? {} : { verif: { chave: 'murocima.pilarete.montagem', rotulo: 'Pilarete: montagem no arrimo', limite: m.g('h_lig', 'h_{lig}', 1, 'cm'), relacao: '<=' as const, celula: 'chk_ligg', aplicavel: comMc } }),
     }),
     m.passo('P_mc', 'P_{mc}', soma(...[
       mul(gmct, hmc),
@@ -492,7 +498,9 @@ function cardPilarete(r: Parameters<AutorDeCards>[0]): Card {
     }),
     m.passo('tvd_lig', '\\tau_{vd,lig}', mul(div(m.g('Vd_pil', 'V_{d,pil}', 2, 'kN'), mul(bL, dL)), cte(10, 0)), {
       casas: 3, unidade: 'MPa',
-      verif: { chave: 'murocima.ligacao', rotulo: cf ? 'Ligação no contraforte' : 'Ligação no muro', limite: m.g('fvd_lig', 'f_{vd,lig}', 3, 'MPa'), relacao: '<=', celula: 'res_lig' },
+      // o res_lig começa pela montagem (chk_ligg): reprovada ela (o pilarete mais largo que o contraforte, 15/11), quem
+      // diz é a verificação da montagem, no card do muro de cima — aqui vale só a desigualdade do cisalhamento
+      verif: { chave: 'murocima.ligacao', rotulo: cf ? 'Ligação no contraforte' : 'Ligação no muro', limite: m.g('fvd_lig', 'f_{vd,lig}', 3, 'MPa'), relacao: '<=', ...(m.texto('chk_ligg').startsWith('OK') ? { celula: 'res_lig' } : {}) },
     }),
   ], NBR16868('11.3'));
 
