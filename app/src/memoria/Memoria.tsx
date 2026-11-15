@@ -3,9 +3,11 @@
   rótulo + conta + número; nada de texto explicando (regra do dono).
 */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Modelo } from '@/modelo/tipos';
 import type { Resultado } from '@/motor/tipos';
 import type { Card } from './tipos';
 import { cardsDaMemoria, verificacoesDe } from './cards';
+import { comDiagramasDosEsforcos } from './desenhoDosEsforcos';
 import { CardMemoria } from './CardMemoria';
 import { TabelaResumo } from './TabelaResumo';
 import { TELA } from './estilos';
@@ -15,6 +17,8 @@ import './memoria.css';
 
 export interface PropsDaMemoria {
   resultado: Resultado;
+  /** O muro desenhado: o diagrama do aço de cada peça (vista Esforços) entra no card dela. Sem ele, sem diagrama. */
+  modelo?: Modelo | null;
   /** Projeto, responsável, CREA, data — vão para o rosto do memorial impresso. */
   info?: InfoDoMemorial;
   urlDaFigura?: (figura: string) => string | null;
@@ -29,8 +33,8 @@ function estado(card: Card): 'ok' | 'falha' | null {
   return vs.every((x) => x.v.passa) ? 'ok' : 'falha';
 }
 
-export function Memoria({ resultado, info, urlDaFigura, irParaCard }: PropsDaMemoria) {
-  const cards = useMemo(() => cardsDaMemoria(resultado).filter((c) => c.aplicavel), [resultado]);
+export function Memoria({ resultado, modelo, info, urlDaFigura, irParaCard }: PropsDaMemoria) {
+  const cards = useMemo(() => comDiagramasDosEsforcos(cardsDaMemoria(resultado), resultado, modelo).filter((c) => c.aplicavel), [resultado, modelo]);
   const temResumo = useMemo(() => verificacoesDe(cards).length > 0, [cards]);
   const [ativo, setAtivo] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -76,7 +80,7 @@ export function Memoria({ resultado, info, urlDaFigura, irParaCard }: PropsDaMem
   const word = async () => {
     setOcupado(true);
     try {
-      await exportarWord(resultado, { info, urlDaFigura });
+      await exportarWord(resultado, { info, urlDaFigura, modelo });
     } finally {
       setOcupado(false);
     }
@@ -105,7 +109,7 @@ export function Memoria({ resultado, info, urlDaFigura, irParaCard }: PropsDaMem
           );
         })}
         <div className="mem-acoes">
-          <button onClick={() => void imprimirMemorial(resultado, { info, urlDaFigura })}>Imprimir</button>
+          <button onClick={() => void imprimirMemorial(resultado, { info, urlDaFigura, modelo })}>Imprimir</button>
           <button onClick={() => void word()} disabled={ocupado}>
             Word
           </button>

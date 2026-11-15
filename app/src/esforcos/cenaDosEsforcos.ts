@@ -2,12 +2,20 @@
   A CENA DOS ESFORÇOS em three — o desenho das barras analíticas (barrasAnaliticas.ts) para a tela e para a foto da
   prancha (os dois montam por aqui, só muda a paleta).
 
-  Cada barra: o EIXO (linha), o MSd como faixa cheia deitada no plano de flexão (do eixo para o lado tracionado), o
-  contorno do MSd (cheio na barra de verdade, TRACEJADO na esquemática: o traço diz o que é forma ilustrativa, sem
-  precisar de texto), a linha do MRd por cima, e em VERMELHO a parte do MSd que passa do MRd.
+  A linguagem é a do gráfico de As do Pró-Viga (dimensionamento.jsx, AsChart), que o Jose mostrou (15/11: "o
+  solicitante de uma cor e o resistente englobando ele"): deitado no plano de flexão de cada barra, do eixo para a face,
+    · o COLOCADO em verde, ao fundo (as barras do modelo, com as rampas de ancoragem e os traspasses);
+    · o NECESSÁRIO em vermelho por cima — o verde só "vaza" onde há folga;
+    · onde o vermelho passa do verde, vermelho forte (e o trecho "não resiste" da planilha, vermelho forte cheio);
+    · o contorno tracejado de cada posição (N) que entra no colocado, do começo ao fim dela;
+    · a linha tracejada do mínimo (As,mín) na face que ele vale;
+    · as duas faces nos dois lados do eixo (cada uma do lado dela).
+  Barra esquemática (só os picos são da conta): o contorno do vermelho e do verde tracejado — o traço diz, sem texto.
+  A escala (as linhas de 1/3, 2/3 e o máximo, com o valor) só aparece na barra escolhida ou com o mouse em cima: com
+  todas ao mesmo tempo ninguém leria nada.
 
-  A ESCALA DO DESENHO: "Aproveitamento" põe o MRd de toda barra na mesma altura — a faixa lê MSd/MRd; "Valor" dá a
-  mesma escala às barras da mesma unidade (kN·m/m com kN·m/m, kN·m com kN·m).
+  A ESCALA DO DESENHO: "Aproveitamento" põe o colocado de toda barra na mesma altura (o vermelho lê necessário ÷
+  colocado); "Valor" dá a mesma escala às barras da mesma unidade (cm²/m com cm²/m, cm² com cm²).
 
   Metros na cena (como o visor 3D: a câmera ortográfica do r3f tem zoom em pixels por metro); o modelo é em mm.
 */
@@ -16,19 +24,23 @@ import type { Modelo, Vec3 } from '@/modelo/tipos';
 import { caixaGlobal } from '@/modulacao/perfis';
 import type { Caixa } from '@/visor/perfil3d';
 import type { PaletaVisor } from '@/visor/tema3d';
-import type { BarraAnalitica, Estacao } from './tipos';
+import { areasDaFace } from './areas';
+import { diagramaDe, type BarraAnalitica, type Diagrama, type FaceDoDiagrama, type ModoDosEsforcos, type PontoDoDiagrama } from './tipos';
 
 export type EscalaDosEsforcos = 'aproveitamento' | 'valor';
 
 export interface CoresDosEsforcos {
   eixo: string;
-  msd: string;
-  mrd: string;
+  colocado: string;
+  necessario: string;
   excesso: string;
   fantasma: string;
   texto: string;
   fundoDoTexto: string;
   destaque: string;
+  /** Opacidade das áreas: no fundo escuro elas precisam de mais corpo (o "pesar a mão" do Jose no Pró-Viga). */
+  opColocado: number;
+  opNecessario: number;
 }
 
 /**
@@ -44,33 +56,44 @@ export function chaveDoEnquadramento(m: Modelo): string {
   ]);
 }
 
-/** As cores da tela, dos tokens do tema (as mesmas do visor). */
+const escuro = (hex: string): boolean => {
+  const c = new THREE.Color(hex);
+  return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b < 0.4;
+};
+
+/** As cores da tela, dos tokens do tema: verde e vermelho os de "ok" e "erro" do app. */
 export function coresDaTela(p: PaletaVisor, tema: (nome: string, reserva: string) => string): CoresDosEsforcos {
+  const e = escuro(p.fundo);
   return {
     eixo: p.tinta,
-    msd: p.selecionado,
-    mrd: p.tinta,
+    colocado: tema('--ok', '#2f9e4a'),
+    necessario: tema('--err', '#d64545'),
     excesso: tema('--err', '#d64545'),
     fantasma: tema('--muted', '#969aa8'),
     texto: p.tinta,
     fundoDoTexto: p.fundo,
     destaque: p.enfase,
+    opColocado: e ? 0.42 : 0.3,
+    opNecessario: e ? 0.6 : 0.52,
   };
 }
 
-/** As cores da prancha: papel branco, tinta escura, em qualquer tema. */
+/** As cores da prancha: papel branco, as tintas do gráfico do Pró-Viga, em qualquer tema. */
 export const CORES_DO_PAPEL: CoresDosEsforcos = {
   eixo: '#1b1d22',
-  msd: '#2f6fd6',
-  mrd: '#1b1d22',
-  excesso: '#d12c2c',
+  colocado: '#3f8a5c',
+  necessario: '#b0566a',
+  excesso: '#c62828',
   fantasma: '#8a8d96',
   texto: '#1b1d22',
   fundoDoTexto: '#ffffff',
   destaque: '#1b1d22',
+  opColocado: 0.3,
+  opNecessario: 0.55,
 };
 
 export interface OpcoesDaCena {
+  modo: ModoDosEsforcos;
   escala: EscalaDosEsforcos;
   valores: boolean;
   muro: boolean;
@@ -81,16 +104,16 @@ export interface CenaDosEsforcos {
   grupo: THREE.Group;
   /** A caixa de tudo o que está desenhado, metro (o enquadrar usa). */
   caixa: Caixa;
-  /** O id da barra que o raio pega primeiro (eixo ou faixa), ou null. */
+  /** O id da barra que o raio pega primeiro (eixo ou área), ou null. */
   pegar: (raio: THREE.Raycaster) => string | null;
-  /** Acende a barra com o mouse por cima e a escolhida. */
+  /** Acende a barra com o mouse por cima e a escolhida, e mostra a escala delas. */
   destacar: (sobre: string | null, escolhida: string | null) => void;
   /** Os números ficam do mesmo tamanho na tela em qualquer zoom: altura da letra em metro. */
   tamanhoDaLetra: (metros: number) => void;
   /**
    * Os números que se encobririam na tela: fica o de mais prioridade e o outro se apaga (volta quando o mouse passa
    * na barra dele, que sobe para o topo da fila). Ordem fixa: a barra escolhida, a do mouse, depois o maior
-   * aproveitamento, o MSd antes do MRd, e a ordem de montagem — o mesmo quadro sempre dá o mesmo resultado.
+   * aproveitamento, o necessário antes do colocado, e a ordem de montagem — o mesmo quadro sempre dá o mesmo resultado.
    */
   arrumarRotulos: (camera: THREE.Camera, larguraPx: number, alturaPx: number, letraMetros: number, primeiros: (string | null)[]) => void;
   centroDe: (id: string) => Vec3 | null;
@@ -103,50 +126,39 @@ const add = (a: Vec3, b: Vec3, k = 1): Vec3 => [a[0] + b[0] * k, a[1] + b[1] * k
 /** Número com vírgula e duas casas ("8,70"). */
 export const numeroBr = (v: number, casas = 2) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas }).format(v);
 
+const maxDe = (ps: readonly PontoDoDiagrama[]) => ps.reduce((m, p) => Math.max(m, p.v), 0);
+
 /** A referência de cada barra: o valor que vira a altura cheia do desenho. */
-function referencias(barras: BarraAnalitica[], escala: EscalaDosEsforcos): Map<string, number> {
-  const maxDe = (b: BarraAnalitica, comMsd: boolean) => {
-    let m = 0;
-    for (const e of b.estacoes) m = Math.max(m, e.mrd ?? 0, e.mrdOposto ?? 0, comMsd ? Math.abs(e.msd) : 0);
-    return m;
-  };
+function referencias(barras: BarraAnalitica[], modo: ModoDosEsforcos, escala: EscalaDosEsforcos): Map<string, number> {
+  const topo = (d: Diagrama, comNec: boolean) =>
+    d.faces.reduce((m, f) => Math.max(m, maxDe(f.colocado), comNec ? Math.max(maxDe(f.necessario), f.minimo ?? 0) : 0), 0);
   const out = new Map<string, number>();
   if (escala === 'aproveitamento') {
-    for (const b of barras) out.set(b.id, maxDe(b, false) || maxDe(b, true) || 1);
+    for (const b of barras) {
+      const d = diagramaDe(b, modo);
+      out.set(b.id, d ? topo(d, false) || topo(d, true) || 1 : 1);
+    }
     return out;
   }
   const porUnidade = new Map<string, number>();
-  for (const b of barras) porUnidade.set(b.unidade, Math.max(porUnidade.get(b.unidade) ?? 0, maxDe(b, true)));
-  for (const b of barras) out.set(b.id, porUnidade.get(b.unidade) || 1);
+  for (const b of barras) {
+    const d = diagramaDe(b, modo);
+    if (d) porUnidade.set(d.unidade, Math.max(porUnidade.get(d.unidade) ?? 0, topo(d, true)));
+  }
+  for (const b of barras) {
+    const d = diagramaDe(b, modo);
+    out.set(b.id, (d && porUnidade.get(d.unidade)) || 1);
+  }
   return out;
 }
-
-/**
- * Corta o trecho entre duas estações onde o regime muda (cruza o zero, cruza o MRd de um lado ou do outro): dentro
- * de cada pedaço a parte normal e a vermelha são trapézios exatos, sem serrilhado na quina do MRd.
- */
-function pedacos(a: Estacao, b: Estacao): number[] {
-  const ts = [0, 1];
-  const raiz = (f0: number, f1: number) => {
-    if ((f0 < 0 && f1 > 0) || (f0 > 0 && f1 < 0)) ts.push(f0 / (f0 - f1));
-  };
-  raiz(a.msd, b.msd);
-  if (a.mrd !== null && b.mrd !== null) raiz(a.msd - a.mrd, b.msd - b.mrd);
-  if (a.mrdOposto !== null && b.mrdOposto !== null) raiz(a.msd + a.mrdOposto, b.msd + b.mrdOposto);
-  return [...new Set(ts)].sort((x, y) => x - y);
-}
-
-const lerp = (x: number, y: number, t: number) => x + (y - x) * t;
-const lerpN = (x: number | null, y: number | null, t: number) => (x === null || y === null ? null : lerp(x, y, t));
 
 function rotulo(texto: string, cor: string, fundo: string): THREE.Sprite {
   const px = 64;
   const cv = typeof document !== 'undefined' ? document.createElement('canvas') : null;
   const g = cv?.getContext('2d') ?? null;
-  let w = 4;
   if (cv && g) {
     g.font = `600 ${px}px Segoe UI, system-ui, sans-serif`;
-    w = Math.ceil(g.measureText(texto).width) + px * 0.5;
+    const w = Math.ceil(g.measureText(texto).width) + px * 0.5;
     cv.width = w;
     cv.height = Math.ceil(px * 1.35);
     g.font = `600 ${px}px Segoe UI, system-ui, sans-serif`;
@@ -217,19 +229,34 @@ export function montarCenaDosEsforcos(barras: BarraAnalitica[], modelo: Modelo, 
   // a altura cheia do desenho: 30 % da altura do muro (mínimo de 1,5 m de muro), em metro — menos que isso o
   // diagrama do painel some atrás do da haste; mais, um contraforte invade o vizinho
   const ALT = 0.3 * Math.max(modelo.dims.H_muro + (modelo.dims.muroDeCima ? modelo.dims.muroDeCima.z1 - modelo.dims.muroDeCima.z0 : 0), 1500) * MM;
-  const ref = referencias(barras, o.escala);
+  const ref = referencias(barras, o.modo, o.escala);
+  const C = o.cores;
 
-  const matEixo = guardar(new THREE.LineBasicMaterial({ color: cor(o.cores.eixo), transparent: true, opacity: 0.9 }));
-  const matMrd = guardar(new THREE.LineBasicMaterial({ color: cor(o.cores.mrd) }));
-  const matFill = () => guardar(new THREE.MeshBasicMaterial({ color: cor(o.cores.msd), transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false }));
-  const matExc = () => guardar(new THREE.MeshBasicMaterial({ color: cor(o.cores.excesso), transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false }));
-  const matContorno = (tracejado: boolean) =>
-    guardar(tracejado ? new THREE.LineDashedMaterial({ color: cor(o.cores.msd), dashSize: 0.05, gapSize: 0.035, transparent: true, opacity: 0.85 }) : new THREE.LineBasicMaterial({ color: cor(o.cores.msd) }));
+  const matEixo = guardar(new THREE.LineBasicMaterial({ color: cor(C.eixo), transparent: true, opacity: 0.9 }));
+  const matEixoVazio = guardar(new THREE.LineBasicMaterial({ color: cor(C.eixo), transparent: true, opacity: 0.25 }));
+  const area = (c: string, op: number, ordem: number) => {
+    const m = guardar(new THREE.MeshBasicMaterial({ color: cor(c), transparent: true, opacity: op, side: THREE.DoubleSide, depthWrite: false }));
+    m.userData.ordem = ordem;
+    return m;
+  };
+  const matNec = area(C.necessario, C.opNecessario, 2);
+  const matExc = area(C.excesso, 0.92, 3);
+  const linha = (c: string, op: number, tracejado: boolean, traco = 0.05) =>
+    guardar(tracejado
+      ? new THREE.LineDashedMaterial({ color: cor(c), dashSize: traco, gapSize: traco * 0.7, transparent: true, opacity: op })
+      : new THREE.LineBasicMaterial({ color: cor(c), transparent: true, opacity: op }));
+  const matBordaCol = linha(C.colocado, 0.95, false);
+  const matBordaColTr = linha(C.colocado, 0.95, true);
+  const matBordaNec = linha(C.necessario, 0.95, false);
+  const matBordaNecTr = linha(C.necessario, 0.95, true);
+  const matFamilia = linha(C.colocado, 0.85, true, 0.03);
+  const matMinimo = linha(C.necessario, 0.9, true, 0.035);
+  const matGrade = linha(C.texto, 0.28, false);
 
   const pegaveis: THREE.Object3D[] = [];
-  const porBarra = new Map<string, { eixo: THREE.Line; fill: THREE.MeshBasicMaterial; centro: Vec3 }>();
+  const porBarra = new Map<string, { eixo: THREE.Line; col: THREE.MeshBasicMaterial | null; centro: Vec3; escala: () => THREE.Group | null; escalaFeita: THREE.Group | null }>();
   const rotulos: THREE.Sprite[] = [];
-  // a fila dos números (sem a barra escolhida e a do mouse, que entram na frente na hora)
+  let letraAtual = 0.05;
   const filaDosRotulos: { s: THREE.Sprite; barra: string; chave: [number, number, number] }[] = [];
   const caixa = new THREE.Box3();
 
@@ -237,116 +264,119 @@ export function montarCenaDosEsforcos(barras: BarraAnalitica[], modelo: Modelo, 
     const L = Math.hypot(b.ate[0] - b.de[0], b.ate[1] - b.de[1], b.ate[2] - b.de[2]);
     if (!(L > 0)) continue;
     const u: Vec3 = [(b.ate[0] - b.de[0]) / L, (b.ate[1] - b.de[1]) / L, (b.ate[2] - b.de[2]) / L];
+    const d = diagramaDe(b, o.modo);
     const k = ALT / (ref.get(b.id) || 1);
-    const ponto = (s: number, v: number): Vec3 => {
+    const ponto = (s: number, v: number, f: 1 | -1 = 1): Vec3 => {
       const p = add(b.de, u, s);
-      return [p[0] * MM + b.lado[0] * v * k, p[1] * MM + b.lado[1] * v * k, p[2] * MM + b.lado[2] * v * k];
+      const w = v * k * f;
+      return [p[0] * MM + b.lado[0] * w, p[1] * MM + b.lado[1] * w, p[2] * MM + b.lado[2] * w];
     };
     const sub = new THREE.Group();
     sub.userData.barra = b.id;
 
-    // o eixo
+    // o eixo (sem diagrama neste modo: só o arame, apagado)
     const gEixo = guardar(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...ponto(0, 0)), new THREE.Vector3(...ponto(L, 0))]));
-    const eixo = new THREE.Line(gEixo, matEixo.clone());
+    const eixo = new THREE.Line(gEixo, (d ? matEixo : matEixoVazio).clone());
     guardar(eixo.material as THREE.Material);
     eixo.userData.barra = b.id;
     sub.add(eixo);
     pegaveis.push(eixo);
 
-    // a faixa do MSd (azul até o MRd, vermelho além dele)
-    const normal: number[] = [];
-    const excesso: number[] = [];
-    const quad = (alvo: number[], s0: number, s1: number, a0: number, b0: number, a1: number, b1: number) => {
-      // (s0, a0)–(s0, b0)–(s1, b1)–(s1, a1): dois triângulos
-      const p = [ponto(s0, a0), ponto(s0, b0), ponto(s1, b1), ponto(s1, a1)];
-      alvo.push(...p[0]!, ...p[1]!, ...p[2]!, ...p[0]!, ...p[2]!, ...p[3]!);
-    };
-    for (let i = 0; i + 1 < b.estacoes.length; i++) {
-      const A = b.estacoes[i]!;
-      const B = b.estacoes[i + 1]!;
-      const ts = pedacos(A, B);
-      for (let j = 0; j + 1 < ts.length; j++) {
-        const [t0, t1] = [ts[j]!, ts[j + 1]!];
-        const meio = (t0 + t1) / 2;
-        const m = (t: number) => lerp(A.msd, B.msd, t);
-        const r = (t: number) => lerpN(A.mrd, B.mrd, t);
-        const q = (t: number) => lerpN(A.mrdOposto, B.mrdOposto, t);
-        const s0 = lerp(A.s, B.s, t0);
-        const s1 = lerp(A.s, B.s, t1);
-        const vm = m(meio);
-        const lim = (t: number): number | null => (vm >= 0 ? r(t) : (() => { const x = q(t); return x === null ? null : -x; })());
-        const passa = b.semMRd || (lim(meio) !== null && Math.abs(vm) > Math.abs(lim(meio) as number) + 1e-12);
-        if (b.semMRd) {
-          quad(excesso, s0, s1, 0, m(t0), 0, m(t1));
-        } else if (passa) {
-          const l0 = lim(t0) as number;
-          const l1 = lim(t1) as number;
-          quad(normal, s0, s1, 0, l0, 0, l1);
-          quad(excesso, s0, s1, l0, m(t0), l1, m(t1));
-        } else {
-          quad(normal, s0, s1, 0, m(t0), 0, m(t1));
-        }
+    let matCol: THREE.MeshBasicMaterial | null = null;
+    if (d) {
+      matCol = area(C.colocado, C.opColocado, 1);
+      const verde: number[] = [];
+      const verm: number[] = [];
+      const forte: number[] = [];
+      const quad = (alvo: number[], f: 1 | -1, s0: number, s1: number, a0: number, b0: number, a1: number, b1: number) => {
+        if (!(s1 > s0)) return;
+        const p = [ponto(s0, a0, f), ponto(s0, b0, f), ponto(s1, b1, f), ponto(s1, a1, f)];
+        alvo.push(...p[0]!, ...p[1]!, ...p[2]!, ...p[0]!, ...p[2]!, ...p[3]!);
+      };
+      const tracar = (pts: Vec3[], mat: THREE.LineBasicMaterial | THREE.LineDashedMaterial, ordem: number) => {
+        if (pts.length < 2) return;
+        const l = new THREE.Line(guardar(new THREE.BufferGeometry().setFromPoints(pts.map((p) => new THREE.Vector3(...p)))), mat);
+        if (mat instanceof THREE.LineDashedMaterial) l.computeLineDistances();
+        l.renderOrder = ordem;
+        sub.add(l);
+      };
+      for (const f of d.faces) desenharFace(f, d, L, quad, tracar, verde, verm, forte, ponto, ref.get(b.id) || 1, {
+        bordaCol: d.esquematico ? matBordaColTr : matBordaCol, bordaNec: d.esquematico ? matBordaNecTr : matBordaNec, familia: matFamilia, minimo: matMinimo,
+      });
+      for (const [pos, mat] of [[verde, matCol], [verm, matNec], [forte, matExc]] as const) {
+        if (!pos.length) continue;
+        const g = guardar(new THREE.BufferGeometry());
+        g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        const malha = new THREE.Mesh(g, mat);
+        malha.userData.barra = b.id;
+        malha.renderOrder = mat.userData.ordem as number;
+        sub.add(malha);
+        pegaveis.push(malha);
       }
-    }
-    const fill = matFill();
-    for (const [pos, mat] of [[normal, fill], [excesso, matExc()]] as const) {
-      if (!pos.length) continue;
-      const g = guardar(new THREE.BufferGeometry());
-      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-      const malha = new THREE.Mesh(g, mat);
-      malha.userData.barra = b.id;
-      malha.renderOrder = mat === fill ? 1 : 2;
-      sub.add(malha);
-      pegaveis.push(malha);
-    }
 
-    // o contorno do MSd: cheio na barra de verdade, tracejado na esquemática
-    const gCont = guardar(new THREE.BufferGeometry().setFromPoints(b.estacoes.map((e) => new THREE.Vector3(...ponto(e.s, e.msd)))));
-    const contorno = new THREE.Line(gCont, matContorno(b.esquematico));
-    if (b.esquematico) contorno.computeLineDistances();
-    contorno.renderOrder = 3;
-    sub.add(contorno);
-
-    // as linhas do MRd (de cada lado que a conta dimensiona)
-    const linhaMrd = (lado: 1 | -1, de: (e: Estacao) => number | null) => {
-      const pts = b.estacoes.filter((e) => de(e) !== null).map((e) => new THREE.Vector3(...ponto(e.s, lado * (de(e) as number))));
-      if (pts.length < 2) return;
-      const l = new THREE.Line(guardar(new THREE.BufferGeometry().setFromPoints(pts)), matMrd);
-      l.renderOrder = 4;
-      sub.add(l);
-    };
-    linhaMrd(1, (e) => e.mrd);
-    linhaMrd(-1, (e) => e.mrdOposto);
-
-    // os números dos picos
-    if (o.valores) {
-      for (const p of b.picos) {
-        const s = rotulo(numeroBr(Math.abs(p.valor)), p.qual === 'mrd' ? o.cores.mrd : b.semMRd || (p.qual === 'msd' && b.passa === false && Math.abs(p.valor) > 0) ? o.cores.excesso : o.cores.msd, o.cores.fundoDoTexto);
-        guardar(s.material);
-        if (s.material.map) guardar(s.material.map);
-        const sinal = p.valor >= 0 ? 1 : -1;
-        const base = ponto(p.s, p.valor);
-        // um pouco além da ponta do desenho, do mesmo lado
-        s.position.set(base[0] + b.lado[0] * sinal * ALT * 0.12, base[1] + b.lado[1] * sinal * ALT * 0.12, base[2] + b.lado[2] * sinal * ALT * 0.12);
-        s.userData.barra = b.id;
-        sub.add(s);
-        rotulos.push(s);
-        filaDosRotulos.push({ s, barra: b.id, chave: [-(b.aproveitamento ?? -1), p.qual === 'msd' ? 0 : 1, filaDosRotulos.length] });
+      // os números dos picos: necessário (vermelho) e colocado (verde) na seção crítica
+      if (o.valores) {
+        for (const p of d.picos) {
+          if (p.qual === 'min') continue;
+          const falha = p.qual === 'nec' && !d.envolve;
+          const s = rotulo(numeroBr(p.valor), p.qual === 'col' ? C.colocado : falha ? C.excesso : C.necessario, C.fundoDoTexto);
+          guardar(s.material);
+          if (s.material.map) guardar(s.material.map);
+          const base = ponto(p.s, p.valor, p.face);
+          const fora = ALT * (p.qual === 'col' ? 0.14 : 0.06) * p.face;
+          // o do colocado um pouco além da ponta do verde; o do necessário dentro, junto do vermelho
+          s.position.set(base[0] + b.lado[0] * fora, base[1] + b.lado[1] * fora, base[2] + b.lado[2] * fora);
+          s.userData.barra = b.id;
+          sub.add(s);
+          rotulos.push(s);
+          filaDosRotulos.push({ s, barra: b.id, chave: [-(b.aproveitamento ?? -1), p.qual === 'nec' ? 0 : 1, filaDosRotulos.length] });
+        }
       }
     }
 
     grupo.add(sub);
-    const bx = new THREE.Box3().setFromObject(sub);
-    caixa.union(bx);
+    caixa.union(new THREE.Box3().setFromObject(sub));
     const c = new THREE.Vector3();
     new THREE.Box3().setFromPoints([new THREE.Vector3(...ponto(0, 0)), new THREE.Vector3(...ponto(L, 0))]).getCenter(c);
-    porBarra.set(b.id, { eixo, fill, centro: [c.x, c.y, c.z] });
+    // a escala da barra (feita na 1ª vez que ela é escolhida ou tem o mouse em cima)
+    const escala = (): THREE.Group | null => {
+      if (!d) return null;
+      const g = new THREE.Group();
+      const refB = ref.get(b.id) || 1;
+      for (const f of d.faces) {
+        const topo = Math.max(maxDe(f.colocado), maxDe(f.necessario), f.minimo ?? 0);
+        if (!(topo > 0)) continue;
+        for (let i = 1; i <= 3; i++) {
+          const v = (i / 3) * topo;
+          const l = new THREE.Line(guardar(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...ponto(0, v, f.face)), new THREE.Vector3(...ponto(L, v, f.face))])), matGrade);
+          l.renderOrder = 0;
+          g.add(l);
+          const sp = rotulo(i === 3 ? `${numeroBr(v)} ${d.unidade}` : numeroBr(v), C.texto, C.fundoDoTexto);
+          guardar(sp.material);
+          if (sp.material.map) guardar(sp.material.map);
+          const p0 = ponto(0, v, f.face);
+          // antes do começo da barra, para não cair em cima do desenho
+          const recuo = Math.min(ALT * 0.25, (L * MM) * 0.15);
+          sp.position.set(p0[0] - u[0] * recuo, p0[1] - u[1] * recuo, p0[2] - u[2] * recuo);
+          sp.scale.set(letraAtual * 0.85 * (sp.userData.proporcao as number), letraAtual * 0.85, 1);
+          sp.userData.barra = b.id;
+          sp.userData.escala = true;
+          rotulos.push(sp);
+          g.add(sp);
+        }
+      }
+      void refB;
+      g.visible = false;
+      sub.add(g);
+      return g;
+    };
+    porBarra.set(b.id, { eixo, col: matCol, centro: [c.x, c.y, c.z], escala, escalaFeita: null });
   }
 
   // o muro em fantasma, por trás de tudo
   if (o.muro) {
-    const faces = guardar(new THREE.MeshBasicMaterial({ color: cor(o.cores.fantasma), transparent: true, opacity: 0.07, depthWrite: false, side: THREE.DoubleSide }));
-    const arestas = guardar(new THREE.LineBasicMaterial({ color: cor(o.cores.fantasma), transparent: true, opacity: 0.45 }));
+    const faces = guardar(new THREE.MeshBasicMaterial({ color: cor(C.fantasma), transparent: true, opacity: 0.07, depthWrite: false, side: THREE.DoubleSide }));
+    const arestas = guardar(new THREE.LineBasicMaterial({ color: cor(C.fantasma), transparent: true, opacity: 0.45 }));
     const unitario = guardar(new THREE.BoxGeometry(1, 1, 1));
     const arestasUnit = guardar(new THREE.EdgesGeometry(unitario));
     for (const c of caixasDoMuro(modelo)) {
@@ -377,7 +407,7 @@ export function montarCenaDosEsforcos(barras: BarraAnalitica[], modelo: Modelo, 
   }
   if (caixa.isEmpty()) caixa.set(new THREE.Vector3(-1, -1, -1), new THREE.Vector3(1, 1, 1));
 
-  const cores = { eixo: cor(o.cores.eixo), destaque: cor(o.cores.destaque), msd: cor(o.cores.msd) };
+  const cores = { eixo: cor(C.eixo), destaque: cor(C.destaque) };
   return {
     grupo,
     caixa: { min: [caixa.min.x, caixa.min.y, caixa.min.z], max: [caixa.max.x, caixa.max.y, caixa.max.z] },
@@ -393,12 +423,17 @@ export function montarCenaDosEsforcos(barras: BarraAnalitica[], modelo: Modelo, 
       for (const [id, v] of porBarra) {
         const ligado = id === sobre || id === escolhida;
         (v.eixo.material as THREE.LineBasicMaterial).color.copy(ligado ? cores.destaque : cores.eixo);
-        (v.eixo.material as THREE.LineBasicMaterial).opacity = ligado ? 1 : 0.9;
-        v.fill.opacity = id === escolhida ? 0.55 : id === sobre ? 0.45 : 0.32;
+        if (v.col) v.col.opacity = id === escolhida ? Math.min(0.75, C.opColocado * 1.6) : id === sobre ? Math.min(0.65, C.opColocado * 1.3) : C.opColocado;
+        if (ligado && !v.escalaFeita) v.escalaFeita = v.escala();
+        if (v.escalaFeita) v.escalaFeita.visible = ligado;
       }
     },
     tamanhoDaLetra: (h) => {
-      for (const s of rotulos) s.scale.set(h * (s.userData.proporcao as number), h, 1);
+      letraAtual = h;
+      for (const s of rotulos) {
+        const k = s.userData.escala ? 0.85 : 1;
+        s.scale.set(h * k * (s.userData.proporcao as number), h * k, 1);
+      }
     },
     arrumarRotulos: (camera, W, H, letra, primeiros) => {
       if (!filaDosRotulos.length || !(W > 0) || !(H > 0)) return;
@@ -420,16 +455,42 @@ export function montarCenaDosEsforcos(barras: BarraAnalitica[], modelo: Modelo, 
         const [, cy2] = px(r.s.position.clone().add(cima));
         const h = Math.abs(cy - cy2);
         const w = h * (r.s.userData.proporcao as number);
-        const caixa: [number, number, number, number] = [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2];
-        const bate = postos.some((o) => caixa[0] < o[2] + FOLGA && caixa[2] > o[0] - FOLGA && caixa[1] < o[3] + FOLGA && caixa[3] > o[1] - FOLGA);
+        const cx4: [number, number, number, number] = [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2];
+        const bate = postos.some((q) => cx4[0] < q[2] + FOLGA && cx4[2] > q[0] - FOLGA && cx4[1] < q[3] + FOLGA && cx4[3] > q[1] - FOLGA);
         r.s.visible = !bate;
-        if (!bate) postos.push(caixa);
+        if (!bate) postos.push(cx4);
       }
     },
     centroDe: (id) => porBarra.get(id)?.centro ?? null,
     dispose: () => {
-      for (const d of descartar) d.dispose();
+      for (const x of descartar) x.dispose();
       grupo.clear();
     },
   };
+}
+
+/** Uma face: as áreas (areas.ts, as mesmas da memória) e as linhas (bordas, posições, mínimo). */
+function desenharFace(
+  f: FaceDoDiagrama,
+  d: Diagrama,
+  L: number,
+  quad: (alvo: number[], f: 1 | -1, s0: number, s1: number, a0: number, b0: number, a1: number, b1: number) => void,
+  tracar: (pts: Vec3[], mat: THREE.LineBasicMaterial | THREE.LineDashedMaterial, ordem: number) => void,
+  verde: number[],
+  verm: number[],
+  forte: number[],
+  ponto: (s: number, v: number, f?: 1 | -1) => Vec3,
+  refB: number,
+  mats: { bordaCol: THREE.LineBasicMaterial | THREE.LineDashedMaterial; bordaNec: THREE.LineBasicMaterial | THREE.LineDashedMaterial; familia: THREE.LineDashedMaterial | THREE.LineBasicMaterial; minimo: THREE.LineDashedMaterial | THREE.LineBasicMaterial },
+): void {
+  const F = f.face;
+  for (const t of areasDaFace(f, L, d.fimLivre, refB)) quad(t.tipo === 'colocado' ? verde : t.tipo === 'necessario' ? verm : forte, F, t.s0, t.s1, t.a0, t.b0, t.a1, t.b1);
+  if (f.colocado.length) tracar(f.colocado.map((p) => ponto(p.s, p.v, F)), mats.bordaCol, 4);
+  if (f.necessario.length) tracar(f.necessario.map((p) => ponto(p.s, p.v, F)), mats.bordaNec, 5);
+  // o contorno de cada posição (N), do começo ao fim dela, na altura dela
+  for (const fam of f.familias) {
+    tracar([ponto(fam.s0, 0, F), ponto(fam.s0, fam.v, F), ponto(fam.s1, fam.v, F), ponto(fam.s1, 0, F)], mats.familia, 4);
+  }
+  // o mínimo, tracejado, na barra inteira
+  if (f.minimo !== null && f.minimo > 0) tracar([ponto(0, f.minimo, F), ponto(L, f.minimo, F)], mats.minimo, 5);
 }

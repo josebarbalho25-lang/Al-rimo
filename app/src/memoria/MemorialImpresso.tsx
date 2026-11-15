@@ -11,6 +11,8 @@
   Nada aqui calcula nem redesenha: são os MESMOS cards da tela, com PapelCtx = true (tamanhos em pt, legenda fora).
   A mesma árvore vai para a impressora (imprimirMemorial) e para o Word (exportarWord) — um documento só.
 */
+import type { Modelo } from '@/modelo/tipos';
+import { comDiagramasDosEsforcos } from './desenhoDosEsforcos';
 import type { ReactNode } from 'react';
 import type { Resultado } from '@/motor/tipos';
 import type { Card } from './tipos';
@@ -41,6 +43,8 @@ export interface PropsDoMemorial {
   urlDaFigura?: (figura: string) => string | null;
   /** Cards já montados (quem imprime a partir da tela não monta duas vezes). */
   cards?: Card[];
+  /** O muro desenhado: o diagrama do aço de cada peça entra no card dela, como na tela. */
+  modelo?: Modelo | null;
 }
 
 const R = PAPEL;
@@ -91,8 +95,8 @@ function faixaVale(secao: string, r: Resultado): boolean {
   return true;
 }
 
-export function MemorialImpresso({ resultado: r, info = {}, urlDaFigura, cards: dados }: PropsDoMemorial) {
-  const cards = (dados ?? cardsDaMemoria(r)).filter((c) => c.aplicavel);
+export function MemorialImpresso({ resultado: r, info = {}, urlDaFigura, cards: dados, modelo }: PropsDoMemorial) {
+  const cards = (dados ?? comDiagramasDosEsforcos(cardsDaMemoria(r), r, modelo)).filter((c) => c.aplicavel);
   const verifs = verificacoesDe(cards);
   const falhas = verifs.filter((x) => !x.v.passa);
   const glossario = glossarioDe(cards);

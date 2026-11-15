@@ -1,6 +1,6 @@
 /*
-  A VISTA ESFORÇOS (15/11, segunda volta): as cintas do muro de cima (duas barras por vão — lateral e gravidade —
-  com o pico e o MRd das células), o fantasma com o dente e o muro de cima, o reenquadrar quando o muro muda de forma
+  A VISTA ESFORÇOS (15/11, segunda volta e o aço da 2ª versão): as cintas do muro de cima (duas barras por vão —
+  lateral e gravidade — com o As e o cortante das células), o fantasma com o dente e o muro de cima, o reenquadrar quando o muro muda de forma
   e os números que não se encobrem.
 */
 import { describe, expect, it } from 'vitest';
@@ -10,7 +10,7 @@ import { gerarModelo, padroesDoModelo } from '@/modulacao';
 import { cenariosDoGabarito, resultadoDoGabarito } from '@/motor/resultadoDoGabarito';
 import { barrasAnaliticas } from './barrasAnaliticas';
 import { CORES_DO_PAPEL, caixasDoMuro, chaveDoEnquadramento, montarCenaDosEsforcos, sapatasDoMuro } from './cenaDosEsforcos';
-import { GRUPOS, GRUPO_DO_TIPO, ehGrupo, filtrarPorGrupo, gruposPresentes, type BarraAnalitica } from './tipos';
+import { GRUPOS, GRUPO_DO_TIPO, ehGrupo, filtrarPorGrupo, gruposPresentes, lerGrupos, type BarraAnalitica } from './tipos';
 
 const montar = (c: string): Modelo => gerarModelo(resultadoDoGabarito(c), { ...padroesDoModelo(), L_total: 6 });
 
@@ -36,9 +36,17 @@ describe('cintas do muro de cima na vista Esforços', () => {
         const lat = b.id.endsWith('.L');
         const md = r.num(lat ? `Mdl_c${k}` : `Mdg_c${k}`)!;
         const mrd = r.num(lat ? 'MRdl_cmc' : 'MRdg_cmc')!;
-        const pico = b.picos.find((p) => p.qual === 'msd')!;
-        expect(pico.valor).toBeCloseTo(md, 12);
-        expect(b.picos.find((p) => p.qual === 'mrd')!.valor).toBeCloseTo(mrd, 12);
+        // o clique: MSd e MRd da planilha
+        expect(b.leitura.msd).toBeCloseTo(Math.abs(md), 12);
+        expect(b.leitura.mrd).toBeCloseTo(mrd, 12);
+        // o aço: necessário (As do momento) por dentro, o efetivo envolvendo, o mínimo da cinta
+        const nec = r.num(lat ? `Aslc_c${k}` : `Asgc_c${k}`);
+        if (nec !== null) expect(b.flexao!.picos.find((p) => p.qual === 'nec')!.valor).toBeCloseTo(nec, 12);
+        expect(b.flexao!.picos.find((p) => p.qual === 'col')!.valor).toBeCloseTo(r.num(lat ? 'Asl_cmc' : 'Asg_cmc')!, 12);
+        expect(b.flexao!.faces[0]!.minimo).toBe(r.num('Asm_cmc'));
+        expect(b.flexao!.esquematico).toBe(true);
+        // o cortante: Vd × VRd1 da cinta
+        expect(b.cortante!.picos.find((p) => p.qual === 'col')!.valor).toBeCloseTo(r.num(lat ? 'VR1l_cmc' : 'VR1g_cmc')!, 12);
         // lateral deitada (tracionando a face de fora), gravidade em pé (tracionando embaixo)
         expect(b.lado).toEqual(lat ? [0, -1, 0] : [0, 0, -1]);
         // o uso é a interação das duas (a pior), e a barra passa ⇔ a interação ≤ 1
@@ -94,11 +102,17 @@ describe('os números não se encobrem', () => {
   // duas barras lado a lado (10 cm): com a letra grande os dois números cairiam um em cima do outro
   const barra = (id: string, ap: number, x: number): BarraAnalitica => ({
     id, tipo: 'naoArmado', grupo: 'paineis', nome: id, card: 'x', trecho: 1, de: [x, 0, 0], ate: [x, 0, 1000], lado: [0, -1, 0],
-    estacoes: [{ s: 0, msd: 0, mrd: 1, mrdOposto: null }, { s: 500, msd: 1, mrd: 1, mrdOposto: null }, { s: 1000, msd: 0, mrd: 1, mrdOposto: null }],
-    unidade: 'kN·m/m', picos: [{ s: 500, valor: 1, qual: 'msd', nome: 'x', fator: 1 }], aproveitamento: ap, nomesDoAproveitamento: [], passa: true, semMRd: false, esquematico: true,
+    flexao: {
+      unidade: 'kN·m/m', esquematico: true, envolve: true, fimLivre: 0,
+      faces: [{ face: 1, necessario: [{ s: 0, v: 0 }, { s: 500, v: 0.5 }, { s: 1000, v: 0 }], naoResiste: [], colocado: [{ s: 0, v: 1 }, { s: 1000, v: 1 }], familias: [], minimo: null }],
+      picos: [{ s: 500, valor: 0.5, qual: 'nec', face: 1, nome: 'x', fator: 1 }],
+    },
+    cortante: null,
+    leitura: { msd: 0.5, mrd: 1, unidade: 'kN·m/m', nomes: [], asNec: null, asEf: null },
+    aproveitamento: ap, nomesDoAproveitamento: [], passa: true,
   });
   const m = montar('aula122');
-  const cena = montarCenaDosEsforcos([barra('A', 0.3, 0), barra('B', 0.9, 100)], m, { escala: 'valor', valores: true, muro: false, cores: CORES_DO_PAPEL });
+  const cena = montarCenaDosEsforcos([barra('A', 0.3, 0), barra('B', 0.9, 100)], m, { modo: 'flexao', escala: 'valor', valores: true, muro: false, cores: CORES_DO_PAPEL });
   const camera = new THREE.OrthographicCamera(-2, 2, 2, -2, -100, 100);
   camera.position.set(0, -10, 0.5);
   camera.up.set(0, 0, 1);
@@ -178,6 +192,22 @@ describe('o Mostrar por grupo de peça', () => {
     expect(new Set(todas.map((b) => b.grupo))).toEqual(new Set(GRUPOS.map((g) => g.id)));
   });
 
+  it('o muro de cima em três grupos: painéis, cintas, pilaretes (com a ligação)', () => {
+    const bs = barrasAnaliticas(resultadoDoGabarito('alvo_cmc_duas'), montar('alvo_cmc_duas'));
+    const g = gruposPresentes(bs);
+    expect(g).toEqual(expect.arrayContaining(['mcPaineis', 'mcCintas', 'mcPilaretes']));
+    expect(bs.filter((b) => b.tipo === 'ligacao').every((b) => b.grupo === 'mcPilaretes')).toBe(true);
+    expect(GRUPOS.find((x) => x.id === 'mcCintas')!.rotulo).toBe('Muro de cima: cintas');
+    // sem muro de cima, nenhum dos três aparece no Mostrar
+    const sem = gruposPresentes(barrasAnaliticas(resultadoDoGabarito('aula122'), montar('aula122')));
+    expect(sem.some((x) => x.startsWith('mc'))).toBe(false);
+  });
+
+  it('o "Muro de cima" desligado de antes vira os três desligados; o que não é grupo some', () => {
+    expect(lerGrupos(['muroDeCima', 'sapata', 'xx', 'sapata'])).toEqual(['sapata', 'mcPaineis', 'mcCintas', 'mcPilaretes']);
+    expect(lerGrupos(undefined)).toEqual([]);
+  });
+
   it('desligar um grupo tira exatamente as barras dele; isolar deixa só as dele', () => {
     for (const c of ['aula122', 'aula123', 'alvo_cmc_duas', 'alvo_mc_cf_duas']) {
       const bs = barrasAnaliticas(resultadoDoGabarito(c), montar(c));
@@ -197,13 +227,49 @@ describe('o Mostrar por grupo de peça', () => {
   });
 });
 
-describe('a folha leva o que se via', () => {
-  it('o item dos esforços guarda os grupos desligados (e ignora o que não é grupo)', async () => {
-    const { lerConteudo } = await import('@/pranchas/padrao');
+describe('os esforços não vão para a prancha (Jose, 15/11: "nunca vi um projeto com um diagrama em prancha")', () => {
+  it('o item dos esforços de um projeto de antes não se lê: sai da folha e entra no recado de abertura', async () => {
+    const { lerConteudo, lerPranchas } = await import('@/pranchas/padrao');
     const camera = { posicao: [1, 1, 1], alvo: [0, 0, 0], cima: [0, 0, 1], zoom: 40 };
-    const c = lerConteudo({ tipo: 'esforcos', camera, proporcao: 1.5, escala: 'valor', valores: true, muro: true, ocultos: ['paineis', 'xx', 'paineis', 'sapata'] });
-    expect(c && c.tipo === 'esforcos' && c.ocultos).toEqual(['paineis', 'sapata']);
-    const antigo = lerConteudo({ tipo: 'esforcos', camera, proporcao: 1.5, escala: 'valor', valores: true, muro: true });
-    expect(antigo && antigo.tipo === 'esforcos' && 'ocultos' in antigo).toBe(false);
+    const velho = { tipo: 'esforcos', camera, proporcao: 1.5, escala: 'valor', valores: true, muro: true, ocultos: ['paineis'] };
+    expect(lerConteudo(velho)).toBeNull();
+    const perdidos: string[] = [];
+    const p = lerPranchas({
+      folhas: [{ id: 'f1', nome: 'Folha', formato: 'A3', orientacao: 'paisagem', itens: [
+        { id: 'i1', conteudo: velho, escala: null, x: 30, y: 30, largura: 120, altura: 80, titulo: '', numero: 1 },
+        { id: 'i2', conteudo: { tipo: 'detalhe', id: 'det01' }, escala: null, x: 30, y: 150, titulo: '', numero: 2 },
+      ] }],
+    }, perdidos);
+    expect(perdidos).toEqual(['prancha: esforcos']);
+    expect(p.folhas[0]!.itens.map((i) => i.conteudo.tipo)).toEqual(['detalhe']);
   });
+});
+
+describe('a cena desenha o par necessário × colocado, nos dois modos', () => {
+  const cores = (cena: ReturnType<typeof montarCenaDosEsforcos>) => {
+    const cs = new Set<string>();
+    cena.grupo.traverse((o) => {
+      if (o instanceof THREE.Mesh) cs.add(`#${(o.material as THREE.MeshBasicMaterial).color.getHexString()}`);
+    });
+    return cs;
+  };
+  for (const c of ['aula122', 'aula123', 'alvo_cmc_duas']) {
+    for (const modo of ['flexao', 'cortante'] as const) {
+      it(`${c} · ${modo}: verde (colocado) e vermelho (necessário) com as cores do papel`, () => {
+        const bs = barrasAnaliticas(resultadoDoGabarito(c), montar(c));
+        const cena = montarCenaDosEsforcos(bs, montar(c), { modo, escala: 'aproveitamento', valores: true, muro: true, cores: CORES_DO_PAPEL });
+        const cs = cores(cena);
+        expect(cs.has(CORES_DO_PAPEL.colocado)).toBe(true);
+        expect(cs.has(CORES_DO_PAPEL.necessario)).toBe(true);
+        // a escala só existe na barra escolhida
+        const antes = cena.grupo.children.length;
+        cena.destacar(null, bs[0]!.id);
+        let escalas = 0;
+        cena.grupo.traverse((o) => { if (o.userData.escala) escalas++; });
+        expect(escalas).toBeGreaterThan(0);
+        expect(cena.grupo.children.length).toBe(antes);
+        cena.dispose();
+      });
+    }
+  }
 });

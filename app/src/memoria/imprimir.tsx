@@ -4,6 +4,7 @@
   Impressão: window.print() com @page A4 e o resto do app escondido. "Salvar como PDF" é o próprio diálogo do
   navegador (no Pró-Viga era printToPDF do Electron).
 */
+import type { Modelo } from '@/modelo/tipos';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import type { Resultado } from '@/motor/tipos';
@@ -13,6 +14,8 @@ import { LARG_LAYOUT, baixarDoc, nomeDoArquivo, traduzirParaWord } from './word'
 
 export interface OpcoesDoMemorial {
   info?: InfoDoMemorial;
+  /** O muro desenhado: leva o diagrama do aço de cada peça para o card dela (como na tela). */
+  modelo?: Modelo | null;
   urlDaFigura?: (figura: string) => string | null;
 }
 
@@ -109,7 +112,7 @@ function montar(resultado: Resultado, o: OpcoesDoMemorial) {
   host.className = 'mp-raiz';
   document.body.appendChild(host);
   const raiz = createRoot(host);
-  flushSync(() => raiz.render(<MemorialImpresso resultado={resultado} info={o.info} urlDaFigura={o.urlDaFigura} />));
+  flushSync(() => raiz.render(<MemorialImpresso resultado={resultado} info={o.info} urlDaFigura={o.urlDaFigura} modelo={o.modelo ?? null} />));
   let feito = false;
   const desmontar = () => {
     if (feito) return;

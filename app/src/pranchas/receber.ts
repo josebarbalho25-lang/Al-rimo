@@ -4,7 +4,7 @@
   envia do 3D está no 3D. A barra de estado diz para qual folha foi.
 */
 import { useApp } from '@/estado/store';
-import { itemDaTabela, itemDosEsforcos, porNaFolha, porVistaNaFolha } from './acoes';
+import { itemDaTabela, porNaFolha, porVistaNaFolha } from './acoes';
 import { ouvirEnvioParaPrancha, type PedidoParaPrancha } from './envio';
 import { usePranchasUi } from './ui';
 import { acharVista, novaVista3d, ondeEstaAVista } from './vistas';
@@ -32,8 +32,6 @@ export function receberNaPrancha(pedido: PedidoParaPrancha): void {
   } else if (pedido.tipo === '3d') {
     const nova = novaVista3d(app.pranchas, { tipo: '3d', camera: pedido.camera, proporcao: pedido.proporcao });
     r = porVistaNaFolha(nova.pranchas, ui.ativa, nova.vista);
-  } else if (pedido.tipo === 'esforcos') {
-    r = porNaFolha(app.pranchas, ui.ativa, (folha) => itemDosEsforcos(folha, pedido));
   } else {
     r = porNaFolha(app.pranchas, ui.ativa, (folha) => itemDaTabela(folha, pedido.id));
   }

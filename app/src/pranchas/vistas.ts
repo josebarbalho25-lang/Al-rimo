@@ -28,7 +28,6 @@ export const NOMES_DO_CONTEUDO: Record<ConteudoDoItem['tipo'], string> = {
   '3d': 'Perspectiva',
   detalhe: 'Detalhe',
   tabela: 'Tabela',
-  esforcos: 'Esforços',
 };
 
 /** Escala de partida de cada vista: o corte é a peça que se cota miúdo. */

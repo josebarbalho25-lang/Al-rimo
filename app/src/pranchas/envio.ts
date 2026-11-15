@@ -19,9 +19,7 @@ export type PedidoParaPrancha =
   | { tipo: '3d'; dataUrl: string; camera: Camera3d; proporcao: number }
   /** A vista do projeto escolhida na aba (16/10: vistas como no Revit), pelo id — a de fábrica virtual também. */
   | { tipo: 'vista'; id: string }
-  | { tipo: 'tabela'; id: Extract<ConteudoDoItem, { tipo: 'tabela' }>['id'] }
-  /** A vista Esforços: o ponto de vista e o que estava ligado nela (a prancha refaz a imagem). */
-  | Extract<ConteudoDoItem, { tipo: 'esforcos' }>;
+  | { tipo: 'tabela'; id: Extract<ConteudoDoItem, { tipo: 'tabela' }>['id'] };
 
 export type OuvinteDaPrancha = (pedido: PedidoParaPrancha) => void;
 

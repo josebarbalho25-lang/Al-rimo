@@ -5,7 +5,7 @@
 */
 import { quadroUtil } from './formatos';
 import { novaFolha, novoId } from './padrao';
-import type { AnotacaoPosta, AnotacoesDaVista, Camera3d, ChamadaPosta, ConteudoDoItem, CotaNova, EtiquetaNova, Folha, ItemDaFolha, PedidoDeVista, PranchasDoProjeto, TextoNovo, VistaDoProjeto } from './tipos';
+import type { AnotacaoPosta, AnotacoesDaVista, Camera3d, ChamadaPosta, CotaNova, EtiquetaNova, Folha, ItemDaFolha, PedidoDeVista, PranchasDoProjeto, TextoNovo, VistaDoProjeto } from './tipos';
 import type { IdDaTabela } from './tabelaDaFolha';
 import { ESCALA_INICIAL, comVista, espelhoDaVista, gravarNoItem } from './vistas';
 
@@ -148,15 +148,6 @@ export function itemDo3d(folha: Folha, camera: Camera3d, proporcao: number): Ite
   const largura = Math.round(Math.min(180, (x1 - x0) * 0.35));
   const prop = proporcao > 0.1 ? proporcao : 1.5;
   return { id: novoId('i'), conteudo: { tipo: '3d', camera, proporcao: prop }, escala: null, x, y, largura, altura: largura / prop, titulo: '', numero: numeroLivre(folha) };
-}
-
-/** Item da vista Esforços: sem escala, como o 3D (~1/3 da largura útil, até 180 mm), na proporção da imagem. */
-export function itemDosEsforcos(folha: Folha, conteudo: Extract<ConteudoDoItem, { tipo: 'esforcos' }>): ItemDaFolha {
-  const [x0, , x1] = quadroUtil(folha.formato, folha.orientacao);
-  const [x, y] = lugarNovo(folha);
-  const largura = Math.round(Math.min(180, (x1 - x0) * 0.35));
-  const prop = conteudo.proporcao > 0.1 ? conteudo.proporcao : 1.5;
-  return { id: novoId('i'), conteudo: { ...conteudo, proporcao: prop }, escala: null, x, y, largura, altura: largura / prop, titulo: '', numero: numeroLivre(folha) };
 }
 
 /**

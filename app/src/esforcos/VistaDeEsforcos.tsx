@@ -3,9 +3,11 @@
 // ---------------------------------------------------------------------------
 //  Jose, 15/11: "um diagrama em 2D, só que num esquema 3D com barras
 //  analíticas… cada barrinha com o seu desenho de momento solicitante e
-//  momento resistente". O muro em arame (barrasAnaliticas.ts), cada barra com o
-//  MSd cheio e o MRd em linha, deitados no plano de flexão; vermelho onde o
-//  MSd passa do MRd.
+//  momento resistente". 2ª versão (15/11, ele viu a 1ª e mostrou o do
+//  Pró-Viga: "o solicitante de uma cor e o resistente englobando ele"): o muro
+//  em arame (barrasAnaliticas.ts), cada barra com o As necessário em vermelho
+//  e o As colocado em verde envolvendo, deitados no plano de flexão; Flexão ↔
+//  Cortante como no Pró-Viga.
 //
 //  A câmera e o mouse são os do visor 3D (visor/camera.tsx — roda = zoom no
 //  cursor, meio = deslocar, Shift + meio = orbitar), o cubo de vistas é o
@@ -33,18 +35,16 @@ import type { Modelo, Vec3 } from '@/modelo/tipos';
 import type { Resultado } from '@/motor/tipos';
 import { CHAVES, guardar, lembrar } from '@/estado/lembrete';
 import { useInterface } from '@/estado/interface';
-import { enviarParaPrancha } from '@/pranchas/envio';
 import { Fundo } from '@/visor/ambiente';
 import { OrbitaNoShift, VooDaCamera, DURACAO_VOO, type Voo } from '@/visor/camera';
 import { CuboDeVistas } from '@/visor/CuboDeVistas';
 import { DIRECOES, enquadramento, type VistaNomeada } from '@/visor/enquadrar';
-import { IconeEnquadrar, IconeFechar, IconeFrente, IconeIso, IconeLateral, IconePrancha, IconeTopo } from '@/visor/icones';
-import { lerPontoDeVista, proporcaoDaCamera } from '@/visor/pontoDeVista';
+import { IconeEnquadrar, IconeFechar, IconeFrente, IconeIso, IconeLateral, IconeTopo } from '@/visor/icones';
 import { lerPaleta, observarTema, themeColor, type PaletaVisor } from '@/visor/tema3d';
 import { LIMIAR_CLIQUE_PX } from '@/visor/Visor3D';
 import { barrasAnaliticas } from './barrasAnaliticas';
 import { chaveDoEnquadramento, coresDaTela, montarCenaDosEsforcos, numeroBr, type CenaDosEsforcos, type EscalaDosEsforcos } from './cenaDosEsforcos';
-import { GRUPOS, ehGrupo, filtrarPorGrupo, gruposPresentes, type BarraAnalitica, type GrupoDeBarra } from './tipos';
+import { GRUPOS, filtrarPorGrupo, gruposPresentes, lerGrupos, type BarraAnalitica, type GrupoDeBarra, type ModoDosEsforcos } from './tipos';
 import '@/visor/visor.css';
 import './esforcos.css';
 
@@ -52,19 +52,22 @@ import './esforcos.css';
 const LETRA_PX = 13;
 
 interface Preferencias {
+  /** Flexão (o aço) ou cortante (2ª versão, 15/11). */
+  modo: ModoDosEsforcos;
   escala: EscalaDosEsforcos;
   valores: boolean;
   muro: boolean;
   /** Os grupos de peça desligados no "Mostrar" (15/11). */
   ocultos: GrupoDeBarra[];
 }
-const PADRAO: Preferencias = { escala: 'aproveitamento', valores: true, muro: true, ocultos: [] };
-// o guardado antes de 15/11 não tem `ocultos`: vale, e entra com todos à mostra
+const PADRAO: Preferencias = { modo: 'flexao', escala: 'aproveitamento', valores: true, muro: true, ocultos: [] };
+// o guardado antes da 2ª volta não tem `ocultos` nem `modo`: vale, e entra com todos à mostra, na flexão
 const ehPreferencias = (x: unknown): x is Preferencias => {
   const o = x as Partial<Preferencias> | null;
   return !!o && (o.escala === 'aproveitamento' || o.escala === 'valor') && typeof o.valores === 'boolean' && typeof o.muro === 'boolean';
 };
-const normalizar = (p: Preferencias): Preferencias => ({ ...p, ocultos: Array.isArray(p.ocultos) ? [...new Set(p.ocultos.filter(ehGrupo))] : [] });
+// o "Muro de cima" desligado de antes (um grupo só) volta com os três dele desligados
+const normalizar = (p: Preferencias): Preferencias => ({ ...p, modo: p.modo === 'cortante' ? 'cortante' : 'flexao', ocultos: lerGrupos(p.ocultos) });
 
 /**
  * O "Mostrar" dos esforços (Jose, 15/11: "dá pra isolar por esforço? por exemplo se eu quero ver só painéis?"): um
@@ -225,14 +228,31 @@ function RotulosSemEncobrir({ cena, primeiros }: { cena: CenaDosEsforcos; primei
   return null;
 }
 
-/** O pico que governa a barra (o maior MSd) e o MRd do mesmo lado. */
-export function leituraDaBarra(b: BarraAnalitica): { msd: number | null; mrd: number | null } {
-  const msds = b.picos.filter((p) => p.qual === 'msd');
-  const maior = msds.reduce<(typeof msds)[number] | null>((m, p) => (!m || Math.abs(p.valor) > Math.abs(m.valor) ? p : m), null);
-  if (!maior) return { msd: null, mrd: null };
-  const lado = maior.valor >= 0 ? 1 : -1;
-  const mrd = b.picos.find((p) => p.qual === 'mrd' && Math.sign(p.valor || 1) === lado) ?? b.picos.find((p) => p.qual === 'mrd');
-  return { msd: Math.abs(maior.valor), mrd: mrd ? Math.abs(mrd.valor) : null };
+/** O que o clique mostra: MSd e MRd da planilha e o As necessário e o colocado na seção crítica. */
+export function leituraDaBarra(b: BarraAnalitica): { msd: number | null; mrd: number | null; asNec: number | null; asEf: number | null } {
+  return { msd: b.leitura.msd, mrd: b.leitura.mrd, asNec: b.leitura.asNec, asEf: b.leitura.asEf };
+}
+
+/** A legenda: o par necessário × colocado do modo (só rótulos). */
+function Legenda({ modo }: { modo: ModoDosEsforcos }) {
+  return (
+    <div className="v3-legenda esf-legenda" aria-hidden="true">
+      {modo === 'flexao' ? (
+        <>
+          <div className="v3-legenda-linha"><span className="v3-legenda-cor esf-cor-nec" />A<sub>s</sub> necessário</div>
+          <div className="v3-legenda-linha"><span className="v3-legenda-cor esf-cor-col" />A<sub>s</sub> colocado</div>
+          <div className="v3-legenda-linha"><span className="esf-cor-min" />A<sub>s,mín</sub></div>
+        </>
+      ) : (
+        <>
+          <div className="v3-legenda-linha"><span className="v3-legenda-cor esf-cor-nec" />V<sub>Sd</sub> · A<sub>sw</sub>/s necessário</div>
+          <div className="v3-legenda-linha"><span className="v3-legenda-cor esf-cor-col" />V<sub>Rd</sub> · A<sub>sw</sub>/s colocado</div>
+          <div className="v3-legenda-linha"><span className="esf-cor-min" />A<sub>sw,mín</sub></div>
+        </>
+      )}
+      <div className="v3-legenda-linha"><span className="v3-legenda-cor esf-cor-exc" />Falta</div>
+    </div>
+  );
 }
 
 function Botao({ titulo, on, aoClicar, children, texto }: { titulo: string; on?: boolean; aoClicar: () => void; children: React.ReactNode; texto?: boolean }) {
@@ -260,8 +280,8 @@ export function VistaDeEsforcos({ modelo, resultado }: { modelo: Modelo; resulta
   const barras = useMemo(() => filtrarPorGrupo(todas, pref.ocultos), [todas, pref.ocultos]);
   const muro = useMemo(() => chaveDoEnquadramento(modelo), [modelo]);
   const cena = useMemo(
-    () => montarCenaDosEsforcos(barras, modelo, { escala: pref.escala, valores: pref.valores, muro: pref.muro, cores: coresDaTela(paleta, themeColor) }),
-    [barras, modelo, pref.escala, pref.valores, pref.muro, paleta],
+    () => montarCenaDosEsforcos(barras, modelo, { modo: pref.modo, escala: pref.escala, valores: pref.valores, muro: pref.muro, cores: coresDaTela(paleta, themeColor) }),
+    [barras, modelo, pref.modo, pref.escala, pref.valores, pref.muro, paleta],
   );
   // DESCARTE ADIADO (o do Visor3D): o modo estrito do React desmonta e remonta o efeito na primeira vez; a cena só
   // é jogada fora se ninguém a remontou nesse instante
@@ -320,16 +340,6 @@ export function VistaDeEsforcos({ modelo, resultado }: { modelo: Modelo; resulta
   selAtual.current = sel;
   const pivo = useCallback((): Vec3 | null => (selAtual.current ? cena.centroDe(selAtual.current) : null), [cena]);
 
-  const enviar = () => {
-    const st = agora();
-    if (!st) return;
-    const ctl = st.controls as unknown as { target: THREE.Vector3 } | null;
-    const camera = lerPontoDeVista(st.camera, ctl?.target ?? null, { estilo: 'opaco', armadura: false, corte: null, ocultas: [] });
-    // a folha leva o que se vê: os grupos desligados também
-    const ocultos = pref.ocultos.filter((g) => presentes.includes(g));
-    enviarParaPrancha({ tipo: 'esforcos', camera, proporcao: proporcaoDaCamera(st.camera), escala: pref.escala, valores: pref.valores, muro: pref.muro, ...(ocultos.length ? { ocultos } : {}) });
-  };
-
   const abrirNoCard = useInterface((s) => s.abrirNoCard);
   const vazio = barras.length === 0;
 
@@ -375,13 +385,7 @@ export function VistaDeEsforcos({ modelo, resultado }: { modelo: Modelo; resulta
       </Canvas>
       <div className="v3-overlay">
         {escolhida && <Leitura barra={escolhida} aoFechar={() => setSel(null)} aoMemoria={() => abrirNoCard(escolhida.card)} />}
-        {!vazio && (
-          <div className="v3-legenda esf-legenda" aria-hidden="true">
-            <div className="v3-legenda-linha"><span className="v3-legenda-cor esf-cor-msd" />M<sub>Sd</sub></div>
-            <div className="v3-legenda-linha"><span className="esf-cor-mrd" />M<sub>Rd</sub></div>
-            <div className="v3-legenda-linha"><span className="v3-legenda-cor esf-cor-exc" />M<sub>Sd</sub> &gt; M<sub>Rd</sub></div>
-          </div>
-        )}
+        {!vazio && <Legenda modo={pref.modo} />}
         <CuboDeVistas paleta={paleta} obterQuaternion={() => estado.current?.camera.quaternion ?? null} aoVoar={voar} registrar={registrarCubo} />
         <div className="v3-barra" onPointerDown={(e) => e.stopPropagation()}>
           {(['frente', 'lateral', 'topo', 'iso'] as VistaNomeada[]).map((v) => {
@@ -398,6 +402,13 @@ export function VistaDeEsforcos({ modelo, resultado }: { modelo: Modelo; resulta
             <IconeEnquadrar />
           </Botao>
           <span className="v3-fio" />
+          <Botao titulo="Flexão" texto on={pref.modo === 'flexao'} aoClicar={() => mudar({ modo: 'flexao' })}>
+            Flexão
+          </Botao>
+          <Botao titulo="Cortante" texto on={pref.modo === 'cortante'} aoClicar={() => mudar({ modo: 'cortante' })}>
+            Cortante
+          </Botao>
+          <span className="v3-fio" />
           <Botao titulo="Escala: aproveitamento" texto on={pref.escala === 'aproveitamento'} aoClicar={() => mudar({ escala: 'aproveitamento' })}>
             Aproveitamento
           </Botao>
@@ -412,10 +423,6 @@ export function VistaDeEsforcos({ modelo, resultado }: { modelo: Modelo; resulta
             Muro
           </Botao>
           <MostrarGrupos presentes={presentes} ocultos={pref.ocultos} aoMudar={(ocultos) => mudar({ ocultos })} />
-          <span className="v3-fio" />
-          <Botao titulo="Enviar para a prancha" aoClicar={enviar}>
-            <IconePrancha />
-          </Botao>
         </div>
       </div>
     </div>
@@ -423,9 +430,17 @@ export function VistaDeEsforcos({ modelo, resultado }: { modelo: Modelo; resulta
 }
 
 function Leitura({ barra, aoFechar, aoMemoria }: { barra: BarraAnalitica; aoFechar: () => void; aoMemoria: () => void }) {
-  const { msd, mrd } = leituraDaBarra(barra);
-  const u = barra.unidade;
+  const { msd, mrd, asNec, asEf } = leituraDaBarra(barra);
+  const u = barra.leitura.unidade;
+  const ua = barra.flexao?.unidade ?? '';
   const uso = barra.aproveitamento;
+  const falta = barra.passa === false || barra.flexao?.envolve === false;
+  const linha = (rot: React.ReactNode, v: number | null, unid: string, ruim = false) => (
+    <div className="v3-prop">
+      <dt>{rot}</dt>
+      <dd className={`v3-mono${ruim ? ' esf-falha' : ''}`}>{v === null ? '—' : `${numeroBr(v)} ${unid}`}</dd>
+    </div>
+  );
   return (
     <div className="v3-props esf-leitura" role="dialog" aria-label={barra.nome}>
       <div className="v3-props-cabeca">
@@ -435,18 +450,14 @@ function Leitura({ barra, aoFechar, aoMemoria }: { barra: BarraAnalitica; aoFech
         </button>
       </div>
       <dl className="v3-props-corpo">
-        <div className="v3-prop">
-          <dt>M<sub>Sd</sub></dt>
-          <dd className="v3-mono">{msd === null ? '—' : `${numeroBr(msd)} ${u}`}</dd>
-        </div>
-        <div className="v3-prop">
-          <dt>M<sub>Rd</sub></dt>
-          <dd className="v3-mono">{mrd === null ? '—' : `${numeroBr(mrd)} ${u}`}</dd>
-        </div>
+        {linha(<>M<sub>Sd</sub></>, msd, u)}
+        {linha(<>M<sub>Rd</sub></>, mrd, u)}
         <div className="v3-prop">
           <dt>Uso</dt>
-          <dd className={`v3-mono${barra.passa === false || barra.semMRd ? ' esf-falha' : ''}`}>{uso === null ? '—' : `${numeroBr(uso * 100, 0)} %`}</dd>
+          <dd className={`v3-mono${barra.passa === false ? ' esf-falha' : ''}`}>{uso === null ? '—' : `${numeroBr(uso * 100, 0)} %`}</dd>
         </div>
+        {ua.startsWith('cm') && linha(<>A<sub>s</sub> necessário</>, asNec, ua, falta)}
+        {ua.startsWith('cm') && linha(<>A<sub>s</sub> colocado</>, asEf, ua)}
       </dl>
       <div className="esf-leitura-pe">
         <button type="button" className="esf-btn-memoria" onClick={aoMemoria}>

@@ -29,7 +29,9 @@ function MemoriaDoProjeto({ resultado }: { resultado: Resultado }) {
   const projeto = useApp((s) => s.titulo);
   const id = useInterface((s) => s.cardPedido);
   const pedido = useInterface((s) => s.pedidoDeCard);
-  return <Memoria resultado={resultado} info={{ projeto }} urlDaFigura={urlDaFigura} irParaCard={id ? { id, pedido } : null} />;
+  // o muro desenhado leva o diagrama do aço de cada peça (vista Esforços) para o card dela
+  const modelo = useApp((s) => s.modelo);
+  return <Memoria resultado={resultado} modelo={modelo} info={{ projeto }} urlDaFigura={urlDaFigura} irParaCard={id ? { id, pedido } : null} />;
 }
 
 export function ligarAsFrentes(): void {
@@ -39,7 +41,7 @@ export function ligarAsFrentes(): void {
     gerador: gerarModelo,
     exportarIfc,
     veredito: (r) => vereditoDaMemoria(r),
-    imprimirMemoria: (r, i) => imprimirMemorial(r, { info: { projeto: i.projeto }, urlDaFigura }),
+    imprimirMemoria: (r, i) => imprimirMemorial(r, { info: { projeto: i.projeto }, urlDaFigura, modelo: useApp.getState().modelo }),
     abas: {
       '3d': (c) => c.modelo && <Visor3D modelo={c.modelo} selecionado={c.selecionado} onSelecionar={c.selecionar} />,
       frontal: (c) => c.modelo && <Desenhos modelo={c.modelo} vista="frontal" selecionado={c.selecionado} onSelecionar={c.selecionar} />,

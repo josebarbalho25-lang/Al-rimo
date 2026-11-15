@@ -346,14 +346,7 @@ export type ConteudoDoItem =
   | PedidoDeVista
   | { tipo: '3d'; camera: Camera3d; proporcao: number }            // largura/altura da foto
   | { tipo: 'detalhe'; id: string }                                 // det01…det05 (figs/app/detalhes)
-  | { tipo: 'tabela'; id: 'aco' | 'blocos' | 'quantidades' | 'drenagem' }
-  /**
-   * A vista Esforços (15/11): as barras analíticas com MSd e MRd, refeitas como IMAGEM do ponto de vista guardado
-   * (como o 3D Realista) — viva: mudou a conta, a foto acompanha. Vetor/DXF fica para depois.
-   */
-  // `ocultos` (15/11): os grupos de peça desligados no "Mostrar" da vista (esforcos/tipos.ts, GrupoDeBarra) — a folha
-  // leva o que se via; ausente = todos
-  | { tipo: 'esforcos'; camera: Camera3d; proporcao: number; escala: 'aproveitamento' | 'valor'; valores: boolean; muro: boolean; ocultos?: string[] };
+  | { tipo: 'tabela'; id: 'aco' | 'blocos' | 'quantidades' | 'drenagem' };
 
 /** O que uma vista do projeto desenha: as vistas 2D (com o lugar do corte, a fiada, o lado do isométrico) e o 3D. */
 export type ConteudoDaVista = PedidoDeVista | Extract<ConteudoDoItem, { tipo: '3d' }>;
