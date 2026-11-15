@@ -10,6 +10,7 @@ import planilha from '@/motor/planilha.gerada.json';
 import { ENTRADAS_DO_MODELO } from '@/modelo/entradasDoModelo';
 import { figuraDaEntrada, figuras, motivoSemFigura, _mapa } from './mapa';
 import recortes from './recortes.gerado.json';
+import { ABAS } from '@/estado/abas';
 
 const PASTA = fileURLToPath(new URL('../../public/figuras/', import.meta.url));
 const svgDe = (arquivo: string) => readFileSync(PASTA + arquivo, 'utf8');
@@ -34,6 +35,16 @@ describe('mapa entrada → figura (dados/figuras.json)', () => {
     const duplas = todas.filter((n) => n in _mapa.entradas && n in _mapa.semFigura);
     expect(faltando).toEqual([]);
     expect(duplas).toEqual([]);
+  });
+
+  // o muro de cima (15/11, Fig. 28 a 31): toda entrada da aba tem a figura dela, com a grandeza desenhada
+  it('toda entrada da aba Muro de cima e vento tem figura', () => {
+    const aba = ABAS.find((a) => a.id === 'murocima')!;
+    const nomes = aba.grupos.flatMap((g) => g.campos.map((c) => (typeof c === 'string' ? c : c[0])));
+    expect(nomes.length).toBeGreaterThan(30);
+    const sem = nomes.filter((n) => !_mapa.entradas[n]?.campo);
+    expect(sem).toEqual([]);
+    expect(new Set(nomes.map((n) => _mapa.entradas[n].figura))).toEqual(new Set(['fig28', 'fig29', 'fig30', 'fig31']));
   });
 
   it('o mapa não cita entrada que não existe', () => {

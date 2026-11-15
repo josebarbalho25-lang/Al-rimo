@@ -116,7 +116,8 @@ describe.skipIf(!casos.length).each(casos.map((c) => [c.cenario, c] as const))('
     const t = m.familia.t;
     expect(m.dims.contrafortes.some((q) => Math.abs(q.x - c[0].x) <= t / 2)).toBe(false);
     if (m.dims.contrafortes.length) {
-      expect(c.length).toBe(2);
+      // o do pilarete (muro de cima, 15/11) entra quando nenhum dos dois passa num
+      expect(c.filter((q) => q.rotulo !== 'Pilarete').length).toBe(2);
       expect(rotulos(svgs.corte1).some((q) => q.startsWith('contraforte '))).toBe(true);
     }
   });
