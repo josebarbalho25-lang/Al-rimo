@@ -972,7 +972,25 @@ e dizer ao Jose o que mudou e por quê.
   completa no PLANO_OBRA ("PUBLICADO (15/11)"). Conta = a de As da própria aba DESFEITA (helper `mrd_ret`), limitada
   pelo x que a verificação da aba confere (0,45d; painéis e sapata, que não conferem ductilidade, até 1,25d). Prova:
   zero diferença nos nomes/células de antes (81 cenários), base bit a bit (Vk_, Mk_, Mk_w, Md_cf, Mk_toe… = último
-  nó), ida e volta e "MRd ≥ MSd ⇔ verificações OK" sem exceção. Falta a vista "Esforços" no app (2ª metade).
+  nó), ida e volta e "MRd ≥ MSd ⇔ verificações OK" sem exceção. A vista "Esforços" no app: item seguinte.
+- **VISTA "ESFORÇOS" (Jose, 15/11: "um diagrama em 2D, só que num esquema 3D com barras analíticas… cada barrinha com
+  o seu desenho de momento solicitante e momento resistente" — FEITA 15/11, 2ª metade da etapa 1b, ramo
+  `muro-de-cima`; o Jose ainda NÃO viu na tela):** pasta "Esforços" no navegador da Gráfica (aba `esforcos`). O muro
+  em arame, uma barra por peça que a conta dimensiona: faixa de 1 m do balanço, cada contraforte (extremidade ×
+  intermediário pelo `tipo_cf`), faixa vertical no meio de cada vão, cada fiada de canaleta e a cinta do topo em
+  cada vão, ponta e talão (uma faixa por trecho), dente, pilaretes e a ligação deles, painéis não armados (balanço,
+  subpainel, A/B do muro de cima). MSd cheio e MRd em linha no plano de flexão, do lado TRACIONADO; vermelho onde
+  passa (painel sem arranjo que resista: tudo vermelho). Barra ESQUEMÁTICA (só os picos são da conta: painéis,
+  canaletas, cinta, ligação) com contorno TRACEJADO — a tela diz pelo traço, sem texto. Escala "Aproveitamento"
+  (todo MRd na mesma altura) ou "Valor" (mesma unidade, mesma escala); Valores e Muro (fantasma) ligam e desligam,
+  lembrados. Clique: rótulo + valor (MSd, MRd, Uso) e "Memória", que abre o card da peça (`abrirNoCard`). Prancha:
+  IMAGEM refeita do ponto de vista (como o Realista), cores de papel; vetor/DXF PENDENTE. Memória: seção "Momento
+  resistente com a armadura adotada" (`Fas_` → `xas_` → `Mas_` → `xlim_` → `Mlim_` → `MRd_` → uso) nos cards de flexão
+  e ftd·W nos não armados, sem verificação nova (veredito igual). Código `app/src/esforcos/`, prova
+  `esforcos/barrasAnaliticas.test.ts`. Nomes que cada barra lê, o que é esquemático e as diferenças barra × `chk_*`
+  (não são erro: a aba confere As,mín, espaçamento, ductilidade) no PLANO_OBRA, etapa 1b. A conferir com ele: a forma
+  ilustrativa do painel vertical (zero a 1/4, pico a 5/8 da altura); o talão com Md negativo usa o MRd da barra de
+  baixo; diagramas a 30 % da altura do muro.
 - **DENTE ARMADO (Jose, 15/11: "a forma de armar é similar à da sapata corrida, porém na vertical, com estribos
   adentrando a sapata corrida e armadura de montagem / mínima no sentido longitudinal do dente; o esforço seria o de
   deslizamento / tombamento" — FEITO 15/11, etapa 1 do `PLANO_OBRA.md`, ramo `muro-de-cima`; o Jose ainda NÃO viu na

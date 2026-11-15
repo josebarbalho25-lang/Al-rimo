@@ -274,7 +274,34 @@ aberto dá conflito em tudo.
 - **Prova:** `testar.py`, `exportar_motor.py` + `golden.py` + `npx vitest run`; nenhum muro sem dente muda um
   bit; `barrasEmPecaSolida` limpo com dente em todas as posições de `x_den`.
 
-### Etapa 1b — Diagrama de momentos em barras (pedido do José, 15/11)
+### Etapa 1b — Diagrama de momentos em barras (pedido do José, 15/11) — **FEITA em 15/11** (ramo `muro-de-cima`)
+> App: `app/src/esforcos/` — `barrasAnaliticas.ts` (pura: lê os nomes da tabela abaixo, só troca unidade, interpola
+> entre nós e decide o lado), `cenaDosEsforcos.ts` (three: eixo, MSd cheio, contorno cheio na barra de verdade e
+> TRACEJADO na esquemática, linha do MRd, vermelho além do MRd; `semMRd` = tudo vermelho), `VistaDeEsforcos.tsx`
+> (câmera, cubo e mouse do visor; Aproveitamento/Valor, Valores, Muro em fantasma; clique → rótulo + valor e botão
+> Memória, que abre o card — `useInterface.abrirNoCard`), `fotoDosEsforcos.ts` (imagem fora da tela para a prancha,
+> cores de papel, fundo transparente; item `{ tipo: 'esforcos' }` no `ConteudoDoItem`, refeito como a foto do
+> Realista — o desenhista recebeu a conta). Vista registrada como aba `esforcos` (pasta "Esforços" no navegador).
+> Barras: balanço (`perf_Md` + `vt_Md` acima do solo, base + `M2d_us` = `Md_`, × `MRd_bal`); contraforte (este tipo
+> `perf_Mdc`/`vt_Mdc`/`MRd_cf`, o outro `perf_Mdo`/`vt_Mdo`/`MRd_cfo`, extremidade × intermediário por `tipo_cf`);
+> faixa vertical do painel (`Mdyei_p` na base, `M_pve` no vão, × `MRd_pvs`/`MRd_pve`, ESQUEMÁTICA); canaleta de cada
+> fiada (`Mdx_p` no vão, `Mdxe_p` no apoio se > 0, × `MRd_ph`; o lado do apoio só tem MRd com barra centralizada ou
+> 2 barras, ESQUEMÁTICA); cinta do topo (`Msd_cin` × `MRd_cin`, kN·m na faixa, ESQUEMÁTICA); painel não armado e
+> subpainel (`Mpar`/`Mnor` × `MRp_pan`/`MRn_pan`; `_sp`), painéis A/B (`Mpa_p*`/`Mno_p*` × `MRp_p*`/`MRn_p*`),
+> ESQUEMÁTICOS; ponta e talão (`T_e`/`T_Md`, `H_e`/`H_Md`, M = 0 na borda livre, × `MRd_toe`/`MRd_heel`; talão com
+> Md negativo × `MRd_toe` — a mesma barra de baixo); dente (`p1_den`, `p2_den` integrados ao longo do dente e
+> escalados para `Md_den` na raiz, × `MRd_den`); pilarete (`pt_y`/`pt_Md` × `MRd_pil`) e a ligação (`Md_pil` ×
+> `MRd_lig` no traspasse `l0t_pil`, ESQUEMÁTICA). Memória: seção "Momento resistente com a armadura adotada" (cadeia
+> `Fas_ → xas_ → Mas_ → xlim_ → Mlim_ → MRf_/MRd_ → ap_`) nos cards de flexão de cada peça e ftd·W nos não armados
+> (`memoria/cards/momentoResistente.ts`), sem `verif`. Prova `esforcos/barrasAnaliticas.test.ts` (todos os
+> cenários do gabarito).
+> **PENDENTE:** a prancha leva IMAGEM (vetor e DXF ficam para depois); com a obra (etapa 2), uma malha por trecho na
+> pose dele; a forma esquemática do painel vertical (zero a 1/4 da altura, pico a 5/8) é ilustrativa — a planilha
+> não publica onde fica o pico; o dente sem conta (φ' da base em branco) não desenha barra. Diferenças
+> barra × `chk_*` da aba que NÃO são erro (a aba confere mais que MSd ≤ MRd: As,mín, espaçamento, ductilidade):
+> `chk_resiste`/`chk_res_cf` OK com a barra vermelha quando reprova ductilidade ou As (combinação conferida no teste);
+> `chk_ph`, `chk_pvs`, `chk_fl_s`, `chk_fl_den` NÃO OK com a barra azul (As,mín, s < 5 cm etc.). O José ainda não viu
+> na tela.
 "Um diagrama 2D num esquema 3D com barras analíticas: as barras representando os contrafortes, as canaletas…
 cada barrinha com o seu desenho de momento solicitante e momento resistente."
 - **O que é:** vista nova na Gráfica ("Esforços"): o muro em arame — uma barra para cada peça que a conta
