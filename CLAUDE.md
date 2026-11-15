@@ -844,8 +844,8 @@ e dizer ao Jose o que mudou e por quê.
   3D/IFC/quantitativo/desenhos do muro de cima, pilaretes e cintas.
   APP (TELA E MEMÓRIA) FEITO 13/11 no mesmo ramo: aba "Muro de cima e vento" nas Entradas (`estado/abas.ts`,
   id 'murocima', entre Drenagem e Critérios), rótulos, campos que apagam sem muro de cima/vento (concreto só no
-  pilarete moldado, fbk só no de bloco), "auto" com número no Cf e nos ftk; figuras ainda SEM (motivo em
-  dados/figuras.json: "Fig. 28/29, próxima etapa"). Memória: termos novos nos cards do arrimo só quando ligados
+  pilarete moldado, fbk só no de bloco), "auto" com número no Cf e nos ftk; figuras FEITAS 15/11 (Fig. 28 a 31, ver
+  "FIGURAS E DESENHOS DO MURO DE CIMA"). Memória: termos novos nos cards do arrimo só quando ligados
   (Nd/Md/Vsd/σsg/Mk_cf/Vk_cf/Ma_cf sem vento/carga no topo/Hk/M tomb/MSd da biela) e autor novo
   `memoria/cards/muroDeCima.ts` com 4 cards (vento, muro de cima — peso e painéis A/B —, pilarete, cinta do topo
   do arrimo); card que não se aplica não monta passo; fonte 'NBR 6123' nova no tipo Ref. Planilha publica ftdp_mc,
@@ -875,8 +875,8 @@ e dizer ao Jose o que mudou e por quê.
   hachura de concreto; frontal e corte enquadram até o topo do muro de cima; cota "muro de cima" na frontal.
   Quantitativo: tabela "Muro de cima" (tijolo para comprar com os cortados, área, argamassa estimada pela junta,
   concreto e fôrma de pilarete e cinta). Visto na tela (5180): 3D, frontal, corte e quantitativo certos para o
-  exemplo + muro de cima. Suíte inteira verde (4827). FALTA: figuras das entradas (Fig. 28/29), planta e
-  armação do pilarete na prancha, cintas do muro de cima não verificadas, a quina (virada de 90°).
+  exemplo + muro de cima. Suíte inteira verde (4827). FALTA: ~~figuras das entradas, planta e armação do
+  pilarete na prancha, cintas do muro de cima não verificadas~~ (FEITOS 15/11), a quina (virada de 90°).
   Revisão adversarial do 3D (13/11, 1 revisor) — corrigido: lasca de tijolo no fim do painel (sobra < 5 cm junta
   com a peça de antes em duas metades iguais, CORTE_MINIMO); barra do pilarete só desce no arrimo se cai dentro
   da parede dele, senão nasce no topo + aviso PILARETE_LIGACAO; espaçamento 0 do pilarete/estribo não derruba
@@ -884,8 +884,9 @@ e dizer ao Jose o que mudou e por quê.
   fiadas avisa; IFC: a parede "Muro de cima" com Pset próprio (vedação, LoadBearing falso, espessura do tijolo,
   altura do topo do arrimo), pilarete de bloco com material bloco, nome "Pilarete T1 P01"; quantitativo: pilarete
   de bloco sem concreto nem fôrma; desenho do pilarete de bloco com a hachura do graute; Mostrar › Blocos liga o
-  muro de cima. Ficou (anotado pelo revisor): frontal não desenha barra do pilarete/cinta; chamada classifica como
-  "muro"; isométrico ~5× mais pesado com os furos dos tijolos; barra da cinta termina reta a 3 cm da ponta.
+  muro de cima. Ficou (anotado pelo revisor): ~~frontal não desenha barra do pilarete/cinta; chamada classifica como
+  "muro"; isométrico ~5× mais pesado com os furos dos tijolos; barra da cinta termina reta a 3 cm da ponta~~ (todos
+  FEITOS em 15/11: a ponta da cinta pela conta; o resto em "FIGURAS E DESENHOS DO MURO DE CIMA").
   PILARETE × ARRIMO (Jose, 13/11 — FEITO no mesmo dia, ver "REGRA DO PILARETE" abaixo): "esses pilares precisam engastar e ter armadura contínua com o
   muro, adentrando no graute, ou seja a posição deles é limitada de acordo com os blocos; eles devem sempre ter no
   mínimo 20 de frente pra isso funcionar". Ou seja: pilarete na grade dos furos do arrimo (x das barras em furo
@@ -987,8 +988,8 @@ e dizer ao Jose o que mudou e por quê.
   camadas, gancho), `esforcos/cintasEVista.test.ts`. Golden: alvo_cmc_topo_t14, _meia, _duas, _duas_t14 (Ø10),
   _vao_longo (6 m: reprova, auto 4), _sem_vento (4 digitado), _gancho (vão 4,4, Ø6,3, 2 forçadas). A CONFERIR com o
   Jose: aℓ = 1,5d; a tributária do topo livre; concreto único; hook quase nunca resolve (o ℓb,mín de 10 cm manda —
-  pilarete estreito vira "Não cabe"). Achado sem conserto: pilarete mais largo que o contraforte (b_pil > t) na
-  ponta do trecho sai para fora do muro (o modelo centra no contraforte; a conta não acusa).
+  pilarete estreito vira "Não cabe"). Achado de 15/11, CONSERTADO no mesmo dia: pilarete mais largo que o contraforte
+  (b_pil > t) na ponta do trecho saía para fora do muro — ver "FIGURAS E DESENHOS DO MURO DE CIMA".
   VISTA ESFORÇOS, 2ª volta (15/11): cada cinta do muro de cima vira duas barras por vão (lateral deitada, gravidade
   em pé), uso = a interação; o fantasma desenha a sapata pela seção (com o dente, não a caixa cheia); a vista se
   refaz e reenquadra (mesma direção) quando o muro muda de forma (`chaveDoEnquadramento`; o pedido de quadro agora sai
@@ -997,6 +998,36 @@ e dizer ao Jose o que mudou e por quê.
   prancha). "Mostrar" por grupo (Jose, 15/11: "dá pra isolar por esforço?"): Parede, Contrafortes, Painéis, Canaletas
   e cinta, Sapata, Dente, Muro de cima — só os que o muro tem, "só" em cada linha, Todos/Nenhum; lembrado com as
   outras escolhas da vista e levado para a prancha (`ocultos` no item); a câmera não pula. `BarraAnalitica.grupo`.
+  FIGURAS E DESENHOS DO MURO DE CIMA (15/11; Jose: "vamos resolver também as figuras do muro de cima"; "planta e
+  armação do pilarete na prancha — isso é importante"):
+  · FIGURAS 28 a 31 (régua comum, só no app, `figs/app/f28…f31`): 28 Muro de cima (corte com reboco e cintas,
+    elevação com pilaretes a s_pil, painéis A/B e as setas de tração normal/paralela e do cisalhamento, planta dos
+    contrafortes com n_pil·l), 29 Vento no muro (pressão na parte exposta, z_v do terreno da frente ao topo, S1 no
+    terreno, S2 nas casas ao longe, S3,v no muro de cima e S3 no arrimo, Cf, V0), 30 Pilarete (planta do de concreto
+    com estribo, barras, b/h/c; o de bloco grauteado; elevação da ligação com ℓ0t no graute), 31 Cinta (seção com 2 e
+    4 barras, peso e vento só por seta). As 34 entradas da aba mapeadas (`dados/figuras.json`; phi_est_pil e s_est_pil
+    com figura no contrato); legenda nova 'tijolo' na applib (o claro, para não confundir com o bloco do arrimo).
+  · VISTA "Armação do pilarete" (`desenhos/armacaoDoPilarete.ts`, tipo 'pilarete', 1:20 de partida, pasta Armação do
+    navegador; só com muro de cima): por TIPO de pilarete (os iguais juntos: barras no mesmo lugar e a mesma ponta de
+    cinta — "P2, P3 — 2 un."; P1, P2… da esquerda para a direita) a elevação do pé do traspasse ao topo (arrimo fino,
+    tijolo e cinta dos lados, barras da cinta com o gancho), a faixa dos estribos em pé, as cotas (traspasse, altura,
+    b), a seção na meia altura de uma fiada de tijolo (estribo de verdade, barras, b, h, c com o meio cm), a sombra do
+    estribo e a da longitudinal; embaixo, as sombras das barras da cinta com o miolo encurtado (pontas de verdade). O
+    "Mostrar" tem Blocos (o contexto) e Cotas.
+  · PLANTA: a lista da fiada segue nas fiadas do muro de cima ("1ª muro de cima"; `fiadasDaPlanta`, `rotuloDaFiada`);
+    nelas a cadeia de cima é a dos PILARETES, a cota t é a do tijolo e a cinta tem sombra. FRONTAL: barras do
+    pilarete (longitudinal e estribo) e da cinta, com chamada. Chamadas: elementos novos 'pilarete' e 'cinta'
+    (`elementoDaBarra`; a quantidade e o c/ são os do elemento). CORTE: opção "Pilarete" nos cortes de saída quando
+    nenhum passa num; a longitudinal do pilarete ganha sombra; com muro de cima, t/d/contraforte sobem para cima dele.
+  · ISOMÉTRICO: o tijolo vira a caixa dele (só no isométrico). Medido, muro de 20 m: balanço 30 → 63 ms com muro de
+    cima (era 140; as peças quase dobram), contrafortes 67 → 91 ms.
+  · PILARETE MAIS LARGO QUE O CONTRAFORTE: `chk_ligg` reprova ("pilarete mais largo que o contraforte: na ponta do
+    muro ele passa do fim do muro"); o modelo encosta o da ponta no fim do trecho e as barras que saem da haste caem
+    no PILARETE_LIGACAO. Golden alvo_mc_cf_pilarete_largo.
+  · Prova: `desenhos/__testes__/armacaoDoPilarete.test.ts` (muros do gabarito com muro de cima + 6 construídos × 1:10,
+    1:20, 1:50; DXF pelo ezdxf --estrito), `figuras/mapa.test.ts`. Muros sem muro de cima: SVG das vistas idêntico
+    byte a byte ao de antes (conferido em todos os muros do gabarito sem muro de cima, tela e prancha). A CONFERIR com o Jose: o cobrimento da
+    seção mede da face ao estribo; a seção só em escala da vista (1:20; quem quer maior põe a vista em 1:10).
 - **VIRADA DE 90° (Jose, 13/11: "é o que mais é feito; não adianta calcular o muro só num sentido"):** muro em L com
   a quina. A quina dá rigidez (a perna de retorno apoia a outra, como um contraforte), mas traz empuxo nos dois
   sentidos — "uma verificação a mais". OS DOIS CASOS (um cliente tem o L para dentro, o outro para fora): aterro
