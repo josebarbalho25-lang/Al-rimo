@@ -956,8 +956,62 @@ e dizer ao Jose o que mudou e por quê.
   sentidos — "uma verificação a mais". OS DOIS CASOS (um cliente tem o L para dentro, o outro para fora): aterro
   DENTRO do L (as pernas abrem, a quina trabalha à tração — armadura horizontal virando a quina e ancorada) e aterro
   FORA do L (as pernas se empurram, quina comprimida). A FAZER, junto com o muro de cima.
-- **DENTE SEM ARMADURA (Jose, 15/10: "nosso dente não tá armando, é muito detalhe, só anota, depois resolvemos"):** o
-  dente da sapata sai no 3D, no corte e na armação sem barra nenhuma. Resolver depois, quando ele pedir.
+- **PLANO "DO MURO PARA A OBRA" (Jose, 15/11 — sessão de arquitetura; implementação depois, etapa a etapa):**
+  roteiro em `PLANO_OBRA.md` (raiz): obra com vários trechos (cada trecho = a conta de hoje + posição em planta),
+  traçado em polilinha, degraus da base, quina a 90° (a outra perna como contraforte; flexão oblíqua pelo motor do
+  All Sec), dente armado, topografia por DXF, sondagens com camadas, corte e aterro, tela reorganizada na ordem da
+  obra. Nove decisões do Jose listadas no plano, AINDA NÃO RESPONDIDAS. Nada implementado. Ler o plano antes de
+  qualquer uma dessas frentes; etapa que mudar de estado se anota lá.
+- **DENTE ARMADO (Jose, 15/11: "a forma de armar é similar à da sapata corrida, porém na vertical, com estribos
+  adentrando a sapata corrida e armadura de montagem / mínima no sentido longitudinal do dente; o esforço seria o de
+  deslizamento / tombamento" — FEITO 15/11, etapa 1 do `PLANO_OBRA.md`, ramo `muro-de-cima`; o Jose ainda NÃO viu na
+  tela; substitui o "dente sem armadura" de 15/10):**
+  · PLANILHA, aba Fundação, **seção 11 no FIM da aba** (depois da memória das fatias: nada de cima muda de endereço,
+    nenhuma fórmula de cima lê as de lá — conferido: os 781 nomes de antes iguais nos 72 cenários do golden). Por
+    metro. Carga = passivo CHEIO na face da frente, sem ÷ 2, sem olhar `pass_on` nem `x_den`, com o `h_fr` sempre
+    (o dente nunca recebe mais que isso): `p1_den` = Kp_b·γ·(h_fr + h), `p2_den` = Kp_b·γ·(h_fr + h + h_den),
+    `Ek_den`, `Mk_den` = p1·h²/2 + (p2 − p1)·h²/3, `y_den` = Mk/Ek, `Md_den`/`Vd_den` = 1,4·. Seção 100 × b_den,
+    `d_den` = b − c − Ø/2; flexão como a ponta/talão (`xln_den`, `xd_den` ≤ 0,45, `As_den`), `Asm_den` = 0,15 %·b·h,
+    `Asn_den`; estribo fechado EM PÉ, um ramo por face: `Ab_den`, `s_den` (digitado ou o MAIOR de 20; 15; 12,5; 10;
+    7,5; 5 que atende), `Ase_den` → `chk_fl_den`. Cortante na RAIZ (sem descontar d) contra VRd1 (`k_den`, `rho_den`,
+    `VRd1_den`) → `chk_v_den`. Ancoragem das pernas na sapata: `lbd_den` = h − c ≥ `lbn_den` = 0,7·ℓb·As,calc/As,ef
+    ≥ `lbm_den` (ℓb = `lbphi_c`·Ø) → `chk_anc_den`. Longitudinais POR FACE `nf_den` = máx(2; As de distribuição
+    máx(0,9; 20 %·As,ef) × h_den; uma a cada 33 cm) → `n_lden` (critério de secundária de laje no dente: DEDUÇÃO).
+    Resumo `res_den` ("OK — estribo Ø8 c/12,5 + 6 Ø6,3 corridas" / "NÃO OK — …" / "— (sem dente)"). Entradas novas
+    no fim da seção Fundação das Entradas: `phi_den` (8), `s_den_dir` (opcional), `phi_lden` (6,3).
+  · MOMENTO PASSADO À SAPATA (DEDUÇÃO): o momento do dente anda pela sapata do dente até o muro. Dente do lado da
+    PONTA (`lado_den`: eixo à frente do eixo do muro) traciona a sapata EM CIMA (alivia a ponta — alívio ignorado);
+    do lado do TALÃO ou sob o muro, EMBAIXO. NÃO foi somado ao Md da sapata (mudaria a armadura de todo muro que já
+    tem dente, a aula 12.2 inclusive): verificação própria `chk_tr_den` — `Ms_den` = `Mt_den` (Md + Vd·h, até a face
+    oposta) + `Mf_den` (o que a sapata já tem tracionando a mesma face) ≤ `MRd_sap` (Ø principal no espaçamento
+    adotado; o estribo da sapata põe o mesmo aço nas duas faces). Com a transversal RETA e o dente na ponta não há
+    barra em cima: o modelo avisa (DENTE_SEM_BARRA_EM_CIMA).
+  · Números: exemplo do app (sapata 0,45) com dente 25 × 25 no centro → p1 21,07 / p2 32,77 kPa, Mk 0,90, Md 1,26
+    kN·m/m, Vd 9,4 kN/m, As 0,14 < mín 3,75 → Ø8 c/12,5 (4,02), VRd1 117,7, ancoragem 41,0 ≥ 10,0 cm, 4 Ø6,3,
+    MSd 5,5 ≤ MRd 122,6. Com o dente da aula (25 × 50): Md 5,19, Vd 18,0, mesmo estribo, 6 Ø6,3. O As,mín manda
+    em dente comum; a conta só aperta em dente fundo e estreito (alvo `alvo_dente_talao_nao_passa`).
+  · Golden: nenhum valor antigo mudou; os sorteios já passam pelo dente dos dois lados (7 na ponta, 26 no talão);
+    alvos novos `alvo_dente_ponta_digitado` e `alvo_dente_talao_nao_passa` (fora do sorteio).
+  · APP: grupo "Armadura do dente" na aba Fundação (apaga sem dente; espaçamento vazio mostra o adotado); Fig. 18
+    desenha o estribo e as longitudinais do dente. Modelo (`modulacao/entorno.ts` estriboDoDente/armarDente): estribo
+    de ganchos (a forma do da sapata) do cobrimento do fundo do dente ao cobrimento de CIMA da sapata, a cada
+    `s_den`, cada um num plano LIVRE (desvia do estribo da sapata, do de torção e das esperas, com uma bitola de
+    folga; torção a cada 2–3 cm não deixa plano: fica no meio do vão); longitudinais por dentro, nas duas faces (a de
+    baixo no canto, a de cima na raiz), emenda como a da sapata; a longitudinal da SAPATA que cairia em cima de uma
+    perna encosta ao lado (só nesse caso a sapata muda). Papéis `DENTE_ESTRIBO`, `DENTE_LONG` (elemento = sapata).
+    Dente estreito para o estribo: sem barra, aviso DENTE_ESTREITO. Corte: sai sozinho, com chamada. Armação: faixa
+    do estribo do dente, sombra dele com as medidas, pontos na seção e sombra das longitudinais com "(dente)" (com o
+    mesmo Ø e C elas têm o mesmo N das da sapata). Lista de ferros/quantitativo: "Dente · estribo", "Dente ·
+    longitudinal". IFC: no grupo da sapata. Memória: card `fundacao.dente` (`memoria/cards/dente.ts`) com os dois
+    desenhos (`desenhoDasForcasNoDente`, `desenhoDaSecaoDoDente`); 5 verificações no veredito.
+  · Prova: `testar.py` TUDO OK (referência da regressão sem mudança), motor × Excel nos 74 cenários, suíte do app
+    5461 verdes, tsc limpo; `modulacao/dente.test.ts`, `memoria/dente.test.ts`; planilha entregue regerada. Ficou:
+    a chamada/faixa arredonda o espaçamento para cm inteiro (12,5 sai "c/12"; a conta e a memória dizem 12,5); com
+    estribo de torção a menos de 6 cm ou transversal a menos de 8 não sobra plano livre e o do dente encosta.
+  · A CONFIRMAR com o Jose: passivo cheio como carga (decisão 7 do plano); o As,mín de 0,15 % na largura do dente
+    (é ele que manda: Ø8 c/12,5 num dente de 25); cortante na raiz sem descontar d; α = 0,7 na ancoragem; canto dos
+    ganchos em cima, do lado da ponta; longitudinais pelo critério de laje; a verificação da sapata no lugar de
+    somar o momento.
 - **Revisão adversarial de 15/10 (3 revisores, 16 achados) — CORRIGIDA em 16/10** (`pranchas/__testes__/revisao16.test.ts`
   prova cada um): `Prancha.direita()` é a caixa de REFERÊNCIA (anotação arrastada não empurra a coluna das chamadas
   nem a seção da armação); a armação tem PARTES com origem própria (`RegiaoDoDesenho`: 'secao' e 'estribo:N…'; a
