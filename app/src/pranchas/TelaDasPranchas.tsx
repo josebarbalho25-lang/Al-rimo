@@ -232,13 +232,15 @@ export function TelaDasPranchas({ modelo, resultado }: { modelo: Modelo | null; 
   // — criado num useMemo e descartado na limpeza, o desenhista guardado ficava morto e a foto do Realista nunca
   // chegava. A foto do 3D chega depois: quando chega, `versao` sobe e a folha se recompõe.
   const muro = useAssentado(modelo, ESPERA_DO_MURO_MS);
+  // a conta assenta junto com o muro: a imagem dos esforços lê o MSd e o MRd dela (os dois nascem da mesma tecla)
+  const conta = useAssentado(resultado, ESPERA_DO_MURO_MS);
   const [desenhista, setDesenhista] = useState<Desenhista | null>(null);
   const [versao, setVersao] = useState(0);
   useEffect(() => {
-    const d = criarDesenhista(muro, () => setVersao((v) => v + 1));
+    const d = criarDesenhista(muro, () => setVersao((v) => v + 1), undefined, conta);
     setDesenhista(d);
     return () => d.descartar();
-  }, [muro]);
+  }, [muro, conta]);
 
   const base = useMemo(
     () => ({

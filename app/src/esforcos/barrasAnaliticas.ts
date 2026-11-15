@@ -288,7 +288,6 @@ function montar(r: Resultado, modelo: Modelo): BarraAnalitica[] {
     const apoioArmado = t('pos_ph').startsWith('Cent') || n('nb_ph') === 2;
     const msdCin = n('Msd_cin');
     const mrdCin = n('MRd_cin');
-    const comCartaoDaCinta = t('mc_on') === 'Sim' || t('vento_on') === 'Sim';
 
     for (const tr of trechos) {
       const apoios = apoiosDo(tr.numero);
@@ -325,7 +324,7 @@ function montar(r: Resultado, modelo: Modelo): BarraAnalitica[] {
             const picos: Pico[] = [{ s: L / 2, valor: m0, qual: 'msd', nome: 'Msd_cin', fator: CM }];
             if (mr !== null) picos.push({ s: L, valor: mr, qual: 'mrd', nome: 'MRd_cin', fator: CM });
             por({
-              id: `T${tr.numero}.V${j + 1}.CIN`, tipo: 'cinta', nome: `Cinta do topo · ${vao}`, card: comCartaoDaCinta ? 'murocima.cinta' : 'painelCf.flexaoHorizontal', trecho: tr.numero,
+              id: `T${tr.numero}.V${j + 1}.CIN`, tipo: 'cinta', nome: `Cinta do topo · ${vao}`, card: 'painelCf.flexaoHorizontal', trecho: tr.numero,
               de: [xa, yMeio, z], ate: [xb, yMeio, z], lado: [0, -1, 0],
               estacoes: amostrar(20, (xi) => m0 * 4 * xi * (1 - xi)).map((f) => ({ s: f.xi * L, msd: f.v, mrd: mr, mrdOposto: null })),
               unidade: 'kN·m', picos, aps: ['ap_cin'], esquematico: true,
@@ -357,7 +356,7 @@ function montar(r: Resultado, modelo: Modelo): BarraAnalitica[] {
       if (est.vao && l !== null && h !== null && l > 0 && h > 0) {
         const xa = Math.min(est.x, est.vao[1] - l * M);
         naoArmado(r, por, {
-          id: `T${tr.numero}.SP`, trecho: tr.numero, card: 'painelCf.flexaoVertical', rotulo: `Subpainel não armado · T${tr.numero}`,
+          id: `T${tr.numero}.SP`, trecho: tr.numero, card: 'painelCf.naoArmado', rotulo: `Subpainel não armado · T${tr.numero}`,
           x0: xa, x1: xa + l * M, z0: 0, z1: Math.min(h * M, H), y: yMeio,
           par: ['Mpar_sp', 'MRp_sp', 'ap_psp'], nor: ['Mnor_sp', 'MRn_sp', 'ap_nsp'], fator: CM,
         });

@@ -20,6 +20,8 @@
 import { nomeDado } from './vistas';
 import { versaoDosGraficos } from '@/desenhos/graficos';
 import type { Modelo } from '@/modelo/tipos';
+import type { Resultado } from '@/motor/tipos';
+import { fotoDosEsforcos } from '@/esforcos/fotoDosEsforcos';
 import { refazerFoto } from '@/visor/fotoRefeita';
 import { vista3dParaPrancha, vistaParaPrancha } from '@/desenhos/paraPrancha';
 import { cortesPadrao } from '@/desenhos/corteLateral';
@@ -57,7 +59,11 @@ export function tamanhoDaFoto(larguraMm: number, proporcao: number): [number, nu
   return [w, h];
 }
 
-export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () => {}, carregar: CarregarFigura = carregarFigura): Desenhista {
+/**
+ * `resultado` = a conta do mesmo muro (a vista Esforços lê dela o MSd e o MRd; sem ela, o desenho dos esforços fica
+ * com o lugar marcado e o resto da folha segue).
+ */
+export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () => {}, carregar: CarregarFigura = carregarFigura, resultado: Resultado | null = null): Desenhista {
   const fotos = new Map<string, { dataUrl: string; proporcao: number } | 'pedida' | 'falhou'>();
   // a última foto pronta de cada ponto de vista: ao redimensionar, a folha mostra a anterior enquanto a nova sai
   const ultima = new Map<string, { dataUrl: string; proporcao: number }>();
@@ -80,6 +86,38 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
     if (tem === 'pedida' || tem === 'falhou') return anterior ? imagem(anterior) : null;
     fotos.set(chave, 'pedida');
     const pedido = refazerFoto(modelo, camera, w, h, { papel: true, cancelado: () => !vivo });
+    aCaminho.add(pedido);
+    void pedido.finally(() => aCaminho.delete(pedido)).catch(() => undefined);
+    pedido.then(
+      (dataUrl) => {
+        if (!vivo) return;
+        fotos.set(chave, { dataUrl, proporcao: w / h });
+        ultima.set(ponto, { dataUrl, proporcao: w / h });
+        aoMudar();
+      },
+      () => {
+        if (!vivo) return;
+        fotos.set(chave, 'falhou');
+        aoMudar();
+      },
+    );
+    return anterior ? imagem(anterior) : null;
+  };
+
+  // a imagem dos esforços: o mesmo jeito da foto do Realista (pedida, guardada pela chave, a anterior enquanto a nova sai)
+  const fotoDosEsforcosDoItem = (item: ItemDaFolha): ItemDesenhado | null => {
+    if (!modelo || !resultado || item.conteudo.tipo !== 'esforcos') return null;
+    const c = item.conteudo;
+    const [w, h] = tamanhoDaFoto(item.largura ?? 160, c.proporcao);
+    const ponto = `esf|${JSON.stringify(c)}`;
+    const chave = `${ponto}|${w}x${h}`;
+    const tem = fotos.get(chave);
+    const imagem = (f: { dataUrl: string; proporcao: number }): ItemDesenhado => ({ tipo: 'imagem', dataUrl: f.dataUrl, arquivo: `esforcos-${item.id}.png`, proporcao: f.proporcao });
+    if (tem && tem !== 'pedida' && tem !== 'falhou') return imagem(tem);
+    const anterior = ultima.get(ponto);
+    if (tem === 'pedida' || tem === 'falhou') return anterior ? imagem(anterior) : null;
+    fotos.set(chave, 'pedida');
+    const pedido = fotoDosEsforcos(resultado, modelo, c, w, h, { cancelado: () => !vivo });
     aCaminho.add(pedido);
     void pedido.finally(() => aCaminho.delete(pedido)).catch(() => undefined);
     pedido.then(
@@ -185,6 +223,7 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
           vista: vistaParaPrancha(modelo, c, escala, prefixo, { legendaDeCores: leg, hachuraVetorial: vet, chamadas, anotacoes, cotas, textos, etiquetas, graficos }),
         }));
       }
+      if (c.tipo === 'esforcos') return fotoDosEsforcosDoItem(item);
       if (c.tipo === 'tabela') {
         // sem guardar: a tabela é pouca linha, e a figura que chega muda o desenho
         const q = quantitativo();
@@ -218,6 +257,8 @@ export function criarDesenhista(modelo: Modelo | null, aoMudar: () => void = () 
           return 'Perspectiva';
         case 'tabela':
           return TITULO_DA_TABELA[c.id];
+        case 'esforcos':
+          return 'Esforços — MSd e MRd';
         default:
           return '';
       }

@@ -27,6 +27,8 @@ export const CHAVES = {
   /** Largura do painel em px na escala 100% (ver lembrarLarguraDoPainel). */
   largura: 'alrimo.largura.v2',
   ultimoProjeto: 'alrimo.ultimo.v1',
+  /** A escala, os números e o fantasma do muro da vista Esforços (esforcos/VistaDeEsforcos.tsx). */
+  esforcos: 'alrimo.esforcos.v1',
   /** Registro do aceite do Termo de Uso (estado/termo.ts). */
   termo: 'alrimo.termo.v1',
 } as const;

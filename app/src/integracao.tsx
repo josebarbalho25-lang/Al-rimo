@@ -7,11 +7,13 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useApp } from '@/estado/store';
+import { useInterface } from '@/estado/interface';
 import { gerarModelo } from '@/modulacao';
 import { exportarIfc } from '@/ifc';
 import { imprimirMemorial, vereditoDaMemoria, figuraDoCard } from '@/memoria';
 import { Memoria } from '@/memoria/Memoria';
 import { Visor3D } from '@/visor/Visor3D';
+import { VistaDeEsforcos } from '@/esforcos/VistaDeEsforcos';
 import { Desenhos } from '@/desenhos/Desenhos';
 import { Quantitativo } from '@/quantitativo/Quantitativo';
 import { TelaDasPranchas } from '@/pranchas/TelaDasPranchas';
@@ -25,7 +27,9 @@ const urlDaFigura = (figura: string) => figuraDoCard(figura)?.url ?? null;
 // saía "Projeto sem nome" enquanto o da barra de cima saía certo.
 function MemoriaDoProjeto({ resultado }: { resultado: Resultado }) {
   const projeto = useApp((s) => s.titulo);
-  return <Memoria resultado={resultado} info={{ projeto }} urlDaFigura={urlDaFigura} />;
+  const id = useInterface((s) => s.cardPedido);
+  const pedido = useInterface((s) => s.pedidoDeCard);
+  return <Memoria resultado={resultado} info={{ projeto }} urlDaFigura={urlDaFigura} irParaCard={id ? { id, pedido } : null} />;
 }
 
 export function ligarAsFrentes(): void {
@@ -43,6 +47,7 @@ export function ligarAsFrentes(): void {
       planta: (c) => c.modelo && <Desenhos modelo={c.modelo} vista="planta" selecionado={c.selecionado} onSelecionar={c.selecionar} />,
       iso: (c) => c.modelo && <Desenhos modelo={c.modelo} vista="iso" selecionado={c.selecionado} onSelecionar={c.selecionar} />,
       armacao: (c) => c.modelo && <Desenhos modelo={c.modelo} vista="armacao" selecionado={c.selecionado} onSelecionar={c.selecionar} />,
+      esforcos: (c) => c.modelo && c.resultado && <VistaDeEsforcos modelo={c.modelo} resultado={c.resultado} />,
       memoria: (c) => c.resultado && <MemoriaDoProjeto resultado={c.resultado} />,
       quantitativo: (c) => c.modelo && <Quantitativo modelo={c.modelo} />,
       pranchas: (c) => <TelaDasPranchas modelo={c.modelo} resultado={c.resultado} />,

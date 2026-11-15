@@ -42,6 +42,13 @@ interface EstadoDaInterface {
   campoInicial: string | null;
   /** Cada pedido de campo ganha um número: o mesmo campo pedido duas vezes leva o foco de novo. */
   pedidoDeCampo: number;
+  /**
+   * Abre a Memória no card pedido (o "Memória" da vista Esforços leva à conta da barra clicada). Cada pedido ganha
+   * um número: o mesmo card pedido duas vezes rola de novo.
+   */
+  abrirNoCard: (id: string) => void;
+  cardPedido: string | null;
+  pedidoDeCard: number;
   /** A lista da Memória está recolhida na faixa fina. */
   listaRecolhida: boolean;
   alternarLista: () => void;
@@ -63,6 +70,12 @@ export const useInterface = create<EstadoDaInterface>((set, get) => ({
   abrirNoCampo: (nome) => {
     get().irPara('entradas');
     set({ campoInicial: nome, pedidoDeCampo: get().pedidoDeCampo + 1 });
+  },
+  cardPedido: null,
+  pedidoDeCard: 0,
+  abrirNoCard: (id) => {
+    get().irPara('memoria');
+    set({ cardPedido: id, pedidoDeCard: get().pedidoDeCard + 1 });
   },
   listaRecolhida: lembrar(CHAVES.lista, false, ehBooleano),
   alternarLista: () => {

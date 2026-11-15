@@ -2,7 +2,7 @@
   A TELA DA MEMÓRIA: índice dos cards à esquerda, cards à direita — só os que se aplicam a este muro. Painel é
   rótulo + conta + número; nada de texto explicando (regra do dono).
 */
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Resultado } from '@/motor/tipos';
 import type { Card } from './tipos';
 import { cardsDaMemoria, verificacoesDe } from './cards';
@@ -18,6 +18,8 @@ export interface PropsDaMemoria {
   /** Projeto, responsável, CREA, data — vão para o rosto do memorial impresso. */
   info?: InfoDoMemorial;
   urlDaFigura?: (figura: string) => string | null;
+  /** Rolar até este card ao abrir (e a cada novo `pedido`): quem pede é a vista Esforços. */
+  irParaCard?: { id: string; pedido: number } | null;
 }
 
 /** Cor do ponto do índice: verde se tudo passa, vermelho se algo não passa, nada se o card não verifica. */
@@ -27,7 +29,7 @@ function estado(card: Card): 'ok' | 'falha' | null {
   return vs.every((x) => x.v.passa) ? 'ok' : 'falha';
 }
 
-export function Memoria({ resultado, info, urlDaFigura }: PropsDaMemoria) {
+export function Memoria({ resultado, info, urlDaFigura, irParaCard }: PropsDaMemoria) {
   const cards = useMemo(() => cardsDaMemoria(resultado).filter((c) => c.aplicavel), [resultado]);
   const temResumo = useMemo(() => verificacoesDe(cards).length > 0, [cards]);
   const [ativo, setAtivo] = useState<string | null>(null);
@@ -38,6 +40,16 @@ export function Memoria({ resultado, info, urlDaFigura }: PropsDaMemoria) {
     setAtivo(id);
     folha.current?.querySelector(`[data-indice="${CSS.escape(id)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  // o pedido de fora rola sem animação: a tela acabou de abrir e o card tem de estar lá na primeira olhada
+  useEffect(() => {
+    if (!irParaCard) return;
+    const id = `mem-${irParaCard.id}`;
+    const el = folha.current?.querySelector(`[data-indice="${CSS.escape(id)}"]`);
+    if (!el) return;
+    setAtivo(id);
+    el.scrollIntoView({ block: 'start' });
+  }, [irParaCard?.id, irParaCard?.pedido]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // O índice acompanha a rolagem: fica marcado o último card cujo topo já passou do alto da folha.
   const acompanhar = () => {

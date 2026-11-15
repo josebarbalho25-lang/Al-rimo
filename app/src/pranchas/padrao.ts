@@ -85,6 +85,12 @@ function lerConteudo(v: unknown): ConteudoDoItem | null {
     }
     case 'detalhe':
       return typeof c.id === 'string' ? { tipo: 'detalhe', id: c.id } : null;
+    case 'esforcos': {
+      const camera = lerCamera(c.camera);
+      return camera
+        ? { tipo: 'esforcos', camera, proporcao: Math.max(0.1, num(c.proporcao, 1.5)), escala: c.escala === 'valor' ? 'valor' : 'aproveitamento', valores: c.valores !== false, muro: c.muro === true }
+        : null;
+    }
     case 'tabela':
       return c.id === 'aco' || c.id === 'blocos' || c.id === 'quantidades' || c.id === 'drenagem' ? { tipo: 'tabela', id: c.id } : null;
     default:

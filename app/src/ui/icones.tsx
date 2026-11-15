@@ -206,6 +206,15 @@ export const IconeArmacao = (p: PropsDoIcone) => (
   </Svg>
 );
 
+/** Esforços: a barra em pé com o diagrama de momento (cheio) e a linha do resistente (tracejada). */
+export const IconeEsforcos = (p: PropsDoIcone) => (
+  <Svg {...p}>
+    <path d="M6 3.5v17" />
+    <path d="M6 5.5 16.5 20.5H6" />
+    <path d="M19 4v16.5" strokeDasharray="2.2 2" />
+  </Svg>
+);
+
 /** Memória de cálculo: a folha com as linhas da conta (o mesmo do memorial do A-PORT). */
 export const IconeMemoria = (p: PropsDoIcone) => (
   <Svg {...p}>

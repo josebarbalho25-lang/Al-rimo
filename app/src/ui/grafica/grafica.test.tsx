@@ -29,9 +29,10 @@ describe('Gráfica: navegador, abas abertas e comandos', () => {
 
   it('o navegador tem as pastas na ordem do protótipo, com as vistas de fábrica e as folhas', () => {
     const pastas = pastasDoNavegador(SEM_PRANCHAS);
-    expect(pastas.map((p) => p.nome)).toEqual(['3D', 'Elevações', 'Cortes', 'Plantas', 'Isométricos', 'Armação', 'Pranchas']);
+    expect(pastas.map((p) => p.nome)).toEqual(['3D', 'Elevações', 'Cortes', 'Plantas', 'Isométricos', 'Armação', 'Esforços', 'Pranchas']);
+    expect(pastas[6].itens.map((i) => i.nome)).toEqual(['Esforços']);
     expect(pastas[2].itens.map((i) => [i.nome, i.extra])).toEqual([['Corte', '1:25']]);
-    expect(pastas[6].itens).toEqual([]);
+    expect(pastas[7].itens).toEqual([]);
   });
 
   it('abrir traz para a frente; abrir de novo não repete a aba', () => {
@@ -72,7 +73,7 @@ describe('Gráfica: navegador, abas abertas e comandos', () => {
     const f = useApp.getState().pranchas.folhas[0];
     expect(frente()).toEqual({ aba: 'pranchas', id: f.id });
     confirmarNome(f.id, 'Contrafortes');
-    expect(pastasDoNavegador(useApp.getState().pranchas)[6].itens[0].nome).toBe('01 · Contrafortes');
+    expect(pastasDoNavegador(useApp.getState().pranchas)[7].itens[0].nome).toBe('01 · Contrafortes');
     excluirFolha(f.id);
     expect(useApp.getState().pranchas.folhas).toEqual([]);
     expect(useGrafica.getState().abertas.some((a) => a.id === f.id)).toBe(false);

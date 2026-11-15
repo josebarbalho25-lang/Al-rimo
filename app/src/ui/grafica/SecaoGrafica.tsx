@@ -14,7 +14,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useEffect } from 'react';
-import { useApp } from '@/estado/store';
+import { ABAS, useApp } from '@/estado/store';
 import { chaveDaAberta, FAIXAS, useEncaixes, useGrafica, type Aberta, type IdFaixa } from '@/estado/grafica';
 import { NOMES_DO_CONTEUDO, acharVista } from '@/pranchas/vistas';
 import { ICONE_DA_ABA, Palco } from '@/ui/Palco';
@@ -144,7 +144,8 @@ function nomeDaAberta(a: Aberta): string {
     return f ? `${String(i + 1).padStart(2, '0')}${f.conteudo ? ` · ${f.conteudo}` : ''}` : 'Prancha';
   }
   if (a.id) return acharVista(p, a.id)?.nome ?? '';
-  return '3D';
+  if (a.aba === '3d') return '3D';
+  return ABAS.find((x) => x.id === a.aba)?.nome ?? '';
 }
 
 function AbasAbertas() {

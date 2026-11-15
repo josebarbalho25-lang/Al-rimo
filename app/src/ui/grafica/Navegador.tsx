@@ -44,7 +44,7 @@ function extraDaVista(p: PranchasDoProjeto, v: VistaDoProjeto): string {
   return partes.filter(Boolean).join(' · ');
 }
 
-const PASTAS_2D: ReadonlyArray<[Exclude<IdAba, '3d' | 'pranchas' | 'memoria' | 'quantitativo'>, string]> = [
+const PASTAS_2D: ReadonlyArray<[Exclude<IdAba, '3d' | 'esforcos' | 'pranchas' | 'memoria' | 'quantitativo'>, string]> = [
   ['frontal', 'Elevações'],
   ['corte', 'Cortes'],
   ['planta', 'Plantas'],
@@ -59,6 +59,8 @@ export function pastasDoNavegador(p: PranchasDoProjeto): Pasta[] {
   for (const [tipo, nome] of PASTAS_2D) {
     pastas.push({ nome, itens: vistasDoTipo(p, tipo).map((v) => ({ aberta: { aba: tipo, id: v.id }, id: v.id, nome: v.nome, extra: extraDaVista(p, v) })) });
   }
+  // os esforços são uma vista só (o muro inteiro em barras), como o visor 3D
+  pastas.push({ nome: 'Esforços', itens: [{ aberta: { aba: 'esforcos', id: null }, id: null, nome: 'Esforços', extra: '' }] });
   pastas.push({
     nome: 'Pranchas',
     itens: p.folhas.map((f, i) => ({ aberta: { aba: 'pranchas', id: f.id }, id: f.id, nome: f.conteudo ? `${numero(i + 1)} · ${f.conteudo}` : numero(i + 1), extra: `${f.formato}` })),
