@@ -313,7 +313,44 @@ e dizer ao Jose o que mudou e por quê.
     mim"; o "todos" não usa o trecho consertado. Pedir ao Jose: rodar o instalador novo e escolher "Apenas para mim"
     numa máquina sem o Al-rimo, ou por cima (o dele está "para todos": a página já vem marcada assim).
     Achado no caminho: o muro lembrado volta com o • (o "Não salvar" acima), então a 1ª tentativa de fechar depois
-    de reabrir já pergunta — coerente com a decisão pendente, mas o Jose vai notar.
+    de reabrir já pergunta — coerente com a decisão pendente, mas o Jose vai notar. → CONSERTADO 15/11 (abaixo).
+- **INÍCIO NO PADRÃO DO PRÓ-VIGA (Jose, 15/11: "precisamos manter esse padrão… ele deixa as vigas salvas por último
+  na tela inicial") — FEITO 15/11:** copiado de `proviga-3d-limpo/app/projects.jsx` + classes home-*/export-*/recent-*
+  do Proviga-3D.html, nas mesmas proporções (coluna 256, botões 36, cartões ≥ 212 com foto 16:10, tudo × escala).
+  `ui/TelaInicio.tsx`: marca + "Al-rimo" (serifa; a Fraunces não vem no app — cai na Georgia) + "NBR 16868-1:2020";
+  "+ Novo muro…" (cheio), Abrir…, Exemplo, Salvar, Salvar como…; EXPORTAR em linhas com ladrilho colorido desenhado
+  (tokens `--arq-ifc/dxf/pdf/csv` em tokens.css, iguais nos 3 temas; sem marca de terceiro): IFC, DXF (pranchas),
+  Memorial (chip "2 modos ▾": PDF no programa / Imprimir no navegador, e Word — ligação nova `exportarWord`), Pranchas
+  em PDF, Quantitativo (.csv direto); apagado com chip curto ("Sem modelo", "0 folhas", "Conta com erro"); o DXF e
+  o PDF das pranchas deixam o pedido em `pranchas/pedidoDeSaida.ts` e abrem a Gráfica, e a tela das pranchas atende
+  (o comando fica num lugar só); linha "● Salvo · arquivo". RECENTES à direita: cartão com a foto, nome, ficha
+  ("Balanço · bloco 19×39 · h 1,60 m", `estado/resumoDoMuro.ts`) e data; o mais novo primeiro, teto 12, mesmo
+  arquivo = um (maiúscula/barra), arquivo sumido sai (ao listar no programa; ao clicar no navegador), × no pairar e
+  "Remover da lista" no botão direito (não apaga o arquivo). Clique abre com a pergunta das alterações e a alça
+  (Ctrl+S no mesmo arquivo). FOTO = 3D REALISTA fora da tela (`visor/miniatura.ts` → `refazerFoto` com a opção
+  nova `enquadrar`: isométrico pela caixa do muro, 490 × 300, fundo transparente) SEM O TERRENO (desvio: com os dois
+  aterros o muro virava uma faixa no cartão — visto no programa); sai DEPOIS do registro, uma por vez.
+  ONDE MORAM: programa → perfil (`%APPDATA%\Al-rimo\recentes.json` + `recentes\<sha1>.png`; `instalador/recentes.js`,
+  handlers `recentes:lista/lembrar/esquecer` no main, ponte em preload/programa.ts; também `app.addRecentDocument`,
+  a lista do Windows); navegador com a janela de arquivo (Chrome/Edge) → IndexedDB `alrimo.recentes` com a ALÇA
+  (pede a licença de novo no clique); sem ela (Firefox) a área dos Recentes some. Nada vai no .alrimo.
+  CABEÇALHO numa linha como o h2 do Pró-Viga: seção em negrito + " · " + contexto apagado ("Início · Projetos do
+  Al-rimo"; nas outras o nome do muro com • e, no programa, " — Al-rimo"); salvar/desfazer/refazer ficam (o Pró-Viga
+  não tem no Início — mantidos por serem os aprovados em 20/10). BARRA DE ESTADO: veredito → "● Salvo · arquivo" (o
+  recado da vez tem a vez) → FICHA em pares rótulo/valor mono (MURO, ALTURA, CONTRAFORTES "a cada" só nesse tipo,
+  COMPRIMENTO do muro desenhado, SAPATA; o par que não cabe some inteiro) → avisos, versão da conta e "● CALCULADO
+  hh:mm:ss" (a última conta que fechou). Saiu o "tipo · bloco" da direita (está na ficha; o alerta de família
+  provisória não existe mais — nenhuma é).
+  MURO LEMBRADO VOLTA SALVO (o achado acima): o Chromium grava o armazenamento da página com atraso, e fechar logo
+  depois do Ctrl+S perdia o "salvo". Duas pontas: o main força `flushStorageData()` ao fechar; e o app guarda o
+  CAMINHO do arquivo (`alrimo.caminho.v1`, amarrado ao id e ao nome) e, ao abrir o programa, lê o arquivo e, se o
+  muro da tela é o mesmo do disco, fica salvo (`retomarOArquivo` → store `confirmarODisco`) — e a alça volta (Ctrl+S
+  depois de reabrir grava no mesmo arquivo, sem perguntar onde). Alteração de verdade ("Não salvar") continua com o
+  •; muro nunca salvo, idem. Conferido no programa empacotado: mudou o comprimento, Ctrl+S, fechou em 30 ms, reabriu
+  sem o •. Prints: `_trabalho/padrao_proviga/` (inicio_claro, inicio_escuro, grafica_barras_claro). Testes:
+  `estado/recentes.test.ts`, `ui/telaInicio.test.tsx` (inclui a régua: toda var(--…) do Início, cabeçalho e barra
+  existe nos 3 temas), `visor/miniatura.test.ts`, `instalador/teste/recentes.test.js`. NÃO VISTO: o caminho do
+  navegador (IndexedDB + licença da alça) só nos testes de lógica; a 150 % e na densidade Confortável só pela régua.
 - Contratos entre frentes: `motor/tipos.ts` (conta), `modelo/tipos.ts` (muro peça a peça: quem fabrica é `modulacao/`;
   3D, IFC, desenhos e quantitativo só leem), `memoria/tipos.ts` (cada linha é uma expressão que desenha o TeX e é
   conferida contra a célula), `modelo/entradasDoModelo.ts` (entradas que só o modelo usa: comprimento, juntas, drenagem).
