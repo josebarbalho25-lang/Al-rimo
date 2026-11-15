@@ -178,8 +178,9 @@ export function montarCenaDosEsforcos(barras: BarraAnalitica[], modelo: Modelo, 
     return x;
   };
   const cor = (c: string) => new THREE.Color(c);
-  // a altura cheia do desenho: um quinto da altura do muro (mínimo de 1,5 m de muro), em metro
-  const ALT = 0.2 * Math.max(modelo.dims.H_muro + (modelo.dims.muroDeCima ? modelo.dims.muroDeCima.z1 - modelo.dims.muroDeCima.z0 : 0), 1500) * MM;
+  // a altura cheia do desenho: 30 % da altura do muro (mínimo de 1,5 m de muro), em metro — menos que isso o
+  // diagrama do painel some atrás do da haste; mais, um contraforte invade o vizinho
+  const ALT = 0.3 * Math.max(modelo.dims.H_muro + (modelo.dims.muroDeCima ? modelo.dims.muroDeCima.z1 - modelo.dims.muroDeCima.z0 : 0), 1500) * MM;
   const ref = referencias(barras, o.escala);
 
   const matEixo = guardar(new THREE.LineBasicMaterial({ color: cor(o.cores.eixo), transparent: true, opacity: 0.9 }));

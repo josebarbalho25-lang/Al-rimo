@@ -45,10 +45,20 @@ export function Memoria({ resultado, info, urlDaFigura, irParaCard }: PropsDaMem
   useEffect(() => {
     if (!irParaCard) return;
     const id = `mem-${irParaCard.id}`;
-    const el = folha.current?.querySelector(`[data-indice="${CSS.escape(id)}"]`);
-    if (!el) return;
-    setAtivo(id);
-    el.scrollIntoView({ block: 'start' });
+    // a tela acabou de montar: as contas (TeX) e as figuras ainda assentam a altura dos cards e a folha volta ao
+    // topo; rola depois do quadro e de novo um instante depois, quando a altura já é a de verdade
+    const rolar = () => {
+      const el = folha.current?.querySelector(`[data-indice="${CSS.escape(id)}"]`);
+      if (!el) return;
+      setAtivo(id);
+      el.scrollIntoView({ block: 'start' });
+    };
+    const q = requestAnimationFrame(rolar);
+    const t = setTimeout(rolar, 200);
+    return () => {
+      cancelAnimationFrame(q);
+      clearTimeout(t);
+    };
   }, [irParaCard?.id, irParaCard?.pedido]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // O índice acompanha a rolagem: fica marcado o último card cujo topo já passou do alto da folha.
