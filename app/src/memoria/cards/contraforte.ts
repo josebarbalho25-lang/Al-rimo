@@ -23,6 +23,7 @@ import type { PlanilhaExportada } from '@/motor/tipos';
 import type { AutorDeCards, Card, Expr, Passo, Ref } from '../tipos';
 import { arredCima, avaliar, cbrt, celulasDoIntervalo, cte, div, inteiro, max, min, mul, neg, par, pi, pot, raiz, soma, sub } from '../expr';
 import { lerValor, memoriaDe, secao, type Memoria, type OpcoesDoPasso, type PedidoDeVerificacao } from '../passo';
+import { secoesMRdContraforte } from './momentoResistente';
 import { casasDaEntrada } from '../metaDaPlanilha';
 import { passoDaSomaDaFlecha } from './painelEls';
 import { desenhoDaSecaoDoContraforte } from '../desenhoDaSecaoCf';
@@ -557,6 +558,7 @@ function cardFlexao(r: Parameters<AutorDeCards>[0]): Card {
     ], revit(m));
     secoes.push(armadura, furo, real);
   }
+  secoes.push(...secoesMRdContraforte(m));
 
   const desenho = desenhoDaSecaoDoContraforte(r);
   return {

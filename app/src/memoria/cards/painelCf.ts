@@ -26,9 +26,10 @@
 */
 import dados from '@/motor/planilha.gerada.json';
 import type { PlanilhaExportada } from '@/motor/tipos';
-import type { AutorDeCards, Card, Expr, Passo, Ref } from '../tipos';
+import type { AutorDeCards, Card, Expr, Passo, Ref, Secao } from '../tipos';
 import { arredBaixo, cbrt, celulasDoIntervalo, cte, div, inteiro, max, min, mul, neg, nome, par, pi, pot, raiz, soma, sub } from '../expr';
 import { memoriaDe, secao, type Memoria, type PedidoDeVerificacao } from '../passo';
+import { secaoMRdNaoArmado, secaoMRdPainelHorizontal, secaoMRdPainelVertical } from './momentoResistente';
 import { desenhoDasSecoesDoPainel } from '../desenhoDaSecaoI';
 
 /*
@@ -531,7 +532,7 @@ function cardVertical(m: Memoria): Card {
     titulo: 'Painel · flexão vertical',
     ref: NBR('11.3.3'),
     figura: 'Fig. 14',
-    secoes: [dados, resist, esforcos, armadura],
+    secoes: [dados, resist, esforcos, armadura, secaoMRdPainelVertical(m)].filter((s): s is Secao => !!s),
     avisos: [],
     aplicavel: true,
   });
@@ -622,7 +623,7 @@ function cardHorizontal(m: Memoria): Card {
     titulo: 'Painel · flexão horizontal',
     ref: NBR('11.3.3'),
     figura: 'Fig. 14',
-    secoes: [dados, resist, esforcos, armadura],
+    secoes: [dados, resist, esforcos, armadura, secaoMRdPainelHorizontal(m)].filter((s): s is Secao => !!s),
     avisos: aviso ? ['Mdxe traciona a face do solo junto ao contraforte: barra centralizada ou 2 barras na canaleta'] : [],
     aplicavel: true,
   });
@@ -747,7 +748,12 @@ function cardNaoArmado(m: Memoria): Card {
     }),
   ], NBR('E.3'));
 
-  return limpo({ id, titulo, ref: NBR('Anexo E'), figura, secoes: [geometria, coeficiente, tracao], avisos: [], aplicavel: true });
+  // ftd·W na faixa de 100 cm (W = 100·t²/6, cm³/m; ÷10: MPa·cm³ → kN·cm)
+  const resistente = secaoMRdNaoArmado(m, {
+    p: 'MRp_sp', n: 'MRn_sp', ap: 'ap_psp', an: 'ap_nsp', Mp: ['Mpar_sp', 'M_{d,\\parallel}'], Mn: ['Mnor_sp', 'M_{d,\\perp}'],
+    ftp: ['ftdp_sp', 'f_{td,\\parallel}'], ftn: ['ftdn_sp', 'f_{td,\\perp}'], W: div(mul(cte(100, 0), pot(t, 2)), cte(6, 0)), fator: cte(0.1, 1), un: 'kN·cm/m', casasM: 1,
+  });
+  return limpo({ id, titulo, ref: NBR('Anexo E'), figura, secoes: [geometria, coeficiente, tracao, ...(resistente ? [resistente] : [])], avisos: [], aplicavel: true });
 }
 
 // ───────────────────────────── 5 · ELS ─────────────────────────────

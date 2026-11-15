@@ -13,6 +13,7 @@
 import type { AutorDeCards, Card, Ref } from '../tipos';
 import { cte, div, max, min, mul, par, pi, pot, raiz, soma, sub } from '../expr';
 import { memoriaDe, secao, type Memoria } from '../passo';
+import { secaoMRdNaoArmado, secoesMRdPilarete } from './momentoResistente';
 
 const NBR6123 = (item: string): Ref => ({ fonte: 'NBR 6123', item });
 const NBR16868 = (item: string): Ref => ({ fonte: 'NBR 16868-1', item });
@@ -290,12 +291,20 @@ function cardMuroDeCima(r: Parameters<AutorDeCards>[0]): Card {
   };
   const paineis = (['A', 'B'] as const).map(painel).filter((x): x is NonNullable<typeof x> => x !== null);
   const temVento = (m.num('p_w') ?? 0) > 0;
+  // ftd·W de cada painel (W = t²/6 em m³/m; ×1000: MPa·m³ → kN·m)
+  const resistentes = (['A', 'B'] as const)
+    .map((k) => secaoMRdNaoArmado(m, {
+      p: `MRp_p${k}`, n: `MRn_p${k}`, ap: `ap_pp${k}`, an: `ap_np${k}`, Mp: [`Mpa_p${k}`, `M_{d,\\parallel,${k}}`], Mn: [`Mno_p${k}`, `M_{d,\\perp,${k}}`],
+      ftp: ['ftdp_mc', 'f_{td,\\parallel,mc}'], ftn: ['ftdn_mc', 'f_{td,\\perp,mc}'], W: m.g('W_mc', 'W_{mc}', 6, 'm³/m'), fator: cte(1000, 0), un: 'kN·m/m', casasM: 4,
+      titulo: `Momento resistente da alvenaria · painel ${k}`,
+    }))
+    .filter((s): s is NonNullable<typeof s> => !!s);
 
   return {
     id: 'murocima.muro',
     titulo: 'Muro de cima · peso e painéis',
     ref: { fonte: 'NBR 16868-1', item: 'Anexo E' },
-    secoes: !comMc ? [] : temVento ? [peso, basePainel, ...paineis] : [peso],
+    secoes: !comMc ? [] : temVento ? [peso, basePainel, ...paineis, ...resistentes] : [peso],
     avisos: [],
     aplicavel: comMc,
   };
@@ -428,7 +437,7 @@ function cardPilarete(r: Parameters<AutorDeCards>[0]): Card {
     id: 'murocima.pilarete',
     titulo: concreto ? 'Pilarete de concreto' : 'Pilarete de bloco grauteado',
     ref: concreto ? { fonte: 'NBR 6118' } : { fonte: 'NBR 16868-1' },
-    secoes: comMc && (m.num('p_w') ?? 0) > 0 ? [esforcos, flexao, cortante, ligacao, ancoragem] : [],
+    secoes: comMc && (m.num('p_w') ?? 0) > 0 ? [esforcos, flexao, cortante, ligacao, ancoragem, ...secoesMRdPilarete(m)] : [],
     avisos: [],
     aplicavel: comMc && (m.num('p_w') ?? 0) > 0,
   };

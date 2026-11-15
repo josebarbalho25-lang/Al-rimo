@@ -19,6 +19,7 @@ import type { PlanilhaExportada } from '@/motor/tipos';
 import type { AutorDeCards, Card, Expr, Passo, Ref } from '../tipos';
 import { arredBaixo, arredCima, avaliar, cte, div, max, min, mul, nome, par, pi, pot, raiz, soma, sub } from '../expr';
 import { memoriaDe, secao } from '../passo';
+import { secaoMRdSapata } from './momentoResistente';
 import type { Memoria } from '../passo';
 import { desenhoDaFlexaoDaSapata, desenhoDoCortanteDaSapata } from '../desenhoDaSapata';
 
@@ -353,7 +354,7 @@ function cardFlexao(r: Parameters<AutorDeCards>[0], L: Lado): Card {
     id: `sapata.flexao.${i === 'p' ? 'ponta' : 'talao'}`,
     titulo: `Sapata · flexão ${i === 'p' ? 'da ponta' : 'do talão'}`,
     ref: NBR(),
-    secoes: [i === 'p' && secaoMateriais(m, f), fatia, momento].filter((s) => !!s && s.passos.length > 0) as Card['secoes'],
+    secoes: [i === 'p' && secaoMateriais(m, f), fatia, momento, secaoMRdSapata(m, i === 'p' ? 'ponta' : 'talao')].filter((s) => !!s && s.passos.length > 0) as Card['secoes'],
     avisos: [],
     aplicavel: true,
   };

@@ -12,6 +12,7 @@
 import type { AutorDeCards, Card, Expr, Ref, Secao } from '../tipos';
 import { arredBaixo, arredCima, cte, div, max, min, mul, par, pi, pot, raiz, soma, sub } from '../expr';
 import { memoriaDe, secao, type Memoria } from '../passo';
+import { secaoMRdBalanco } from './momentoResistente';
 import { nbr, nt } from '../formato';
 import { passoDaDobra, secaoDoTraspasse } from './sapata';
 import { desenhoDaFaixaEmPlanta, desenhoDasForcasNaFaixa } from '../desenhoDaSecaoI';
@@ -444,7 +445,7 @@ function cardFlexao(m: Memoria, f: Folhas, c: Ctx): Card {
     ref: NBR('11.3'),
     figura: 'Fig. 4',
     ...(desenho ? { desenho } : {}),
-    secoes: so([secaoResistenciaDaFlexao(m, f), paredeDoBloco, ...(mesaSo ? [] : [secaoT]), linhaNeutra, armadura, barras]),
+    secoes: so([secaoResistenciaDaFlexao(m, f), paredeDoBloco, ...(mesaSo ? [] : [secaoT]), linhaNeutra, armadura, barras, ...[secaoMRdBalanco(m)].filter((s): s is Secao => !!s)]),
     avisos,
     aplicavel: c.balanco,
   };

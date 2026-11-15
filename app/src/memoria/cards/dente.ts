@@ -18,6 +18,7 @@
 import type { AutorDeCards, Card, Expr, Ref } from '../tipos';
 import { arredCima, cte, div, max, min, mul, neg, par, pi, pot, raiz, rad, soma, sub, tan } from '../expr';
 import { memoriaDe, secao } from '../passo';
+import { secaoMRdDente } from './momentoResistente';
 import type { Memoria } from '../passo';
 import { desenhoDaSecaoDoDente, desenhoDasForcasNoDente } from '../desenhoDaSapata';
 
@@ -290,6 +291,7 @@ export const autorDente: AutorDeCards = (r) => {
     }),
   ], DEDUCAO);
 
-  card.secoes = [geometria, passivo, flexao, cortante, ancoragem, longitudinais, sapata].filter((sc) => sc.passos.length > 0);
+  const resistente = secaoMRdDente(m);
+  card.secoes = [geometria, passivo, flexao, ...(resistente ? [resistente] : []), cortante, ancoragem, longitudinais, sapata].filter((sc) => sc.passos.length > 0);
   return [card];
 };

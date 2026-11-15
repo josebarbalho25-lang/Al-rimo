@@ -18,6 +18,7 @@ import type { PlanilhaExportada } from '@/motor/tipos';
 import type { AutorDeCards, Card, Expr, Passo, Ref, Secao } from '../tipos';
 import { cbrt, celulasDoIntervalo, cte, div, inteiro, max, min, mul, neg, par, pot, raiz, soma, sub } from '../expr';
 import { memoriaDe, secao, type Memoria } from '../passo';
+import { secaoMRdNaoArmado } from './momentoResistente';
 import { desenhoDaSecaoI } from '../desenhoDaSecaoI';
 
 export const SIMBOLOS_PAINELELS: Readonly<Record<string, string>> = {
@@ -381,7 +382,10 @@ function cardPainel(r: Parameters<AutorDeCards>[0]): Card {
     titulo: 'Painel não armado · balanço',
     ref: NBR('Anexo E'),
     figura: 'Fig. 5',
-    secoes: comPassos([geometria, tracao, coeficiente, momentos, cisalhamento]),
+    secoes: comPassos([geometria, tracao, coeficiente, momentos, cisalhamento, ...[secaoMRdNaoArmado(m, {
+      p: 'MRp_pan', n: 'MRn_pan', ap: 'ap_ppan', an: 'ap_npan', Mp: ['Mpar', 'M_{d,\\parallel}'], Mn: ['Mnor', 'M_{d,\\perp}'],
+      ftp: ['ftd_par', 'f_{td,\\parallel}'], ftn: ['ftd_nor', 'f_{td,\\perp}'], W: m.g('W_pan', 'W', 6, 'm³/m'), fator: cte(1000, 0), un: 'kN·m/m', casasM: 4,
+    })].filter((s): s is Secao => !!s)]),
     avisos,
     aplicavel,
   };

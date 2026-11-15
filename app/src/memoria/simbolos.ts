@@ -21,6 +21,7 @@ import { SIMBOLOS_ESTABILIDADE } from './cards/estabilidade';
 import { SIMBOLOS_SAPATA } from './cards/sapata';
 import { SIMBOLOS_DENTE } from './cards/dente';
 import { SIMBOLOS_MURODECIMA } from './cards/muroDeCima';
+import { SIMBOLOS_MRD } from './cards/momentoResistente';
 
 const SIMBOLOS_BASE: Readonly<Record<string, string>> = {
   // ── geometria e cargas (Entradas) ──
@@ -93,6 +94,7 @@ const GRUPOS: ReadonlyArray<readonly [string, Readonly<Record<string, string>>]>
   ['sapata', SIMBOLOS_SAPATA],
   ['dente', SIMBOLOS_DENTE],
   ['murocima', SIMBOLOS_MURODECIMA],
+  ['mrd', SIMBOLOS_MRD],
 ];
 
 export const CONFLITOS_DE_SIMBOLO: string[] = [];
