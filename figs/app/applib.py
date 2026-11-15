@@ -346,6 +346,9 @@ class Fig:
                 s.line(cx, yy, cx + 26, yy, stroke=C['dim'], sw=1.6, extra='stroke-dasharray="12,4,2,4"')
             elif tipo == 'reboco':
                 s.rect(cx, yy - 7, 26, 14, fill=C['reboco'], stroke=C['dim'], sw=0.8)
+            elif tipo == 'tijolo':
+                # o muro de cima (15/11): alvenaria de vedação clara, para não se confundir com o bloco do arrimo
+                s.rect(cx, yy - 7, 26, 14, fill=C['claro'], stroke=C['block'], sw=1)
             s.text(cx + 34, y, rot, size=T_PEQ, anchor='start', color=C['note'])
             cx += 34 + _larg_texto(rot, T_PEQ) + 28
 

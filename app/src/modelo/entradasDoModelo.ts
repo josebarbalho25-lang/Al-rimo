@@ -28,8 +28,8 @@ export const ENTRADAS_DO_MODELO: EntradaMeta[] = [
   // muro de cima (13/11): o que a conta não pede e o detalhamento precisa — o estribo do pilarete. O Ø da cinta
   // (phi_cin_mc) era daqui; foi para a planilha em 15/11, quando a cinta passou a ser verificada (projeto.ts abre o
   // arquivo antigo)
-  { nome: 'phi_est_pil', rotulo: 'Ø do estribo do pilarete', padrao: 5, unidade: 'mm', nota: 'Só no pilarete de concreto.', figura: null, opcoes: [5, 6.3], formato: '0.0', secao: MODELO, ref: 'modelo!phi_est_pil' },
-  { nome: 's_est_pil', rotulo: 'Espaçamento do estribo do pilarete — opcional', padrao: null, unidade: 'cm', nota: 'Em branco = mín(20 cm; b; 12φ) (NBR 6118 18.4.3).', figura: null, opcoes: null, formato: '0', secao: MODELO, ref: 'modelo!s_est_pil' },
+  { nome: 'phi_est_pil', rotulo: 'Ø do estribo do pilarete', padrao: 5, unidade: 'mm', nota: 'Só no pilarete de concreto.', figura: 'Fig. 30', opcoes: [5, 6.3], formato: '0.0', secao: MODELO, ref: 'modelo!phi_est_pil' },
+  { nome: 's_est_pil', rotulo: 'Espaçamento do estribo do pilarete — opcional', padrao: null, unidade: 'cm', nota: 'Em branco = mín(20 cm; b; 12φ) (NBR 6118 18.4.3).', figura: 'Fig. 30', opcoes: null, formato: '0', secao: MODELO, ref: 'modelo!s_est_pil' },
 
   { nome: 'barbaca_on', rotulo: 'Barbacãs', padrao: 'Sim', unidade: '', nota: '', figura: 'Fig. 17', opcoes: ['Sim', 'Não'], formato: 'General', secao: DRENAGEM, ref: 'modelo!barbaca_on' },
   { nome: 'barbaca_phi', rotulo: 'Ø do barbacã', padrao: 50, unidade: 'mm', nota: '', figura: 'Fig. 17', opcoes: null, formato: '0', secao: DRENAGEM, ref: 'modelo!barbaca_phi' },

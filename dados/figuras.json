@@ -178,6 +178,30 @@
       "numero": 27,
       "titulo": "Peso próprio do contraforte",
       "arquivo": "fig27.svg"
+    },
+    {
+      "id": "fig28",
+      "numero": 28,
+      "titulo": "Muro de cima",
+      "arquivo": "fig28.svg"
+    },
+    {
+      "id": "fig29",
+      "numero": 29,
+      "titulo": "Vento no muro",
+      "arquivo": "fig29.svg"
+    },
+    {
+      "id": "fig30",
+      "numero": 30,
+      "titulo": "Pilarete",
+      "arquivo": "fig30.svg"
+    },
+    {
+      "id": "fig31",
+      "numero": 31,
+      "titulo": "Cinta do muro de cima",
+      "arquivo": "fig31.svg"
     }
   ],
   "entradas": {
@@ -654,46 +678,148 @@
     "barbaca_dreno": {
       "figura": "fig17",
       "campo": "barbaca_on"
+    },
+    "mc_on": {
+      "figura": "fig28",
+      "campo": "mc_on"
+    },
+    "h_mc": {
+      "figura": "fig28",
+      "campo": "h_mc"
+    },
+    "t_mc": {
+      "figura": "fig28",
+      "campo": "t_mc"
+    },
+    "mat_mc": {
+      "figura": "fig28",
+      "campo": "mat_mc"
+    },
+    "g_mc": {
+      "figura": "fig28",
+      "campo": "g_mc"
+    },
+    "reb_mc": {
+      "figura": "fig28",
+      "campo": "reb_mc"
+    },
+    "reb_mc_esp": {
+      "figura": "fig28",
+      "campo": "reb_mc_esp"
+    },
+    "arg_mc": {
+      "figura": "fig28",
+      "campo": "arg_mc"
+    },
+    "ftkn_mc_dir": {
+      "figura": "fig28",
+      "campo": "ftkn_mc_dir"
+    },
+    "ftkp_mc_dir": {
+      "figura": "fig28",
+      "campo": "ftkp_mc_dir"
+    },
+    "fvk_mc_dir": {
+      "figura": "fig28",
+      "campo": "fvk_mc_dir"
+    },
+    "cin_mc": {
+      "figura": "fig28",
+      "campo": "cin_mc"
+    },
+    "s_pil": {
+      "figura": "fig28",
+      "campo": "s_pil"
+    },
+    "pil_ncf": {
+      "figura": "fig28",
+      "campo": "pil_ncf"
+    },
+    "vento_on": {
+      "figura": "fig29",
+      "campo": "vento_on"
+    },
+    "V0_v": {
+      "figura": "fig29",
+      "campo": "V0_v"
+    },
+    "S1_v": {
+      "figura": "fig29",
+      "campo": "S1_v"
+    },
+    "cat_v": {
+      "figura": "fig29",
+      "campo": "cat_v"
+    },
+    "cls_v": {
+      "figura": "fig29",
+      "campo": "cls_v"
+    },
+    "S3_v": {
+      "figura": "fig29",
+      "campo": "S3_v"
+    },
+    "S3_e": {
+      "figura": "fig29",
+      "campo": "S3_e"
+    },
+    "Cf_dir": {
+      "figura": "fig29",
+      "campo": "Cf_dir"
+    },
+    "pil_tipo": {
+      "figura": "fig30",
+      "campo": "pil_tipo"
+    },
+    "b_pil": {
+      "figura": "fig30",
+      "campo": "b_pil"
+    },
+    "hs_pil": {
+      "figura": "fig30",
+      "campo": "hs_pil"
+    },
+    "fck_pil": {
+      "figura": "fig30",
+      "campo": "fck_pil"
+    },
+    "fbk_pil": {
+      "figura": "fig30",
+      "campo": "fbk_pil"
+    },
+    "phi_pil": {
+      "figura": "fig30",
+      "campo": "phi_pil"
+    },
+    "n_pil": {
+      "figura": "fig30",
+      "campo": "n_pil"
+    },
+    "c_pil": {
+      "figura": "fig30",
+      "campo": "c_pil"
+    },
+    "phi_est_pil": {
+      "figura": "fig30",
+      "campo": "phi_est_pil"
+    },
+    "s_est_pil": {
+      "figura": "fig30",
+      "campo": "s_est_pil"
+    },
+    "phi_cin_mc": {
+      "figura": "fig31",
+      "campo": "phi_cin_mc"
+    },
+    "n_cin_mc": {
+      "figura": "fig31",
+      "campo": "n_cin_mc"
     }
   },
   "sem_figura": {
     "fyk_": "aço CA-50: não há o que desenhar",
     "gama_f": "coeficiente de norma: decisão do Jose pendente (sem botão, tabela de norma ou fora do app)",
     "gama_m": "coeficiente de norma: decisão do Jose pendente",
-    "gama_s": "coeficiente de norma: decisão do Jose pendente",
-    "mc_on": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "h_mc": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "t_mc": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "mat_mc": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "g_mc": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "reb_mc": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "reb_mc_esp": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "arg_mc": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "ftkn_mc_dir": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "ftkp_mc_dir": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "fvk_mc_dir": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "cin_mc": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "pil_tipo": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "s_pil": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "pil_ncf": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "b_pil": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "hs_pil": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "fck_pil": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "fbk_pil": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "phi_pil": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "n_pil": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "c_pil": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "vento_on": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "V0_v": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "S1_v": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "cat_v": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "cls_v": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "S3_v": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "Cf_dir": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "phi_cin_mc": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "n_cin_mc": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "phi_est_pil": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "s_est_pil": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)",
-    "S3_e": "muro de cima e vento: figura a desenhar (Fig. 28/29, próxima etapa)"
+    "gama_s": "coeficiente de norma: decisão do Jose pendente"
   }
 }
