@@ -18,6 +18,7 @@ import { useInterface, type Secao } from '@/estado/interface';
 import { useApp } from '@/estado/store';
 import { definirPreferencia, NOME_DO_TEMA, proximoTema, usePreferencias } from '@/estilo/preferenciasDaInterface';
 import { MarcaAlrimo } from './Marca';
+import { temBarraPropria } from './barraDaJanela';
 import {
   IconeDesfazer,
   IconeEngrenagem,
@@ -104,12 +105,16 @@ export function CabecalhoDaSecao({ children }: { children?: ReactNode }) {
   const podeRefazer = useApp((s) => s.podeRefazer);
   const desfazer = useApp((s) => s.desfazer);
   const refazer = useApp((s) => s.refazer);
+  const barraPropria = temBarraPropria();
   return (
     <header className="cabecalho">
       <div className="cabecalho-titulo">
         <h1 title={arquivo ?? undefined}>
           {titulo}
           {sujo ? ' •' : ''}
+          {/* No programa instalado o cabeçalho é a barra de título: leva o nome do programa, como a do Windows levava.
+              No navegador quem diz "Al-rimo" é a aba. */}
+          {barraPropria && <span className="cabecalho-programa"> — Al-rimo</span>}
         </h1>
         <span className="cabecalho-secao">{NOME_DA_SECAO[secao]}</span>
       </div>

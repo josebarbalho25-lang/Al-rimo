@@ -29,6 +29,11 @@ export interface PonteDoPrograma {
   informarEstado(e: { sujo: boolean; titulo: string }): void;
   aoPedirSalvarEFechar(cb: () => void): void;
   fechar(): void;
+  /**
+   * A cor e a altura dos botões do Windows sobre o cabeçalho, e o fundo da janela para a próxima abertura
+   * (ui/barraDaJanela.tsx). Opcional: o programa de antes de 15/11 tinha a barra do Windows e não a oferece.
+   */
+  barraDaJanela?(b: { color: string; symbolColor: string; height: number; fundo: string }): void;
 }
 
 export function ponteDoPrograma(): PonteDoPrograma | null {

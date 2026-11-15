@@ -123,6 +123,53 @@
   align-items: center;
   gap: 8px;
 }
+/* ── PROGRAMA INSTALADO: O CABEÇALHO É A BARRA DE TÍTULO ───────────────────
+   (html.programa, posto por ui/barraDaJanela.tsx; no navegador não vale.) O
+   jeito do Pró-Viga 3D e do All Sec: o cabeçalho arrasta a janela e o duplo
+   clique nele maximiza, como numa barra de título; os três botões são os do
+   Windows, desenhados por cima do canto direito. env(titlebar-area-width) é a
+   largura livre, sem eles — a folga à direita é o que eles ocupam.
+   ⚠️ Tudo o que se clica dentro da área de arrastar precisa de no-drag: o
+   Windows tomaria o clique como "pegar a janela". Janelas por cima (termo,
+   figuras, gráficos, menus) também: o canto delas pode cair sobre o cabeçalho. */
+html.programa .cabecalho {
+  -webkit-app-region: drag;
+  padding-right: max(12px, calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 12px));
+}
+html.programa .trilho-marca {
+  -webkit-app-region: drag;
+}
+html.programa .cabecalho button,
+html.programa .cabecalho input,
+html.programa .cabecalho select,
+html.programa .cabecalho a,
+html.programa .cabecalho-direita,
+html.programa .cabecalho-direita *,
+html.programa .modal-caixa,
+html.programa [role='dialog'],
+html.programa [role='menu'],
+html.programa .menu-contexto {
+  -webkit-app-region: no-drag;
+}
+.cabecalho-programa {
+  font-weight: 400;
+  color: var(--muted);
+}
+/* antes do aceite do termo: a faixa que faz de cabeçalho (só existe no programa) */
+.faixa-da-janela {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: var(--fs-rotulo);
+  -webkit-app-region: drag;
+  z-index: 1;
+}
+
 .secao-corpo {
   flex: 1 1 auto;
   min-height: 0;

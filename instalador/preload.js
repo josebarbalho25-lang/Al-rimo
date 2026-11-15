@@ -26,4 +26,7 @@ contextBridge.exposeInMainWorld('alrimoPrograma', {
   informarEstado: (e) => ipcRenderer.send('programa:estado', e),
   aoPedirSalvarEFechar: (cb) => { ipcRenderer.on('programa:salvar-e-fechar', () => cb()); },
   fechar: () => ipcRenderer.send('programa:fechar'),
+
+  // A cor e a altura dos botões do Windows sobre o cabeçalho, que é a barra de título (app/src/ui/barraDaJanela.tsx).
+  barraDaJanela: (b) => ipcRenderer.send('janela:barra', b),
 });

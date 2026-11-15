@@ -151,7 +151,7 @@ async function servir(pedido) {
 /* ── preferências da máquina (tamanho da janela, última pasta) ───────────── */
 
 const ARQ_PREFS = () => path.join(app.getPath('userData'), 'programa.json');
-let prefs = { janela: null, pasta: null };
+let prefs = { janela: null, pasta: null, barra: null, splash: null };
 
 function lerPrefs() {
   try { prefs = { ...prefs, ...JSON.parse(fs.readFileSync(ARQ_PREFS(), 'utf8')) }; } catch (_) { /* primeira vez */ }
@@ -280,16 +280,45 @@ function abrirPorFora(url) {
   if (/^(https?:|mailto:)/i.test(url)) shell.openExternal(url);
 }
 
+/* A BARRA DE TÍTULO É O CABEÇALHO DO APP (Jose, 15/11: "igual em todos os
+   outros já instaláveis" — o Pró-Viga 3D e o All Sec fazem assim). A barra
+   branca do Windows sai (titleBarStyle 'hidden'); os botões minimizar,
+   maximizar e fechar continuam sendo os do Windows, desenhados por cima do
+   canto direito do cabeçalho (titleBarOverlay) — por isso o vermelho do
+   fechar, o encaixe (Win+setas, arrastar ao topo), o duplo clique e a borda
+   que redimensiona funcionam como em qualquer janela. Desenhar botões
+   próprios com frame:false perderia o encaixe e a borda.
+   A cor e a altura vêm da página a cada troca de tema ou de tamanho
+   (app/src/ui/barraDaJanela.tsx); a última fica guardada para a próxima
+   abertura não piscar com a cor de fábrica antes de a página falar. Os
+   números de fábrica são os do tema Claro a 90 % (o padrão de 15/11). */
+const BARRA_DE_FABRICA = { color: '#ffffff', symbolColor: '#0e1424', height: 37, fundo: '#e9edf4' };
+
+function barraGuardada() {
+  const b = prefs.barra || {};
+  const cor = (c, padrao) => (typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c) ? c : padrao);
+  const altura = Number.isFinite(b.height) && b.height >= 24 && b.height <= 120 ? Math.round(b.height) : BARRA_DE_FABRICA.height;
+  return {
+    color: cor(b.color, BARRA_DE_FABRICA.color),
+    symbolColor: cor(b.symbolColor, BARRA_DE_FABRICA.symbolColor),
+    height: altura,
+    fundo: cor(b.fundo, BARRA_DE_FABRICA.fundo),
+  };
+}
+
 function criarPrincipal() {
+  const barra = barraGuardada();
   principal = new BrowserWindow({
     ...lugarDaJanela(),
     minWidth: 960,
     minHeight: 600,
     title: NOME,
     show: false,
-    backgroundColor: '#1b1f27',
+    backgroundColor: barra.fundo,
     icon: ICONE,
     autoHideMenuBar: true,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: { color: barra.color, symbolColor: barra.symbolColor, height: barra.height },
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -473,6 +502,24 @@ function ligarPonte() {
     estado = { sujo: !!(e && e.sujo), titulo: (e && typeof e.titulo === 'string') ? e.titulo : '' };
     anotar('[estado]', estado.sujo ? 'alterado' : 'salvo', estado.titulo);
     tituloDaJanela();
+  });
+
+  // Os botões do Windows na cor e na altura do cabeçalho (app/src/ui/barraDaJanela.tsx).
+  ipcMain.on('janela:barra', (e, b) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    if (!win || win.isDestroyed() || !b) return;
+    const cor = (c) => (typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c) ? c : undefined);
+    const altura = Math.round(Number(b.height));
+    const valida = altura >= 24 && altura <= 120 ? altura : undefined;
+    try {
+      win.setTitleBarOverlay({ color: cor(b.color), symbolColor: cor(b.symbolColor), height: valida });
+    } catch (_) { /* fora do Windows não há sobreposição */ }
+    if (win === principal) {
+      prefs.barra = { color: cor(b.color), symbolColor: cor(b.symbolColor), height: valida, fundo: cor(b.fundo) };
+      if (cor(b.fundo)) win.setBackgroundColor(b.fundo);
+      gravarPrefs();
+      anotar('[barra]', JSON.stringify(prefs.barra));
+    }
   });
 
   ipcMain.on('programa:fechar', () => {

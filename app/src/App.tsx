@@ -38,6 +38,7 @@ import { PainelDeEntradas } from '@/ui/PainelDeEntradas';
 import { TelaInicio } from '@/ui/TelaInicio';
 import { PortaDoTermo } from '@/ui/TermoDeUso';
 import { CabecalhoDaSecao, Trilho } from '@/ui/Trilho';
+import { FaixaDaJanela, usarBarraDaJanela } from '@/ui/barraDaJanela';
 import { ehCampoDeTexto } from '@/ui/teclado';
 
 /** Faixa da largura do painel ao arrastar, em px de TELA. */
@@ -51,12 +52,20 @@ const LARGURA_MAX = 720;
 */
 export function App() {
   const [liberado, setLiberado] = useState(() => aceiteVigente() !== null);
-  if (!liberado) return <PortaDoTermo aoLiberar={() => setLiberado(true)} />;
+  if (!liberado) {
+    return (
+      <>
+        <FaixaDaJanela />
+        <PortaDoTermo aoLiberar={() => setLiberado(true)} />
+      </>
+    );
+  }
   return <Casca />;
 }
 
 function Casca() {
   useAtalhos();
+  usarBarraDaJanela('.cabecalho');
   const secao = useInterface((s) => s.secao);
   // A janela de Gráficos de uma vista ou do 3D é da Gráfica: saindo dela, fecha como está (mexer numa vista que não
   // está à vista não serve). A geral (Configurações) fica.
