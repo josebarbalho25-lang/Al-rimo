@@ -229,6 +229,21 @@ ALVOS_VAZIO = {
 }
 ALVOS.update(ALVOS_VAZIO)
 
+# Armadura do dente (15/11; aba Fundação, seção 11). Os sorteios já passam pelo dente dos dois lados do muro com o
+# espaçamento automático; faltavam o espaçamento DIGITADO com outros Ø (dente do lado da ponta, aterro na frente) e
+# o dente que NÃO passa (estreito e fundo: a flexão pede mais que a série de espaçamentos dá). Fora do sorteio de
+# propósito: sorteá-los trocaria os muros que os testes do app conhecem pelo nome.
+ALVOS_DENTE = {
+    'alvo_dente_ponta_digitado': {
+        'b_den': 0.3, 'h_den': 0.7, 'x_den': 0.4, 'phi_den': 10, 's_den_dir': 10, 'phi_lden': 8,
+        'h_fr': 0.5, 'pass_on': 'Sim',
+    },
+    'alvo_dente_talao_nao_passa': {
+        'b_den': 0.12, 'h_den': 1.0, 'x_den': -0.3, 'phi_den': 5, 'phi_base': 35, 'h_fr': 1.2,
+    },
+}
+ALVOS.update(ALVOS_DENTE)
+
 # solo no topo do muro em todo alvo que mexe na altura do muro e não diz a do solo (ver ALVOS_SOLO)
 for _sc in ALVOS.values():
     if isinstance(_sc, dict) and 'H_muro' in _sc:

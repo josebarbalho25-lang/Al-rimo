@@ -96,6 +96,8 @@ export const ABAS: readonly Aba[] = [
       { titulo: 'Solo de apoio', campos: ['SPT_b', 'sig_adm_dir', 'phi_base', 'dphi', 'ades_b'] },
       { titulo: 'Espera', campos: ['arranque', 'zona_ad', 'gancho_', 'traspasse_dir'] },
       { titulo: 'Armadura da sapata', campos: ['sap_transv', 'cob_sap', 'phi_sap', 'phi_sap2', ['phi_tor', C]] },
+      // armadura do dente (15/11): estribo em pé entrando na sapata + longitudinais de montagem; apaga sem dente
+      { titulo: 'Armadura do dente', campos: ['phi_den', 's_den_dir', 'phi_lden'] },
     ],
   },
   {

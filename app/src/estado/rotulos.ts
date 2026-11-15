@@ -169,6 +169,9 @@ export const ROTULO_CURTO: Record<string, string> = {
   phi_sap: 'Ø transversal',
   phi_sap2: 'Ø longitudinal',
   phi_tor: 'Ø estribo de torção',
+  phi_den: 'Dente: Ø estribo',
+  s_den_dir: 'Dente: espaçamento',
+  phi_lden: 'Dente: Ø longitudinal',
 
   // ── Coeficientes
   gama_f: 'γf',

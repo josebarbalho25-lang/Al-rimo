@@ -1,7 +1,7 @@
 # Fig. 18 (app, nova) — armadura da sapata corrida, corte junto a um contraforte: Ø principal transversal
 # nas duas faces (a de cima só quando o talão pede — nota da aba Fundação: "mesma armadura nas duas faces se
 # os dois balanços pedirem"), Ø secundária longitudinal, estribo fechado de torção (só com contrafortes),
-# cobrimento. O trecho ao longo do muro em que vai o estribo de torção ainda não está definido (pergunta
+# cobrimento; e a armadura do DENTE (estribo em pé + longitudinais, 15/11). O trecho ao longo do muro em que vai o estribo de torção ainda não está definido (pergunta
 # Q11 da modulação), por isso a figura não mostra planta.
 # Régua comum (12/10, applib): detalhe em K_DETALHE; solo à DIREITA (antes à esquerda) — o talão fica sob o
 # aterro —; parede, sapata e espera pelas peças padrão. A espera passou a vermelha e a barra do muro a rosa, como
@@ -65,6 +65,19 @@ def desenhar():
         for xx in xsec:
             s.circle(xx, yi - 7, 5)
             s.circle(xx, ys + 7, 5)
+    # dente armado (15/11; Jose: "similar à da sapata corrida, porém na vertical, com estribos adentrando a sapata e
+    # armadura de montagem no sentido longitudinal"): estribo fechado em pé, do fundo do dente ao cobrimento de cima
+    # da sapata, por dentro do estribo dela, ganchos em cima do lado da ponta; longitudinais por dentro, nas faces
+    xd0, xd1 = X(B / 2 - BD / 2 + C_S), X(B / 2 + BD / 2 - C_S)
+    yd0, yd1 = ys + 9, Y(HS + HD - C_S)
+    with s.campo('phi_den', 's_den_dir'):
+        s.rect(xd0, yd0, xd1 - xd0, yd1 - yd0, stroke=C['steel'], sw=3, extra='rx="5"')
+        s.line(xd0 + 2, yd0 + 2, xd0 + 16, yd0 + 16, stroke=C['steel'], sw=3)
+        s.line(xd0 + 8, yd0 - 1, xd0 + 22, yd0 + 13, stroke=C['steel'], sw=3)
+    with s.campo('phi_lden'):
+        for xx in (xd0 + 8, xd1 - 8):
+            s.circle(xx, yd1 - 8, 4.5)
+            s.circle(xx, Y(HS) + 4, 4.5)
     # cobrimento, nas duas faces, do lado da frente
     with s.campo('cob_sap'):
         s.dim_v(X(0) - 26, Y(0), Y(C_S), 'c_{s}', side=-1, ext_from=(X(C_S), X(0)))
@@ -76,6 +89,10 @@ def desenhar():
         s.chamada(xsec[2], yi - 7, X(0.40), Y(HS) + 82, 'φ_{s2}', size=T_SIM, anchor='end')
     with s.campo('phi_tor'):
         s.chamada(X(B - C_S), Y(0.20), X(B) + 40, Y(0.20) + 34, 'φ_{t}', size=T_SIM)
+    with s.campo('phi_den', 's_den_dir'):
+        s.chamada(xd1, Y(HS + 0.12), X(B / 2 + BD / 2) + 46, Y(HS) + 58, 'φ_{d}', size=T_SIM)
+    with s.campo('phi_lden'):
+        s.chamada(xd1 - 8, yd1 - 8, X(B / 2 + BD / 2) + 46, Y(HS) + 100, 'φ_{ld}', size=T_SIM)
     s.dim_h(X(0), X(B), Y(HS + HD) + 44, 'B', ext_from=(Y(HS), Y(HS)))
     s.legenda(X(0), Y(HS + HD) + 96, [('aco', 'espera'), ('aco2', 'barra do muro')])
     return s

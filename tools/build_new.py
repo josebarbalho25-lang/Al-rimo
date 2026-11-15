@@ -363,6 +363,14 @@ line(E, r, 'Ø secundária (longitudinal)', 6.3, 'mm', '', 'inp', '0.0', 'phi_sa
 lista(LST['lst_phi_sap2'], f'B{r-1}')
 line(E, r, 'Ø do estribo de torção (contrafortes)', 6.3, 'mm', '', 'inp', '0.0', 'phi_tor'); r += 1
 lista(LST['lst_phi_sap2'], f'B{r-1}')
+# Armadura do dente (15/11; Jose: "similar à da sapata corrida, porém na vertical, com estribos adentrando a sapata e
+# armadura de montagem no sentido longitudinal"). A conta está na aba Fundação, seção 11. No FIM da seção: as entradas
+# de cima ficam onde estavam. Sem dente (largura ou altura 0) as três não entram em conta nenhuma.
+line(E, r, 'Dente: Ø do estribo', 8, 'mm', 'Estribo fechado em pé, do fundo do dente até o cobrimento de cima da sapata (aba Fundação, seção 11).', 'inp', '0.0', 'phi_den'); r += 1
+lista(LST['lst_phi_sap2'], f'B{r-1}')
+line(E, r, 'Dente: espaçamento do estribo — opcional', None, 'cm', 'Em branco = o maior entre 20; 15; 12,5; 10; 7,5 e 5 cm que atende a armadura do dente.', 'inp', '0.0', 's_den_dir'); r += 1
+line(E, r, 'Dente: Ø da longitudinal', 6.3, 'mm', 'Barras corridas de montagem, por dentro do estribo. A quantidade sai da conta (aba Fundação, seção 11).', 'inp', '0.0', 'phi_lden'); r += 1
+lista(LST['lst_phi_sap2'], f'B{r-1}')
 r += 1
 # MURO DE CIMA E VENTO (Jose, 13/11): o arrimo dos clientes dele "não pode ser só arrimo" — tem muro de vedação por
 # cima, e o vento nesse muro desce no arrimo. Tudo no mesmo programa ("é mais fácil integrar do que fazer separado e

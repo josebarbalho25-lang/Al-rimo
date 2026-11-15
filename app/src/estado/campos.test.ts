@@ -469,3 +469,19 @@ describe('muro de cima no balanço de bloco 14 (Jose, 13/11: "a gente já barra 
     expect(entradaAtiva('mc_on', ler({ Tipo_muro: 'Contrafortes', t_bloco: 14, mc_on: 'Não' }))).toBe(true);
   });
 });
+
+describe('armadura do dente só com dente (15/11)', () => {
+  const ler = (v: Record<string, Valor>) => (n: string) => v[n] ?? null;
+  const CAMPOS = ['phi_den', 's_den_dir', 'phi_lden'];
+  it('sem largura ou sem altura do dente, os três campos apagam', () => {
+    for (const n of CAMPOS) {
+      expect(entradaAtiva(n, ler({ b_den: 0, h_den: 0.5 })), n).toBe(false);
+      expect(entradaAtiva(n, ler({ b_den: 0.25, h_den: 0 })), n).toBe(false);
+      expect(entradaAtiva(n, ler({ b_den: 0.25, h_den: 0.5 })), n).toBe(true);
+    }
+  });
+  it('estão na aba Fundação e o espaçamento vazio mostra o adotado', () => {
+    for (const n of CAMPOS) expect(LUGAR.get(n)?.aba.id, n).toBe('fundacao');
+    expect(VALOR_AUTO.s_den_dir).toBe('s_den');
+  });
+});

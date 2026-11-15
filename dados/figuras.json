@@ -571,6 +571,18 @@
       "figura": "fig18",
       "campo": "phi_tor"
     },
+    "phi_den": {
+      "figura": "fig18",
+      "campo": "phi_den"
+    },
+    "s_den_dir": {
+      "figura": "fig18",
+      "campo": "s_den_dir"
+    },
+    "phi_lden": {
+      "figura": "fig18",
+      "campo": "phi_lden"
+    },
     "L_total": {
       "figura": "fig16",
       "campo": "L_total"

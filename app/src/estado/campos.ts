@@ -575,6 +575,8 @@ const ATIVA_SE: Record<string, (ler: LerValor, conta?: LerConta) => boolean> = {
   h_fr: (l) => l('pass_on') === 'Sim',
   // posição do dente: só com dente (largura e altura > 0)
   x_den: (l) => Number(l('b_den') ?? 0) > 0 && Number(l('h_den') ?? 0) > 0,
+  // armadura do dente: idem (Fundação, seção 11: tem_den)
+  ...Object.fromEntries(['phi_den', 's_den_dir', 'phi_lden'].map((n) => [n, (l: LerValor) => Number(l('b_den') ?? 0) > 0 && Number(l('h_den') ?? 0) > 0])),
   bw_dir: (l) => soNoBalanco(l) && !grauteTotal(l),
   // alma da seção I do ELS do painel: seção cheia não tem alma (Contrafortes: bw_ev, bw_eh = bm com total)
   bwv_dir: (l) => !grauteTotal(l),
@@ -648,6 +650,7 @@ export const VALOR_AUTO: Readonly<Record<string, string>> = {
   peso_par: 'peso_us',
   gama_cf: 'gama_cf_us',
   sig_adm_dir: 's_adm',
+  s_den_dir: 's_den',
   s_pv_dir: 's_pv',
   s_ph_dir: 's_ph',
   // fgk preso à linha do fbk da Fig. 23 (Jose, 13/10: "vincular com a seleção na tabela, mas deixa aberto"): vazio
