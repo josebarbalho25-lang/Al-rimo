@@ -269,7 +269,51 @@ e dizer ao Jose o que mudou e por quê.
   (o programa instalado guarda o aceite no perfil dele, %APPDATA%\Al-rimo) — o Jose decide se reescreve;
   "Não salvar" ao fechar não apaga o último muro lembrado (o app o devolve na próxima abertura, com o •, como no
   navegador) — decisão dele; impressão em papel do memorial é pelo leitor de PDF (no programa não há o diálogo de
-  impressão do Chrome); instalar/desinstalar de verdade não foi rodado (só as páginas do instalador).
+  impressão do Chrome).
+  **2ª RODADA (15/11, o Jose testou o instalador):**
+  · "APENAS PARA MIM" NÃO INSTALAVA (fechava sem aviso; "para todos" funcionava — é assim que ele tem o programa em
+    Program Files). Erro de aplicativo no System.dll do NSIS, 0xc0000005, deslocamento 0x1581 = o laço de cópia byte
+    a byte do plugin. Causa: modelo NSIS do electron-builder 26.8.1 (`multiUser.nsh` setInstallModePerUser) lia o
+    caminho do SHGetKnownFolderPath com `System::Call '*$2(&w8192 .s)'` — 16 KB copiados de um bloco de ~70 bytes;
+    com o bloco no fim do heap, lê memória que não existe. A 1ª chamada (ao abrir) passa; a 2ª (ao sair da página da
+    escolha, só no "Apenas para mim") caía. Reproduzido de propósito (bloco no fim de uma página: mesmo módulo, erro e
+    deslocamento). CONSERTO: electron-builder 26.18.0 (o do All Sec), que usa lstrcpynW. Fica a página da escolha
+    com as duas opções (a do Pró-Viga, que tem o mesmo 26.8.1 e o mesmo risco — avisar quando mexer lá).
+  · CÓPIA DO INSTALADOR: o electron-builder guarda ~100 MB em `%LOCALAPPDATA%\al-rimo-desktop-updater` (atualização
+    automática, que não há); o `gerado/instalador.nsh` (montar.js, `nsis.include`) apaga ao instalar e ao desinstalar,
+    e desinstalar tira a chave `.alrimo` vazia (só se ainda for nossa e não numa atualização). Na máquina do Jose há
+    98 MB lá da instalação de 15/11 — somem na próxima instalação.
+  · `node ferramentas/montar.js --teste` = o "Al-rimo Teste" (appId com.jbarbalho.alrimo.teste → outro GUID, pasta
+    `%LOCALAPPDATA%\Programs\Al-rimo Teste`, extensão `.alrimoteste`, perfil `%APPDATA%\Al-rimo Teste`, saída
+    `dist-teste/`): instala e desinstala sem encostar no Al-rimo dele. O AppUserModelId vem do pacote (`idDoPrograma`).
+  · BARRA DE TÍTULO PRÓPRIA (o jeito do Pró-Viga e do All Sec): `titleBarStyle: 'hidden'` + `titleBarOverlay` —
+    os três botões são os do WINDOWS por cima do canto do cabeçalho (vermelho no fechar, encaixe Win+setas e ao
+    arrastar ao topo, duplo clique maximiza, borda redimensiona: tudo nativo; frame:false perderia isso). O cabeçalho
+    (e a marca do trilho) é `-webkit-app-region: drag` só com `html.programa` (layout.css); botões, campos, janelas
+    por cima e menus no-drag. `ui/barraDaJanela.tsx` manda cor do cabeçalho, tinta (--ink), altura (clientHeight, sem
+    o fio de baixo) e o --bg a cada tema/Tamanho (ponte `barraDaJanela` → `janela:barra`); o main guarda em
+    programa.json (`barra`) e abre a próxima já na cor certa. Antes do aceite do termo a `FaixaDaJanela` faz de
+    cabeçalho. Título no cabeçalho: "nome • — Al-rimo" (o " — Al-rimo" só no programa). Navegador: nada muda.
+  · SPLASH: cada abertura começa noutra imagem, em roda (`splashImagem.js`; 1ª abertura sorteia; a última em
+    programa.json `splash`); barra ~3 s sozinha, splash ~4 s (era ~2,6; Pró-Viga 5 a 6 s).
+  · INTERFACE DE FÁBRICA: 90 % / Compacta / Claro (era 120 % / Confortável / Escuro). Quem escolheu fica com o seu.
+  · CONFERIDO (15/11), sem tocar no Al-rimo dele (Program Files, atalho público, .alrimo, HKLM intactos ao fim):
+    `Al-rimo-Teste-Setup /S /currentuser` → pasta, desinstalador no HKCU com GUID próprio, atalhos no menu e na área
+    de trabalho, .alrimoteste, cópia do instalador apagada; o programa abriu (porta de depuração + diagnóstico):
+    perfil limpo a 90 %/Compacta/Claro com o termo; barra: WM_NCHITTEST dá legenda no cabeçalho e na marca, cliente
+    nos botões do app, MIN/MAX/FECHAR nos do Windows, borda direita/baixo redimensionam; Claro/Papel/Escuro e Tamanho
+    reenviam cor e altura; minimizar/maximizar/restaurar/fechar (WM_SYSCOMMAND/WM_CLOSE); maximizada + Escuro/110 %/
+    Confortável voltaram depois de fechar, de reabrir e de REINSTALAR por cima; splash 1 → 2 → 3 → 1 em quatro
+    aberturas; Salvar .alrimo, Abrir, IFC; fechar com • pergunta (a caixa nativa apareceu; no modo de teste fecha
+    sozinho); Gráfica › Esforços com o verde/vermelho e 8 diagramas na memória; console só com o aviso THREE.Clock,
+    sem erro de rede. Desinstalar `/S /currentuser` → pasta, registro, atalhos, classes e cópia do instalador fora
+    (o perfil fica, de propósito: preferências sobrevivem a desinstalar e reinstalar).
+    NÃO CONFERIDO: o caminho pela TELA (as páginas clicadas) e o "para todos os usuários" — o controle de tela foi
+    negado nesta máquina e o "todos" pede o UAC, que daqui não se responde. O conserto está só no caminho "Apenas para
+    mim"; o "todos" não usa o trecho consertado. Pedir ao Jose: rodar o instalador novo e escolher "Apenas para mim"
+    numa máquina sem o Al-rimo, ou por cima (o dele está "para todos": a página já vem marcada assim).
+    Achado no caminho: o muro lembrado volta com o • (o "Não salvar" acima), então a 1ª tentativa de fechar depois
+    de reabrir já pergunta — coerente com a decisão pendente, mas o Jose vai notar.
 - Contratos entre frentes: `motor/tipos.ts` (conta), `modelo/tipos.ts` (muro peça a peça: quem fabrica é `modulacao/`;
   3D, IFC, desenhos e quantitativo só leem), `memoria/tipos.ts` (cada linha é uma expressão que desenha o TeX e é
   conferida contra a célula), `modelo/entradasDoModelo.ts` (entradas que só o modelo usa: comprimento, juntas, drenagem).
