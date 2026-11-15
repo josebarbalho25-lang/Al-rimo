@@ -89,7 +89,13 @@ export function barrasNoCorte(m: Modelo, x0: number): BarrasNoCorte {
     const xs = [...new Set(grupo.map((b) => Math.round(b.eixo[0][0])))].sort((u, v) => u - v);
     let passo = Infinity;
     for (let k = 1; k < xs.length; k++) passo = Math.min(passo, xs[k] - xs[k - 1]);
-    const tol = Math.max(m.familia.m / 2 + 1, Number.isFinite(passo) ? passo / 2 + 1 : 0);
+    // Família com espaçamento calculado na barra (o estribo do dente): até a metade dele — ela desvia das barras da
+    // sapata e dois vizinhos podem ficar a poucos cm, e a menor distância entre eles encolhia a tolerância até o
+    // corte não achar estribo nenhum (revisão de 15/11). Com o vão ≤ s garantido na modulação, há sempre um a ≤ s/2
+    // no meio do trecho; perto da ponta, e onde ele pula o feixe de esperas de um contraforte (modulacao/entorno.ts,
+    // planosDoDente: até 40 cm), o mais perto pode estar mais longe — o dente corre o trecho todo, o estribo sai.
+    const calc = grupo[0].espacamento;
+    const tol = Math.max(m.familia.m / 2 + 1, Number.isFinite(passo) ? passo / 2 + 1 : 0, calc !== undefined ? calc + 400 + 1 : 0);
     const perto = xs.reduce((p, q) => (Math.abs(q - x0) < Math.abs(p - x0) ? q : p));
     if (Math.abs(perto - x0) > tol) continue;
     for (const b of grupo) {

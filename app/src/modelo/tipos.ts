@@ -143,6 +143,12 @@ export interface Barra {
   comprimento: number;           // desenvolvido, mm
   trecho: number;
   contraforte?: number;
+  /**
+   * O espaçamento CALCULADO da família, mm, quando o desenhado não o diz (15/11: o estribo do dente desvia das barras
+   * da sapata e ganha estribo onde o vão passaria do espaçamento — a distância mais comum entre vizinhos já não é
+   * o "c/" da conta). Quem escreve a chamada usa este, com a vírgula ("c/12,5").
+   */
+  espacamento?: number;
 }
 
 /** Valor da entrada que não fechou no módulo e foi ajustado — a tela mostra "1,50 → 1,60". */

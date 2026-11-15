@@ -40,7 +40,7 @@ import { formaDaBarra } from '@/pranchas/formaDaBarra';
 import { cm } from './formato';
 import { cruzamentos, faixa, projecao, projetarPontos, secao, solidosDoModelo, type Solido } from './geometria';
 import { COR, Prancha, escalaPara, type OpcoesDaVista, type Pt } from './prancha';
-import { espacamentoDaPosicao, textoDaChamada } from './chamadas';
+import { elementoDaBarra, espacamentoDaPosicao, textoDaChamada, textoDoEspacamento } from './chamadas';
 import { estiloDaSecao } from './corteLateral';
 import { aparece, corDoAcoNoDesenho, naVista } from './graficos';
 // as fileiras (na junta de controle, as sombras de um trecho ficam na mesma fileira das do vizinho enquanto o vão se
@@ -392,7 +392,7 @@ function armacaoNaVista(m: Modelo, o: OpcoesDaVista): Prancha {
       pr.circulo(X(z.xb), y, 2, { fill: aco, camada: 'aco' });
     }
     // embaixo do traço, no começo da 1ª zona — a legenda única da faixa do Pró-Viga
-    const rotulo = `${f.posicao} – ${f.qtd} ${bitola(f.diametro)}${f.passo !== null ? ` c/${f.passo}` : ''}`;
+    const rotulo = `${f.posicao} – ${f.qtd} ${bitola(f.diametro)}${f.passo !== null ? ` c/${textoDoEspacamento(f.passo)}` : ''}`;
     pr.texto(X(f.zonas[0].xa), y + LEGENDA_FORA.embaixo, rotulo, { tam: T, ancora: 'start', camada: 'textos', chave: `faixa:${f.papel}:${f.posicao}` });
     // a faixa fica a uma altura fixa em px acima do toco: parte com origem própria (a cota criada nela não sai dela
     // ao trocar a escala); o x é o do muro, como a elevação
@@ -557,7 +557,7 @@ function armacaoNaVista(m: Modelo, o: OpcoesDaVista): Prancha {
     const pts = forma(b);
     const [ya, yb] = [Math.min(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[0]))];
     const [za, zb] = [Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[1]))];
-    const legenda = textoDaChamada(m, b.posicao, 'sapata');
+    const legenda = textoDaChamada(m, b.posicao, elementoDaBarra(b));
     const ws = (yb - ya) * S;
     const wl = Prancha.largura(legenda, T);
     // a legenda é centrada na forma e pode ser mais larga que ela: o bloco começa depois do anterior sem encostar

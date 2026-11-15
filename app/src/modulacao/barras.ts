@@ -52,6 +52,7 @@ export interface BarraNova {
   comprimento: number;
   trecho: number;
   contraforte?: number;
+  espacamento?: number;
 }
 
 export function reta(id: string, papel: PapelBarra, phi: number, a: Vec3, b: Vec3, trecho: number, contraforte?: number): BarraNova {
@@ -257,7 +258,7 @@ function arco(f: (t: number) => Vec3, de: number, ate: number): Vec3[] {
  * retângulo do EIXO (cruzamento dos eixos dos ramos), em ordem; o 1º é o canto dos ganchos e o ramo 1º → 2º é o
  * primeiro depois do gancho. O degrau da volta (uma bitola, `passo`) fica no ramo 3º → 4º, o oposto ao primeiro.
  */
-export function estribo(id: string, papel: PapelBarra, phi: number, cantos: [Vec3, Vec3, Vec3, Vec3], trecho: number, contraforte?: number, passo = phi): BarraNova {
+export function estribo(id: string, papel: PapelBarra, phi: number, cantos: [Vec3, Vec3, Vec3, Vec3], trecho: number, contraforte?: number, passo = phi, pontaMax = Infinity): BarraNova {
   const [c0, c1, , c3] = cantos;
   const du: Vec3 = [c1[0] - c0[0], c1[1] - c0[1], c1[2] - c0[2]];
   const dw: Vec3 = [c3[0] - c0[0], c3[1] - c0[1], c3[2] - c0[2]];
@@ -268,7 +269,9 @@ export function estribo(id: string, papel: PapelBarra, phi: number, cantos: [Vec
   const nn: Vec3 = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
   const ln = Math.hypot(...nn) || 1;
   const n = nn.map((q) => q / ln) as Vec3;
-  const { raio: r, ponta: L } = medidasDoEstribo(phi, a, b);
+  const { raio: r, ponta: L0 } = medidasDoEstribo(phi, a, b);
+  // quem chama pode encurtar a ponta (o dente estreito: a do 2º gancho cruzaria a barra do outro canto)
+  const L = Math.max(0, Math.min(L0, pontaMax));
 
   // (x ao longo do 1º ramo, y ao longo do outro, h = quanto a volta já andou na normal)
   const P = (x: number, y: number, h: number): Vec3 => p3(
@@ -378,6 +381,7 @@ export function numerarPosicoes(barras: BarraNova[]): Barra[] {
     if (b.fechada) out.fechada = true;
     if (b.estribo) out.estribo = true;
     if (b.contraforte !== undefined) out.contraforte = b.contraforte;
+    if (b.espacamento !== undefined) out.espacamento = b.espacamento;
     return out;
   });
 }

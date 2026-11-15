@@ -11,17 +11,21 @@
 import { describe, expect, it } from 'vitest';
 import type { Modelo } from '@/modelo/tipos';
 import { gerarModelo, padroesDoModelo } from '@/modulacao';
-import { cenariosDoGabarito, resultadoDoGabarito } from '@/motor/resultadoDoGabarito';
+import { cenariosDoGabarito, comEntradas, resultadoDoGabarito } from '@/motor/resultadoDoGabarito';
 import { PX_POR_MM, escalaDaVista, type Primitiva } from '@/pranchas/tipos';
 import { formaDaBarra } from '@/pranchas/formaDaBarra';
 import { desenharArmacaoDaSapata, legendaDaSombra, sombrasDaSapata } from '../armacaoDaSapata';
-import { espacamentoDaPosicao, textoDaChamada } from '../chamadas';
+import { elementoDaBarra, espacamentoDaPosicao, textoDaChamada, textoDoEspacamento } from '../chamadas';
 import { faixa } from '../geometria';
 import { Prancha } from '../prancha';
 import { textos, textosForaDoViewBox, xmlBemFormado } from './lerSvg';
 
-const muro = (c: string, extra: Record<string, number | string> = {}): Modelo =>
-  gerarModelo(resultadoDoGabarito(c), { ...padroesDoModelo(), L_total: 6, ...extra });
+// sap_transv é da planilha desde 15/11: vai para o Resultado (comEntradas), o resto para as entradas do modelo
+const muro = (c: string, extra: Record<string, number | string> = {}): Modelo => {
+  const { sap_transv, ...resto } = extra;
+  const r = sap_transv === undefined ? resultadoDoGabarito(c) : comEntradas(resultadoDoGabarito(c), { sap_transv });
+  return gerarModelo(r, { ...padroesDoModelo(), L_total: 6, ...resto });
+};
 
 const MUROS: [string, Modelo][] = [
   ['balanço 6 m', muro('aula122')],
@@ -171,7 +175,7 @@ describe.each(MUROS)('%s', (_, m) => {
       const inicio = `${bs[0].posicao} – ${bs.length} Ø${String(bs[0].diametro).replace('.', ',')}`;
       const rotulo = ts.find((t) => t === inicio || t.startsWith(`${inicio} c/`));
       expect(rotulo, inicio).toBeDefined();
-      if (s !== null) expect(rotulo).toBe(`${inicio} c/${s}`);
+      if (s !== null) expect(rotulo).toBe(`${inicio} c/${textoDoEspacamento(s)}`);
     }
   });
 
@@ -182,7 +186,7 @@ describe.each(MUROS)('%s', (_, m) => {
     for (const n of posicoes) {
       const b = m.barras.find((q) => q.posicao === n)!;
       const g = textos(grupo(svg, `data-camada="sombra-estribo" data-posicao="${n}"`));
-      expect(g.map((q) => q.t), n).toContain(textoDaChamada(m, n, 'sapata'));
+      expect(g.map((q) => q.t), n).toContain(textoDaChamada(m, n, elementoDaBarra(b)));
       const f = formaDaBarra(b);
       const deitados = g.filter((q) => !q.vertical).map((q) => q.t);
       if (f.trechos.length === 1) {

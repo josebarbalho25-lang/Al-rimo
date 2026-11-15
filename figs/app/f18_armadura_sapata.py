@@ -66,14 +66,15 @@ def desenhar():
             s.circle(xx, yi - 7, 5)
             s.circle(xx, ys + 7, 5)
     # dente armado (15/11; Jose: "similar à da sapata corrida, porém na vertical, com estribos adentrando a sapata e
-    # armadura de montagem no sentido longitudinal"): estribo fechado em pé, do fundo do dente ao cobrimento de cima
-    # da sapata, por dentro do estribo dela, ganchos em cima do lado da ponta; longitudinais por dentro, nas faces
+    # armadura de montagem no sentido longitudinal"): estribo fechado em pé, do fundo do dente até logo abaixo da
+    # longitudinal de cima da sapata (revisão de 15/11: no cobrimento ele cruzava essas barras), por dentro do estribo
+    # dela; ganchos no canto de BAIXO do lado do talão (à direita), dentro do dente; longitudinais por dentro, nas faces
     xd0, xd1 = X(B / 2 - BD / 2 + C_S), X(B / 2 + BD / 2 - C_S)
-    yd0, yd1 = ys + 9, Y(HS + HD - C_S)
+    yd0, yd1 = ys + 15, Y(HS + HD - C_S)
     with s.campo('phi_den', 's_den_dir'):
         s.rect(xd0, yd0, xd1 - xd0, yd1 - yd0, stroke=C['steel'], sw=3, extra='rx="5"')
-        s.line(xd0 + 2, yd0 + 2, xd0 + 16, yd0 + 16, stroke=C['steel'], sw=3)
-        s.line(xd0 + 8, yd0 - 1, xd0 + 22, yd0 + 13, stroke=C['steel'], sw=3)
+        s.line(xd1 - 2, yd1 - 2, xd1 - 16, yd1 - 16, stroke=C['steel'], sw=3)
+        s.line(xd1 + 1, yd1 - 8, xd1 - 13, yd1 - 22, stroke=C['steel'], sw=3)
     with s.campo('phi_lden'):
         for xx in (xd0 + 8, xd1 - 8):
             s.circle(xx, yd1 - 8, 4.5)

@@ -33,13 +33,21 @@ const DISTRIBUIDA: Partial<Record<PapelBarra, 0 | 1 | 2>> = {
 
 const bitola = (phi: number): string => `Ø${String(Math.round(phi * 10) / 10).replace('.', ',')}`;
 
+/** O "c/" em cm com a vírgula: 20 → "20"; 12,5 → "12,5". */
+export const textoDoEspacamento = (s: number): string => String(Math.round(s * 10) / 10).replace('.', ',');
+
 const media = (b: Barra, k: 0 | 1 | 2): number => b.eixo.reduce((s, p) => s + p[k], 0) / Math.max(1, b.eixo.length);
 
-export type ElementoDaBarra = 'muro' | 'contraforte' | 'sapata';
+export type ElementoDaBarra = 'muro' | 'contraforte' | 'sapata' | 'dente';
 
-/** O elemento da barra para a chamada: a da sapata é da sapata mesmo marcada com o contraforte de cima (torção). */
+/**
+ * O elemento da barra para a chamada: a da sapata é da sapata mesmo marcada com o contraforte de cima (torção). O
+ * dente tem o dele (revisão de 15/11): a longitudinal do dente igual à da sapata leva o mesmo N (barra igual, mesmo
+ * N), mas a quantidade e o c/ de cada chamada são os do elemento — juntas, o "c/" da sapata saía das barras do dente.
+ */
 export function elementoDaBarra(b: Pick<Barra, 'papel' | 'contraforte'>): ElementoDaBarra {
-  if (b.papel.startsWith('SAP_') || b.papel.startsWith('DENTE_')) return 'sapata';   // o dente é da sapata
+  if (b.papel.startsWith('DENTE_')) return 'dente';
+  if (b.papel.startsWith('SAP_')) return 'sapata';
   return b.contraforte !== undefined ? 'contraforte' : 'muro';
 }
 
@@ -48,9 +56,16 @@ export function elementoDaBarra(b: Pick<Barra, 'papel' | 'contraforte'>): Elemen
  * ponta e a da junta de controle não são espaçamento — por isso a mais comum, e não a média. Ao longo do muro (x, y)
  * a barra de contraforte não conta: lá elas vão juntas no feixe da haste, a 1 ou 2 cm, e sairia "c/1". null = não
  * distribuída (barra do contraforte, peça única) ou sem vizinha.
+ * Família com o espaçamento CALCULADO na barra (o estribo do dente, que desvia das barras da sapata): é ele, com a
+ * fração (12,5) — a distância desenhada arredondada ao cm dizia "c/13" para 12,5, maior que o da conta. As outras
+ * famílias têm espaçamento da conta em cm inteiro (ARREDONDAR.PARA.BAIXO ou múltiplo do graute) e desenhado a ≤ ele:
+ * o arredondamento ao cm não passa do da conta.
  */
 export function espacamentoDaPosicao(barras: readonly Barra[]): number | null {
   if (!barras.length) return null;
+  const doPapel = barras.filter((b) => b.papel === barras[0].papel);
+  const calc = doPapel[0].espacamento;
+  if (calc !== undefined && doPapel.every((b) => b.espacamento === calc)) return calc / 10;
   const k = DISTRIBUIDA[barras[0].papel];
   if (k === undefined) return null;
   const grupos = new Map<string, number[]>();
@@ -82,7 +97,7 @@ export function textoDaChamada(m: Modelo, posicao: string, elemento?: ElementoDa
   if (!daPosicao.length) return posicao;
   const b = daPosicao[0];
   const s = espacamentoDaPosicao(daPosicao);
-  return `${posicao} – ${daPosicao.length} ${bitola(b.diametro)}${s !== null ? ` c/${s}` : ''} C=${Math.round(b.comprimento / 10)}`;
+  return `${posicao} – ${daPosicao.length} ${bitola(b.diametro)}${s !== null ? ` c/${textoDoEspacamento(s)}` : ''} C=${Math.round(b.comprimento / 10)}`;
 }
 
 export interface Chamada {
