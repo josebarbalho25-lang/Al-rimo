@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'" />
+  <title>Al-rimo</title>
+  <!--
+    Tela de abertura — a do Pró-Viga 3D (splash.html de lá): janela 987 × 610 na
+    proporção áurea, o quadrado 610 × 610 à esquerda com as imagens girando
+    (4,5 s cada, 2 s de transição, brilho 78 %) e, à direita, marca, nome,
+    linha de descrição, versão e a barra de carga. Sem fonte da internet: o
+    programa abre igual sem rede.
+  -->
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:  #0D1B4B;
+      --azul:  #1565C0;
+      --neon:  #0080FF;
+      --fundo: #07080D;
+      --texto: #FFFFFF;
+      --apagado: #8A99B5;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: var(--fundo);
+      font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+      color: var(--texto);
+      user-select: none;
+      -webkit-app-region: drag;
+    }
+
+    .moldura { position: absolute; inset: 0; overflow: hidden; background: var(--fundo); border: 1px solid rgba(255,255,255,0.08); }
+    .layout { position: absolute; inset: 0; display: flex; }
+
+    /* 610 × 610 = 61,8 % da largura */
+    .imagens { width: 61.803%; height: 100%; position: relative; overflow: hidden; flex-shrink: 0; }
+    .slide { position: absolute; inset: 0; opacity: 0; transition: opacity 2s ease-in-out; }
+    .slide.ativo { opacity: 1; }
+    .slide img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.78); }
+    .imagens::after {
+      content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 2;
+      background: linear-gradient(to right, transparent 55%, var(--fundo) 100%);
+    }
+    .imagens::before {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 30%; pointer-events: none; z-index: 2;
+      background: linear-gradient(to top, var(--fundo), transparent);
+    }
+
+    /* 377 × 610 */
+    .conteudo { width: 38.197%; height: 100%; position: relative; display: flex; flex-direction: column; }
+    .conteudo::before {
+      content: ''; position: absolute; left: 0; top: 15%; bottom: 15%; width: 1px;
+      background: linear-gradient(to bottom, transparent, rgba(0,128,255,0.15), transparent);
+    }
+    .topo { height: 61.803%; display: flex; flex-direction: column; justify-content: center; padding: 0 40px; }
+
+    .marca { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; animation: sobe 0.5s 0.1s both; }
+    .logo { width: 50px; height: 50px; flex-shrink: 0; box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 6px 20px rgba(0,0,0,0.5); }
+    .logo svg { display: block; width: 100%; height: 100%; }
+    .nome { font-size: 22px; font-weight: 700; letter-spacing: -0.2px; }
+    .descricao { font-size: 11px; color: var(--apagado); letter-spacing: 0.3px; margin-top: 3px; }
+
+    .traco { width: 28px; height: 2px; background: var(--neon); margin-bottom: 22px; box-shadow: 0 0 8px rgba(0,128,255,0.45); animation: sobe 0.5s 0.2s both; }
+
+    .dados { display: flex; flex-direction: column; gap: 7px; animation: sobe 0.5s 0.3s both; }
+    .dado { display: inline-flex; align-items: center; gap: 8px; font-size: 10.5px; color: var(--apagado); }
+    .ponto { width: 5px; height: 5px; border-radius: 50%; background: #5A78B0; flex-shrink: 0; }
+    .ponto.vivo { background: var(--neon); box-shadow: 0 0 5px var(--neon); }
+    .valor { font-weight: 600; color: rgba(255,255,255,0.75); letter-spacing: 0.4px; }
+
+    .direitos { position: absolute; bottom: 28px; left: 40px; font-size: 9px; color: rgba(138,153,181,0.4); }
+
+    .rodape { position: absolute; bottom: 0; left: 0; right: 0; z-index: 10; }
+    .meta { display: flex; justify-content: space-between; padding: 0 28px 7px; }
+    .situacao { font-size: 9.5px; color: var(--apagado); letter-spacing: 0.3px; }
+    .pct { font-size: 9.5px; color: var(--neon); font-weight: 600; letter-spacing: 0.5px; }
+    .trilho { width: 100%; height: 2px; background: rgba(255,255,255,0.05); overflow: hidden; }
+    .barra { height: 100%; width: 0%; background: linear-gradient(90deg, var(--azul) 0%, var(--neon) 100%); transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+
+    @keyframes sobe { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    body.saindo { transition: opacity 0.35s ease; opacity: 0; }
+  </style>
+</head>
+<body>
+  <div class="moldura">
+    <div class="layout">
+      <div class="imagens">
+        <div class="slide ativo"><img src="gerado/splash/splash-bg1.png" alt="" /></div>
+        <div class="slide"><img src="gerado/splash/splash-bg2.png" alt="" /></div>
+        <div class="slide"><img src="gerado/splash/splash-bg3.png" alt="" /></div>
+      </div>
+
+      <div class="conteudo">
+        <div class="topo">
+          <div class="marca">
+            <div class="logo" aria-label="Al-rimo">
+              <!-- a logomarca de app/public/marca/alrimo.svg (traços de app/src/ui/Marca.tsx) -->
+              <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100" height="100" fill="#0D1B4B"/>
+                <g stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" fill="none">
+                  <line x1="34" y1="13" x2="34" y2="86"/>
+                  <line x1="21" y1="76" x2="79" y2="76"/>
+                  <line x1="44" y1="31" x2="47" y2="31"/>
+                  <line x1="44" y1="47" x2="56" y2="47"/>
+                  <line x1="44" y1="63" x2="66" y2="63"/>
+                </g>
+              </svg>
+            </div>
+            <div>
+              <div class="nome">Al-rimo</div>
+              <div class="descricao">Muro de arrimo em alvenaria estrutural</div>
+            </div>
+          </div>
+
+          <div class="traco"></div>
+
+          <div class="dados">
+            <div class="dado"><span class="ponto vivo"></span><span>Versão</span><span class="valor" id="versao"></span></div>
+            <div class="dado"><span class="ponto"></span><span>Norma</span><span class="valor">ABNT NBR 16868-1:2020</span></div>
+            <div class="dado"><span class="ponto"></span><span>Saída</span><span class="valor">IFC · DXF · PDF</span></div>
+          </div>
+        </div>
+
+        <div class="direitos">© JBARBALHO Projetos de Engenharia</div>
+      </div>
+    </div>
+
+    <div class="rodape">
+      <div class="meta">
+        <span class="situacao" id="situacao">Iniciando…</span>
+        <span class="pct" id="pct">0%</span>
+      </div>
+      <div class="trilho"><div class="barra" id="barra"></div></div>
+    </div>
+  </div>
+
+  <script>
+    const ponte = window.splashPonte;
+    document.getElementById('versao').textContent = (ponte && ponte.versao) || '';
+
+    // As imagens: 4,5 s cada, a transição de 2 s está no CSS.
+    (function () {
+      const slides = document.querySelectorAll('.slide');
+      let atual = 0;
+      setInterval(() => {
+        slides[atual].classList.remove('ativo');
+        atual = (atual + 1) % slides.length;
+        slides[atual].classList.add('ativo');
+      }, 4500);
+    })();
+
+    // A barra anda sozinha até 82 % e espera o app; quando ele avisa, fecha em
+    // cerca de 1 s. O caminho sozinho dura ~1,6 s: abaixo disso a tela piscaria.
+    (function () {
+      const barra = document.getElementById('barra');
+      const situacao = document.getElementById('situacao');
+      const pct = document.getElementById('pct');
+      let appPronto = false;
+      let esperando = false;
+
+      const passos = [
+        { p: 12, t: 'Carregando o motor de cálculo…', ms: 350 },
+        { p: 31, t: 'NBR 16868-1 e NBR 6118…', ms: 350 },
+        { p: 52, t: 'Blocos, figuras e tabelas…', ms: 350 },
+        { p: 70, t: 'Desenhos e 3D…', ms: 300 },
+        { p: 82, t: 'Abrindo a interface…', ms: 0 },
+      ];
+
+      function mostrar(p, t) {
+        barra.style.width = p + '%';
+        pct.textContent = p + '%';
+        if (t) situacao.textContent = t;
+      }
+
+      function andar(i) {
+        const s = passos[i];
+        mostrar(s.p, s.t);
+        if (i + 1 < passos.length) setTimeout(() => andar(i + 1), s.ms);
+        else { esperando = true; if (appPronto) fechar(); }
+      }
+
+      function fechar() {
+        const fim = [{ p: 94, t: 'Quase pronto…', ms: 250 }, { p: 100, t: 'Pronto.', ms: 350 }];
+        let i = 0;
+        (function proximo() {
+          if (i >= fim.length) {
+            document.body.classList.add('saindo');
+            setTimeout(() => ponte && ponte.fim(), 360);
+            return;
+          }
+          const s = fim[i++];
+          mostrar(s.p, s.t);
+          setTimeout(proximo, s.ms);
+        })();
+      }
+
+      if (ponte) ponte.aoAppPronto(() => { appPronto = true; if (esperando) fechar(); });
+      setTimeout(() => andar(0), 250);
+    })();
+  </script>
+</body>
+</html>

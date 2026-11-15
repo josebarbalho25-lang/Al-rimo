@@ -1,0 +1,71 @@
+{
+  "name": "al-rimo-desktop",
+  "productName": "Al-rimo",
+  "private": true,
+  "version": "0.0.0",
+  "versaoDe": "A versão de verdade é a de app/package.json: o montar.js passa ela ao electron-builder (extraMetadata). Esta fica 0.0.0 de propósito — não editar aqui.",
+  "description": "Al-rimo — muro de arrimo em alvenaria estrutural",
+  "author": "Jose Barbalho",
+  "license": "UNLICENSED",
+  "main": "main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node ferramentas/montar.js --so-preparar && electron .",
+    "icones": "node ferramentas/gerar-icones.js",
+    "dist": "node ferramentas/montar.js",
+    "dist:dir": "node ferramentas/montar.js --pasta"
+  },
+  "devDependencies": {
+    "electron": "42.0.1",
+    "electron-builder": "26.8.1",
+    "png-to-ico": "3.0.2"
+  },
+  "build": {
+    "appId": "com.jbarbalho.alrimo",
+    "productName": "Al-rimo",
+    "copyright": "© JBARBALHO PROJETOS DE ENGENHARIA LTDA",
+    "directories": {
+      "output": "dist",
+      "buildResources": "gerado/icones"
+    },
+    "afterPack": "ferramentas/afterpack-enxuga.js",
+    "files": [
+      "main.js",
+      "preload.js",
+      "splash.html",
+      "splash-preload.js",
+      "package.json",
+      "gerado/app/**",
+      "gerado/splash/**",
+      "gerado/icones/icon.ico",
+      "gerado/icones/icon-256.png"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "gerado/icones/icon.ico"
+    },
+    "fileAssociations": [
+      {
+        "ext": "alrimo",
+        "name": "Muro do Al-rimo",
+        "description": "Muro de arrimo do Al-rimo",
+        "icon": "gerado/icones/arquivo-alrimo.ico",
+        "role": "Editor"
+      }
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Al-rimo",
+      "uninstallDisplayName": "Al-rimo",
+      "artifactName": "Al-rimo-Setup-${version}.exe",
+      "installerIcon": "gerado/icones/icon.ico",
+      "uninstallerIcon": "gerado/icones/icon.ico",
+      "license": "gerado/termo/TERMO_DE_USO.txt"
+    }
+  }
+}

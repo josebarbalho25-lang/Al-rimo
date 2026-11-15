@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# tudo o que o montar.js refaz a cada montagem: o app copiado, os ícones, o termo, as imagens do splash
+gerado/
