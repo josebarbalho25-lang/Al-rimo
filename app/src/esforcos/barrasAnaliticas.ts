@@ -26,7 +26,7 @@ import dados from '@/motor/planilha.gerada.json';
 import type { Resultado, Valor } from '@/motor/tipos';
 import type { Modelo, Peca, Vec3 } from '@/modelo/tipos';
 import { caixaGlobal } from '@/modulacao/perfis';
-import type { BarraAnalitica, Estacao, Pico, TipoDeBarra, UnidadeDoMomento } from './tipos';
+import { GRUPO_DO_TIPO, type BarraAnalitica, type Estacao, type Pico, type TipoDeBarra, type UnidadeDoMomento } from './tipos';
 
 const NOMES = (dados as unknown as { nomes: Record<string, string> }).nomes;
 
@@ -98,6 +98,7 @@ function fechar(r: Resultado, b: Montagem): BarraAnalitica {
   return {
     id: b.id,
     tipo: b.tipo,
+    grupo: GRUPO_DO_TIPO[b.tipo],
     nome: b.nome,
     card: b.card,
     trecho: b.trecho,
@@ -499,9 +500,46 @@ function montar(r: Resultado, modelo: Modelo): BarraAnalitica[] {
         });
       }
     });
+    // cintas do muro de cima (15/11, seção 9 da aba): biapoiadas entre pilaretes, cada uma com DUAS barras no mesmo
+    // eixo — a flexão lateral (vento) deitada no plano horizontal, tracionando a face de fora (o vento sopra do
+    // aterro, −Y; os dois lados têm a mesma barra, o MRd vale dos dois), e a de gravidade no plano vertical,
+    // tracionando embaixo. A curva é a parábola da viga biapoiada com carga uniforme — o próprio modelo da conta, não
+    // forma ilustrativa; o pico é o Md da planilha.
+    const mrdL = n('MRdl_cmc');
+    const mrdG = n('MRdg_cmc');
+    for (const c of mc.cintas ?? []) {
+      const k = c.qual === 'topo' ? 'T' : 'M';
+      if (t(`on_c${k}`) !== 'Sim') continue;
+      const mdl = n(`Mdl_c${k}`);
+      const mdg = n(`Mdg_c${k}`);
+      const rotulo = c.qual === 'topo' ? 'Cinta do topo do muro de cima' : 'Cinta de meia altura do muro de cima';
+      for (const tr of trechos) {
+        const ps = pils.filter((x) => x >= tr.x0 - 1 && x <= tr.x1 + 1);
+        vaos(ps).forEach(([xa, xb], j) => {
+          const L = xb - xa;
+          if (!(L > 0)) return;
+          const vao = `vão ${j + 1}${trechos.length > 1 ? ` · T${tr.numero}` : ''}`;
+          const uma = (dir: 'L' | 'G', md: number | null, mr: number | null, lado: Vec3, oposto: boolean) => {
+            // sem vento a lateral é zero: não se desenha a barra vazia
+            if (md === null || md === 0) return;
+            const picos: Pico[] = [{ s: L / 2, valor: md, qual: 'msd', nome: dir === 'L' ? `Mdl_c${k}` : `Mdg_c${k}`, fator: 1 }];
+            if (mr !== null) picos.push({ s: L, valor: mr, qual: 'mrd', nome: dir === 'L' ? 'MRdl_cmc' : 'MRdg_cmc', fator: 1 });
+            por({
+              id: `T${tr.numero}.V${j + 1}.CM${k}.${dir}`, tipo: 'cintaMc', nome: `${rotulo} · ${vao} · ${dir === 'L' ? 'lateral' : 'gravidade'}`,
+              card: 'murocima.cintas', trecho: tr.numero,
+              de: [xa, yMeio, c.z], ate: [xb, yMeio, c.z], lado,
+              estacoes: amostrar(20, (xi) => md * 4 * xi * (1 - xi)).map((f) => ({ s: f.xi * L, msd: f.v, mrd: mr, mrdOposto: oposto ? mr : null })),
+              unidade: 'kN·m', picos, aps: [dir === 'L' ? `apl_c${k}` : `apg_c${k}`, `ap_c${k}`], esquematico: false,
+            });
+          };
+          uma('L', mdl, mrdL, [0, -1, 0], true);
+          uma('G', mdg, mrdG, [0, 0, -1], false);
+        });
+      }
+    }
     // painéis: A em baixo; B em cima só com a cinta a meia altura (a planilha publica B só então)
     const temB = n('Mpa_pB') !== null && n('MRp_pB') !== null;
-    const meio = temB ? cintaDoMeio(modelo, mc.z0, mc.z1) : null;
+    const meio = temB ? (mc.cintas?.find((c) => c.qual === 'meia')?.z ?? cintaDoMeio(modelo, mc.z0, mc.z1)) : null;
     const zA = meio ?? mc.z1;
     for (const tr of trechos) {
       const ps = pils.filter((x) => x >= tr.x0 - 1 && x <= tr.x1 + 1);

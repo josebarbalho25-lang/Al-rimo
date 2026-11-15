@@ -14,7 +14,15 @@
 //
 //  A cena se refaz quando a conta, a escala, os números ou o fantasma do muro
 //  mudam (é pouca coisa: algumas dezenas de linhas e faixas); a câmera NÃO —
-//  digitar uma entrada não pode desfazer a órbita (regra do visor).
+//  digitar uma entrada não pode desfazer a órbita (regra do visor). A única
+//  exceção é o muro mudar de tamanho (outro tipo, outra altura, outro
+//  comprimento): aí ela reenquadra, olhando da mesma direção.
+//
+//  Por que o "refaz" mora DENTRO do Canvas (15/11, achado na tela: o Jose ia
+//  às Entradas, trocava balanço por contrafortes, voltava e via o balanço
+//  velho até mexer no mouse): com a Gráfica escondida o Canvas não repassa os
+//  filhos para a cena (tamanho zero), e o pedido de quadro feito de fora caía
+//  antes de a cena nova entrar. De dentro, o pedido sai DEPOIS que ela entrou.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { OrbitControls } from '@react-three/drei';
@@ -35,8 +43,8 @@ import { lerPontoDeVista, proporcaoDaCamera } from '@/visor/pontoDeVista';
 import { lerPaleta, observarTema, themeColor, type PaletaVisor } from '@/visor/tema3d';
 import { LIMIAR_CLIQUE_PX } from '@/visor/Visor3D';
 import { barrasAnaliticas } from './barrasAnaliticas';
-import { coresDaTela, montarCenaDosEsforcos, numeroBr, type CenaDosEsforcos, type EscalaDosEsforcos } from './cenaDosEsforcos';
-import type { BarraAnalitica } from './tipos';
+import { chaveDoEnquadramento, coresDaTela, montarCenaDosEsforcos, numeroBr, type CenaDosEsforcos, type EscalaDosEsforcos } from './cenaDosEsforcos';
+import { GRUPOS, ehGrupo, filtrarPorGrupo, gruposPresentes, type BarraAnalitica, type GrupoDeBarra } from './tipos';
 import '@/visor/visor.css';
 import './esforcos.css';
 
@@ -47,12 +55,67 @@ interface Preferencias {
   escala: EscalaDosEsforcos;
   valores: boolean;
   muro: boolean;
+  /** Os grupos de peça desligados no "Mostrar" (15/11). */
+  ocultos: GrupoDeBarra[];
 }
-const PADRAO: Preferencias = { escala: 'aproveitamento', valores: true, muro: true };
+const PADRAO: Preferencias = { escala: 'aproveitamento', valores: true, muro: true, ocultos: [] };
+// o guardado antes de 15/11 não tem `ocultos`: vale, e entra com todos à mostra
 const ehPreferencias = (x: unknown): x is Preferencias => {
   const o = x as Partial<Preferencias> | null;
   return !!o && (o.escala === 'aproveitamento' || o.escala === 'valor') && typeof o.valores === 'boolean' && typeof o.muro === 'boolean';
 };
+const normalizar = (p: Preferencias): Preferencias => ({ ...p, ocultos: Array.isArray(p.ocultos) ? [...new Set(p.ocultos.filter(ehGrupo))] : [] });
+
+/**
+ * O "Mostrar" dos esforços (Jose, 15/11: "dá pra isolar por esforço? por exemplo se eu quero ver só painéis?"): um
+ * liga/desliga por grupo de peça que o muro TEM, "Todos" e "Nenhum", e o "só" de cada linha, que deixa só aquele.
+ * Abre para cima (a barra fica no pé da vista) e fecha clicando fora, como o Mostrar das vistas 2D.
+ */
+function MostrarGrupos({ presentes, ocultos, aoMudar }: { presentes: GrupoDeBarra[]; ocultos: GrupoDeBarra[]; aoMudar: (ocultos: GrupoDeBarra[]) => void }) {
+  const [aberto, setAberto] = useState(false);
+  const caixa = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e: PointerEvent) => {
+      if (caixa.current && !caixa.current.contains(e.target as Node)) setAberto(false);
+    };
+    window.addEventListener('pointerdown', fora, true);
+    return () => window.removeEventListener('pointerdown', fora, true);
+  }, [aberto]);
+  if (presentes.length < 2) return null;
+  const algum = presentes.some((g) => ocultos.includes(g));
+  const fora = (gs: GrupoDeBarra[]) => aoMudar(GRUPOS.map((g) => g.id).filter((g) => gs.includes(g)));
+  return (
+    <div className="esf-mostrar" ref={caixa}>
+      <Botao titulo="Mostrar" texto on={algum} aoClicar={() => setAberto((a) => !a)}>
+        Mostrar
+      </Botao>
+      {aberto && (
+        <div className="esf-menu" role="menu">
+          {GRUPOS.filter((g) => presentes.includes(g.id)).map((g) => (
+            <div key={g.id} className="esf-menu-linha">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={!ocultos.includes(g.id)}
+                  onChange={(e) => fora(e.target.checked ? ocultos.filter((x) => x !== g.id) : [...ocultos, g.id])}
+                />
+                {g.rotulo}
+              </label>
+              <button type="button" className="esf-menu-so" title={`Só ${g.rotulo.toLowerCase()}`} onClick={() => fora(presentes.filter((x) => x !== g.id))}>
+                só
+              </button>
+            </div>
+          ))}
+          <div className="esf-menu-pe">
+            <button type="button" onClick={() => fora([])}>Todos</button>
+            <button type="button" onClick={() => fora([...presentes])}>Nenhum</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 const CHAVE = CHAVES.esforcos;
 
 /** O mouse por cima acende a barra; o clique (sem arrastar) escolhe. */
@@ -116,18 +179,49 @@ function AvisarOCubo({ cubo }: { cubo: React.RefObject<(() => void) | null> }) {
   return null;
 }
 
-/** Enquadra na isométrica ao abrir — uma vez, quando já há controle e tela. */
-function EnquadrarAoAbrir({ cena, voo }: { cena: CenaDosEsforcos; voo: React.RefObject<Voo | null> }) {
+/**
+ * Enquadra na isométrica ao abrir, quando já há controle e tela; depois, toda vez que o muro muda de tamanho, de
+ * novo — olhando da direção em que a câmera está.
+ */
+function Enquadrar({ cena, muro, voo }: { cena: CenaDosEsforcos; muro: string; voo: React.RefObject<Voo | null> }) {
   const controles = useThree((s) => s.controls);
+  const camera = useThree((s) => s.camera);
   const { width, height } = useThree((s) => s.size);
   const invalidate = useThree((s) => s.invalidate);
-  const feito = useRef(false);
+  const feito = useRef<string | null>(null);
   useEffect(() => {
-    if (feito.current || !controles || width < 2 || height < 2) return;
-    feito.current = true;
-    voo.current = { de: null, para: enquadramento(cena.caixa, DIRECOES.iso, width, height), inicio: performance.now(), duracao: 0 };
+    if (feito.current === muro || !controles || width < 2 || height < 2) return;
+    const primeira = feito.current === null;
+    feito.current = muro;
+    const alvo = (controles as unknown as { target?: THREE.Vector3 }).target ?? new THREE.Vector3();
+    const v = camera.position.clone().sub(alvo);
+    const dir: Vec3 = primeira || v.lengthSq() < 1e-12 ? DIRECOES.iso : [v.x, v.y, v.z];
+    voo.current = { de: null, para: enquadramento(cena.caixa, dir, width, height), inicio: performance.now(), duracao: 0 };
     invalidate();
-  }, [controles, width, height, cena, voo, invalidate]);
+  }, [controles, camera, width, height, cena, muro, voo, invalidate]);
+  return null;
+}
+
+/** Pede o quadro quando a cena nova JÁ ESTÁ na árvore do Canvas (e quando a tela volta a ter tamanho). */
+function RedesenharAoMudar({ cena }: { cena: CenaDosEsforcos }) {
+  const invalidate = useThree((s) => s.invalidate);
+  const { width, height } = useThree((s) => s.size);
+  useLayoutEffect(() => {
+    invalidate();
+  }, [cena, width, height, invalidate]);
+  return null;
+}
+
+/** Os números que se encobririam: a barra escolhida e a do mouse ficam na frente (cenaDosEsforcos, arrumarRotulos). */
+function RotulosSemEncobrir({ cena, primeiros }: { cena: CenaDosEsforcos; primeiros: (string | null)[] }) {
+  const invalidate = useThree((s) => s.invalidate);
+  const chave = primeiros.join('|');
+  useLayoutEffect(() => {
+    invalidate();
+  }, [chave, invalidate]);
+  useFrame(({ camera, size }) => {
+    cena.arrumarRotulos(camera, size.width, size.height, LETRA_PX / Math.max((camera as THREE.OrthographicCamera).zoom, 1e-6), primeiros);
+  });
   return null;
 }
 
@@ -152,7 +246,7 @@ function Botao({ titulo, on, aoClicar, children, texto }: { titulo: string; on?:
 export function VistaDeEsforcos({ modelo, resultado }: { modelo: Modelo; resultado: Resultado }) {
   const [paleta, setPaleta] = useState<PaletaVisor>(() => lerPaleta());
   useEffect(() => observarTema(setPaleta), []);
-  const [pref, setPref] = useState<Preferencias>(() => lembrar(CHAVE, PADRAO, ehPreferencias));
+  const [pref, setPref] = useState<Preferencias>(() => normalizar(lembrar(CHAVE, PADRAO, ehPreferencias)));
   const mudar = (p: Partial<Preferencias>) =>
     setPref((a) => {
       const n = { ...a, ...p };
@@ -160,7 +254,11 @@ export function VistaDeEsforcos({ modelo, resultado }: { modelo: Modelo; resulta
       return n;
     });
 
-  const barras = useMemo(() => barrasAnaliticas(resultado, modelo), [resultado, modelo]);
+  const todas = useMemo(() => barrasAnaliticas(resultado, modelo), [resultado, modelo]);
+  const presentes = useMemo(() => gruposPresentes(todas), [todas]);
+  // o grupo desligado some: barra, diagrama e número, e não pega clique (a câmera não pula: o enquadrar é do muro)
+  const barras = useMemo(() => filtrarPorGrupo(todas, pref.ocultos), [todas, pref.ocultos]);
+  const muro = useMemo(() => chaveDoEnquadramento(modelo), [modelo]);
   const cena = useMemo(
     () => montarCenaDosEsforcos(barras, modelo, { escala: pref.escala, valores: pref.valores, muro: pref.muro, cores: coresDaTela(paleta, themeColor) }),
     [barras, modelo, pref.escala, pref.valores, pref.muro, paleta],
@@ -227,7 +325,9 @@ export function VistaDeEsforcos({ modelo, resultado }: { modelo: Modelo; resulta
     if (!st) return;
     const ctl = st.controls as unknown as { target: THREE.Vector3 } | null;
     const camera = lerPontoDeVista(st.camera, ctl?.target ?? null, { estilo: 'opaco', armadura: false, corte: null, ocultas: [] });
-    enviarParaPrancha({ tipo: 'esforcos', camera, proporcao: proporcaoDaCamera(st.camera), escala: pref.escala, valores: pref.valores, muro: pref.muro });
+    // a folha leva o que se vê: os grupos desligados também
+    const ocultos = pref.ocultos.filter((g) => presentes.includes(g));
+    enviarParaPrancha({ tipo: 'esforcos', camera, proporcao: proporcaoDaCamera(st.camera), escala: pref.escala, valores: pref.valores, muro: pref.muro, ...(ocultos.length ? { ocultos } : {}) });
   };
 
   const abrirNoCard = useInterface((s) => s.abrirNoCard);
@@ -266,9 +366,11 @@ export function VistaDeEsforcos({ modelo, resultado }: { modelo: Modelo; resulta
         />
         <OrbitaNoShift pivo={pivo} />
         <VooDaCamera voo={voo} />
-        <EnquadrarAoAbrir cena={cena} voo={voo} />
+        <Enquadrar cena={cena} muro={muro} voo={voo} />
+        <RedesenharAoMudar cena={cena} />
         <MouseNasBarras cena={cena} aoPassar={setSobre} aoPegar={setSel} />
         <LetraPeloZoom cena={cena} />
+        <RotulosSemEncobrir cena={cena} primeiros={[sel, sobre]} />
         <AvisarOCubo cubo={invalidarCubo} />
       </Canvas>
       <div className="v3-overlay">
@@ -309,6 +411,7 @@ export function VistaDeEsforcos({ modelo, resultado }: { modelo: Modelo; resulta
           <Botao titulo="Muro" texto on={pref.muro} aoClicar={() => mudar({ muro: !pref.muro })}>
             Muro
           </Botao>
+          <MostrarGrupos presentes={presentes} ocultos={pref.ocultos} aoMudar={(ocultos) => mudar({ ocultos })} />
           <span className="v3-fio" />
           <Botao titulo="Enviar para a prancha" aoClicar={enviar}>
             <IconePrancha />

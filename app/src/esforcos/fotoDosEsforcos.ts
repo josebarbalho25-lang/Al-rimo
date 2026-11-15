@@ -16,6 +16,7 @@ import type { Camera3d } from '@/pranchas/tipos';
 import { cameraDoPontoDeVista } from '@/visor/pontoDeVista';
 import { tamanhoQueCabe } from '@/visor/fotoRefeita';
 import { barrasAnaliticas } from './barrasAnaliticas';
+import { ehGrupo, filtrarPorGrupo } from './tipos';
 import { CORES_DO_PAPEL, montarCenaDosEsforcos, type EscalaDosEsforcos } from './cenaDosEsforcos';
 
 /** Altura da letra dos números ÷ altura da imagem (≈ 13 px numa tela de 560 px). */
@@ -26,7 +27,7 @@ let fila: Promise<unknown> = Promise.resolve();
 export async function fotoDosEsforcos(
   r: Resultado,
   modelo: Modelo,
-  vista: { camera: Camera3d; escala: EscalaDosEsforcos; valores: boolean; muro: boolean },
+  vista: VistaDaFoto,
   larguraPx: number,
   alturaPx: number,
   opcoes: { cancelado?: () => boolean } = {},
@@ -39,11 +40,15 @@ export async function fotoDosEsforcos(
   return vez;
 }
 
-function fotografar(r: Resultado, modelo: Modelo, vista: { camera: Camera3d; escala: EscalaDosEsforcos; valores: boolean; muro: boolean }, larguraPx: number, alturaPx: number): string {
+/** O que a foto precisa da vista: câmera, escala, números, fantasma e os grupos desligados no "Mostrar". */
+type VistaDaFoto = { camera: Camera3d; escala: EscalaDosEsforcos; valores: boolean; muro: boolean; ocultos?: readonly string[] };
+
+function fotografar(r: Resultado, modelo: Modelo, vista: VistaDaFoto, larguraPx: number, alturaPx: number): string {
   if (!(larguraPx >= 1 && alturaPx >= 1)) throw new Error(`esforços: tamanho inválido (${larguraPx} × ${alturaPx})`);
   const tela = document.createElement('canvas');
   const gl = new THREE.WebGLRenderer({ canvas: tela, antialias: true, alpha: true, preserveDrawingBuffer: true });
-  const cena = montarCenaDosEsforcos(barrasAnaliticas(r, modelo), modelo, { escala: vista.escala, valores: vista.valores, muro: vista.muro, cores: CORES_DO_PAPEL });
+  const barras = filtrarPorGrupo(barrasAnaliticas(r, modelo), (vista.ocultos ?? []).filter(ehGrupo));
+  const cena = montarCenaDosEsforcos(barras, modelo, { escala: vista.escala, valores: vista.valores, muro: vista.muro, cores: CORES_DO_PAPEL });
   const scene = new THREE.Scene();
   try {
     gl.outputColorSpace = THREE.SRGBColorSpace;
@@ -57,7 +62,10 @@ function fotografar(r: Resultado, modelo: Modelo, vista: { camera: Camera3d; esc
     scene.add(cena.grupo);
     const camera = cameraDoPontoDeVista(vista.camera, w / h, cena.caixa);
     // a altura visível no alvo é 1/zoom guardado (pontoDeVista.ts): a letra é uma fração dela
-    cena.tamanhoDaLetra(LETRA_DA_FOTO / Math.max(vista.camera.zoom, 1e-9));
+    const letra = LETRA_DA_FOTO / Math.max(vista.camera.zoom, 1e-9);
+    cena.tamanhoDaLetra(letra);
+    // os números que se encobririam: a mesma regra da tela (sem barra escolhida)
+    cena.arrumarRotulos(camera, w, h, letra, []);
     gl.render(scene, camera);
     return tela.toDataURL('image/png');
   } finally {

@@ -31,6 +31,19 @@ export interface CoresDosEsforcos {
   destaque: string;
 }
 
+/**
+ * A chave do tamanho do muro: muda quando o muro muda de forma (tipo, trechos, altura, sapata, contrafortes, muro de
+ * cima) e NÃO quando só os números da conta mudam — é ela que decide reenquadrar.
+ */
+export function chaveDoEnquadramento(m: Modelo): string {
+  const d = m.dims;
+  const mm = (v: number) => Math.round(v);
+  return JSON.stringify([
+    d.trechos.map((t) => [mm(t.x0), mm(t.x1)]), mm(d.H_muro), [mm(d.sapata.y0), mm(d.sapata.y1), mm(d.sapata.z0), mm(d.sapata.z1)],
+    d.contrafortes.length, d.muroDeCima ? [mm(d.muroDeCima.z0), mm(d.muroDeCima.z1)] : null,
+  ]);
+}
+
 /** As cores da tela, dos tokens do tema (as mesmas do visor). */
 export function coresDaTela(p: PaletaVisor, tema: (nome: string, reserva: string) => string): CoresDosEsforcos {
   return {
@@ -74,6 +87,12 @@ export interface CenaDosEsforcos {
   destacar: (sobre: string | null, escolhida: string | null) => void;
   /** Os números ficam do mesmo tamanho na tela em qualquer zoom: altura da letra em metro. */
   tamanhoDaLetra: (metros: number) => void;
+  /**
+   * Os números que se encobririam na tela: fica o de mais prioridade e o outro se apaga (volta quando o mouse passa
+   * na barra dele, que sobe para o topo da fila). Ordem fixa: a barra escolhida, a do mouse, depois o maior
+   * aproveitamento, o MSd antes do MRd, e a ordem de montagem — o mesmo quadro sempre dá o mesmo resultado.
+   */
+  arrumarRotulos: (camera: THREE.Camera, larguraPx: number, alturaPx: number, letraMetros: number, primeiros: (string | null)[]) => void;
   centroDe: (id: string) => Vec3 | null;
   dispose: () => void;
 }
@@ -149,14 +168,31 @@ function rotulo(texto: string, cor: string, fundo: string): THREE.Sprite {
   return s;
 }
 
-/** O muro em fantasma: as caixas das peças grandes (parede por trecho, contrafortes, sapata, muro de cima). */
-function caixasDoMuro(m: Modelo): Caixa[] {
+/**
+ * A sapata no fantasma com a seção dela (e o DENTE embaixo, quando há): a caixa da sapata com dente era a envoltória,
+ * um bloco da largura toda até o fundo do dente. Prisma ao longo de X, o perfil no plano (Y, Z) — o da modulação.
+ */
+export function sapatasDoMuro(m: Modelo): { contorno: [number, number][]; origem: Vec3; extensao: number }[] {
+  const out: { contorno: [number, number][]; origem: Vec3; extensao: number }[] = [];
+  for (const p of m.pecas) {
+    if (p.tipo !== 'SAPATA' || p.giro) continue;
+    const g = m.geometrias[p.geometria];
+    if (!g || g.eixo !== 'X' || g.perfil.contorno.length < 3) continue;
+    out.push({ contorno: g.perfil.contorno.map(([u, v]) => [u, v]), origem: p.origem, extensao: g.extensao });
+  }
+  return out;
+}
+
+/** O muro em fantasma: as caixas das peças grandes (parede por trecho, contrafortes, pilaretes, cintas, muro de cima). */
+export function caixasDoMuro(m: Modelo): Caixa[] {
   const caixas: Caixa[] = [];
   const t = m.familia.t;
   for (const tr of m.dims.trechos) caixas.push({ min: [tr.x0, 0, 0], max: [tr.x1, t, m.dims.H_muro] });
   const juntar = new Map<string, Caixa>();
   for (const p of m.pecas) {
-    const chave = p.grupo === 'contraforte' ? `cf${p.trecho}.${p.contraforte}` : p.tipo === 'SAPATA' || p.tipo === 'PILARETE' || p.tipo === 'CINTA_MC' ? `${p.tipo}.${p.id}` : null;
+    // a sapata de perfil reto vai pela seção dela (sapatasDoMuro); a girada, que não há hoje, ficaria pela caixa
+    const sapataPelaSecao = p.tipo === 'SAPATA' && !p.giro && m.geometrias[p.geometria]?.eixo === 'X';
+    const chave = p.grupo === 'contraforte' ? `cf${p.trecho}.${p.contraforte}` : (p.tipo === 'SAPATA' && !sapataPelaSecao) || p.tipo === 'PILARETE' || p.tipo === 'CINTA_MC' ? `${p.tipo}.${p.id}` : null;
     if (!chave) continue;
     const g = m.geometrias[p.geometria];
     if (!g) continue;
@@ -193,6 +229,8 @@ export function montarCenaDosEsforcos(barras: BarraAnalitica[], modelo: Modelo, 
   const pegaveis: THREE.Object3D[] = [];
   const porBarra = new Map<string, { eixo: THREE.Line; fill: THREE.MeshBasicMaterial; centro: Vec3 }>();
   const rotulos: THREE.Sprite[] = [];
+  // a fila dos números (sem a barra escolhida e a do mouse, que entram na frente na hora)
+  const filaDosRotulos: { s: THREE.Sprite; barra: string; chave: [number, number, number] }[] = [];
   const caixa = new THREE.Box3();
 
   for (const b of barras) {
@@ -293,6 +331,7 @@ export function montarCenaDosEsforcos(barras: BarraAnalitica[], modelo: Modelo, 
         s.userData.barra = b.id;
         sub.add(s);
         rotulos.push(s);
+        filaDosRotulos.push({ s, barra: b.id, chave: [-(b.aproveitamento ?? -1), p.qual === 'msd' ? 0 : 1, filaDosRotulos.length] });
       }
     }
 
@@ -323,6 +362,18 @@ export function montarCenaDosEsforcos(barras: BarraAnalitica[], modelo: Modelo, 
       grupo.add(f, a);
       caixa.union(new THREE.Box3().setFromCenterAndSize(new THREE.Vector3(...centro), new THREE.Vector3(...tam)));
     }
+    for (const sp of sapatasDoMuro(modelo)) {
+      const forma = new THREE.Shape(sp.contorno.map(([u, v]) => new THREE.Vector2(u * MM, v * MM)));
+      const g = guardar(new THREE.ExtrudeGeometry(forma, { depth: sp.extensao * MM, bevelEnabled: false }));
+      // (u, v, w) do perfil → (X, Y, Z) do muro: w ao longo do muro, u = Y, v = Z
+      g.applyMatrix4(new THREE.Matrix4().set(0, 0, 1, sp.origem[0] * MM, 1, 0, 0, sp.origem[1] * MM, 0, 1, 0, sp.origem[2] * MM, 0, 0, 0, 1));
+      const f = new THREE.Mesh(g, faces);
+      f.renderOrder = -1;
+      const a = new THREE.LineSegments(guardar(new THREE.EdgesGeometry(g, 30)), arestas);
+      grupo.add(f, a);
+      g.computeBoundingBox();
+      if (g.boundingBox) caixa.union(g.boundingBox);
+    }
   }
   if (caixa.isEmpty()) caixa.set(new THREE.Vector3(-1, -1, -1), new THREE.Vector3(1, 1, 1));
 
@@ -348,6 +399,32 @@ export function montarCenaDosEsforcos(barras: BarraAnalitica[], modelo: Modelo, 
     },
     tamanhoDaLetra: (h) => {
       for (const s of rotulos) s.scale.set(h * (s.userData.proporcao as number), h, 1);
+    },
+    arrumarRotulos: (camera, W, H, letra, primeiros) => {
+      if (!filaDosRotulos.length || !(W > 0) || !(H > 0)) return;
+      camera.updateMatrixWorld();
+      const cima = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).multiplyScalar(letra);
+      const px = (v: THREE.Vector3) => {
+        const q = v.clone().project(camera);
+        return [((q.x + 1) / 2) * W, ((1 - q.y) / 2) * H] as const;
+      };
+      const ordem = (barra: string) => {
+        const i = primeiros.indexOf(barra);
+        return i < 0 ? primeiros.length : i;
+      };
+      const fila = [...filaDosRotulos].sort((a, b) => ordem(a.barra) - ordem(b.barra) || a.chave[0] - b.chave[0] || a.chave[1] - b.chave[1] || a.chave[2] - b.chave[2]);
+      const postos: [number, number, number, number][] = [];
+      const FOLGA = 2;
+      for (const r of fila) {
+        const [cx, cy] = px(r.s.position);
+        const [, cy2] = px(r.s.position.clone().add(cima));
+        const h = Math.abs(cy - cy2);
+        const w = h * (r.s.userData.proporcao as number);
+        const caixa: [number, number, number, number] = [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2];
+        const bate = postos.some((o) => caixa[0] < o[2] + FOLGA && caixa[2] > o[0] - FOLGA && caixa[1] < o[3] + FOLGA && caixa[3] > o[1] - FOLGA);
+        r.s.visible = !bate;
+        if (!bate) postos.push(caixa);
+      }
     },
     centroDe: (id) => porBarra.get(id)?.centro ?? null,
     dispose: () => {

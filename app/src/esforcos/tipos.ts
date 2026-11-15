@@ -24,7 +24,44 @@ export type TipoDeBarra =
   | 'ponta' | 'talao'  // a sapata em balanço a partir da face do muro
   | 'dente'
   | 'pilarete' | 'ligacao'   // muro de cima: o pilarete e a ligação dele no arrimo
-  | 'painelMc';        // painéis A/B do muro de cima
+  | 'painelMc'         // painéis A/B do muro de cima
+  | 'cintaMc';         // cintas do muro de cima: cada uma com a flexão lateral e a de gravidade
+
+/**
+ * O GRUPO da barra: o que o "Mostrar" da vista liga e desliga (Jose, 15/11: "dá pra isolar por esforço? por exemplo
+ * se eu quero ver só painéis?"). Um grupo por tipo de peça que o engenheiro reconhece no muro.
+ */
+export type GrupoDeBarra = 'parede' | 'contrafortes' | 'paineis' | 'canaletas' | 'sapata' | 'dente' | 'muroDeCima';
+
+/** O grupo de cada tipo de barra (todo tipo tem um). */
+export const GRUPO_DO_TIPO: Readonly<Record<TipoDeBarra, GrupoDeBarra>> = {
+  balanco: 'parede',
+  contraforte: 'contrafortes',
+  painelVertical: 'paineis',
+  naoArmado: 'paineis',
+  canaleta: 'canaletas',
+  cinta: 'canaletas',
+  ponta: 'sapata',
+  talao: 'sapata',
+  dente: 'dente',
+  pilarete: 'muroDeCima',
+  ligacao: 'muroDeCima',
+  painelMc: 'muroDeCima',
+  cintaMc: 'muroDeCima',
+};
+
+/** Os grupos na ordem do menu, com o nome da tela. */
+export const GRUPOS: readonly { id: GrupoDeBarra; rotulo: string }[] = [
+  { id: 'parede', rotulo: 'Parede' },
+  { id: 'contrafortes', rotulo: 'Contrafortes' },
+  { id: 'paineis', rotulo: 'Painéis' },
+  { id: 'canaletas', rotulo: 'Canaletas e cinta' },
+  { id: 'sapata', rotulo: 'Sapata' },
+  { id: 'dente', rotulo: 'Dente' },
+  { id: 'muroDeCima', rotulo: 'Muro de cima' },
+];
+
+export const ehGrupo = (x: unknown): x is GrupoDeBarra => GRUPOS.some((g) => g.id === x);
 
 /**
  * Uma estação ao longo do eixo. `s` = mm a partir do começo (`de`). `msd` com sinal: + = tração do lado `lado` da
@@ -54,6 +91,8 @@ export interface Pico {
 export interface BarraAnalitica {
   id: string;
   tipo: TipoDeBarra;
+  /** O grupo do "Mostrar" (GRUPO_DO_TIPO). */
+  grupo: GrupoDeBarra;
   /** Rótulo curto da peça ("Contraforte 2", "Canaleta 3ª fiada · vão 1"). */
   nome: string;
   /** O card da memória onde a conta dessa peça está (Card.id). */
@@ -82,4 +121,17 @@ export interface BarraAnalitica {
    * ligação): a tela desenha com traço fino e tracejado.
    */
   esquematico: boolean;
+}
+
+/** Os grupos que o muro tem, na ordem do menu. */
+export function gruposPresentes(barras: readonly BarraAnalitica[]): GrupoDeBarra[] {
+  const tem = new Set(barras.map((b) => b.grupo));
+  return GRUPOS.map((g) => g.id).filter((g) => tem.has(g));
+}
+
+/** As barras sem os grupos desligados. */
+export function filtrarPorGrupo(barras: readonly BarraAnalitica[], ocultos: readonly GrupoDeBarra[]): BarraAnalitica[] {
+  if (!ocultos.length) return [...barras];
+  const fora = new Set(ocultos);
+  return barras.filter((b) => !fora.has(b.grupo));
 }

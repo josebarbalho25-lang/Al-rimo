@@ -9,6 +9,7 @@
   A leitura do arquivo é TOLERANTE: campo estranho cai, item quebrado sai da folha, e o resto abre. Uma folha mal
   escrita à mão não pode impedir de abrir o muro.
 */
+import { ehGrupo } from '@/esforcos/tipos';
 import { CARIMBO_ANTIGO, CARIMBO_MIN, CARIMBO_PADRAO, ESCALAS, ORDEM_DOS_FORMATOS, quadroLateralPadrao } from './formatos';
 import type { AnotacaoPosta, AnotacoesDaVista, Camera3d, ChamadaPosta, ConteudoDoItem, CotaNova, DadosDaObra, EtiquetaNova, Folha, Formato, ItemDaFolha, Orientacao, PranchasDoProjeto, TextoNovo, VistaDoProjeto } from './tipos';
 import { ESCALA_INICIAL, NOMES_DO_CONTEUDO, ehConteudoDeVista, espelhoDaVista, nomeLivre, novoId } from './vistas';
@@ -62,7 +63,7 @@ function lerCamera(v: unknown): Camera3d | null {
   };
 }
 
-function lerConteudo(v: unknown): ConteudoDoItem | null {
+export function lerConteudo(v: unknown): ConteudoDoItem | null {
   const c = obj(v);
   if (!c) return null;
   switch (c.tipo) {
@@ -88,7 +89,10 @@ function lerConteudo(v: unknown): ConteudoDoItem | null {
     case 'esforcos': {
       const camera = lerCamera(c.camera);
       return camera
-        ? { tipo: 'esforcos', camera, proporcao: Math.max(0.1, num(c.proporcao, 1.5)), escala: c.escala === 'valor' ? 'valor' : 'aproveitamento', valores: c.valores !== false, muro: c.muro === true }
+        ? {
+          tipo: 'esforcos', camera, proporcao: Math.max(0.1, num(c.proporcao, 1.5)), escala: c.escala === 'valor' ? 'valor' : 'aproveitamento', valores: c.valores !== false, muro: c.muro === true,
+          ...(Array.isArray(c.ocultos) && c.ocultos.some(ehGrupo) ? { ocultos: [...new Set(c.ocultos.filter(ehGrupo))] } : {}),
+        }
         : null;
     }
     case 'tabela':
