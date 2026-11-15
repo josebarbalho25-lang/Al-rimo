@@ -18,8 +18,13 @@
       arrimo e subindo até 3 cm do topo. Concreto moldado: estribo Ø do modelo a cada mín(20 cm; b; 12φ) — o
       espaçamento máximo de pilar da NBR 6118 18.4.3; bloco grauteado: sem estribo (como o contraforte de bloco,
       o estribo iria na junta — fica para quando o Jose pedir);
-    - cinta: 2 barras corridas (Ø do modelo) a 3 cm das faces, no meio da altura da cinta, emendadas com α0t·ℓb do
-      concreto quando passam de 12 m.
+    - cinta (15/11, aba Muro de cima e vento, seção 9 — a conta verifica e diz o que desenhar): n_cin_a barras
+      corridas de Ø phi_cin_mc, com o eixo a ce_cmc das faces (3 cm, ou mais para dentro quando ali já passa a barra do
+      pilarete); 2 = uma em cada face, no meio da altura; 4 = duas em cada face, a 3 cm de cima e de baixo. Na ponta
+      do trecho (o pilarete da ponta é o apoio extremo da viga) a barra termina reta a 3 cm da face de fora ou, quando
+      a conta pede (anc_cT / anc_cM = "Gancho"), dobra 90° para BAIXO dentro do pilarete, com a perna a cg_cmc da face
+      (por dentro do estribo dele). Emenda α0t·ℓb do concreto da cinta quando passa de 12 m. O estribo do pilarete que
+      cairia na altura de uma barra da cinta sobe ou desce o mínimo para passar ao lado dela.
 */
 import type { Valor } from '@/motor/tipos';
 import type { Geometria, Peca, Vec2, Vec3 } from '@/modelo/tipos';
@@ -28,7 +33,7 @@ import type { TrechoModulado } from './modular';
 import type { MapaDeCavidades } from './cavidades';
 import { H_FIADA, JUNTA } from './catalogo';
 import { arred, prisma, retangulo } from './perfis';
-import { corrida, distribuir, estribo, reta } from './barras';
+import { corrida, distribuir, estribo, pontaGancho90, raioDoEixo, reta, type BarraNova } from './barras';
 import { comoNumero, comoTexto, lerValor } from './leitura';
 import TIJOLOS from './tijolos.gerado.json';
 
@@ -50,6 +55,7 @@ export interface MuroDeCimaLido {
   H: number;                 // altura desenhada, mm
   tijolo: ReturnType<typeof tijoloDaEspessura>;
   cintas: number[];          // índices das fiadas em concreto
+  cintaDoTopo: number | null; // a fiada da cinta do topo (null sem ela)
   concreto: boolean;
   s: number;                 // eixo a eixo máximo dos pilaretes (balanço), mm
   nCf: number;               // pilarete a cada n contrafortes
@@ -57,7 +63,13 @@ export interface MuroDeCimaLido {
   phi: number; nPorFace: number; c: number;   // barras do pilarete
   l0t: number;               // traspasse no arrimo, mm
   phiEst: number; sEst: number | null;        // estribo do pilarete (modelo)
-  phiCinta: number;          // barras da cinta (modelo)
+  phiCinta: number;          // barras da cinta (planilha, phi_cin_mc)
+  nCinta: 2 | 4;             // barras da cinta adotadas pela conta (n_cin_a)
+  ceCinta: number;           // eixo da barra da cinta à face, mm (ce_cmc)
+  cgCinta: number;           // eixo da perna do gancho à face de fora do pilarete da ponta, mm (cg_cmc)
+  lbCinta: number | null;    // ℓb no concreto da cinta, mm (lb_cmc) — o traspasse da emenda
+  /** A ancoragem no pilarete da ponta, por fiada da cinta: gancho (true) ou reta — o que a conta adotou. */
+  ganchoCinta: Record<number, boolean>;
 }
 
 const num = (v: Valor | undefined, padrao: number): number => comoNumero(v) ?? padrao;
@@ -75,6 +87,7 @@ export function lerMuroDeCima(ctx: Ctx, ler: (n: string) => Valor | undefined): 
     : cin === 'A meia altura' ? [meio]
       : cin === 'No topo e a meia altura' ? [...new Set([meio, hFiadas - 1])]
         : [];
+  const topo = cin === 'No topo' || cin === 'No topo e a meia altura' ? hFiadas - 1 : null;
   const tijolo = tijoloDaEspessura(num(ler('t_mc'), 11.5));
   if (!tijolo.exato) {
     ctx.avisos.push({ codigo: 'TIJOLO_SEM_MODELO', texto: `Muro de cima: tijolo de ${String(num(ler('t_mc'), 0)).replace('.', ',')} cm desenhado com o ${tijolo.nome} do Revit` });
@@ -87,6 +100,7 @@ export function lerMuroDeCima(ctx: Ctx, ler: (n: string) => Valor | undefined): 
   }
   const l0tCm = comoNumero(ler('l0t_pil'));
   const sEstCm = comoNumero(ler('s_est_pil'));
+  const lbCm = comoNumero(ler('lb_cmc'));
   // espaçamento zero ou negativo (campo apagado ou digitado errado) derrubaria o modelo inteiro no distribuir: vale o
   // padrão, com aviso (a planilha já reprova o muro de cima sem espaçamento — chk_dmc)
   let s = num(ler('s_pil'), 2.4) * 1000;
@@ -107,7 +121,20 @@ export function lerMuroDeCima(ctx: Ctx, ler: (n: string) => Valor | undefined): 
     l0t: (l0tCm ?? 40) * 10,
     phiEst: num(ler('phi_est_pil'), 5), sEst: sEstCm === null || !(sEstCm > 0) ? null : sEstCm * 10,
     phiCinta: num(ler('phi_cin_mc'), 8),
+    nCinta: num(ler('n_cin_a'), 2) === 4 ? 4 : 2,
+    ceCinta: num(ler('ce_cmc'), 3) * 10,
+    cgCinta: num(ler('cg_cmc'), 3) * 10,
+    lbCinta: lbCm === null ? null : lbCm * 10,
+    // a cinta do topo é a última fiada; a de meia altura, a outra (com as duas na mesma fiada, vale a do topo)
+    cintaDoTopo: topo,
+    ganchoCinta: Object.fromEntries(cintas.map((f) => [f, comoTexto(ler(f === topo ? 'anc_cT' : 'anc_cM')) === 'Gancho'])),
   };
+}
+
+/** As alturas (z, mm) das barras da cinta da fiada f: uma camada no meio (2 barras) ou duas a 3 cm de cima e de baixo. */
+export function zDasBarrasDaCinta(mc: MuroDeCimaLido, Z0: number, f: number): number[] {
+  const z = Z0 + f * H_FIADA;
+  return mc.nCinta === 4 ? [z + 30, z + H_FIADA - 30] : [z + H_FIADA / 2];
 }
 
 /** Eixo dos pilaretes do trecho (mm), da esquerda para a direita. */
@@ -201,6 +228,14 @@ export function barrasDosPilaretes(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaL
   const yPil = yDoPilarete(ctx, mc);
   const zTopo = Z0 + mc.H - 30;
   const zPe = Z0 - mc.l0t;
+  // o estribo que cairia na altura de uma barra da cinta (ela atravessa o pilarete) passa ao lado dela: sobe ou desce
+  // o mínimo — a volta do estribo anda ±φ/2 (barras.ts), daí o φ inteiro do estribo na folga
+  const zsCinta = mc.cintas.flatMap((f) => zDasBarrasDaCinta(mc, Z0, f));
+  const folga = mc.phiCinta / 2 + mc.phiEst + 2;
+  const foraDaCinta = (z: number): number => {
+    for (const zc of zsCinta) if (Math.abs(z - zc) < folga) return z <= zc ? zc - folga : zc + folga;
+    return z;
+  };
   let foraDoArrimo = false;
   xs.forEach((xc, k) => {
     const id = `${T}.MC.P${String(k + 1).padStart(2, '0')}`;
@@ -226,14 +261,18 @@ export function barrasDosPilaretes(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaL
     const sMax = Math.min(200, mc.b, mc.hs, 12 * mc.phi);
     const s = mc.sEst ?? Math.floor(sMax / 10) * 10;
     for (const [j, z] of distribuir(Z0 + 50, Z0 + mc.H - 50, s).entries()) {
-      const zr = arred(z);
+      const zr = arred(foraDaCinta(z));
       const cantos: [Vec3, Vec3, Vec3, Vec3] = [
         [arred(xc - mc.b / 2 + ce), arred(yPil - mc.hs / 2 + ce), zr],
         [arred(xc + mc.b / 2 - ce), arred(yPil - mc.hs / 2 + ce), zr],
         [arred(xc + mc.b / 2 - ce), arred(yPil + mc.hs / 2 - ce), zr],
         [arred(xc - mc.b / 2 + ce), arred(yPil + mc.hs / 2 - ce), zr],
       ];
-      ctx.barras.push(estribo(`${id}.E${String(j + 1).padStart(2, '0')}`, 'PIL_ESTRIBO', mc.phiEst, cantos, tr.indice));
+      // os ganchos do estribo ficam no 1º canto (x−, y−). No pilarete da ESQUERDA esse canto é o da face de fora, por
+      // onde desce o gancho da barra da cinta: com gancho na cinta, o canto dos ganchos vai para a face de dentro
+      const girar = k === 0 && xs.length > 1 && Object.values(mc.ganchoCinta).some(Boolean);
+      const ordem: [Vec3, Vec3, Vec3, Vec3] = girar ? [cantos[1], cantos[2], cantos[3], cantos[0]] : cantos;
+      ctx.barras.push(estribo(`${id}.E${String(j + 1).padStart(2, '0')}`, 'PIL_ESTRIBO', mc.phiEst, ordem, tr.indice));
     }
   });
   if (foraDoArrimo) {
@@ -323,17 +362,57 @@ export function muroDeCima(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaLido, xs:
   }
 
   // ── barras da cinta: corridas no trecho todo (passam pelos pilaretes) ──
-  const traspasse = lbphiC !== null && lbphiC > 0 && a0t !== null && a0t > 0
-    ? Math.ceil(Math.max(a0t * lbphiC * mc.phiCinta, 15 * mc.phiCinta, 200) / 10) * 10
+  // emenda com o ℓb do concreto da CINTA (lb_cmc); sem ele, o da sapata, como era
+  const lbCinta = mc.lbCinta !== null && mc.lbCinta > 0 ? mc.lbCinta : lbphiC !== null && lbphiC > 0 ? lbphiC * mc.phiCinta : null;
+  const traspasse = lbCinta !== null && a0t !== null && a0t > 0
+    ? Math.ceil(Math.max(a0t * lbCinta, 15 * mc.phiCinta, 200) / 10) * 10
     : 50 * mc.phiCinta;
   for (const f of mc.cintas) {
-    const z = arred(Z0 + f * H_FIADA + H_FIADA / 2);
-    const x0 = (xs[0] ?? tr.x0) - mc.b / 2 + 30;
-    const x1 = (xs[xs.length - 1] ?? tr.x1) + mc.b / 2 - 30;
-    for (const [lado, y] of [['a', y0 + 30], ['s', y0 + tm - 30]] as const) {
-      ctx.barras.push(...corrida(`${T}.MC.C${f}.${lado}`, 'CINTA_MC', mc.phiCinta, arred(x0), arred(x1), arred(y), z, traspasse, [0, 0, mc.phiCinta], tr.indice));
-    }
+    const gancho = !!mc.ganchoCinta[f];
+    // a ponta reta a 3 cm da face de fora do pilarete da ponta; com gancho, a perna a cg_cmc da face
+    const recuo = gancho ? mc.cgCinta : 30;
+    const xA = (xs[0] ?? tr.x0) - mc.b / 2 + recuo;
+    const xB = (xs[xs.length - 1] ?? tr.x1) + mc.b / 2 - recuo;
+    const zs = zDasBarrasDaCinta(mc, Z0, f);
+    zs.forEach((zz, camada) => {
+      const z = arred(zz);
+      const sufixo = zs.length > 1 ? (camada ? '2' : '1') : '';
+      for (const [lado, y] of [['a', y0 + mc.ceCinta], ['s', y0 + tm - mc.ceCinta]] as const) {
+        const pecas = corrida(`${T}.MC.C${f}.${lado}${sufixo}`, 'CINTA_MC', mc.phiCinta, arred(xA), arred(xB), arred(y), z, traspasse, [0, 0, mc.phiCinta], tr.indice);
+        if (gancho && pecas.length) {
+          pecas[0] = comGancho(pecas[0], 'inicio');
+          pecas[pecas.length - 1] = comGancho(pecas[pecas.length - 1], 'fim');
+        }
+        ctx.barras.push(...pecas);
+      }
+    });
   }
+}
+
+/**
+ * A ponta da barra da cinta dobrada 90° para baixo, dentro do pilarete da ponta: gancho da NBR 6118 9.4.2.3 (pino
+ * 5φ, ponta reta 8φ). A barra é reta ao longo de X; a perna desce no x da ponta.
+ */
+function comGancho(b: BarraNova, qual: 'inicio' | 'fim'): BarraNova {
+  const phi = b.diametro;
+  const R = raioDoEixo(phi);
+  const ponta = pontaGancho90(phi);
+  const pts = b.eixo;
+  // a ponta que dobra (a barra pode já ter o gancho da outra ponta, e a emenda sobe uma bitola: vale o ponto dela)
+  const [xPerna, y, z] = qual === 'fim' ? pts[pts.length - 1] : pts[0];
+  const sentido = qual === 'fim' ? 1 : -1;
+  // o arco de 90° no raio do eixo, do trecho deitado (a R da perna, no z da barra) até a perna (R abaixo)
+  const cx = xPerna - sentido * R;
+  const arco: Vec3[] = [];
+  for (let k = 0; k <= 4; k++) {
+    const f = (k / 4) * (Math.PI / 2);
+    arco.push([arred(cx + sentido * R * Math.sin(f)), y, arred(z - R + R * Math.cos(f))]);
+  }
+  const pe: Vec3 = [xPerna, y, arred(z - R - ponta)];
+  const eixo: Vec3[] = qual === 'fim' ? [...pts.slice(0, -1), ...arco, pe] : [pe, ...arco.reverse(), ...pts.slice(1)];
+  // desenvolvido: o reto que sobrou + o arco no raio do eixo + a ponta
+  const comprimento = arred(b.comprimento - R + (Math.PI / 2) * R + ponta);
+  return { ...b, eixo, comprimento };
 }
 
 /** Menor pedaço de tijolo que se corta na obra (mm). Abaixo disso, a peça de antes e a sobra viram duas metades. */

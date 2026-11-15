@@ -95,7 +95,12 @@ export function gerarModelo(r: Resultado, extras: Record<string, Valor> = {}): M
     contrafortes: mod.trechos.flatMap((t) => t.nos.map((n) => ({ x: n.xc, trecho: t.indice, ponta: n.tipo !== 'T' }))),
     sapata: { y0: arred(Ype), y1: arred(YbA), z0: -(p.h_sap + (temDente(p) ? p.h_den : 0)), z1: 0 },
   };
-  if (mc) dims.muroDeCima = { z0: mod.H_des, z1: mod.H_des + mc.H, t: mc.tijolo.perfil.t, pilaretes };
+  if (mc) {
+    dims.muroDeCima = {
+      z0: mod.H_des, z1: mod.H_des + mc.H, t: mc.tijolo.perfil.t, pilaretes,
+      cintas: mc.cintas.map((f) => ({ z: mod.H_des + f * H_FIADA + H_FIADA / 2, qual: mc.cintaDoTopo === f ? 'topo' as const : 'meia' as const })),
+    };
+  }
 
   // a canaleta furada/quebrada troca de geometria depois de nascer inteira: a inteira que ninguém mais usa sai (quem
   // lê o Modelo percorre as geometrias — o IFC não pode ganhar tipo sem peça, nem o 3D molde sem uso)

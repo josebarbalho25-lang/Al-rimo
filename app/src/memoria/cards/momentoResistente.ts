@@ -56,6 +56,19 @@ export const SIMBOLOS_MRD: Readonly<Record<string, string>> = {
   'M_{R,\\perp}': 'momento resistente da alvenaria não armada, normal às juntas',
   'U_{\\parallel}': 'aproveitamento paralelo às juntas (não armada)',
   'U_{\\perp}': 'aproveitamento normal às juntas (não armada)',
+  // as duas direções da cinta do muro de cima
+  'F_{s,lat}': 'força nas barras de uma face da cinta (flexão lateral)',
+  'x_{As,lat}': 'linha neutra da cinta na flexão lateral, com as barras adotadas',
+  'M_{As,lat}': 'momento lateral da cinta com as barras adotadas',
+  'x_{lim,lat}': 'linha neutra limite da cinta na flexão lateral',
+  'M_{lim,lat}': 'momento lateral da cinta com a linha neutra no limite',
+  'M_{Rd,faixa,lat}': 'momento resistente lateral da cinta',
+  'F_{s,grav}': 'força nas barras de baixo da cinta (gravidade)',
+  'x_{As,grav}': 'linha neutra da cinta na gravidade, com as barras adotadas',
+  'M_{As,grav}': 'momento de gravidade da cinta com as barras adotadas',
+  'x_{lim,grav}': 'linha neutra limite da cinta na gravidade',
+  'M_{lim,grav}': 'momento de gravidade da cinta com a linha neutra no limite',
+  'M_{Rd,faixa,grav}': 'momento resistente de gravidade da cinta',
 };
 
 const temNum = (m: Memoria, id: string) => m.valor(id) !== null;
@@ -315,6 +328,39 @@ export function secoesMRdPilarete(m: Memoria): Secao[] {
     ], ref));
   }
   return out.filter((s) => s.passos.length > 0);
+}
+
+// ───────────────────────────── cintas do muro de cima (concreto, duas direções) ─────────────────────────────
+
+/**
+ * As duas seções da cinta do muro de cima (aba Muro de cima e vento, seção 9): a lateral (b = 20, uma face
+ * tracionada) e a de gravidade (b = t, tração embaixo), com as barras adotadas. É a mesma barra nas duas: o MRd de
+ * cada direção entra na interação Md,lat/MRd,lat + Md,grav/MRd,grav.
+ */
+export function secoesMRdCintaMc(m: Memoria): Secao[] {
+  const ref = NBR6118('17.2.2');
+  const fyd = m.g('fyd_cmc', 'f_{yd,cin}', 1, 'MPa');
+  const fcd = m.g('fcd_cmc', 'f_{cd,cin}', 2, 'MPa');
+  const umaDirecao = (s: 'cml' | 'cmg', As: Expr, b: Expr, d: Expr, idMRd: string, simbMRd: string, titulo: string) => {
+    if (!temNum(m, `MRf_${s}`)) return null;
+    const simb: Simbolos = s === 'cml'
+      ? { F: 'F_{s,lat}', x: 'x_{As,lat}', M: 'M_{As,lat}', xl: 'x_{lim,lat}', Ml: 'M_{lim,lat}', Mf: 'M_{Rd,faixa,lat}', MRd: simbMRd, U: 'U_{lat}' }
+      : { F: 'F_{s,grav}', x: 'x_{As,grav}', M: 'M_{As,grav}', xl: 'x_{lim,grav}', Ml: 'M_{lim,grav}', Mf: 'M_{Rd,faixa,grav}', MRd: simbMRd, U: 'U_{grav}' };
+    const c = cadeiaRetangular(m, s, {
+      simb, F: div(mul(As, fyd), DEZ), nTensoes: 1, tensao: () => tensaoConcreto(fcd), b, d, xlim: 0.45, ref, alvenaria: false, uM: 'kN·cm', uF: 'kN',
+    });
+    return secao(titulo, [
+      ...c.passos,
+      m.passo(`MRf_${s}`, simb.Mf, [c.folhas.fM, c.folhas.fMl], { casas: 1, unidade: 'kN·cm', ref }),
+      temNum(m, idMRd) && m.passo(idMRd, simbMRd, div(c.folhas.Mf, CEM), { casas: 3, unidade: 'kN·m', ref }),
+    ], ref);
+  };
+  return [
+    umaDirecao('cml', m.g('Asl_cmc', 'A_{s,lat}', 3, 'cm²'), m.g('hc_cmc', 'h_{cin}', 0, 'cm'), m.g('dl_cmc', 'd_{lat}', 2, 'cm'),
+      'MRdl_cmc', 'M_{Rd,lat}', 'Momento resistente lateral (fora do plano)'),
+    umaDirecao('cmg', m.g('Asg_cmc', 'A_{s,grav}', 3, 'cm²'), m.g('tc_cmc', 't_{cin}', 1, 'cm'), m.g('dg_cmc', 'd_{grav}', 2, 'cm'),
+      'MRdg_cmc', 'M_{Rd,grav}', 'Momento resistente de gravidade (no plano)'),
+  ].filter((s): s is Secao => !!s && s.passos.length > 0);
 }
 
 // ───────────────────────────── alvenaria não armada: ftd·W ─────────────────────────────

@@ -133,6 +133,7 @@ export const ROTULO_CURTO: Record<string, string> = {
   n_pil: 'Barras por face',
   c_pil: 'Cobrimento',
   phi_cin_mc: 'Ø da cinta',
+  n_cin_mc: 'Barras da cinta',
   phi_est_pil: 'Ø do estribo',
   s_est_pil: 'Estribo a cada',
   vento_on: 'Vento',

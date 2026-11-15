@@ -6,14 +6,17 @@
        contraforte que recebe o pilarete;
     2. muro de cima: peso por metro (o que pesa no arrimo) e os painéis entre cintas (NBR 16868-1 Anexo E);
     3. pilarete: balanço engastado no topo do arrimo, com o vento da largura inteira entre pilaretes;
-    4. cinta do topo do arrimo (só com contrafortes): a parte do vento que o painel descarrega na base.
+    4. cintas do muro de cima (15/11): concreto biapoiado entre pilaretes, flexão lateral (vento) e de gravidade,
+       interação, cortante e ancoragem no pilarete da ponta;
+    5. cinta do topo do arrimo (só com contrafortes): a parte do vento que o painel descarrega na base.
   Cada linha é a conta da célula de mesmo nome (o teste confere em todo cenário do gabarito). Os caminhos de carga
   escolhidos a favor da segurança estão explicados no cabeçalho de tools/muro_de_cima.py — aqui não se repete prosa.
 */
 import type { AutorDeCards, Card, Ref } from '../tipos';
-import { cte, div, max, min, mul, par, pi, pot, raiz, soma, sub } from '../expr';
+import { abs, cte, div, max, min, mul, par, pi, pot, raiz, soma, sub } from '../expr';
 import { memoriaDe, secao, type Memoria } from '../passo';
-import { secaoMRdNaoArmado, secoesMRdPilarete } from './momentoResistente';
+import { secaoMRdNaoArmado, secoesMRdCintaMc, secoesMRdPilarete } from './momentoResistente';
+import { desenhoDaCinta } from '../desenhoDaCinta';
 
 const NBR6123 = (item: string): Ref => ({ fonte: 'NBR 6123', item });
 const NBR16868 = (item: string): Ref => ({ fonte: 'NBR 16868-1', item });
@@ -121,6 +124,70 @@ export const SIMBOLOS_MURODECIMA: Readonly<Record<string, string>> = {
   'x_{cin}': 'profundidade da linha neutra da cinta do topo',
   'A_{s,cin}': 'armadura necessária da cinta do topo (empuxo + vento)',
   'A_{s,1\\phi}': 'área de uma barra horizontal',
+  // cintas do muro de cima (15/11)
+  'h_{cin}': 'altura da cinta do muro de cima',
+  't_{cin}': 'largura da cinta (espessura do muro de cima)',
+  '\\ell_{cin}': 'vão da cinta (eixo a eixo dos pilaretes)',
+  'f_{ck,cin}': 'resistência característica do concreto da cinta (a do pilarete)',
+  'f_{cd,cin}': 'resistência de cálculo do concreto da cinta',
+  'f_{ctd,cin}': 'resistência de cálculo à tração do concreto da cinta',
+  'f_{yd,cin}': 'resistência de cálculo do aço da cinta',
+  '\\phi_{cin}': 'diâmetro das barras da cinta',
+  'n_{cin,b}': 'barras da cinta adotadas',
+  'A_{s,1,cin}': 'área de uma barra da cinta',
+  'A_{s,min,cin}': 'armadura mínima da cinta em cada direção',
+  'y_{p,1}': 'barra do pilarete mais longe do eixo do muro',
+  'y_{p,2}': 'barra do pilarete mais perto do eixo do muro',
+  's_{cin,p}': 'distância mínima entre os eixos da barra da cinta e da do pilarete',
+  'a_{0}': 'distância ao eixo do muro da barra da cinta a 3 cm da face',
+  'a_{1}': 'distância ao eixo do muro depois da barra do pilarete de fora',
+  'a_{cin}': 'distância da barra da cinta ao eixo do muro',
+  'a_{min}': 'menor distância ao eixo sem as barras das duas faces se encostarem',
+  'M_{Rd,lat}': 'momento resistente lateral da cinta do muro de cima',
+  'M_{Rd,grav}': 'momento resistente de gravidade da cinta do muro de cima',
+  'c_{e,cin}': 'eixo da barra da cinta à face',
+  'd_{lat}': 'altura útil da cinta na flexão lateral',
+  'd_{grav}': 'altura útil da cinta na flexão de gravidade',
+  'A_{s,lat}': 'armadura de uma face da cinta (flexão lateral)',
+  'A_{s,grav}': 'armadura de baixo da cinta (gravidade)',
+  'M_{R2,lat}': 'momento resistente lateral com 2 barras',
+  'M_{R2,grav}': 'momento resistente de gravidade com 2 barras',
+  'k_{lat}': 'fator de escala da cortante, direção lateral',
+  'k_{grav}': 'fator de escala da cortante, gravidade',
+  '\\rho_{lat}': 'taxa de armadura de tração, direção lateral',
+  '\\rho_{grav}': 'taxa de armadura de tração, gravidade',
+  'V_{Rd1,lat}': 'cortante resistente sem estribo, direção lateral',
+  'V_{Rd1,grav}': 'cortante resistente sem estribo, gravidade',
+  'f_{bd,cin}': 'resistência de aderência no concreto da cinta',
+  '\\ell_{b,cin}': 'comprimento de ancoragem básico da barra da cinta',
+  '\\ell_{b,min,cin}': 'comprimento de ancoragem mínimo da barra da cinta',
+  '\\ell_{disp,r}': 'comprimento reto disponível no pilarete da ponta',
+  'c_{g}': 'eixo da perna do gancho à face de fora do pilarete',
+  '\\ell_{disp,g}': 'reto disponível até a dobra do gancho',
+  'h_{t}': 'altura de painel que se apoia na cinta (carga lateral)',
+  'h_{alv}': 'altura de alvenaria apoiada na cinta',
+  'w_{lat}': 'carga lateral de vento na cinta, característica',
+  'w_{grav}': 'carga de gravidade na cinta, característica',
+  'M_{d,lat}': 'momento de cálculo lateral da cinta',
+  'V_{d,lat}': 'cortante de cálculo lateral da cinta',
+  'M_{d,grav}': 'momento de cálculo de gravidade da cinta',
+  'V_{d,grav}': 'cortante de cálculo de gravidade da cinta',
+  'x_{lat}': 'linha neutra da cinta na flexão lateral',
+  'x_{grav}': 'linha neutra da cinta na gravidade',
+  'A_{s,c,lat}': 'armadura de cálculo da cinta, lateral',
+  'A_{s,c,grav}': 'armadura de cálculo da cinta, gravidade',
+  'A_{s,n,lat}': 'armadura necessária da cinta, lateral (cálculo ou mínimo)',
+  'A_{s,n,grav}': 'armadura necessária da cinta, gravidade (cálculo ou mínimo)',
+  'x/d_{lat}': 'posição relativa da linha neutra, lateral',
+  'x/d_{grav}': 'posição relativa da linha neutra, gravidade',
+  'U_{lat}': 'aproveitamento à flexão lateral da cinta',
+  'U_{grav}': 'aproveitamento à flexão de gravidade da cinta',
+  'U_{cin}': 'interação das duas flexões da cinta',
+  'r_{anc}': 'armadura a ancorar no apoio sobre a efetiva (lateral + gravidade)',
+  '\\ell_{b,nec,r}': 'ancoragem necessária reta',
+  '\\ell_{b,nec,g}': 'ancoragem necessária com gancho',
+  '\\text{2 barras}': 'as duas barras da cinta passam na flexão (Sim ou Não)',
+  '\\text{ancoragem}': 'ancoragem adotada no pilarete da ponta (reta ou com gancho)',
 };
 
 const ligado = (m: Memoria, nome: string) => m.texto(nome) === 'Sim';
@@ -482,6 +549,228 @@ function cardCintaDoTopo(r: Parameters<AutorDeCards>[0]): Card {
   };
 }
 
-/** Muro de cima e vento: vento, muro de cima, pilarete e cinta do topo do arrimo. */
-export const autorMuroDeCima: AutorDeCards = (r) => [cardVento(r), cardMuroDeCima(r), cardPilarete(r), cardCintaDoTopo(r)];
+
+function cardCintasDoMuroDeCima(r: Parameters<AutorDeCards>[0]): Card {
+  const m = memoriaDe(r);
+  const aplica = ligado(m, 'mc_on') && m.texto('cin_mc') !== 'Nenhuma';
+  const cem = cte(100, 0);
+  const DEZ = cte(10, 0);
+  const hc = m.g('hc_cmc', 'h_{cin}', 0, 'cm');
+  const tc = m.g('tc_cmc', 't_{cin}', 1, 'cm');
+  const l = m.g('l_cmc', '\\ell_{cin}', 2, 'm');
+  const fck = m.g('fck_cmc', 'f_{ck,cin}', 0, 'MPa');
+  const fcd = m.g('fcd_cmc', 'f_{cd,cin}', 2, 'MPa');
+  const fctd = m.g('fctd_cmc', 'f_{ctd,cin}', 3, 'MPa');
+  const fyd = m.g('fyd_cmc', 'f_{yd,cin}', 1, 'MPa');
+  const phic = m.ent('phi_cin_mc', '\\phi_{cin}');
+  const phip = m.ent('phi_pil', '\\phi_{pil}');
+  const ceP = m.g('ce_pil', 'c_{e,pil}', 2, 'cm');
+  const hsP = m.g('hs_pila', 'h_{pil}', 1, 'cm');
+  const tA = m.ent('t_bloco', 't');
+  const As1 = m.g('As1_cmc', 'A_{s,1,cin}', 3, 'cm²');
+  const Asm = m.g('Asm_cmc', 'A_{s,min,cin}', 3, 'cm²');
+  const pp1 = m.g('pp1_cmc', 'y_{p,1}', 2, 'cm');
+  const pp2 = m.g('pp2_cmc', 'y_{p,2}', 2, 'cm');
+  const sc = m.g('sc_cmc', 's_{cin,p}', 2, 'cm');
+  const a0 = m.g('a0_cmc', 'a_{0}', 2, 'cm');
+  const a1 = m.g('a1_cmc', 'a_{1}', 2, 'cm');
+  const ac = m.g('ac_cmc', 'a_{cin}', 2, 'cm');
+  const ce = m.g('ce_cmc', 'c_{e,cin}', 2, 'cm');
+  const dl = m.g('dl_cmc', 'd_{lat}', 2, 'cm');
+  const dg = m.g('dg_cmc', 'd_{grav}', 2, 'cm');
+  const nb = m.g('n_cin_a', 'n_{cin,b}', 0);
+  const Asl = m.g('Asl_cmc', 'A_{s,lat}', 3, 'cm²');
+  const Asg = m.g('Asg_cmc', 'A_{s,grav}', 3, 'cm²');
+  const lb = m.g('lb_cmc', '\\ell_{b,cin}', 1, 'cm');
+  const lbm = m.g('lbm_cmc', '\\ell_{b,min,cin}', 1, 'cm');
+  const um = cte(1, 0);
+  const dois = cte(2, 0);
+  const cf = m.texto('Tipo_muro') === 'Contrafortes';
+
+  const dados = secao('Concreto, barras e onde elas passam', [
+    m.passo('hc_cmc', 'h_{cin}', null, { casas: 0, unidade: 'cm', origem: 'adotado', ref: CRITERIO }),
+    m.passo('tc_cmc', 't_{cin}', m.ent('t_mc', 't_{mc}'), { casas: 1, unidade: 'cm' }),
+    m.passo('l_cmc', '\\ell_{cin}', null, { casas: 2, unidade: 'm', origem: 'adotado', ref: CRITERIO }),
+    m.passo('fck_cmc', 'f_{ck,cin}', null, { casas: 0, unidade: 'MPa', origem: 'entrada' }),
+    m.passo('fcd_cmc', 'f_{cd,cin}', div(fck, cte(1.4, 1)), { casas: 2, unidade: 'MPa', ref: NBR6118('12.3.3') }),
+    m.passo('fctd_cmc', 'f_{ctd,cin}', div(mul(cte(0.21, 2), pot(fck, div(dois, cte(3, 0)))), cte(1.4, 1)), { casas: 3, unidade: 'MPa', ref: NBR6118('8.2.5') }),
+    m.passo('fyd_cmc', 'f_{yd,cin}', div(m.ent('fyk_', 'f_{yk}'), m.ent('gama_s', '\\gamma_s')), { casas: 1, unidade: 'MPa' }),
+    m.entrada('phi_cin_mc', '\\phi_{cin}'),
+    m.passo('As1_cmc', 'A_{s,1,cin}', div(mul(pi(), pot(phic, 2)), cte(400, 0)), { casas: 3, unidade: 'cm²' }),
+    m.passo('Asm_cmc', 'A_{s,min,cin}', mul(cte(0.0015, 4), hc, tc), { casas: 3, unidade: 'cm²', ref: NBR6118('17.3.5.2.1') }),
+    m.passo('pp1_cmc', 'y_{p,1}', cf ? max(abs(sub(ceP, div(tA, dois))), abs(sub(sub(hsP, ceP), div(tA, dois)))) : sub(div(hsP, dois), ceP), { casas: 2, unidade: 'cm' }),
+    m.passo('pp2_cmc', 'y_{p,2}', cf ? min(abs(sub(ceP, div(tA, dois))), abs(sub(sub(hsP, ceP), div(tA, dois)))) : sub(div(hsP, dois), ceP), { casas: 2, unidade: 'cm' }),
+    m.passo('sc_cmc', 's_{cin,p}', div(soma(phic, phip), cte(20, 0)), { casas: 2, unidade: 'cm' }),
+    m.passo('a0_cmc', 'a_{0}', sub(div(tc, dois), cte(3, 0)), { casas: 2, unidade: 'cm', ref: CRITERIO }),
+    m.passo('a1_cmc', 'a_{1}', [a0, sub(pp1, sc)], { casas: 2, unidade: 'cm' }),
+    m.passo('ac_cmc', 'a_{cin}', [a1, sub(pp2, sc)], {
+      casas: 2, unidade: 'cm',
+      verif: { chave: 'murocima.cintas.lugar', rotulo: 'Cintas: barras das duas faces sem se encostar', limite: m.g('acm_cmc', 'a_{min}', 2, 'cm'), relacao: '>=' },
+    }),
+    m.passo('ce_cmc', 'c_{e,cin}', sub(div(tc, dois), ac), { casas: 2, unidade: 'cm' }),
+    m.passo('dl_cmc', 'd_{lat}', sub(tc, ce), { casas: 2, unidade: 'cm' }),
+  ], NBR6118('17.2.2'));
+
+  // a quantidade de barras: em branco, 2 quando 2 passam na flexão (As,mín e interação com o MRd de 2 barras)
+  const MR2 = (As: ReturnType<typeof m.g>, b: ReturnType<typeof m.g>, d: ReturnType<typeof m.g>) => {
+    const F = div(mul(As, fyd), DEZ);
+    const x = div(F, mul(cte(0.68, 2), div(fcd, DEZ), b));
+    return [div(mul(F, par(sub(d, mul(cte(0.4, 1), x)))), cem), div(mul(cte(0.68, 2), div(fcd, DEZ), b, cte(0.45, 2), d, par(sub(d, mul(cte(0.4, 1), cte(0.45, 2), d)))), cem)];
+  };
+  const MR2g = (() => {
+    const As = mul(dois, As1);
+    const F = div(mul(As, fyd), DEZ);
+    const d = div(hc, dois);
+    const x = div(F, mul(cte(0.68, 2), div(fcd, DEZ), tc));
+    return [div(mul(F, par(sub(d, mul(cte(0.4, 1), x)))), cem), div(mul(cte(0.68, 2), div(fcd, DEZ), tc, cte(0.45, 2), d, par(sub(d, mul(cte(0.4, 1), cte(0.45, 2), d)))), cem)];
+  })();
+  const quantas = secao('Quantidade de barras', [
+    m.passo('M2l_cmc', 'M_{R2,lat}', MR2(As1, hc, dl), { casas: 3, unidade: 'kN·m', ref: NBR6118('17.2.2') }),
+    m.passo('M2g_cmc', 'M_{R2,grav}', MR2g, { casas: 3, unidade: 'kN·m', ref: NBR6118('17.2.2') }),
+    m.passo('n_cin_a', 'n_{cin,b}', null, { casas: 0, origem: m.num('n_cin_mc') !== null ? 'entrada' : 'adotado', ref: CRITERIO }),
+    m.passo('dg_cmc', 'd_{grav}', [div(hc, dois), sub(hc, cte(3, 0))], { casas: 2, unidade: 'cm' }),
+    m.passo('Asl_cmc', 'A_{s,lat}', mul(div(nb, dois), As1), { casas: 3, unidade: 'cm²' }),
+    m.passo('Asg_cmc', 'A_{s,grav}', mul(dois, As1), { casas: 3, unidade: 'cm²' }),
+  ], CRITERIO);
+
+  const cortanteComum = secao('Cortante resistente sem estribo', [
+    ...(['l', 'g'] as const).flatMap((k) => {
+      const lat = k === 'l';
+      const b = lat ? hc : tc;
+      const d = lat ? dl : dg;
+      const As = lat ? Asl : Asg;
+      const s = lat ? 'lat' : 'grav';
+      const kk = m.g(`k${k}_cmc`, `k_{${s}}`, 3);
+      const rho = m.g(`rho${k}_cmc`, `\\rho_{${s}}`, 4);
+      return [
+        m.passo(`k${k}_cmc`, `k_{${s}}`, max(um, sub(cte(1.6, 1), div(d, cem))), { casas: 3 }),
+        m.passo(`rho${k}_cmc`, `\\rho_{${s}}`, min(cte(0.02, 2), div(As, mul(b, d))), { casas: 4 }),
+        m.passo(`VR1${k}_cmc`, `V_{Rd1,${s}}`, mul(cte(0.25, 2), div(fctd, DEZ), kk, par(soma(cte(1.2, 1), mul(cte(40, 0), rho))), b, d), { casas: 2, unidade: 'kN', ref: NBR6118('19.4.1') }),
+      ];
+    }),
+  ], NBR6118('19.4.1'));
+
+  const ldr = m.g('ldr_cmc', '\\ell_{disp,r}', 1, 'cm');
+  const ldg = m.g('ldg_cmc', '\\ell_{disp,g}', 1, 'cm');
+  const cg = m.g('cg_cmc', 'c_{g}', 2, 'cm');
+  const ancoragemComum = secao('Ancoragem no pilarete da ponta', [
+    m.passo('fbd_cmc', 'f_{bd,cin}', mul(cte(2.25, 2), fctd), { casas: 3, unidade: 'MPa', ref: NBR6118('9.3.2.1') }),
+    m.passo('lb_cmc', '\\ell_{b,cin}', mul(div(fyd, mul(cte(4, 0), m.g('fbd_cmc', 'f_{bd,cin}', 3, 'MPa'))), div(phic, DEZ)), { casas: 1, unidade: 'cm', ref: NBR6118('9.4.2.4') }),
+    m.passo('lbm_cmc', '\\ell_{b,min,cin}', max(mul(cte(0.3, 1), lb), phic, DEZ), { casas: 1, unidade: 'cm', ref: NBR6118('9.4.2.5') }),
+    m.passo('ldr_cmc', '\\ell_{disp,r}', sub(m.g('b_pila', 'b_{pil}', 1, 'cm'), cte(3, 0)), { casas: 1, unidade: 'cm' }),
+    m.passo('cg_cmc', 'c_{g}', max(cte(3, 0), soma(sub(ceP, div(phip, cte(20, 0))), div(phic, cte(20, 0)))), { casas: 2, unidade: 'cm' }),
+    m.passo('ldg_cmc', '\\ell_{disp,g}', [sub(sub(m.g('b_pila', 'b_{pil}', 1, 'cm'), cg), mul(cte(0.3, 1), phic)), cte(0, 0)], { casas: 1, unidade: 'cm', ref: NBR6118('Tab. 9.1') }),
+  ], NBR6118('9.4.2.5'));
+
+  const gf = m.ent('gama_f', '\\gamma_f');
+  const pw = m.g('p_w', 'p_w', 3, 'kN/m²');
+  const hA = m.g('h_pA', 'h_{p,A}', 2, 'm');
+  const hB = m.g('h_pB', 'h_{p,B}', 2, 'm');
+  const porCinta = (k: 'T' | 'M') => {
+    if (m.texto(`on_c${k}`) !== 'Sim') return [];
+    const desc = k === 'T' ? 'Cinta do topo' : 'Cinta de meia altura';
+    const kk = k === 'T' ? 'topo' : 'meia';
+    const ht = m.g(`ht_c${k}`, 'h_{t}', 2, 'm');
+    const hm = m.g(`hm_c${k}`, 'h_{alv}', 2, 'm');
+    const wl = m.g(`wl_c${k}`, 'w_{lat}', 3, 'kN/m');
+    const wg = m.g(`wg_c${k}`, 'w_{grav}', 3, 'kN/m');
+    const Mdl = m.g(`Mdl_c${k}`, 'M_{d,lat}', 3, 'kN·m');
+    const Mdg = m.g(`Mdg_c${k}`, 'M_{d,grav}', 3, 'kN·m');
+    const Vdl = m.g(`Vdl_c${k}`, 'V_{d,lat}', 3, 'kN');
+    const Vdg = m.g(`Vdg_c${k}`, 'V_{d,grav}', 3, 'kN');
+    const xl = m.g(`xl_c${k}`, 'x_{lat}', 2, 'cm');
+    const xg = m.g(`xg_c${k}`, 'x_{grav}', 2, 'cm');
+    const temXl = m.num(`xl_c${k}`) !== null;
+    const temXg = m.num(`xg_c${k}`) !== null;
+    const cargas = secao(`${desc}: cargas e esforços`, [
+      m.passo(`ht_c${k}`, 'h_{t}', k === 'T' ? [div(hB, dois), div(hA, dois)] : [soma(div(hA, dois), div(hB, dois)), soma(div(hA, dois), hB)], { casas: 2, unidade: 'm', ref: CRITERIO }),
+      k === 'M' && m.passo(`hm_c${k}`, 'h_{alv}', [sub(hB, div(hc, cem)), hB], { casas: 2, unidade: 'm', ref: CRITERIO }),
+      m.passo(`wl_c${k}`, 'w_{lat}', mul(pw, ht), { casas: 3, unidade: 'kN/m', ref: NBR6123('4.2') }),
+      m.passo(`wg_c${k}`, 'w_{grav}', k === 'T'
+        ? soma(mul(par(soma(div(mul(m.ent('gama_c', '\\gamma_c'), tc), cem), m.g('g_mcr', 'g_{mc,r}', 2, 'kN/m²'))), div(hc, cem)), mul(m.g('g_mct', 'g_{mc,t}', 2, 'kN/m²'), hm))
+        : soma(mul(par(soma(div(mul(m.ent('gama_c', '\\gamma_c'), tc), cem), m.g('g_mcr', 'g_{mc,r}', 2, 'kN/m²'))), div(hc, cem)), mul(m.g('g_mct', 'g_{mc,t}', 2, 'kN/m²'), hm)),
+      { casas: 3, unidade: 'kN/m', ref: { fonte: 'NBR 6120' } }),
+      m.passo(`Mdl_c${k}`, 'M_{d,lat}', div(mul(gf, wl, pot(l, 2)), cte(8, 0)), { casas: 3, unidade: 'kN·m' }),
+      m.passo(`Vdl_c${k}`, 'V_{d,lat}', div(mul(gf, wl, l), dois), { casas: 3, unidade: 'kN' }),
+      m.passo(`Mdg_c${k}`, 'M_{d,grav}', div(mul(gf, wg, pot(l, 2)), cte(8, 0)), { casas: 3, unidade: 'kN·m' }),
+      m.passo(`Vdg_c${k}`, 'V_{d,grav}', div(mul(gf, wg, l), dois), { casas: 3, unidade: 'kN' }),
+      m.passo(`t2_c${k}`, '\\text{2 barras}', null, { casas: 0, origem: 'calculado' }),
+    ], CRITERIO);
+    const xDe = (Md: typeof Mdl, b: typeof hc, d: typeof dl) => mul(cte(1.25, 2), d, par(sub(um, raiz(sub(um, div(mul(Md, cem), div(mul(cte(0.425, 3), b, pot(d, 2), fcd), DEZ)))))));
+    const AsDe = (Md: typeof Mdl, d: typeof dl, x: typeof xl) => div(mul(Md, cem), mul(div(fyd, DEZ), par(sub(d, mul(cte(0.4, 1), x)))));
+    const umaFlexao = (lat: boolean) => {
+      const s = lat ? 'lat' : 'grav';
+      const Md = lat ? Mdl : Mdg;
+      const b = lat ? hc : tc;
+      const d = lat ? dl : dg;
+      const x = lat ? xl : xg;
+      const temX = lat ? temXl : temXg;
+      const id = lat ? 'l' : 'g';
+      const As = lat ? Asl : Asg;
+      return [
+        temX && m.passo(`x${id}_c${k}`, `x_{${s}}`, xDe(Md, b, d), { casas: 2, unidade: 'cm', ref: NBR6118('17.2.2') }),
+        temX && m.passo(`xd${id}_c${k}`, `x/d_{${s}}`, div(x, d), {
+          casas: 3, ref: NBR6118('14.6.4.3'),
+          verif: { chave: `murocima.cinta${kk}.xd${id}`, rotulo: `${desc}: x/d ≤ 0,45 (${lat ? 'lateral' : 'gravidade'})`, limite: 0.45, relacao: '<=', casasLimite: 2 },
+        }),
+        temX && m.passo(`As${id}c_c${k}`, `A_{s,c,${s}}`, AsDe(Md, d, x), { casas: 3, unidade: 'cm²' }),
+        m.passo(`As${id}n_c${k}`, `A_{s,n,${s}}`, temX ? max(m.g(`As${id}c_c${k}`, `A_{s,c,${s}}`, 3, 'cm²'), Asm) : null, {
+          casas: 3, unidade: 'cm²', origem: 'calculado',
+          verif: { chave: `murocima.cinta${kk}.As${id}`, rotulo: `${desc}: As,ef ≥ As,nec (${lat ? 'lateral' : 'gravidade'})`, limite: As, relacao: '<=' },
+        }),
+      ];
+    };
+    const flexao = secao(`${desc}: flexão nas duas direções`, [
+      ...umaFlexao(true),
+      ...umaFlexao(false),
+      m.num(`apl_c${k}`) !== null && m.passo(`apl_c${k}`, 'U_{lat}', div(Mdl, m.g('MRdl_cmc', 'M_{Rd,lat}', 3, 'kN·m')), { casas: 3 }),
+      m.num(`apg_c${k}`) !== null && m.passo(`apg_c${k}`, 'U_{grav}', div(Mdg, m.g('MRdg_cmc', 'M_{Rd,grav}', 3, 'kN·m')), { casas: 3 }),
+      m.passo(`ap_c${k}`, 'U_{cin}', m.num(`ap_c${k}`) !== null ? soma(m.g(`apl_c${k}`, 'U_{lat}', 3), m.g(`apg_c${k}`, 'U_{grav}', 3)) : null, {
+        casas: 3, origem: 'calculado', ref: CRITERIO,
+        verif: { chave: `murocima.cinta${kk}.interacao`, rotulo: `${desc}: Md,lat/MRd,lat + Md,grav/MRd,grav ≤ 1`, limite: 1, relacao: '<=', casasLimite: 0 },
+      }),
+    ], NBR6118('17.2.2'));
+    const cortante = secao(`${desc}: cortante`, [
+      m.passo(`Vdl_c${k}`, 'V_{d,lat}', null, {
+        casas: 3, unidade: 'kN', origem: 'calculado',
+        verif: { chave: `murocima.cinta${kk}.Vlat`, rotulo: `${desc}: Vd ≤ VRd1 (lateral)`, limite: m.g('VR1l_cmc', 'V_{Rd1,lat}', 2, 'kN'), relacao: '<=' },
+      }),
+      m.passo(`Vdg_c${k}`, 'V_{d,grav}', null, {
+        casas: 3, unidade: 'kN', origem: 'calculado',
+        verif: { chave: `murocima.cinta${kk}.Vgrav`, rotulo: `${desc}: Vd ≤ VRd1 (gravidade)`, limite: m.g('VR1g_cmc', 'V_{Rd1,grav}', 2, 'kN'), relacao: '<=' },
+      }),
+    ], NBR6118('19.4.1'));
+    const ra = m.g(`ra_c${k}`, 'r_{anc}', 3);
+    const reta = m.texto(`anc_c${k}`) === 'Reta';
+    const fydKN = div(fyd, DEZ);
+    const ancora = secao(`${desc}: ancoragem no pilarete da ponta`, [
+      m.passo(`ra_c${k}`, 'r_{anc}', min(um, soma(div(div(mul(cte(1.5, 1), Vdl), fydKN), Asl), div(div(mul(cte(1.5, 1), Vdg), fydKN), Asg))), { casas: 3, ref: NBR6118('18.3.2.4') }),
+      m.passo(`lbr_c${k}`, '\\ell_{b,nec,r}', max(mul(lb, ra), lbm), {
+        casas: 1, unidade: 'cm', ref: NBR6118('9.4.2.5'),
+        ...(reta ? { verif: { chave: `murocima.cinta${kk}.ancoragem`, rotulo: `${desc}: ancoragem reta no pilarete da ponta`, limite: ldr, relacao: '<=' as const } } : {}),
+      }),
+      !reta && m.passo(`lbg_c${k}`, '\\ell_{b,nec,g}', max(mul(cte(0.7, 1), lb, ra), lbm), {
+        casas: 1, unidade: 'cm', ref: NBR6118('9.4.2.5'),
+        verif: { chave: `murocima.cinta${kk}.ancoragem`, rotulo: `${desc}: ancoragem com gancho no pilarete da ponta`, limite: ldg, relacao: '<=' },
+      }),
+      m.passo(`anc_c${k}`, '\\text{ancoragem}', null, { casas: 0, origem: 'adotado' }),
+    ], NBR6118('18.3.2.4'));
+    return [cargas, flexao, cortante, ancora];
+  };
+
+  const card: Card = {
+    id: 'murocima.cintas',
+    titulo: 'Cintas do muro de cima · concreto',
+    ref: { fonte: 'NBR 6118' },
+    secoes: aplica ? [dados, quantas, ...secoesMRdCintaMc(m), cortanteComum, ancoragemComum, ...porCinta('T'), ...porCinta('M')] : [],
+    avisos: [],
+    aplicavel: aplica,
+  };
+  const desenho = aplica ? desenhoDaCinta(r) : null;
+  if (desenho) card.desenho = desenho;
+  return card;
+}
+
+/** Muro de cima e vento: vento, muro de cima, pilarete, cintas do muro de cima e cinta do topo do arrimo. */
+export const autorMuroDeCima: AutorDeCards = (r) => [cardVento(r), cardMuroDeCima(r), cardPilarete(r), cardCintasDoMuroDeCima(r), cardCintaDoTopo(r)];
 

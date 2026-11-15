@@ -25,8 +25,9 @@ export const ENTRADAS_DO_MODELO: EntradaMeta[] = [
   // Jose, 15/10: o arranque em nó de cachorro — a forma ele desenha no Revit (até lá, sai a Padrão com aviso)
   { nome: 'arranque', rotulo: 'Arranque (espera)', padrao: 'Padrão', unidade: '', nota: '', figura: 'Fig. 9', opcoes: ['Padrão', 'Nó de cachorro'], formato: 'General', secao: MODELO, ref: 'modelo!arranque' },
 
-  // muro de cima (13/11): o que a conta não pede e o detalhamento precisa — barras da cinta e estribo do pilarete
-  { nome: 'phi_cin_mc', rotulo: 'Ø das barras da cinta do muro de cima', padrao: 8, unidade: 'mm', nota: 'Duas barras corridas, a 3 cm das faces.', figura: null, opcoes: [6.3, 8, 10, 12.5], formato: '0.0', secao: MODELO, ref: 'modelo!phi_cin_mc' },
+  // muro de cima (13/11): o que a conta não pede e o detalhamento precisa — o estribo do pilarete. O Ø da cinta
+  // (phi_cin_mc) era daqui; foi para a planilha em 15/11, quando a cinta passou a ser verificada (projeto.ts abre o
+  // arquivo antigo)
   { nome: 'phi_est_pil', rotulo: 'Ø do estribo do pilarete', padrao: 5, unidade: 'mm', nota: 'Só no pilarete de concreto.', figura: null, opcoes: [5, 6.3], formato: '0.0', secao: MODELO, ref: 'modelo!phi_est_pil' },
   { nome: 's_est_pil', rotulo: 'Espaçamento do estribo do pilarete — opcional', padrao: null, unidade: 'cm', nota: 'Em branco = mín(20 cm; b; 12φ) (NBR 6118 18.4.3).', figura: null, opcoes: null, formato: '0', secao: MODELO, ref: 'modelo!s_est_pil' },
 

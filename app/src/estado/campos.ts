@@ -615,12 +615,14 @@ const ATIVA_SE: Record<string, (ler: LerValor, conta?: LerConta) => boolean> = {
   ...Object.fromEntries(['h_mc', 't_mc', 'mat_mc', 'g_mc', 'reb_mc', 'arg_mc', 'ftkn_mc_dir', 'ftkp_mc_dir', 'fvk_mc_dir',
     'cin_mc', 'pil_tipo', 'b_pil', 'hs_pil', 'phi_pil', 'n_pil', 'c_pil'].map((n) => [n, comMuroDeCima])),
   phi_cin_mc: (l) => comMuroDeCima(l) && l('cin_mc') !== 'Nenhuma',
+  n_cin_mc: (l) => comMuroDeCima(l) && l('cin_mc') !== 'Nenhuma',
   phi_est_pil: (l) => comMuroDeCima(l) && String(l('pil_tipo') ?? '').startsWith('Conc'),
   s_est_pil: (l) => comMuroDeCima(l) && String(l('pil_tipo') ?? '').startsWith('Conc'),
   reb_mc_esp: (l) => comMuroDeCima(l) && l('reb_mc') !== 'Nenhum',
   s_pil: (l) => comMuroDeCima(l) && soNoBalanco(l),
   pil_ncf: (l) => comMuroDeCima(l) && !soNoBalanco(l),
-  fck_pil: (l) => comMuroDeCima(l) && String(l('pil_tipo') ?? '').startsWith('Conc'),
+  // o concreto do pilarete moldado é também o das cintas do muro de cima (aba Muro de cima e vento, seção 9)
+  fck_pil: (l) => comMuroDeCima(l) && (String(l('pil_tipo') ?? '').startsWith('Conc') || l('cin_mc') !== 'Nenhuma'),
   fbk_pil: (l) => comMuroDeCima(l) && String(l('pil_tipo') ?? '').startsWith('Bloco'),
   ...Object.fromEntries(['V0_v', 'S1_v', 'cat_v', 'cls_v', 'S3_v', 'S3_e', 'Cf_dir'].map((n) => [n, comVento])),
 };
@@ -668,6 +670,8 @@ export const VALOR_AUTO: Readonly<Record<string, string>> = {
   hs_pil: 'hs_pila',
   ftkn_mc_dir: 'ftkn_mc',
   ftkp_mc_dir: 'ftkp_mc',
+  // barras da cinta (15/11): vazio = 2, ou 4 quando 2 não passam
+  n_cin_mc: 'n_cin_a',
 };
 
 /** O valor em que o campo fica travado na situação atual, ou undefined (campo livre). */

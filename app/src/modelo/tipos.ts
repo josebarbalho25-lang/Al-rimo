@@ -173,7 +173,11 @@ export interface Modelo {
     contrafortes: { x: number; trecho: number; ponta: boolean }[];   // x do eixo, mm
     sapata: { y0: number; y1: number; z0: number; z1: number };      // envoltória da seção, mm
     /** Muro de cima (13/11), quando há: do topo do arrimo (z0) ao topo dele (z1) e o eixo de cada pilarete. */
-    muroDeCima?: { z0: number; z1: number; t: number; pilaretes: number[] };
+    muroDeCima?: {
+      z0: number; z1: number; t: number; pilaretes: number[];
+      /** As cintas (15/11): o z do meio de cada uma e qual é (a do topo ou a de meia altura) — a vista Esforços lê. */
+      cintas?: { z: number; qual: 'topo' | 'meia' }[];
+    };
   };
   /**
    * OPCIONAL (acrescentado pela modulação, 08/10): as entradas do modelo efetivamente usadas (padrões de

@@ -287,6 +287,19 @@ describe('entrada que mudou de origem (do modelo para a planilha)', () => {
     expect(a.ok && a.descartados).toEqual([]);
   });
 
+  // phi_cin_mc (15/11): o Ø da cinta do muro de cima era do modelo; a cinta passou a ser verificada na planilha
+  it('o arquivo de antes abre com o Ø da cinta do muro de cima na planilha', () => {
+    expect(CAMPOS.get('phi_cin_mc')?.origem).toBe('planilha');
+    expect(CAMPOS.get('n_cin_mc')?.origem).toBe('planilha');
+    const a = abrir(antigo({ L_total: 12, phi_cin_mc: 10 }, { mc_on: 'Sim' }));
+    expect(a.ok).toBe(true);
+    if (!a.ok) return;
+    expect(a.projeto.alteracoes).toEqual({ mc_on: 'Sim', phi_cin_mc: 10 });
+    expect(a.projeto.extras).toEqual({ L_total: 12 });
+    expect(a.descartados).toEqual([]);
+    expect(a.recusados).toEqual([]);
+  });
+
   it('o arquivo de hoje salva a transversal nas alterações e volta igual', () => {
     const p: Projeto = { ...muro, alteracoes: { ...muro.alteracoes, sap_transv: 'Reta' } };
     const a = abrir(serializarProjeto(p, VERSAO));
