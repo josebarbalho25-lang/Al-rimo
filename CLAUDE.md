@@ -7,8 +7,12 @@ planilha do Eng. Gilberto, adaptado.
 
 Objetivo final: app gratuito (3D, quantitativo, vista frontal, corte lateral, isométrico, memória de cálculo editável e
 auditável citando item de norma e fórmula) para atrair público para o Pró-Viga 3D. **Fica separado do A-PORT.**
-**Intenção nova (Jose, 13/10):** comercializar — produto físico instalável, licença perpétua, "ver se consigo vender
-por 100 reais". Muda: termo de uso (hoje licença gratuita), empacotar o app como programa instalável, controle de
+**DECIDIDO 15/11 (substitui o parágrafo de 13/10 abaixo):** o Al-rimo como está hoje sai GRÁTIS, como programa
+instalável (sem tela de ativação, sem controle de licença, sem ofuscação; o termo é o gratuito, `TERMO_DE_USO.md`) —
+ver "INSTALADOR" na seção do App. As funções novas da "obra" (terreno, traçado em planta, quinas, corte e aterro —
+`PLANO_OBRA.md`) vão para um produto PAGO separado, num repositório privado ramificado deste.
+~~**Intenção nova (Jose, 13/10):** comercializar — produto físico instalável, licença perpétua, "ver se consigo vender
+por 100 reais".~~ (histórico) Muda: termo de uso (hoje licença gratuita), empacotar o app como programa instalável, controle de
 licença, e rever os limites do "app gratuito" (alturas 3,0/4,0). **Decidido 15/10:** os limites 3,0/4,0 FICAM no
 pago (4,0: a tabela de δ satura; 3,0: balanço acima disso pede contraforte) — a linha `lim_H` virou "Limite de
 altura · Faixa da ferramenta"; o TERMO pago (licença perpétua, base no EULA v2.3 do Pró-Viga, mesmos dados, foro
@@ -217,7 +221,8 @@ e dizer ao Jose o que mudou e por quê.
   "é ilustrativa, salva de referência"): `dados/produto/splash/referencia_ilustrativa_01.jpg`. Nas que forem geradas:
   barra a cada 40 (um furo sim, outro não), não em todo furo, e a canaleta da cinta no topo — engenheiro repara.
 - **Depois das pranchas: empacotar e vender** seguindo o Pró-Viga (`proviga-3d-limpo`: Electron, tela de ativação,
-  `licenca.js`, contrato no instalador, gerar-icone a partir do SVG). GitHub: o Jose disse para deixar o push para
+  `licenca.js`, contrato no instalador, gerar-icone a partir do SVG). (15/11: EMPACOTADO GRÁTIS, sem ativação nem
+  licença — ver "INSTALADOR" na seção do App.) GitHub: o Jose disse para deixar o push para
   depois (14/10); em 16/10 pediu "commit e merge no repo" — main subido (a2c57c5). Os outros ramos já estão no main,
   menos o `formula-els-painel` (obra parada).
 
@@ -234,6 +239,37 @@ e dizer ao Jose o que mudou e por quê.
   outro projeto no notebook ao mesmo tempo: os testes de TEMPO (5 s, 60 s, o de 150 ms do muro de 20 m) estouram —
   conferir rodando o cenário sozinho com mais tempo antes de achar que é defeito. Nunca derrubar processo que não
   seja do Al-rimo.
+- **INSTALADOR (15/11, grátis — receita do Pró-Viga sem licença):** casca Electron 42.0.1 em `instalador/` (package.json
+  próprio; o `app/` continua montando sozinho). Montar: dois cliques no `MONTAR_INSTALADOR.bat` da raiz, ou
+  `npm run dist` / `npm run dist:dir` (só a pasta) em `instalador/` (`ferramentas/montar.js`: `npm run build` no app →
+  copia `app/dist` para `instalador/gerado/app` → ícones → termo → electron-builder NSIS). Sai
+  `instalador/dist/Al-rimo-Setup-<versão>.exe` (~97 MB); `gerado/` e `dist/` fora do git. VERSÃO: só a de
+  `app/package.json` (passada como extraMetadata; o splash e o memorial leem a mesma). O app mora em `app://alrimo/`
+  (esquema próprio, `main.js servir`): os caminhos "/pecas", "/figuras", o fetch do terceiros.txt e o localStorage
+  funcionam sem mexer no `base` do Vite. Arquivos: `.alrimo` pela PONTE (`instalador/preload.js` ↔
+  `app/src/estado/programa.ts`; `arquivo.ts` usa a ponte com a mesma cara da janela de arquivo do Chrome — o Ctrl+S
+  grava no mesmo caminho, inclusive do duplo clique); IFC, CSV, Word, DXF .zip, SVG e PNG continuam download do
+  navegador e o main pergunta onde gravar (baixa para %TEMP% primeiro: o app solta o endereço 1 s depois do clique);
+  PDF do memorial e das pranchas = `printToPDF` direto em arquivo (página do tamanho do @page) e abre no leitor —
+  no navegador segue o diálogo de impressão. Duplo clique / "Abrir com" / 2ª cópia: abre na janela aberta (instância
+  única), perguntando se havia alteração. Fechar com • pergunta Salvar / Não salvar / Cancelar (Salvar = o Ctrl+S e
+  fecha). Splash 987 × 610 (`splash.html`, imagens de `dados/produto/splash/`), ícones gerados de
+  `app/public/marca/icone.svg` (`ferramentas/gerar-icones.js`; traço 7/6/5 por tamanho, como o Marca.tsx), ícone do
+  `.alrimo` = folha com a marca. Termo no instalador = `ferramentas/gerar-termo.js` (TXT com BOM, CRLF, 78 colunas,
+  até "Fontes consultadas", como o app). Instala por usuário (escolha na 2ª página), sem administrador. Achado no
+  caminho: a folha do PDF das pranchas era `.folha` e pegava o `.folha { position: absolute }` da tela — o PDF saía
+  em Carta com página em branco também no navegador; virou `.pr-folha` (pdf.ts). CONFERIDO no pacote (pasta
+  descompactada, porta de depuração + `ALRIMO_DIAGNOSTICO`): splash → app sem erro de console nem de rede; termo na
+  1ª abertura; Componentes de terceiros abre (com o aviso do Electron/Chromium no fim); .alrimo pela linha de comando
+  e pela 2ª cópia; Abrir; Salvar (e Ctrl+S por cima); IFC, CSV, Word, DXF .zip, SVG/PNG da vista, PNG do 3D; PDF do
+  memorial (28 pág. A4) e das pranchas (A1); a pergunta ao fechar e o "Salvar" dela. Variáveis de conferência
+  (nunca para o usuário): ALRIMO_DIAGNOSTICO, ALRIMO_TESTE_SAIDA (diálogos respondem sozinhos), ALRIMO_TESTE_ABRIR,
+  ALRIMO_PERFIL, ALRIMO_DEVTOOLS. PENDENTE: sem assinatura de código (o Windows mostra o aviso do SmartScreen —
+  "Mais informações › Executar assim mesmo"); sem atualização automática; o termo 1.4/2.2 fala em "navegador"
+  (o programa instalado guarda o aceite no perfil dele, %APPDATA%\Al-rimo) — o Jose decide se reescreve;
+  "Não salvar" ao fechar não apaga o último muro lembrado (o app o devolve na próxima abertura, com o •, como no
+  navegador) — decisão dele; impressão em papel do memorial é pelo leitor de PDF (no programa não há o diálogo de
+  impressão do Chrome); instalar/desinstalar de verdade não foi rodado (só as páginas do instalador).
 - Contratos entre frentes: `motor/tipos.ts` (conta), `modelo/tipos.ts` (muro peça a peça: quem fabrica é `modulacao/`;
   3D, IFC, desenhos e quantitativo só leem), `memoria/tipos.ts` (cada linha é uma expressão que desenha o TeX e é
   conferida contra a célula), `modelo/entradasDoModelo.ts` (entradas que só o modelo usa: comprimento, juntas, drenagem).
