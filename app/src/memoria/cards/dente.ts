@@ -4,13 +4,16 @@
   Jose: "a forma de armar é similar à da sapata corrida, porém na vertical, com estribos adentrando a sapata corrida e
   armadura de montagem / mínima no sentido longitudinal do dente; o esforço seria o de deslizamento / tombamento".
   O dente é um balanço pendurado na sapata, empurrado para trás pelo solo da frente:
-  - carga = o passivo CHEIO na face da frente (sem dividir por 2, sem olhar a garantia do solo da frente nem a
-    posição do dente): é o máximo que o solo devolve, o dente nunca recebe mais que isso;
+  - carga de cálculo = a MAIOR entre (a) o passivo CHEIO na face da frente × 1,4 (sem dividir por 2, sem olhar a
+    garantia do solo da frente nem a posição do dente) e (b) a força que o equilíbrio do deslizamento pede do dente,
+    FS·Hk − atrito − adesão, por metro (critério adotado em 15/11: o solo confinado debaixo da sapata pode devolver
+    mais que o passivo de Rankine de superfície livre, então (a) não é teto); o braço é o do trapézio do passivo;
   - seção da raiz 100 × b do dente, flexão e cortante sem estribo pela NBR 6118, como a sapata;
   - a armadura de flexão é a perna do estribo fechado em pé, ancorada dentro da sapata (sobe até o cobrimento de cima);
   - longitudinais de montagem pelo critério de armadura secundária de laje — DEDUÇÃO;
   - o momento do dente passado à sapata, numa verificação própria (não mexe no Md da sapata) — DEDUÇÃO.
-  Sem dente o card não se aplica e não monta passo (as células ficam em "—").
+  Sem dente o card não se aplica e não monta passo (as células ficam em "—") — a não ser a altura sem largura: aí a
+  largura reprova e o veredito do app também.
 */
 import type { AutorDeCards, Card, Expr, Ref } from '../tipos';
 import { arredCima, cte, div, max, min, mul, neg, par, pi, pot, raiz, rad, soma, sub, tan } from '../expr';
@@ -24,6 +27,11 @@ export const SIMBOLOS_DENTE: Readonly<Record<string, string>> = {
   'E_{k,den}': 'resultante do passivo na face da frente do dente, por metro',
   'M_{k,den}': 'momento característico na raiz do dente, por metro',
   'y_{den}': 'braço da resultante do passivo até a raiz do dente',
+  'F_{a,den}': 'passivo cheio de cálculo na face da frente do dente, por metro',
+  'F_{b,den}': 'força que o deslizamento pede do dente, por metro',
+  'F_{d,den}': 'força horizontal de cálculo no dente, por metro (a maior)',
+  'D_{den}':'diâmetro do pino de dobra do estribo do dente',
+  'b_{m\\acute{\\imath}n,den}':'largura mínima do dente para o estribo fechado',
   'M_{d,den}': 'momento de cálculo na raiz do dente, por metro',
   'V_{d,den}': 'cortante de cálculo na raiz do dente, por metro',
   'd_{den}': 'altura útil da seção do dente',
@@ -58,12 +66,16 @@ export const SIMBOLOS_DENTE: Readonly<Record<string, string>> = {
 const NBR = (item?: string): Ref => (item ? { fonte: 'NBR 6118', item } : { fonte: 'NBR 6118' });
 const RANKINE: Ref = { fonte: 'Rankine' };
 const DEDUCAO: Ref = { fonte: 'Dedução' };
+// a maior entre o passivo cheio e o que o deslizamento pede (15/11, a confirmar com o Jose)
+const CRITERIO: Ref = { fonte: 'Critério adotado' };
 
 const temNumero = (m: Memoria, id: string) => m.valor(id) !== null;
 
 export const autorDente: AutorDeCards = (r) => {
   const m = memoriaDe(r);
   const comDente = m.texto('tem_den') === 'Sim';
+  // altura sem largura: não há dente para armar, mas o deslizamento conta o passivo pela altura — a largura reprova
+  const semLargura = !comDente && m.texto('chk_geo_den').startsWith('NÃO');
   const card: Card = {
     id: 'fundacao.dente',
     titulo: 'Dente · armadura',
@@ -71,9 +83,21 @@ export const autorDente: AutorDeCards = (r) => {
     figura: 'Fig. 18',
     secoes: [],
     avisos: [],
-    aplicavel: comDente,
+    aplicavel: comDente || semLargura,
   };
-  if (!comDente) return [card];
+  // o motivo curto das verificações que reprovam por regra (não por número): vai para o aviso do card
+  for (const nome of ['chk_geo_den', 'chk_fl_den', 'chk_v_den', 'chk_anc_den', 'chk_tr_den']) {
+    const t = m.texto(nome);
+    if (t.startsWith('NÃO OK — ') && !t.includes('(')) {
+      const resto = t.slice('NÃO OK — '.length);
+      const motivo = resto.charAt(0).toUpperCase() + resto.slice(1);
+      if (!card.avisos.includes(motivo)) card.avisos.push(motivo);
+    }
+  }
+  if (!comDente && !semLargura) return [card];
+  // reprovada por REGRA (espaçamento fora de 5–20, sem barra em cima, sem altura útil…), não pela desigualdade: a
+  // linha não escreve o limite — a célula decide e o motivo vai para o aviso
+  const porRegra = (nome: string): boolean => { const t = m.texto(nome); return t.startsWith('NÃO OK — ') && !t.includes('('); };
 
   // ── folhas (o mesmo nome desenha sempre o mesmo símbolo, com as mesmas casas — a régua dos outros cards) ──
   const Kpb = m.g('Kp_b', 'K_{p,b}', 3);
@@ -89,6 +113,7 @@ export const autorDente: AutorDeCards = (r) => {
   const phi = m.ent('phi_den', '\\phi_{den}', { fator: 0.1, casas: 2, unidade: 'cm' });
   const phiL = m.ent('phi_lden', '\\phi_{l,den}', { fator: 0.1, casas: 2, unidade: 'cm' });
   const phiS = m.ent('phi_sap', '\\phi_s', { fator: 0.1, casas: 2, unidade: 'cm' });
+  const phiS2 = m.ent('phi_sap2', '\\phi_{s2}', { fator: 0.1, casas: 2, unidade: 'cm' });
   const fykKN = m.ent('fyk_', 'f_{yk}', { fator: 0.1, casas: 1, unidade: 'kN/cm²' });
   const gs = m.ent('gama_s', '\\gamma_s');
   const fcdKNcm = m.g('fcd_s', 'f_{cd}', 3, 'kN/cm²', { fator: 0.1 });
@@ -134,10 +159,33 @@ export const autorDente: AutorDeCards = (r) => {
   const hRaiz = comAterro ? soma(hfr, hs) : hs;
   const hFundo = comAterro ? soma(hfr, hs, hden) : soma(hs, hden);
 
-  // ── 1. passivo na face da frente ──
-  const passivo = secao('Passivo cheio na face da frente', [
+  // ── 0. a largura que o estribo fechado pede: duas dobras no pino da NBR, as duas bitolas e os cobrimentos ──
+  const phiMm = m.num('phi_den') ?? 0;
+  const kPino = phiMm <= 10 ? 3 : phiMm >= 20 ? 8 : 5;      // IF(phi_den<=10;3;IF(phi_den>=20;8;5))
+  const pino = m.g('pino_den', 'D_{den}', 2, 'cm');
+  const geometria = secao('Largura do dente para o estribo', [
     m.entrada('b_den', 'b_{den}'),
     m.entrada('h_den', 'h_{den}'),
+    temNumero(m, 'pino_den') && m.passo('pino_den', 'D_{den}', mul(cte(kPino, 0), phi), { casas: 2, unidade: 'cm', ref: NBR('Tab. 9.2') }),
+    temNumero(m, 'bmin_den') && m.passo('bmin_den', 'b_{m\\acute{\\imath}n,den}', soma(mul(DOIS, cs), mul(DOIS, phi), pino), {
+      casas: 2, unidade: 'cm', ref: NBR('Tab. 9.2'),
+      verif: { chave: 'dente.largura', rotulo: 'Dente: largura b ≥ b,mín do estribo', limite: (m.num('b_den') ?? 0) > 0 ? bdenCm : null, relacao: '<=', celula: 'chk_geo_den' },
+    }),
+  ], NBR('Tab. 9.2'));
+  if (semLargura) {
+    card.secoes = [geometria].filter((sc) => sc.passos.length > 0);
+    return [card];
+  }
+
+  // ── 1. força na face da frente: a maior entre o passivo cheio de cálculo e o que o deslizamento pede ──
+  const Fa = m.g('Fa_den', 'F_{a,den}', 2, 'kN/m');
+  const Fb = m.g('Fb_den', 'F_{b,den}', 2, 'kN/m');
+  const Fd = m.g('Fd_den', 'F_{d,den}', 2, 'kN/m');
+  const y = m.g('y_den', 'y_{den}', 3, 'm');
+  const comAdesao = (m.num('R_ad') ?? 0) !== 0;
+  const empurra = mul(m.ent('FS_desl', 'FS_{desl,m\\acute{\\imath}n}'), m.g('H_k', 'H_k', 2, 'kN'));
+  const resiste = comAdesao ? [m.g('R_at', 'R_{at}', 2, 'kN'), m.g('R_ad', 'R_{ad}', 2, 'kN')] : [m.g('R_at', 'R_{at}', 2, 'kN')];
+  const passivo = secao('Força na face da frente do dente', [
     temNumero(m, 'Kp_b') && m.passo('Kp_b', 'K_{p,b}', pot(tan(rad(soma(cte(45, 0), div(phib, DOIS)))), 2), { casas: 3, ref: RANKINE }),
     temNumero(m, 'p1_den') && m.passo('p1_den', 'p_{1,den}', mul(Kpb, gama, comAterro ? par(hRaiz) : hRaiz), { casas: 2, unidade: 'kPa', ref: RANKINE }),
     temNumero(m, 'p2_den') && m.passo('p2_den', 'p_{2,den}', mul(Kpb, gama, par(hFundo)), { casas: 2, unidade: 'kPa', ref: RANKINE }),
@@ -145,7 +193,12 @@ export const autorDente: AutorDeCards = (r) => {
     temNumero(m, 'Mk_den') && m.passo('Mk_den', 'M_{k,den}',
       soma(div(mul(p1, pot(hden, 2)), DOIS), div(mul(par(sub(p2, p1)), pot(hden, 2)), cte(3, 0))), { casas: 2, unidade: 'kN·m/m' }),
     temNumero(m, 'y_den') && m.passo('y_den', 'y_{den}', div(Mk, Ek), { casas: 3, unidade: 'm' }),
-    temNumero(m, 'Md_den') && m.passo('Md_den', 'M_{d,den}', mul(cte(1.4, 1), Mk), { casas: 2, unidade: 'kN·m/m' }),
+    temNumero(m, 'Fa_den') && m.passo('Fa_den', 'F_{a,den}', mul(cte(1.4, 1), Ek), { casas: 2, unidade: 'kN/m', ref: NBR('11.7.1') }),
+    // FS·Hk − atrito − adesão, por metro do módulo (seção 5, sem o passivo): o FS já está na ação, sem outro 1,4
+    temNumero(m, 'Fb_den') && m.passo('Fb_den', 'F_{b,den}',
+      max(cte(0, 0), div(par(resiste.reduce((a, b) => sub(a, b), empurra)), m.g('Lm', 'L_{mod}', 2, 'm'))), { casas: 2, unidade: 'kN/m', ref: CRITERIO }),
+    temNumero(m, 'Fd_den') && m.passo('Fd_den', 'F_{d,den}', temNumero(m, 'Fb_den') ? max(Fa, Fb) : Fa, { casas: 2, unidade: 'kN/m', ref: CRITERIO }),
+    temNumero(m, 'Md_den') && m.passo('Md_den', 'M_{d,den}', mul(Fd, y), { casas: 2, unidade: 'kN·m/m' }),
   ], RANKINE);
   const desF = desenhoDasForcasNoDente(r);
   if (desF) passivo.desenho = desF;
@@ -178,7 +231,7 @@ export const autorDente: AutorDeCards = (r) => {
     temNumero(m, 's_den') && m.passo('s_den', 's_{den}', null, { casas: 1, unidade: 'cm', origem: 'adotado', ref: NBR('20.1') }),
     temNumero(m, 'Ase_den') && m.passo('Ase_den', 'A_{s,ef,den}', mul(div(Ab, s), cte(100, 0)), {
       casas: 2, unidade: 'cm²/m',
-      verif: { chave: 'dente.flexao', rotulo: 'Dente: flexão As,ef ≥ As', limite: temNumero(m, 'Asn_den') ? AsNec : null, relacao: '>=', celula: 'chk_fl_den' },
+      verif: { chave: 'dente.flexao', rotulo: 'Dente: flexão As,ef ≥ As', limite: temNumero(m, 'Asn_den') && !porRegra('chk_fl_den') ? AsNec : null, relacao: '>=', celula: 'chk_fl_den' },
     }),
   ], NBR('17.2.2'));
   const desS = desenhoDaSecaoDoDente(r);
@@ -190,9 +243,9 @@ export const autorDente: AutorDeCards = (r) => {
     temNumero(m, 'rho_den') && m.passo('rho_den', '\\rho_{1,den}', min(cte(0.02, 2), div(Ase, mul(cte(100, 0), d))), { casas: 4 }),
     temNumero(m, 'VRd1_den') && m.passo('VRd1_den', 'V_{Rd1,den}',
       mul(cte(0.25, 2), fctdKNm, k, par(soma(cte(1.2, 1), mul(cte(40, 0), rho))), dM), { casas: 2, unidade: 'kN/m' }),
-    temNumero(m, 'Vd_den') && m.passo('Vd_den', 'V_{d,den}', mul(cte(1.4, 1), Ek), {
+    temNumero(m, 'Vd_den') && m.passo('Vd_den', 'V_{d,den}', Fd, {
       casas: 2, unidade: 'kN/m',
-      verif: { chave: 'dente.cortante', rotulo: 'Dente: cortante Vd ≤ VRd1', limite: temNumero(m, 'VRd1_den') ? VRd1 : null, relacao: '<=', celula: 'chk_v_den' },
+      verif: { chave: 'dente.cortante', rotulo: 'Dente: cortante Vd ≤ VRd1', limite: temNumero(m, 'VRd1_den') && !porRegra('chk_v_den') ? VRd1 : null, relacao: '<=', celula: 'chk_v_den' },
     }),
   ], NBR('19.4.1'));
 
@@ -203,9 +256,10 @@ export const autorDente: AutorDeCards = (r) => {
     temNumero(m, 'lbm_den') && m.passo('lbm_den', '\\ell_{b,m\\acute{\\imath}n,den}', max(mul(cte(0.3, 1), lb), mul(cte(10, 0), phi), cte(10, 0)), { casas: 1, unidade: 'cm', ref: NBR('9.4.2.5') }),
     relacao && temNumero(m, 'lbn_den') && m.passo('lbn_den', '\\ell_{b,nec,den}',
       max(mul(cte(0.7, 1), lb, min(cte(1, 0), div(As, Ase))), lbMin), { casas: 1, unidade: 'cm', ref: NBR('9.4.2.5') }),
-    temNumero(m, 'lbd_den') && m.passo('lbd_den', '\\ell_{b,disp,den}', sub(hsCm, cs), {
+    // até o ramo de cima do estribo, que passa logo abaixo da armadura de cima da sapata (Ø principal + secundária)
+    temNumero(m, 'lbd_den') && m.passo('lbd_den', '\\ell_{b,disp,den}', sub(sub(sub(hsCm, cs), phiS), phiS2), {
       casas: 1, unidade: 'cm',
-      verif: { chave: 'dente.ancoragem', rotulo: 'Dente: ancoragem do estribo na sapata', limite: temNumero(m, 'lbn_den') ? lbNec : null, relacao: '>=', celula: 'chk_anc_den' },
+      verif: { chave: 'dente.ancoragem', rotulo: 'Dente: ancoragem do estribo na sapata', limite: temNumero(m, 'lbn_den') && !porRegra('chk_anc_den') ? lbNec : null, relacao: '>=', celula: 'chk_anc_den' },
     }),
   ], NBR('9.4.2.5'));
 
@@ -232,10 +286,10 @@ export const autorDente: AutorDeCards = (r) => {
     temNumero(m, 'MRd_sap') && m.passo('MRd_sap', 'M_{Rd,s}', div(mul(AseS, fyd, par(sub(dS, mul(cte(0.4, 1), xR)))), cte(100, 0)), { casas: 2, unidade: 'kN·m/m', ref: NBR('17.2.2') }),
     temNumero(m, 'Ms_den') && m.passo('Ms_den', 'M_{Sd,s}', soma(Mt, Mf), {
       casas: 2, unidade: 'kN·m/m', ref: DEDUCAO,
-      verif: { chave: 'dente.sapata', rotulo: 'Dente: momento passado à sapata MSd ≤ MRd', limite: temNumero(m, 'MRd_sap') ? MRd : null, relacao: '<=', celula: 'chk_tr_den' },
+      verif: { chave: 'dente.sapata', rotulo: 'Dente: momento passado à sapata MSd ≤ MRd', limite: temNumero(m, 'MRd_sap') && !porRegra('chk_tr_den') ? MRd : null, relacao: '<=', celula: 'chk_tr_den' },
     }),
   ], DEDUCAO);
 
-  card.secoes = [passivo, flexao, cortante, ancoragem, longitudinais, sapata].filter((sc) => sc.passos.length > 0);
+  card.secoes = [geometria, passivo, flexao, cortante, ancoragem, longitudinais, sapata].filter((sc) => sc.passos.length > 0);
   return [card];
 };

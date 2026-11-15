@@ -186,6 +186,30 @@ function renomeado(campo: Campo, v: unknown, todas: Record<string, unknown>): un
   return typeof s === 'number' && s >= 20 && s <= teto && s % 20 === 0 ? s : 40;
 }
 
+/*
+  ENTRADA QUE MUDOU DE ORIGEM: era do modelo (guardada em `extras`) e passou para a planilha (`alteracoes`). Sem a
+  mudança, o arquivo antigo cairia em "entrada ignorada" e abriria no padrão — o muro desenhado com barra reta
+  voltaria em estribo sem ninguém mexer.
+    · sap_transv (15/11): a conta do dente do lado da ponta depende dela (sem barra em cima, a sapata não leva o
+      momento do dente).
+  O valor que já estiver nas alterações manda (arquivo salvo pelo app de depois); o de extras, então, sai calado.
+  Só muda de lugar se o catálogo de HOJE disser que o campo é da planilha: o app de antes abre como sempre abriu.
+*/
+const MUDOU_PARA_A_PLANILHA: readonly string[] = ['sap_transv'];
+
+function mudarDeOrigem(alt: unknown, ext: unknown, campos: ReadonlyMap<string, Campo>): [unknown, unknown] {
+  const objeto = (o: unknown): o is Record<string, unknown> => !!o && typeof o === 'object' && !Array.isArray(o);
+  if (!objeto(ext) || !MUDOU_PARA_A_PLANILHA.some((n) => n in ext)) return [alt, ext];
+  const a2: Record<string, unknown> = objeto(alt) ? { ...alt } : {};
+  const e2: Record<string, unknown> = { ...ext };
+  for (const nome of MUDOU_PARA_A_PLANILHA) {
+    if (!(nome in e2) || campos.get(nome)?.origem !== 'planilha') continue;
+    if (!(nome in a2)) a2[nome] = e2[nome];
+    delete e2[nome];
+  }
+  return [objeto(alt) || Object.keys(a2).length ? a2 : alt, e2];
+}
+
 /**
  * Lê o texto do arquivo. Cada valor passa pela MESMA porta do campo da tela
  * (`validarValor`): o arquivo é texto, pode ter sido editado à mão, e a conta
@@ -216,7 +240,8 @@ export function desserializarProjeto(
 
   const descartados: string[] = [];
   const recusados: string[] = [];
-  const filtrar = (fonte: unknown, origem: Campo['origem']): Record<string, Valor> => {
+  const [fonteAlt, fonteExt] = mudarDeOrigem(a.alteracoes, a.extras, campos);
+  const filtrar =(fonte: unknown, origem: Campo['origem']): Record<string, Valor> => {
     const saida: Record<string, Valor> = {};
     if (!fonte || typeof fonte !== 'object' || Array.isArray(fonte)) return saida;
     for (const [k, v] of Object.entries(fonte as Record<string, unknown>)) {
@@ -237,7 +262,7 @@ export function desserializarProjeto(
   // Texto vazio aqui passava por "sem aviso" na barra de estado, enquanto o
   // recado dizia "outra versão" — a tela se contradizia.
   const versaoDaConta = typeof a.versaoDaConta === 'string' && a.versaoDaConta ? a.versaoDaConta : VERSAO_DESCONHECIDA;
-  const alteracoes = filtrar(a.alteracoes, 'planilha');
+  const alteracoes = filtrar(fonteAlt, 'planilha');
   // Arquivo v1 (antes das duas alturas): a altura gravada era a do solo. O solo vai para ela, e o muro antigo abre
   // calculando o mesmo empuxo (o muro, se a altura não fechava a fiada, a lista sobe — como o desenho de antes subia).
   const versaoDoArquivo = typeof a.versaoDoArquivo === 'number' ? a.versaoDoArquivo : 1;
@@ -254,7 +279,7 @@ export function desserializarProjeto(
       id: ganhouId ? novoIdDeProjeto() : (a.id as string),
       titulo: TITULOS_ANTIGOS_DO_EXEMPLO.has(titulo) ? TITULO_DO_EXEMPLO : titulo,
       alteracoes,
-      extras: filtrar(a.extras, 'modelo'),
+      extras: filtrar(fonteExt, 'modelo'),
       ...(a.pranchas !== undefined ? { pranchas: lerPranchas(a.pranchas, descartados) } : {}),
     },
     descartados,

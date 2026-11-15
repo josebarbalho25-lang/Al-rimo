@@ -9,7 +9,7 @@
   - o nó de cachorro diferente do Revit do Jose, saindo da sapata, ou desenhado onde a dobra não cabe.
 */
 import { describe, expect, it } from 'vitest';
-import { resultadoDoGabarito } from '@/motor/resultadoDoGabarito';
+import { comEntradas, resultadoDoGabarito } from '@/motor/resultadoDoGabarito';
 import type { Resultado, Valor } from '@/motor/tipos';
 import type { Barra, Modelo, Vec3 } from '@/modelo/tipos';
 import { eixoDaBarra } from '@/ifc/geometria';
@@ -29,7 +29,12 @@ const unit = (a: Vec3): Vec3 => {
 /** Comprimento da polilinha pelas cordas (o arco verdadeiro é um pouco maior). */
 const cordas = (e: Vec3[]): number => e.slice(1).reduce((s, q, k) => s + Math.hypot(...sub(q, e[k])), 0);
 
-const muro = (c: string, extras: Record<string, Valor> = {}): Modelo => gerarModelo(resultadoDoGabarito(c), { ...padroesDoModelo(), ...extras });
+// sap_transv é da planilha desde 15/11: vai para o Resultado (comEntradas), o resto para as entradas do modelo
+const muro = (c: string, extras: Record<string, Valor> = {}): Modelo => {
+  const { sap_transv, ...resto } = extras;
+  const r = sap_transv === undefined ? resultadoDoGabarito(c) : comEntradas(resultadoDoGabarito(c), { sap_transv });
+  return gerarModelo(r, { ...padroesDoModelo(), ...resto });
+};
 
 describe('estribo com a forma do Pró-Viga (ganchos de 135°, dobra no pino, volta em espiral)', () => {
   const CASOS: [number, number, number][] = [

@@ -263,3 +263,33 @@ describe('nomes de arquivo', () => {
     expect(nomeDeArquivo('   ', '.alrimo')).toBe('Sem título.alrimo');
   });
 });
+
+describe('entrada que mudou de origem (do modelo para a planilha)', () => {
+  // sap_transv (15/11): era entrada do modelo, guardada em extras; a conta do dente passou a depender dela
+  const antigo = (extras: Record<string, unknown>, alteracoes: Record<string, unknown> = {}) =>
+    JSON.stringify({ formato: 'alrimo', versaoDoArquivo: 2, versaoDaConta: VERSAO, id: muro.id, titulo: 'Antigo', alteracoes, extras });
+
+  it('o arquivo de antes abre com a transversal reta na planilha, sem "entrada ignorada"', () => {
+    expect(CAMPOS.get('sap_transv')?.origem).toBe('planilha');
+    const a = abrir(antigo({ L_total: 12, sap_transv: 'Reta' }, { H_muro: 2 }));
+    expect(a.ok).toBe(true);
+    if (!a.ok) return;
+    expect(a.projeto.alteracoes).toEqual({ H_muro: 2, sap_transv: 'Reta' });
+    expect(a.projeto.extras).toEqual({ L_total: 12 });
+    expect(a.descartados).toEqual([]);
+    expect(a.recusados).toEqual([]);
+  });
+
+  it('o valor que já está na planilha manda; o de extras sai calado', () => {
+    const a = abrir(antigo({ sap_transv: 'Reta' }, { sap_transv: 'Estribo' }));
+    expect(a.ok && a.projeto.alteracoes.sap_transv).toBe('Estribo');
+    expect(a.ok && 'sap_transv' in a.projeto.extras).toBe(false);
+    expect(a.ok && a.descartados).toEqual([]);
+  });
+
+  it('o arquivo de hoje salva a transversal nas alterações e volta igual', () => {
+    const p: Projeto = { ...muro, alteracoes: { ...muro.alteracoes, sap_transv: 'Reta' } };
+    const a = abrir(serializarProjeto(p, VERSAO));
+    expect(a.ok && a.projeto).toEqual(p);
+  });
+});

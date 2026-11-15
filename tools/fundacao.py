@@ -198,6 +198,9 @@ CHKF = [
     ('Compressão diagonal na face do muro', '=IF(tw_s<=tauRd2_s,"OK ("&FIXED(tw_s,3)&" ≤ "&FIXED(tauRd2_s,3)&" MPa)","NÃO OK ("&FIXED(tw_s,3)&" > "&FIXED(tauRd2_s,3)&" MPa) — aumentar a altura")'),
     ('Compressão diagonal junto ao contraforte', '=IF(Tipo_muro<>"Contrafortes","— (muro em balanço)",IF(tc_s<=tauRd2_s,"OK ("&FIXED(tc_s,3)&" ≤ "&FIXED(tauRd2_s,3)&" MPa)","NÃO OK ("&FIXED(tc_s,3)&" > "&FIXED(tauRd2_s,3)&" MPa) — aumentar a altura"))'),
     ('Torção: espessura equivalente he', '=IF(T_sd=0,"— (sem contrafortes)",IF(he_s>=2*c_eixo_s,"OK (A/u ≥ 2·c1)",IF(he_s<=MIN(B_sap,h_sap)-2*c_eixo_s,"OK (A/u < 2·c1: Ae pelos eixos das barras de canto)","NÃO OK — A/u > bw − 2·c1: aumentar a altura da sapata")))'),
+    # Eco do resultado da seção 11, para quem lê a lista não perder o dente. No FIM da lista: só descem as seções 10,
+    # 11 e a memória das fatias, que ninguém lê por endereço (nomes, e os cards pelo rótulo da coluna A).
+    ('Dente: armadura (seção 11)', '=res_den'),
 ]
 # Nome nas linhas que o app lê (antes por endereço: B101, B102, B104, B105 — uma linha nova acima as mudava de lugar).
 NOME_CHK = {'Tombamento: FS ≥ mínimo': 'chk_fs_t', 'Tombamento: |e| ≤ B/4': 'chk_e_t',
@@ -304,9 +307,9 @@ r += 2
 # Jose: "a forma de armar é similar à da sapata corrida, porém na vertical, com estribos adentrando a sapata corrida e
 # armadura de montagem / mínima no sentido longitudinal do dente; o esforço seria o de deslizamento / tombamento".
 # O dente é um balanço pendurado na sapata, empurrado pelo solo da FRENTE (lado da ponta) para trás: traciona a face
-# da frente. Carga de cálculo = o passivo CHEIO na face da frente, sem dividir por 2 e sem olhar a garantia do solo da
-# frente nem a posição do dente — é o máximo que o solo consegue devolver, o dente nunca recebe mais que isso (a
-# favor). No deslizamento (seção 3) o mesmo passivo entra dividido por 2 e só quando pode contar.
+# da frente. O empurrão é o passivo CHEIO na face da frente, sem dividir por 2 e sem olhar a garantia do solo da
+# frente nem a posição do dente (no deslizamento, seção 3, o mesmo passivo entra dividido por 2 e só quando pode
+# contar); a força de cálculo é a maior entre ele × 1,4 e o que o deslizamento pede do dente (Fd_den, abaixo).
 section(Fd, r, '11. Dente — armadura (por metro, NBR 6118)'); r += 1
 _D = lambda f: f'=IF(tem_den="Sim",{f},"—")'
 Lf('Há dente?', '=IF(AND(b_den>0,h_den>0),"Sim","Não")', '', 'Largura e altura do dente maiores que zero (Entradas).', 'res', None, 'tem_den')
@@ -316,9 +319,26 @@ Lf('p2 — passivo no fundo do dente = Kp·γ·(h aterro + h + h dente)', _D('Kp
 Lf('Ek = (p1 + p2)/2·h dente', _D('(p1_den+p2_den)/2*h_den'), 'kN/m', 'Resultante na face da frente do dente.', 'res', '0.00', 'Ek_den')
 Lf('Mk na raiz = p1·h²/2 + (p2 − p1)·h²/3', _D('p1_den*h_den^2/2+(p2_den-p1_den)*h_den^2/3'), 'kN·m/m', 'Traciona a face da frente (lado da ponta).', 'res', '0.00', 'Mk_den')
 Lf('Braço da resultante até a raiz = Mk/Ek', _D('Mk_den/Ek_den'), 'm', 'Abaixo da face de baixo da sapata (entre h/2 e 2h/3 do dente).', 'res', '0.000', 'y_den')
-Lf('Md = 1,4·Mk', _D('1.4*Mk_den'), 'kN·m/m', '', 'key', '0.00', 'Md_den')
-Lf('Vd = 1,4·Ek', _D('1.4*Ek_den'), 'kN/m', 'Na raiz (sem descontar a faixa até d: a favor).', 'key', '0.00', 'Vd_den')
+# FORÇA DE CÁLCULO NO DENTE (critério adotado em 15/11, a confirmar com o Jose). O passivo de Rankine é o de superfície
+# LIVRE; o solo na frente de um dente debaixo da sapata está confinado pela pressão de contato e pode devolver mais
+# que isso — o passivo cheio não é teto. Fica a MAIOR de duas: (a) o passivo cheio de cálculo, 1,4·Ek; (b) o que o
+# equilíbrio do deslizamento (seção 5) pede do dente: FS·Hk menos o atrito e a adesão da base, por metro do módulo,
+# nunca negativa. (b) já é de cálculo — o FS está na ação; não leva outro γf. É DEDUÇÃO nossa. O braço continua o do
+# trapézio do passivo (y = Mk/Ek): a força de (b) se distribui como o passivo na face.
+Lf('(a) Passivo cheio de cálculo = 1,4·Ek', _D('1.4*Ek_den'), 'kN/m', '', 'res', '0.00', 'Fa_den')
+Lf('(b) Pedido pelo deslizamento = (FS·Hk − atrito − adesão)/L ≥ 0', _D('IF(AND(ISNUMBER(FS_desl),ISNUMBER(H_k),ISNUMBER(R_at),ISNUMBER(R_ad),ISNUMBER(Lm)),MAX(0,(FS_desl*H_k-R_at-R_ad)/Lm),"—")'), 'kN/m',
+   'Seção 5, sem o passivo; o FS já está na ação (sem outro 1,4).', 'res', '0.00', 'Fb_den', 'Critério adotado')
+Lf('Fd = máx(a; b)', _D('IF(ISNUMBER(Fb_den),MAX(Fa_den,Fb_den),Fa_den)'), 'kN/m', '', 'key', '0.00', 'Fd_den', 'Critério adotado')
+Lf('Quem manda', _D('IF(AND(ISNUMBER(Fb_den),Fb_den>Fa_den),"Deslizamento (b)","Passivo cheio (a)")'), '', '', 'res', None, 'gov_den')
+Lf('Md = Fd·y', _D('Fd_den*y_den'), 'kN·m/m', '', 'key', '0.00', 'Md_den')
+Lf('Vd = Fd', _D('Fd_den'), 'kN/m', 'Na raiz (sem descontar a faixa até d: a favor).', 'key', '0.00', 'Vd_den')
 Lf('d = b dente − c − Ø/2', _D('b_den*100-cob_sap-phi_den/20'), 'cm', 'Seção 100 × b dente; cobrimento da sapata até o estribo.', 'res', '0.00', 'd_den')
+# Largura mínima para o estribo fechado: duas dobras de 90° no pino do estribo (NBR 6118 Tab. 9.2: 3φ até Ø10, 5φ
+# acima, 8φ de Ø20 — a mesma regra do modelo, barras.ts pinoEstribo) mais as duas bitolas e os dois cobrimentos.
+# O modelo não arma dente mais estreito que isso (DENTE_ESTREITO): a planilha não pode dizer OK onde não há barra.
+# Fora do _D: o dente sem largura (S3) também mostra o mínimo.
+Lf('Pino de dobra do estribo do dente', '=IF(phi_den<=10,3,IF(phi_den>=20,8,5))*phi_den/10', 'cm', '3Ø até Ø10; 5Ø; 8Ø a partir de Ø20.', 'res', '0.00', 'pino_den', 'NBR 6118 Tab. 9.2')
+Lf('Largura mínima do dente = 2c + 2Ø + pino', '=2*cob_sap+2*phi_den/10+pino_den', 'cm', '', 'res', '0.00', 'bmin_den')
 Lf('x', _D('IFERROR(1.25*d_den*(1-SQRT(1-Md_den*100/(0.425*100*d_den^2*fcd_s/10))),"não resiste")'), 'cm', 'Bloco 0,8x com 0,85fcd.', 'res', '0.00', 'xln_den', 'NBR 6118 17.2.2')
 Lf('x/d', _D('xln_den/d_den'), '', 'Limite 0,45 (ductilidade).', 'res', '0.000', 'xd_den', 'NBR 6118 14.6.4.3')
 Lf('As', _D('Md_den*100/(fyk_/gama_s/10*(d_den-0.4*xln_den))'), 'cm²/m', '', 'res', '0.00', 'As_den')
@@ -337,13 +357,17 @@ Lf('As,ef = área do ramo/espaçamento', _D('Ab_den/s_den*100'), 'cm²/m', '', '
 Lf('k = 1,6 − d ≥ 1', _D('MAX(1,1.6-d_den/100)'), '', '', 'res', '0.000', 'k_den')
 Lf('ρ1 = As,ef/(b·d) ≤ 2%', _D('MIN(0.02,Ase_den/(100*d_den))'), '', '', 'res', '0.0000', 'rho_den')
 Lf('VRd1 = 0,25·fctd·k·(1,2 + 40ρ1)·b·d', _D('0.25*fctd_s*1000*k_den*(1.2+40*rho_den)*d_den/100'), 'kN/m', 'NBR 6118 19.4.1 (sem armadura de cortante), como a sapata.', 'key', '0.00', 'VRd1_den', 'NBR 6118 19.4.1')
-# Ancoragem das pernas do estribo DENTRO da sapata: sobem até o cobrimento de cima e fecham lá. A dobra do fecho conta
-# como gancho (α = 0,7, NBR 6118 9.4.2.5), como a perna do U da canaleta. ℓb reto no concreto da sapata (lbphi_c,
+# Ancoragem das pernas do estribo DENTRO da sapata: sobem até logo abaixo da armadura de cima e fecham lá. As dobras
+# de 90° de cima contam como gancho (α = 0,7, NBR 6118 9.4.2.5), como a perna do U da canaleta; os ganchos de 135°
+# ficam no canto de baixo, dentro do dente (revisão de 15/11: em cima eles cruzavam as longitudinais da sapata). ℓb reto no concreto da sapata (lbphi_c,
 # seção 10; barra em pé = boa aderência).
 Lf('ℓb reto no concreto da sapata', _D('lbphi_c*phi_den/10'), 'cm', '', 'res', '0.0', 'lb_den', 'NBR 6118 9.4.2.4')
 Lf('ℓb,mín = máx(0,3·ℓb; 10Ø; 10 cm)', _D('MAX(0.3*lb_den,phi_den,10)'), 'cm', '10Ø em cm = Ø em mm.', 'res', '0.0', 'lbm_den', 'NBR 6118 9.4.2.5')
-Lf('ℓb,nec = α·ℓb·As,calc/As,ef ≥ ℓb,mín (α = 0,7)', _D('MAX(0.7*lb_den*MIN(1,As_den/Ase_den),lbm_den)'), 'cm', 'As,calc = As do momento (sem o mínimo). Estribo fechado, dobra em cima.', 'key', '0.0', 'lbn_den', 'NBR 6118 9.4.2.5')
-Lf('Ancoragem disponível = h sapata − c', _D('h_sap*100-cob_sap'), 'cm', 'Da raiz do dente ao cobrimento de cima da sapata.', 'res', '0.0', 'lbd_den')
+Lf('ℓb,nec = α·ℓb·As,calc/As,ef ≥ ℓb,mín (α = 0,7)', _D('MAX(0.7*lb_den*MIN(1,As_den/Ase_den),lbm_den)'), 'cm', 'As,calc = As do momento (sem o mínimo). Estribo fechado: as dobras de 90° de cima, no pino, contam como gancho.', 'key', '0.0', 'lbn_den', 'NBR 6118 9.4.2.5')
+# O ramo de cima do estribo do dente passa POR BAIXO da camada de cima da sapata (Ø principal + Ø secundária abaixo do
+# cobrimento): no cobrimento ele bateria nas longitudinais de cima e, com Ø do dente maior que o da sapata, entraria
+# nelas (modelo, entorno.ts estriboDoDente). A perna ancorada vai da raiz até o topo desse ramo.
+Lf('Ancoragem disponível = h sapata − c − Ø principal − Ø secundária', _D('h_sap*100-cob_sap-(phi_sap+phi_sap2)/10'), 'cm', 'Da raiz do dente ao ramo de cima do estribo, logo abaixo da armadura de cima da sapata.', 'res', '0.0', 'lbd_den')
 # Longitudinal de montagem, por face do dente, por dentro do estribo. Critério da armadura secundária de laje (NBR 6118
 # Tab. 19.1: 20% da principal e 0,9 cm²/m) aplicado à altura do dente, e uma barra a cada 33 cm no máximo (20.1) —
 # usar o critério de laje no dente é DEDUÇÃO. Mínimo de duas por face (o canto de baixo e a raiz).
@@ -366,29 +390,51 @@ Lf('MRd da sapata = As,ef·fyd·(d − 0,4x)', _D('Ase_sap*fyk_/gama_s/10*(d_s-0
 Lf('MSd na sapata junto ao dente', _D('Mt_den+Mf_den'), 'kN·m/m', '', 'key', '0.00', 'Ms_den', 'Dedução')
 _fden = '"Ø"&' + fphi('phi_den') + '&" c/"&IF(s_den=INT(s_den),FIXED(s_den,0),FIXED(s_den,1))'
 _SEMD = '"— (sem dente)"'
+# Geometria antes de tudo, e sem pedir o φ' (não depende do solo). Altura sem largura (revisão de 15/11): com o solo
+# da frente garantido, o deslizamento (seção 3, E_p) conta o passivo pela altura do dente, com ou sem largura — sem
+# largura não há dente para armar, e a armadura não pode sair "— (sem dente)" enquanto o deslizamento usa o dente.
+# Sem a garantia, largura 0 é o "sem dente" das Entradas (o passivo do dente já pede largura > 0): nada muda.
+_bmin = 'FIXED(bmin_den,1)'
+Lf('Dente: largura para o estribo',
+   f'=IF(tem_den<>"Sim",IF(AND(pass_on="Sim",ISNUMBER(h_den),h_den>0),"NÃO OK — digitar a largura do dente ou zerar a altura",{_SEMD}),'
+   f'IF(ISNUMBER(bmin_den)=FALSE,"NÃO OK — conta do dente sem número",IF(b_den*100>=bmin_den-0.0005,"OK (b = "&FIXED(b_den*100,1)&" ≥ "&{_bmin}&" cm)",'
+   f'"NÃO OK — dente estreito para o estribo: mínimo "&{_bmin}&" cm")))', '', '', 'key', None, 'chk_geo_den')
 CHKD = [
+    # espaçamento: o automático sai da série 20…5; o digitado tem de ficar entre 5 e 20 (abaixo de 5 cm não se
+    # concreta entre os estribos). O ÉNÚM antes do < 5: texto ("—") seria maior que qualquer número no Excel.
     ('Dente: flexão', 'chk_fl_den',
      'IF(ISNUMBER(xln_den)=FALSE,"NÃO OK — aumentar a largura do dente",IF(xd_den>0.45,"NÃO OK — x/d = "&FIXED(xd_den,2)&" > 0,45: aumentar a largura do dente",'
+     'IF(AND(ISNUMBER(s_den),s_den<5),"NÃO OK — espaçamento do estribo abaixo de 5 cm: usar 5 cm ou mais",'
      'IF(ISNUMBER(Ase_den)=FALSE,"NÃO OK — aumentar o Ø do estribo do dente",IF(s_den>20,"NÃO OK — espaçamento do estribo acima de 20 cm",'
-     'IF(Ase_den>=Asn_den-0.005,"OK — "&' + _fden + '&" ("&FIXED(Ase_den,2)&" ≥ "&FIXED(Asn_den,2)&" cm²/m)","NÃO OK — "&' + _fden + '&" ("&FIXED(Ase_den,2)&" < "&FIXED(Asn_den,2)&" cm²/m): diminuir o espaçamento ou aumentar o Ø")))))'),
+     'IF(Ase_den>=Asn_den-0.005,"OK — "&' + _fden + '&" ("&FIXED(Ase_den,2)&" ≥ "&FIXED(Asn_den,2)&" cm²/m)","NÃO OK — "&' + _fden + '&" ("&FIXED(Ase_den,2)&" < "&FIXED(Asn_den,2)&" cm²/m): diminuir o espaçamento ou aumentar o Ø"))))))'),
     ('Dente: cortante sem estribo', 'chk_v_den',
      'IF(Vd_den<=VRd1_den,"OK ("&FIXED(Vd_den,1)&" ≤ "&FIXED(VRd1_den,1)&" kN/m)","NÃO OK ("&FIXED(Vd_den,1)&" > "&FIXED(VRd1_den,1)&" kN/m) — aumentar a largura do dente")'),
     ('Dente: ancoragem do estribo na sapata', 'chk_anc_den',
      'IF(lbd_den>=lbn_den,"OK ("&FIXED(lbd_den,1)&" ≥ "&FIXED(lbn_den,1)&" cm)","NÃO OK ("&FIXED(lbd_den,1)&" < "&FIXED(lbn_den,1)&" cm) — aumentar a altura da sapata ou baixar o Ø do estribo")'),
+    # Do lado da ponta o momento do dente traciona a face de CIMA. Barra em cima há quando a transversal é estribo
+    # (o ramo de cima) ou, reta, quando o talão pede (Mk_heel > 0) — a MESMA regra do modelo (entorno.ts,
+    # sapataReta: faces = Mk_heel > 0 ? I e S : só I). Sem ela, a conta com o MRd da barra de cima seria de mentira.
     ('Dente: momento passado à sapata', 'chk_tr_den',
-     'IF(Ms_den<=MRd_sap,"OK ("&FIXED(Ms_den,1)&" ≤ "&FIXED(MRd_sap,1)&" kN·m/m)","NÃO OK ("&FIXED(Ms_den,1)&" > "&FIXED(MRd_sap,1)&" kN·m/m) — aumentar a altura da sapata ou diminuir o dente")'),
+     'IF(AND(lado_den="Ponta",LEFT(sap_transv,4)="Reta",IF(ISNUMBER(Mk_heel),Mk_heel<=0,TRUE)),"NÃO OK — sem armadura em cima da sapata: usar estribo na sapata",'
+     'IF(Ms_den<=MRd_sap,"OK ("&FIXED(Ms_den,1)&" ≤ "&FIXED(MRd_sap,1)&" kN·m/m)","NÃO OK ("&FIXED(Ms_den,1)&" > "&FIXED(MRd_sap,1)&" kN·m/m) — aumentar a altura da sapata ou diminuir o dente"))'),
 ]
 # número contra texto ("—", "não resiste") compara como VERDADEIRO no Excel: os dois lados de cada desigualdade têm
 # de ser número antes dela — por isso o ÉNÚM em cima e a lista do que cada verificação lê
 _LE = {'chk_fl_den': ('Md_den',), 'chk_v_den': ('Vd_den', 'VRd1_den'), 'chk_anc_den': ('lbd_den', 'lbn_den'), 'chk_tr_den': ('Ms_den', 'MRd_sap')}
+# d ≤ 0 (dente mais estreito que o cobrimento): o VRd1 sairia positivo de dois negativos e a flexão de raiz de
+# número negativo — nenhuma das quatro pode dizer OK sem altura útil.
+_dok = 'AND(ISNUMBER(d_den),d_den>0)'
 for _lab, _nm, _f in CHKD:
     _num = 'AND(' + ','.join(f'ISNUMBER({_x})' for _x in _LE[_nm]) + ')'
-    Lf(_lab, f'=IF(tem_den<>"Sim",{_SEMD},IF(ISNUMBER(p2_den)=FALSE,"NÃO OK — digitar o φ\' do solo de apoio (sondagem)",IF({_num},{_f},"NÃO OK — conta do dente sem número")))', '', '', 'key', None, _nm)
+    Lf(_lab, f'=IF(tem_den<>"Sim",{_SEMD},IF(ISNUMBER(p2_den)=FALSE,"NÃO OK — digitar o φ\' do solo de apoio (sondagem)",'
+       f'IF({_dok}=FALSE,"NÃO OK — dente sem altura útil, d ≤ 0: aumentar a largura",IF({_num},{_f},"NÃO OK — conta do dente sem número"))))', '', '', 'key', None, _nm)
+CHKD.insert(0, ('Dente: largura para o estribo', 'chk_geo_den', None))
 # Só vale "OK…" ou o "— (sem dente)" escrito aqui: o "—" puro seria conta que não fechou (IFERROR do pós-processamento).
 _okd = 'AND(' + ','.join(f'LEFT({_nm},2)="OK"' for _, _nm, _ in CHKD) + ')'
 _qual = '"conta sem número"'
 for _lab, _nm, _ in reversed(CHKD): _qual = f'IF(LEFT({_nm},2)<>"OK","{_lab.split(": ")[1]}",{_qual})'
-Lf('Dente: resultado', f'=IF(tem_den<>"Sim",{_SEMD},IF(ISNUMBER(p2_den)=FALSE,"NÃO OK — digitar o φ\' do solo de apoio (sondagem)",IF({_okd},"OK — estribo "&{_fden}&" + "&FIXED(n_lden,0)&" Ø"&{fphi("phi_lden")}&" corridas","NÃO OK — "&{_qual})))', '',
-   'Flexão, cortante, ancoragem do estribo e momento passado à sapata.', 'key', None, 'res_den')
+# sem dente: o que a geometria disse ("— (sem dente)" ou "NÃO OK — digitar a largura do dente")
+Lf('Dente: resultado', f'=IF(tem_den<>"Sim",chk_geo_den,IF(ISNUMBER(p2_den)=FALSE,"NÃO OK — digitar o φ\' do solo de apoio (sondagem)",IF({_okd},"OK — estribo "&{_fden}&" + "&FIXED(n_lden,0)&" Ø"&{fphi("phi_lden")}&" corridas","NÃO OK — "&{_qual})))', '',
+   'Largura, flexão, cortante, ancoragem do estribo e momento passado à sapata.', 'key', None, 'res_den')
 widths(Fd, {'A': 46, 'B': 24, 'C': 12, 'D': 66, 'E': 18, 'F': 14, 'G': 16})
 Fd.freeze_panes = 'A4'

@@ -5,7 +5,7 @@
   gerador: se o gerador errar, o teste não erra junto.
 */
 import { describe, expect, it } from 'vitest';
-import { cenariosDoGabarito, resultadoDoGabarito } from '@/motor/resultadoDoGabarito';
+import { cenariosDoGabarito, comEntradas, resultadoDoGabarito } from '@/motor/resultadoDoGabarito';
 import type { Resultado, Valor } from '@/motor/tipos';
 import type { Modelo, Peca, TipoPeca, Vec2, Vec3 } from '@/modelo/tipos';
 import { caixaGlobal, gerarModelo, paraGlobal, padroesDoModelo } from './index';
@@ -804,8 +804,9 @@ describe('canaleta como a obra deixa: fundo furado onde sobe a barra, T de graut
   it('estribos de gancho, sapata em estribos e nó de cachorro: nenhuma barra atravessa peça sólida', () => {
     for (const c of ['aula122', 'aula123', 'sorteio01', 'sorteio14', 'sorteio31']) {
       const r = resultadoDoGabarito(c);
-      for (const [no, extras] of [[false, padroesDoModelo()], [true, { ...padroesDoModelo(), sap_transv: 'Reta', arranque: 'Nó de cachorro' }]] as const) {
-        const m = gerarModelo(r, extras);
+      for (const [no, extras] of [[false, padroesDoModelo()], [true, { ...padroesDoModelo(), arranque: 'Nó de cachorro' }]] as const) {
+        // a transversal reta junto com o nó (sap_transv é da planilha desde 15/11)
+        const m = gerarModelo(no ? comEntradas(r, { sap_transv: 'Reta' }) : r, extras);
         if (!no) expect(m.barras.some((b) => b.estribo), c).toBe(true);
         if (no && c.startsWith('aula')) expect(m.barras.filter((b) => b.papel === 'ESPERA').length, c).toBe(m.barras.filter((b) => VERTICAIS.has(b.papel) && b.papel !== 'ESPERA').length);
         expect(barrasEmPecaSolida(m), c).toEqual([]);
@@ -825,8 +826,8 @@ describe('canaleta como a obra deixa: fundo furado onde sobe a barra, T de graut
     expect(muros.length).toBeGreaterThanOrEqual(5);
     for (const c of muros) {
       const r = resultadoDoGabarito(c);
-      for (const extras of [padroesDoModelo(), { ...padroesDoModelo(), sap_transv: 'Reta', arranque: 'Nó de cachorro' }]) {
-        const m = gerarModelo(r, extras);
+      for (const [rr, extras] of [[r, padroesDoModelo()], [comEntradas(r, { sap_transv: 'Reta' }), { ...padroesDoModelo(), arranque: 'Nó de cachorro' }]] as const) {
+        const m = gerarModelo(rr, extras);
         // só as barras da sapata e do dente (ids SAP.…): muro de alvo pode ter outro defeito que não é daqui
         expect(m.barras.some((b) => b.papel === 'DENTE_ESTRIBO'), c).toBe(true);
         expect(barrasEmPecaSolida(m).filter((a) => a.startsWith('SAP.')), c).toEqual([]);

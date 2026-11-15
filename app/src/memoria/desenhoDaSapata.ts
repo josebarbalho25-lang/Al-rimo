@@ -529,7 +529,16 @@ export function desenhoDasForcasNoDente(r: Resultado): DesenhoDoCard | null {
   partes.push(texto(xT + 6, yBase - 6, 'raiz', FS - 1, 'start', COTA));
   const yRod = yFundo + 58;
   partes.push(texto(40, yRod, `Mk = Ek × y = ${m2(Ek)} × ${nbr(y, 3)} = ${m2(Mk)} kN·m/m (na raiz; traciona a face da frente)`, FS, 'start', TINTA, 'bold'));
-  return { svg: svgDe(partes, yRod + 14), titulo: 'Dente: passivo na face da frente e braço até a raiz', largura: LARGURA };
+  // o desenho é do passivo característico; a força de CÁLCULO é a maior entre ele × 1,4 e o que o deslizamento pede
+  // (critério de 15/11) — a linha de baixo diz qual, com os números das células
+  const Fa = r.num('Fa_den'), Fb = r.num('Fb_den'), Fd = r.num('Fd_den'), Md = r.num('Md_den');
+  let yFim = yRod;
+  if (ok(Fa) && ok(Fd) && ok(Md)) {
+    yFim += 20;
+    const quem = ok(Fb) ? `máx(1,4·Ek = ${m2(Fa)}; deslizamento = ${m2(Fb)})` : `1,4·Ek`;
+    partes.push(texto(40, yFim, `Fd = ${quem} = ${m2(Fd)} kN/m → Md = Fd × y = ${m2(Md)} kN·m/m`, FS, 'start', LARANJA, 'bold'));
+  }
+  return { svg: svgDe(partes, yFim + 14), titulo: 'Dente: passivo na face da frente e braço até a raiz', largura: LARGURA };
 }
 
 /** 2. A seção da raiz do dente vista de cima: 100 × b, as pernas dos estribos nas duas faces, d e o bloco 0,8x. */

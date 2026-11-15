@@ -42,6 +42,24 @@ function comoValor(v: unknown): Valor {
   return v as Valor;
 }
 
+/**
+ * O mesmo Resultado com algumas células trocadas — para a frente que só LÊ a conta (modelo, desenhos) testar uma
+ * entrada da planilha que o gabarito não varia (sap_transv = 'Reta', que até 15/11 era entrada do modelo). A conta
+ * não é refeita: só serve a quem não depende das células que a troca mudaria.
+ */
+export function comEntradas(r: Resultado, trocas: Record<string, Valor>): Resultado {
+  const v = (nome: string): Valor => (nome in trocas ? trocas[nome] : r.v(nome));
+  return {
+    ...r,
+    v,
+    num(nome) {
+      const x = v(nome);
+      return typeof x === 'number' && Number.isFinite(x) ? x : null;
+    },
+    alteracoes: { ...r.alteracoes, ...trocas },
+  };
+}
+
 export function resultadoDoGabarito(cenario: string): Resultado {
   const g = lerGabarito(cenario);
   const v = (nome: string): Valor => {

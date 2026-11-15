@@ -193,7 +193,8 @@ export function lerParametros(r: Resultado, extrasIn: Record<string, Valor>, avi
     cinta: sim('cinta_topo'),
     phi_cinta: xn('phi_cinta', 10),
     traspasse: comoNumero(extras.traspasse_dir) === null ? null : (comoNumero(extras.traspasse_dir) as number) * 10,
-    sapTransv: comoTexto(extras.sap_transv).trim().toLowerCase().startsWith('r') ? 'reta' : 'estribo',
+    // da planilha desde 15/11 (a conta do dente depende dela): o modelo desenha o que a conta conferiu
+    sapTransv: txt('sap_transv').trim().toLowerCase().startsWith('r') ? 'reta' : 'estribo',
     arranque: comoTexto(extras.arranque).trim().toLowerCase().startsWith('n') ? 'no' : 'padrao',
     barbaca: sim('barbaca_on'),
     barbaca_phi: xn('barbaca_phi', 50),

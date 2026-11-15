@@ -371,6 +371,12 @@ lista(LST['lst_phi_sap2'], f'B{r-1}')
 line(E, r, 'Dente: espaçamento do estribo — opcional', None, 'cm', 'Em branco = o maior entre 20; 15; 12,5; 10; 7,5 e 5 cm que atende a armadura do dente.', 'inp', '0.0', 's_den_dir'); r += 1
 line(E, r, 'Dente: Ø da longitudinal', 6.3, 'mm', 'Barras corridas de montagem, por dentro do estribo. A quantidade sai da conta (aba Fundação, seção 11).', 'inp', '0.0', 'phi_lden'); r += 1
 lista(LST['lst_phi_sap2'], f'B{r-1}')
+# Transversal da sapata (Jose, 15/10): era entrada só do modelo (3D e desenhos). Veio para a planilha em 15/11 porque a
+# conta passou a depender dela: com o dente do lado da ponta, o momento dele traciona a face de CIMA, e a barra reta
+# sem talão que peça não põe aço em cima (aba Fundação, seção 11, chk_tr_den). Estribo = o padrão do modelo desde
+# 15/10. Lista de texto sem vírgula: pode ir na própria validação, como a do Sim/Não.
+line(E, r, 'Transversal da sapata', 'Estribo', '', 'Estribo fechado em volta da seção; Reta = barra reta embaixo (e em cima só quando o talão pede).', 'inp', None, 'sap_transv'); r += 1
+dv_st = DataValidation(type='list', formula1='"Estribo,Reta"', allow_blank=False); E.add_data_validation(dv_st); dv_st.add(f'B{r-1}')
 r += 1
 # MURO DE CIMA E VENTO (Jose, 13/11): o arrimo dos clientes dele "não pode ser só arrimo" — tem muro de vedação por
 # cima, e o vento nesse muro desce no arrimo. Tudo no mesmo programa ("é mais fácil integrar do que fazer separado e

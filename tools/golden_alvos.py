@@ -30,7 +30,7 @@ ALVOS = {
         't_bloco': 19, 'H_muro': 1, 'gama_solo': 18, 'q_sobre': 0, 'c_solo': 0, 'Agua': 'Não', 'Ka_dir': 0.75,
         'K_dir': 1, 'd_dir': 7.5, 'fbk_': 4, 'fpk_ref': 'Bruta', 'Graute': 40, 'M2d_on': 'Não',
     },
-    # Fundação!G136 (G129 até a seção 10 da aba entrar, 09/10): E136 > d_s/100 com os dois iguais a menos do último
+    # Fundação!G137 (G136 até o eco do dente na seção 9, 15/11; G129 até a seção 10 entrar, 09/10): E137 > d_s/100 com os dois iguais a menos do último
     # bit — Excel diz FALSO (0); o double cru daria −0,105.
     'alvo_compara15_sapata_a': {
         'H_muro': 2, 't_bloco': 14, 'Trav_lat': 'Sim', 'Ka_dir': 0.33, 'phi_solo': 30, 'c_solo': 10,
@@ -48,7 +48,7 @@ ALVOS = {
         'bwh_els': 20, 'fgk_dir': None, 'psi_els': 1, 'vao_ref': 'h', 'sg_on': 'Não',
         'dxi': 0.5, 'bw_dir': 15,
     },
-    # Fundação!G131 (era G124) e B78 (cortante do talão): até 08/10 caía na mesma armadilha da seção crítica d_s/100. Com o vão e
+    # Fundação!G132 (era G131 até 15/11, G124 antes) e B78 (cortante do talão): até 08/10 caía na mesma armadilha da seção crítica d_s/100. Com o vão e
     # o contraforte da lista (3,75 e 54, antes 4 e 59) não cai mais na borda — fica como cobertura da sapata com
     # contrafortes em 14x39; a regra dos 15 dígitos na comparação continua provada pelo sapata_a.
     'alvo_compara15_sapata_b': {
@@ -241,6 +241,19 @@ ALVOS_DENTE = {
     'alvo_dente_talao_nao_passa': {
         'b_den': 0.12, 'h_den': 1.0, 'x_den': -0.3, 'phi_den': 5, 'phi_base': 35, 'h_fr': 1.2,
     },
+    # Revisão de 15/11. (b) manda: atrito fraco (φ'b 20, δ/φ 0,5) e dente baixo — o deslizamento pede do dente mais
+    # que o passivo cheio de cálculo.
+    'alvo_dente_deslizamento_manda': {'b_den': 0.25, 'h_den': 0.25, 'x_den': 0, 'phi_base': 20, 'dphi': 0.5},
+    # largura abaixo do mínimo do estribo (12 cm com Ø8 e c 4) e dente sem altura útil (d ≤ 0)
+    'alvo_dente_estreito': {'b_den': 0.10, 'h_den': 0.3},
+    'alvo_dente_sem_d': {'b_den': 0.04, 'h_den': 0.3},
+    # altura sem largura, com o passivo do solo da frente contando o dente no deslizamento; e a largura em branco
+    'alvo_dente_sem_largura': {'b_den': 0, 'h_den': 0.5, 'pass_on': 'Sim'},
+    'alvo_dente_largura_vazia': {'b_den': None, 'h_den': 0.5, 'pass_on': 'Sim'},
+    # espaçamento digitado abaixo de 5 cm
+    'alvo_dente_s_abaixo_de_5': {'s_den_dir': 4},
+    # dente do lado da ponta, transversal reta e sapata toda para fora (sem talão: nada pede barra em cima)
+    'alvo_dente_ponta_reta': {'a_ater': 0.095, 'x_den': 0.3, 'sap_transv': 'Reta'},
 }
 ALVOS.update(ALVOS_DENTE)
 
