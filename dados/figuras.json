@@ -413,6 +413,9 @@
       "figura": "fig12",
       "campo": "pos_cf"
     },
+    "larg_cf": {
+      "figura": "fig12"
+    },
     "tipo_cf": {
       "figura": "fig16",
       "campo": "tipo_cf"

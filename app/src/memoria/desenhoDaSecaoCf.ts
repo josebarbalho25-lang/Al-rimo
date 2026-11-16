@@ -14,6 +14,11 @@
   Detalhe A (à direita): o furo da barra em escala maior, com as duas cotas que dão o c (face → começo do trecho comum
   e o comprimento dele) — o c sai à vista: c = a + ℓ/2.
 
+  CONTRAFORTE DOBRADO (16/11): dois blocos lado a lado com 1 cm de argamassa (2t + 1), cada um o contraforte de ponta
+  do gabarito (o da esquerda espelhado), as barras metade no furo da ponta de cada bloco e o estribo abraçando os
+  dois (eixo dos ramos a 3,5 cm das faces de fora e a 4,5 cm da face do muro e da ponta, como no 3D). O detalhe A é o
+  furo de um dos blocos.
+
   Desenho de papel (fundo branco, traço escuro): no tema escuro ele fica numa folha, como as figuras do acervo; na
   exportação para o Word o SVG vira PNG (word.ts). Sem <defs> nem ids: dois cards com a mesma figura na mesma página
   não colidem.
@@ -22,6 +27,7 @@ import type { Resultado } from '@/motor/tipos';
 import type { Vec2 } from '@/modelo/tipos';
 import { arranjoNaSecao, etaDaBarra, secaoDoContraforte, type FuroEmPlanta, type SecaoDoContraforte } from '@/modulacao/secaoDoContraforte';
 import { retanguloArredondado } from '@/modulacao/perfis';
+import { estribosDaJunta } from '@/modulacao/armaduras';
 import { nbr } from './formato';
 import type { Desenho } from './tipos';
 
@@ -84,6 +90,8 @@ interface Dados {
   n: number;
   phi: number;        // mm
   T: boolean;         // seção T (enterrado)
+  /** Dobrado: os ramos do estribo que abraça os dois blocos (a conta: ram_ef). Sem o campo: um bloco. */
+  dobrado?: { ramos: number };
 }
 
 function lerDados(r: Resultado): Dados | null {
@@ -98,10 +106,14 @@ function lerDados(r: Resultado): Dados | null {
   if (!(tenr > t) || !(n >= 1) || !(phi > 0) || !(bm > 0)) return null;
   const familia = Math.round(t) === 19 ? '19x39' : '14x39';
   const T = r.num('cf_T') === 1;
-  const no = String(r.v('tipo_cf') ?? '').toLowerCase().startsWith('inter') ? 'T' : 'L';
+  // dobrado: cada metade é o contraforte de PONTA do gabarito (template L)
+  const dobrado = r.num('dob_cf') === 1;
+  const no = dobrado ? 'L' : String(r.v('tipo_cf') ?? '').toLowerCase().startsWith('inter') ? 'T' : 'L';
   try {
     const sec = secaoDoContraforte(familia, Math.round(tenr * 10), T ? 'enterrado' : 'aparente', no);
-    return { sec, bm: bm * 10, c: c * 10, d: d * 10, n: Math.round(n), phi, T };
+    const D: Dados = { sec, bm: bm * 10, c: c * 10, d: d * 10, n: Math.round(n), phi, T };
+    if (dobrado) D.dobrado = { ramos: Math.round(r.num('ram_ef') ?? 2) === 4 ? 4 : 2 };
+    return D;
   } catch {
     return null;
   }
@@ -114,7 +126,14 @@ export function desenhoDaSecaoDoContraforte(r: Resultado): DesenhoDoCard | null 
   const { sec, bm, c, d, n, phi, T } = D;
   const { t, tenr } = sec;
   const etaBarra = etaDaBarra(sec, c);
-  const arr = arranjoNaSecao(sec, c, n, phi);
+  // as metades: o eixo de cada bloco (ox) e o sentido (sx: a da esquerda é o gabarito de ponta espelhado)
+  const dob = D.dobrado;
+  const metades: { ox: number; sx: 1 | -1 }[] = dob ? [{ ox: -(t + 10) / 2, sx: -1 }, { ox: (t + 10) / 2, sx: 1 }] : [{ ox: 0, sx: 1 }];
+  const W0 = dob ? 2 * t + 10 : t;               // largura do contraforte (eenr)
+  const nBloco = dob ? Math.round(n / 2) : n;
+  const arr = arranjoNaSecao(sec, c, nBloco, phi);
+  const mx = (ox: number, sx: number) => (X: number) => ox + sx * X;
+  const noBloco = (pts: Vec2[], ox: number, sx: number): Vec2[] => pts.map(([X, e]) => [mx(ox, sx)(X), e] as Vec2);
   const furo = sec.furo;
   const faceTracionada = T ? tenr : 0;     // enterrado: ponta; aparente: face do solo
   const faceComprimida = T ? 0 : tenr;
@@ -124,7 +143,7 @@ export function desenhoDaSecaoDoContraforte(r: Resultado): DesenhoDoCard | null 
   const partes: string[] = [];
 
   // ── vista geral (esquerda) ──
-  const larguraMesa = T ? bm : t;
+  const larguraMesa = T ? bm : W0;
   const sobra = Math.max(1.2 * t, 0.12 * larguraMesa);          // muro além da mesa colaborante (fora da seção)
   const Wtot = larguraMesa + 2 * sobra;
   const area = { x0: 62, x1: 392, y0: 46 };
@@ -137,36 +156,54 @@ export function desenhoDaSecaoDoContraforte(r: Resultado): DesenhoDoCard | null 
   partes.push(retangulo(-Wtot / 2, 0, Wtot / 2, t, v1, `fill="${FORA}" stroke="none"`));
   if (T) partes.push(retangulo(-bm / 2, 0, bm / 2, t, v1, `fill="${MURO}" stroke="none"`));
   // alma (haste) — no aparente, a seção é só ela (com o pedaço de muro da célula do contraforte)
-  partes.push(retangulo(-t / 2, T ? t : 0, t / 2, tenr, v1, `fill="${MURO}" stroke="none"`));
-  // furos da fiada P na haste (grauteados) e as juntas entre as peças
-  for (const p of sec.haste.P) {
-    for (const f of p.furos) partes.push(poligono(furoPoligono(f), v1, `fill="${FURO}" ${linhaFina}`));
-    partes.push(`<line x1="${v1.x(-t / 2).toFixed(2)}" y1="${v1.y(p.eta).toFixed(2)}" x2="${v1.x(t / 2).toFixed(2)}" y2="${v1.y(p.eta).toFixed(2)}" ${linhaFina}/>`);
+  for (const { ox } of metades) partes.push(retangulo(ox - t / 2, T ? t : 0, ox + t / 2, tenr, v1, `fill="${MURO}" stroke="none"`));
+  for (const { ox, sx } of metades) {
+    // furos da fiada P na haste (grauteados) e as juntas entre as peças
+    for (const p of sec.haste.P) {
+      for (const f of p.furos) partes.push(poligono(noBloco(furoPoligono(f), ox, sx), v1, `fill="${FURO}" ${linhaFina}`));
+      partes.push(`<line x1="${v1.x(ox - t / 2).toFixed(2)}" y1="${v1.y(p.eta).toFixed(2)}" x2="${v1.x(ox + t / 2).toFixed(2)}" y2="${v1.y(p.eta).toFixed(2)}" ${linhaFina}/>`);
+    }
+    // furo da barra: trecho comum grauteado + o contorno da fiada P (cheio) e da fiada I (tracejado)
+    partes.push(poligono(noBloco(furo.poligono, ox, sx), v1, `fill="${GRAUTE}" stroke="none"`));
+    partes.push(poligono(noBloco(furoPoligono(furo.P), ox, sx), v1, `fill="none" ${linhaFina}`));
+    partes.push(poligono(noBloco(furoPoligono(furo.I), ox, sx), v1, `fill="none" stroke="${TINTA}" stroke-width="0.5" stroke-dasharray="3 2"`));
   }
-  // furo da barra: trecho comum grauteado + o contorno da fiada P (cheio) e da fiada I (tracejado)
-  partes.push(poligono(furo.poligono, v1, `fill="${GRAUTE}" stroke="none"`));
-  partes.push(poligono(furoPoligono(furo.P), v1, `fill="none" ${linhaFina}`));
-  partes.push(poligono(furoPoligono(furo.I), v1, `fill="none" stroke="${TINTA}" stroke-width="0.5" stroke-dasharray="3 2"`));
+  // dobrado: a junta de argamassa entre os dois blocos (do muro à ponta, pela haste)
+  if (dob) {
+    for (const x of [-5, 5]) partes.push(`<line x1="${v1.x(x).toFixed(2)}" y1="${v1.y(T ? t : 0).toFixed(2)}" x2="${v1.x(x).toFixed(2)}" y2="${v1.y(tenr).toFixed(2)}" ${linhaFina}/>`);
+  }
   // contorno da seção de cálculo (T ou retângulo)
   if (T) {
     const xm = bm / 2;
-    const xa = t / 2;
+    const xa = W0 / 2;
     partes.push(poligono([[-xm, 0], [xm, 0], [xm, t], [xa, t], [xa, tenr], [-xa, tenr], [-xa, t], [-xm, t]], v1, contorno));
   } else {
-    partes.push(retangulo(-t / 2, 0, t / 2, tenr, v1, contorno));
+    partes.push(retangulo(-W0 / 2, 0, W0 / 2, tenr, v1, contorno));
+  }
+  // dobrado: o estribo que abraça os dois blocos (eixo dos ramos; com 4 ramos, os dois estribos de 2/3)
+  if (dob) {
+    for (const cantos of estribosDaJunta(dob.ramos, 0, (eta) => eta, tenr, W0, 0)) {
+      const xs = cantos.map((q) => q[0]);
+      const es = cantos.map((q) => q[1]);
+      partes.push(retangulo(Math.min(...xs), Math.min(...es), Math.max(...xs), Math.max(...es), v1, `fill="none" stroke="${TINTA}" stroke-width="1" rx="2"`));
+    }
   }
   // limites do muro desenhado (linha fina nas pontas: o muro continua)
   partes.push(`<line x1="${v1.x(-Wtot / 2).toFixed(2)}" y1="${v1.y(0).toFixed(2)}" x2="${v1.x(Wtot / 2).toFixed(2)}" y2="${v1.y(0).toFixed(2)}" ${linhaFina}/>`);
   partes.push(`<line x1="${v1.x(-Wtot / 2).toFixed(2)}" y1="${v1.y(t).toFixed(2)}" x2="${v1.x(Wtot / 2).toFixed(2)}" y2="${v1.y(t).toFixed(2)}" ${linhaFina}/>`);
   // barras (pontos cheios) e esperas (vazados), mesmo pequenos: mostram onde o grupo está
   const rb1 = Math.max(1.3, (phi / 2) * s1);
-  for (const [X, e] of arr.esperas) partes.push(`<circle cx="${v1.x(X).toFixed(2)}" cy="${v1.y(e).toFixed(2)}" r="${rb1.toFixed(2)}" fill="#ffffff" stroke="${TINTA}" stroke-width="0.4"/>`);
-  for (const [X, e] of arr.barras) partes.push(`<circle cx="${v1.x(X).toFixed(2)}" cy="${v1.y(e).toFixed(2)}" r="${rb1.toFixed(2)}" fill="${TINTA}"/>`);
-  // chamada do detalhe A
+  for (const { ox, sx } of metades) {
+    const X1 = mx(ox, sx);
+    for (const [X, e] of arr.esperas) partes.push(`<circle cx="${v1.x(X1(X)).toFixed(2)}" cy="${v1.y(e).toFixed(2)}" r="${rb1.toFixed(2)}" fill="#ffffff" stroke="${TINTA}" stroke-width="0.4"/>`);
+    for (const [X, e] of arr.barras) partes.push(`<circle cx="${v1.x(X1(X)).toFixed(2)}" cy="${v1.y(e).toFixed(2)}" r="${rb1.toFixed(2)}" fill="${TINTA}"/>`);
+  }
+  // chamada do detalhe A (no dobrado, o furo do bloco da direita)
+  const oxA = metades[metades.length - 1].ox;
   const rA = Math.max(furo.P.b, furo.I.b, furo.P.a, furo.I.a) * s1 + 7;
   const cyA = (furo.de + furo.ate) / 2;
-  partes.push(`<circle cx="${v1.x(0).toFixed(2)}" cy="${v1.y(cyA).toFixed(2)}" r="${rA.toFixed(2)}" fill="none" stroke="${COTA}" stroke-width="0.6" stroke-dasharray="4 2"/>`);
-  partes.push(texto(v1.x(0) + rA * 0.75 + 4, v1.y(cyA) - rA * 0.75, 'A', { tam: 13, ancora: 'start', peso: 700 }));
+  partes.push(`<circle cx="${v1.x(oxA).toFixed(2)}" cy="${v1.y(cyA).toFixed(2)}" r="${rA.toFixed(2)}" fill="none" stroke="${COTA}" stroke-width="0.6" stroke-dasharray="4 2"/>`);
+  partes.push(texto(v1.x(oxA) + rA * 0.75 + 4, v1.y(cyA) - rA * 0.75, 'A', { tam: 13, ancora: 'start', peso: 700 }));
 
   // cotas da vista geral
   const yTopo = v1.y(0) - 16;
@@ -177,17 +214,17 @@ export function desenhoDaSecaoDoContraforte(r: Resultado): DesenhoDoCard | null 
   const xEsq = v1.x(-Wtot / 2) - 12;
   partes.push(chamada(v1.x(-Wtot / 2), v1.y(t), xEsq - 3, v1.y(t)));
   partes.push(cota(xEsq, v1.y(0), xEsq, v1.y(t), `t = ${cmCel(t / 10)}`, -1));
-  const xT = Math.min(v1.x(-t / 2) - 30, xEsq - 22);
-  partes.push(chamada(v1.x(-t / 2), v1.y(tenr), xT - 3, v1.y(tenr)));
+  const xT = Math.min(v1.x(-W0 / 2) - 30, xEsq - 22);
+  partes.push(chamada(v1.x(-W0 / 2), v1.y(tenr), xT - 3, v1.y(tenr)));
   partes.push(cota(xT, v1.y(0), xT, v1.y(tenr), `tenr = ${cmCel(tenr / 10)}`, -1));
   // d e c à direita da MESA (no T): colados à alma, a linha de cota do d atravessava a mesa (Jose, 13/11)
-  const xDir = (T ? v1.x(bm / 2) : v1.x(t / 2)) + 16;
-  partes.push(chamada(v1.x(0), v1.y(etaBarra), xDir + 3, v1.y(etaBarra)));
+  const xDir = (T ? v1.x(Math.max(bm, W0) / 2) : v1.x(W0 / 2)) + 16;
+  partes.push(chamada(v1.x(oxA), v1.y(etaBarra), xDir + 3, v1.y(etaBarra)));
   partes.push(cota(xDir, v1.y(faceComprimida), xDir, v1.y(etaBarra), `d = ${cmCel(d / 10)}`, 1));
   partes.push(cota(xDir + 22, v1.y(etaBarra), xDir + 22, v1.y(faceTracionada), `c = ${cmCel(c / 10)}`, 1));
-  partes.push(chamada(v1.x(t / 2), v1.y(faceTracionada), xDir + 25, v1.y(faceTracionada)));
+  partes.push(chamada(v1.x(W0 / 2), v1.y(faceTracionada), xDir + 25, v1.y(faceTracionada)));
   const yBase = v1.y(tenr) + 14;
-  partes.push(cota(v1.x(-t / 2), yBase, v1.x(t / 2), yBase, `bw = ${cmCel(t / 10)}`, 1));
+  partes.push(cota(v1.x(-W0 / 2), yBase, v1.x(W0 / 2), yBase, `bw = ${cmCel(W0 / 10)}`, 1));
   // de que lado está o solo (enterrado: o da haste; aparente: o oposto)
   partes.push(texto(v1.x(Wtot / 2) - 2, T ? v1.y(t) + 14 : v1.y(0) - 6, 'solo', { tam: 10.5, ancora: 'end' }));
 
@@ -243,11 +280,11 @@ export function desenhoDaSecaoDoContraforte(r: Resultado): DesenhoDoCard | null 
   const phiTxt = nbr(phi, Number.isInteger(phi) ? 0 : 1);
   partes.push(`<line x1="${d0.x0}" y1="${yl}" x2="${d0.x0 + 22}" y2="${yl}" stroke="${TINTA}" stroke-width="1"/>`, texto(d0.x0 + 27, yl + 3.5, 'furo na fiada P', { tam: 10.5, ancora: 'start' }));
   partes.push(`<line x1="${d0.x0}" y1="${yl + 15}" x2="${d0.x0 + 22}" y2="${yl + 15}" stroke="${TINTA}" stroke-width="1" stroke-dasharray="5 3"/>`, texto(d0.x0 + 27, yl + 19, 'furo na fiada I', { tam: 10.5, ancora: 'start' }));
-  partes.push(`<circle cx="${d0.x0 + 120}" cy="${yl}" r="3.2" fill="${TINTA}"/>`, texto(d0.x0 + 127, yl + 3.5, `${n} Ø${phiTxt}`, { tam: 10.5, ancora: 'start' }));
+  partes.push(`<circle cx="${d0.x0 + 120}" cy="${yl}" r="3.2" fill="${TINTA}"/>`, texto(d0.x0 + 127, yl + 3.5, dob ? `${nBloco} + ${nBloco} Ø${phiTxt}` : `${n} Ø${phiTxt}`, { tam: 10.5, ancora: 'start' }));
   partes.push(`<circle cx="${d0.x0 + 120}" cy="${yl + 15}" r="3.2" fill="#ffffff" stroke="${TINTA}" stroke-width="0.7"/>`, texto(d0.x0 + 127, yl + 19, 'espera', { tam: 10.5, ancora: 'start' }));
   partes.push(texto(12, H - 8, 'cotas em cm', { tam: 10, ancora: 'start' }));
 
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" font-family="Arial, Helvetica, sans-serif">${partes.join('')}</svg>`;
-  const titulo = `Seção na base · bloco ${sec.familia.replace('x', '×')} · contraforte de ${cmCel(tenr / 10)} cm (template do Revit)`;
+  const titulo = `Seção na base · bloco ${sec.familia.replace('x', '×')} · contraforte ${dob ? 'dobrado ' : ''}de ${cmCel(tenr / 10)} cm (template do Revit)`;
   return { svg, titulo };
 }

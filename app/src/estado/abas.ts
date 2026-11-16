@@ -49,7 +49,7 @@ export const ABAS: readonly Aba[] = [
       { titulo: 'Medidas', campos: ['H_muro', 'L_total', 'junta_cada'] },
       { titulo: 'Topo', campos: ['cinta_topo', 'phi_cinta'] },
       { titulo: 'Travamento lateral', campos: ['Trav_lat', 'alfa_v', 'alfa_h', 'l_trav'] },
-      { titulo: 'Contrafortes', soCom: C, campos: ['l_cf', 'tenr_', 'pos_cf'] },
+      { titulo: 'Contrafortes', soCom: C, campos: ['l_cf', 'tenr_', 'pos_cf', 'larg_cf'] },
     ],
   },
   {

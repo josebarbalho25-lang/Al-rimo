@@ -37,6 +37,13 @@ export const SIMBOLOS_MRD: Readonly<Record<string, string>> = {
   'F_{lim,o}': 'força de compressão no limite, contraforte do outro tipo',
   'M_{lim,o}': 'momento no limite, contraforte do outro tipo',
   'M_{Rd,o}': 'momento resistente do contraforte do outro tipo',
+  // contraforte dobrado (16/11): o outro tipo com a sua largura e as suas barras
+  'e_{enr,o}': 'largura do contraforte do outro tipo (dobrado: 2t + 1)',
+  'b_{w,o}': 'largura da alma do contraforte do outro tipo',
+  'f_{n,o}': 'barras do outro tipo ÷ barras deste (o dobrado leva o dobro)',
+  'n_{b,o}': 'número de barras principais do contraforte do outro tipo',
+  'A_{s,ef,o}': 'armadura efetiva do contraforte do outro tipo',
+  'F_{s,o}': 'força no aço do contraforte do outro tipo',
   'U_{M,o}': 'aproveitamento à flexão do contraforte do outro tipo',
   'F_{s,lig}': 'força no aço do pilarete dentro do arrimo',
   'x_{As,lig}': 'linha neutra da ligação do pilarete com a armadura adotada',
@@ -165,14 +172,17 @@ export function secoesMRdContraforte(m: Memoria): Secao[] {
   const As = m.g('As_cfe', 'A_{s,ef,cf}', 2, 'cm²');
   const fsd = m.g('fsd_cf', 'f_{sd,cf}', 1, 'MPa');
   const Kfd = m.g('Kfd_cf', 'K\\,f_{d,cf}', 3, 'MPa');
-  const bw = m.g('bw_cf', 'b_{w,cf}', 1, 'cm');
+  const bw0 = m.g('bw_cf', 'b_{w,cf}', 1, 'cm');
   const hf = m.g('hf_cf', 'h_{f,cf}', 1, 'cm');
   const d = m.g('d_cf', 'd_{cf}', 1, 'cm');
-  const F = m.g('Fas_cf', SIMB.F, 2, 'kN');
+  const F0 = m.g('Fas_cf', SIMB.F, 2, 'kN');
   const xl = m.g('xlim_cf', SIMB.xl, 2, 'cm');
   const sig = mul(k(0.8, 1), div(Kfd, DEZ));
-  const umLado = (o: { bm: Expr; Cf: Expr; Fb: string; x: string; M: string; Fl: string; Ml: string; MRd: string; ap: string; Md: Expr; s: Partial<Record<'Fb' | 'x' | 'M' | 'Fl' | 'Ml' | 'MRd' | 'U', string>> }) => {
+  // F e bw de cada lado: o outro tipo, com o contraforte dobrado (16/11), tem a sua largura e as suas barras (seção 18)
+  const umLado = (o: { bm: Expr; Cf: Expr; Fb: string; x: string; M: string; Fl: string; Ml: string; MRd: string; ap: string; Md: Expr; F?: Expr; bw?: Expr; s: Partial<Record<'Fb' | 'x' | 'M' | 'Fl' | 'Ml' | 'MRd' | 'U', string>> }) => {
     const S = { Fb: o.s.Fb ?? 'F_{b}', x: o.s.x ?? SIMB.x, M: o.s.M ?? SIMB.M, Fl: o.s.Fl ?? 'F_{lim}', Ml: o.s.Ml ?? SIMB.Ml, MRd: o.s.MRd ?? SIMB.MRd, U: o.s.U ?? SIMB.U };
+    const F = o.F ?? F0;
+    const bw = o.bw ?? bw0;
     const x = m.g(o.x, S.x, 2, 'cm');
     const Mas = m.g(o.M, S.M, 1, 'kN·cm');
     const Mlim = m.g(o.Ml, S.Ml, 1, 'kN·cm');
@@ -198,11 +208,21 @@ export function secoesMRdContraforte(m: Memoria): Secao[] {
     }),
   ], ref);
   // o contraforte do outro tipo (extremidade × intermediário): mesma barra e mesmo d, a mesa dele
+  // com o contraforte dobrado o outro tipo tem outra largura e outro nº de barras (dobrado: o dobro; simples: a metade)
+  const outroDiferente = m.num('dob_cf') === 1 || m.num('dob_o') === 1;
+  const Fo = m.g('Fas_cfo', 'F_{s,o}', 2, 'kN');
   const outro = temNum(m, 'MRd_cfo')
     ? secao(`Momento resistente · contraforte ${String(m.texto('tipo_cfo')).toLowerCase()}`, [
+      ...(outroDiferente ? [
+        m.passo('eenr_o', 'e_{enr,o}', null, { casas: 1, unidade: 'cm', origem: 'calculado', ref: { fonte: 'NBR 16868-1', item: '3.3 · critério adotado' } }),
+        m.passo('n_cfo', 'n_{b,o}', mul(m.g('n_cf', 'n_{b,cf}', 0), m.g('f_no', 'f_{n,o}', 1)), { casas: 0 }),
+        m.passo('As_cfo', 'A_{s,ef,o}', mul(As, m.g('f_no', 'f_{n,o}', 1)), { casas: 2, unidade: 'cm²' }),
+        m.passo('Fas_cfo', 'F_{s,o}', div(mul(m.g('As_cfo', 'A_{s,ef,o}', 2, 'cm²'), fsd), DEZ), { casas: 2, unidade: 'kN', ref }),
+      ] : []),
       ...umLado({
         bm: m.g('bm_cfo', 'b_{m,cf,o}', 1, 'cm'), Cf: m.g('Cf_cfo', 'C_{f,cf,o}', 2, 'kN'), Fb: 'Fb_cfo', x: 'xas_cfo', M: 'Mas_cfo', Fl: 'Flim_cfo', Ml: 'Mlim_cfo',
         MRd: 'MRd_cfo', ap: 'ap_cfo', Md: m.g('Md_cfo', 'M_{d,cf,o}', 2, 'kN·m'),
+        ...(outroDiferente ? { F: Fo, bw: m.g('bw_cfo', 'b_{w,o}', 1, 'cm') } : {}),
         s: { Fb: 'F_{b,o}', x: 'x_{As,o}', M: 'M_{As,o}', Fl: 'F_{lim,o}', Ml: 'M_{lim,o}', MRd: 'M_{Rd,o}', U: 'U_{M,o}' },
       }),
     ], ref)

@@ -78,6 +78,7 @@ export const SIMBOLOS_CONTRAFORTE: Readonly<Record<string, string>> = {
   '\\phi_{cf}': 'diâmetro da barra principal do contraforte',
   'A_{\\phi,cf}': 'área de uma barra principal do contraforte',
   'n_{b,cf}': 'número de barras principais do contraforte',
+  'n_{b,dig}': 'número de barras principais digitado nas Entradas',
   'A_{s,ef,cf}': 'armadura efetiva do contraforte',
   'p_{m\\acute{a}x}': 'fração máxima de aço sobre a área de graute do furo',
   A_g: 'área de graute de um furo',
@@ -150,6 +151,14 @@ const P = dados as unknown as PlanilhaExportada;
 const CRITERIO: Ref = { fonte: 'Critério adotado' };
 const NBR = (item: string): Ref => ({ fonte: 'NBR 16868-1', item });
 const ABCP_34: Ref = { fonte: 'ABCP', item: '3.4' };
+/**
+ * Contraforte DOBRADO (Jose, 16/11; Contrafortes, seção 18): dois blocos lado a lado (2t + 1 cm), todo grauteado, a
+ * junta a prumo entre eles atravessada pelo estribo (amarração indireta, NBR 16868-1 3.3). Só o intermediário.
+ */
+const DOBRADO: Ref = { fonte: 'NBR 16868-1', item: '3.3 · critério adotado' };
+const ESTRIBO_DOBRADO: Ref = { fonte: 'NBR 16868-1', item: '3.3 e 12.6 · critério adotado' };
+/** O contraforte calculado é o dobrado (dob_cf da planilha). */
+const dobrado = (m: Memoria): boolean => m.num('dob_cf') === 1;
 /** A montagem atual nos templates do Revit do Jose: "14×39 · contraforte de 54". */
 const revit = (m: Memoria): Ref => ({ fonte: 'Template do Revit', item: `${m.num('t_bloco') ?? '—'}×39 · contraforte de ${m.num('tenr_adot') ?? '—'}` });
 
@@ -324,8 +333,10 @@ function cardEsbeltez(r: Parameters<AutorDeCards>[0]): Card {
     travado && comCf && ps('l_cf_adot', '\\ell_{cf}', null, { casas: 2, unidade: 'm', origem: 'adotado' }),
     m.entrada('t_bloco', 't'),
     ps('tenr_adot', 't_{enr}', null, { casas: 1, unidade: 'cm', origem: 'adotado' }),
-    // eenr = t_bloco: o contraforte tem a largura do bloco (montagem fechada)
-    ps('eenr', 'e_{enr}', t, { casas: 1, unidade: 'cm' }),
+    // eenr = t_bloco: o contraforte tem a largura do bloco (montagem fechada); dobrado: dois blocos e 1 cm de argamassa
+    dobrado(m)
+      ? ps('eenr', 'e_{enr}', soma(mul(cte(2, 0), t), cte(1, 0)), { casas: 1, unidade: 'cm', ref: DOBRADO })
+      : ps('eenr', 'e_{enr}', t, { casas: 1, unidade: 'cm' }),
   ]);
 
   /*
@@ -536,9 +547,14 @@ function cardFlexao(r: Parameters<AutorDeCards>[0]): Card {
       ps('As_cfc', 'A_{s,calc,cf}', AsNum ? max(As, Asmin) : Asmin, { casas: 2, unidade: 'cm²' }),
       m.entrada('phi_cf', '\\phi_{cf}'),
       ps('a_cf', 'A_{\\phi,cf}', div(mul(pi(), pot(phiCm, 2)), cte(4, 0)), { casas: 3, unidade: 'cm²' }),
-      nDigitado
-        ? ps('n_cf', 'n_{b,cf}', null, { casas: 0, origem: 'entrada' })
-        : ps('n_cf', 'n_{b,cf}', max(cte(2, 0), arredCima(sub(div(Ascalc, aPhi), cte(0.005, 3)))), { casas: 0 }),
+      // dobrado: número PAR, metade no furo da ponta de cada bloco (o ímpar vai ao par de cima)
+      dobrado(m)
+        ? nDigitado
+          ? ps('n_cf', 'n_{b,cf}', mul(cte(2, 0), arredCima(div(m.ent('n_cf_dir', 'n_{b,dig}'), cte(2, 0)))), { casas: 0, ref: DOBRADO })
+          : ps('n_cf', 'n_{b,cf}', max(cte(2, 0), mul(cte(2, 0), arredCima(div(arredCima(sub(div(Ascalc, aPhi), cte(0.005, 3))), cte(2, 0))))), { casas: 0, ref: DOBRADO })
+        : nDigitado
+          ? ps('n_cf', 'n_{b,cf}', null, { casas: 0, origem: 'entrada' })
+          : ps('n_cf', 'n_{b,cf}', max(cte(2, 0), arredCima(sub(div(Ascalc, aPhi), cte(0.005, 3)))), { casas: 0 }),
       ps('As_cfe', 'A_{s,ef,cf}', mul(nb, aPhi), {
         casas: 2,
         unidade: 'cm²',
@@ -546,8 +562,11 @@ function cardFlexao(r: Parameters<AutorDeCards>[0]): Card {
       }),
     ], ABCP_34);
 
-    const furo = secao('Armadura máxima no furo da ponta', [
-      ps('As_cfx', 'A_{s,m\\acute{a}x,cf}', mul(m.g('pAs_max', 'p_{m\\acute{a}x}', 2), m.g('Ag_furo', 'A_g', 0, 'cm²')), { casas: 2, unidade: 'cm²' }),
+    // dobrado: um furo de ponta em cada bloco
+    const furo = secao(dobrado(m) ? 'Armadura máxima nos dois furos da ponta' : 'Armadura máxima no furo da ponta', [
+      dobrado(m)
+        ? ps('As_cfx', 'A_{s,m\\acute{a}x,cf}', mul(cte(2, 0), m.g('pAs_max', 'p_{m\\acute{a}x}', 2), m.g('Ag_furo', 'A_g', 0, 'cm²')), { casas: 2, unidade: 'cm²', ref: DOBRADO })
+        : ps('As_cfx', 'A_{s,m\\acute{a}x,cf}', mul(m.g('pAs_max', 'p_{m\\acute{a}x}', 2), m.g('Ag_furo', 'A_g', 0, 'cm²')), { casas: 2, unidade: 'cm²' }),
       ps('As_cfx2', 'A_{s,furo,cf}', mul(Asef, m.g('f_trasp', 'n_{tr}', 0)), {
         casas: 2,
         unidade: 'cm²',
@@ -559,8 +578,10 @@ function cardFlexao(r: Parameters<AutorDeCards>[0]): Card {
     const real = secao('Furo da barra na montagem', [
       ps('A_fcm', 'A_{furo,cf}', null, { casas: 2, unidade: 'cm²', origem: 'tabela' }),
       ps('nb_cab', 'n_{cabe,cf}', null, { casas: 0, origem: 'tabela', ref: NBR('12.1') }),
-      ps('nb_tx', 'n_{8\\%,cf}', inteiro(div(mul(m.g('pAs_max', 'p_{m\\acute{a}x}', 2), m.g('A_fcm', 'A_{furo,cf}', 2, 'cm²')),
-        mul(m.g('f_trasp', 'n_{tr}', 0), aPhi))), { casas: 0 }),
+      ps('nb_tx', 'n_{8\\%,cf}', dobrado(m)
+        ? mul(cte(2, 0), inteiro(div(mul(m.g('pAs_max', 'p_{m\\acute{a}x}', 2), m.g('A_fcm', 'A_{furo,cf}', 2, 'cm²')), mul(m.g('f_trasp', 'n_{tr}', 0), aPhi))))
+        : inteiro(div(mul(m.g('pAs_max', 'p_{m\\acute{a}x}', 2), m.g('A_fcm', 'A_{furo,cf}', 2, 'cm²')),
+          mul(m.g('f_trasp', 'n_{tr}', 0), aPhi))), { casas: 0 }),
     ], revit(m));
     secoes.push(armadura, furo, real);
   }
@@ -607,7 +628,9 @@ function cardCisalhamento(r: Parameters<AutorDeCards>[0]): Card {
   const Aswe = m.g('Asw_e', '(A_{sw}/s)_{ef}', 2, 'cm²/m');
   // os ramos que a conta USA (ram_ef): 4 só se os dois estribos menores cabem; senão 2 (Contrafortes, seção 6)
   const nram = m.g('ram_ef', 'n_{ram,ef}', 0);
-  const s = m.ent('s_est', 's_{est}');
+  // dobrado: o espaçamento que a conta usa é o de toda fiada (s_est_u = 20), não o das Entradas
+  const dob = dobrado(m);
+  const s = dob ? m.g('s_est_u', 's_{est}', 0, 'cm') : m.ent('s_est', 's_{est}');
   const phiEstCm = m.ent('phi_est', '\\phi_{est}', { fator: 0.1, casas: 2, unidade: 'cm' });
 
   const tab4 = NBR('6.2.2.6');
@@ -631,14 +654,17 @@ function cardCisalhamento(r: Parameters<AutorDeCards>[0]): Card {
   // IF(Vd_cf<=Va_cf;0;MÁXIMO(Asw_n;Asw_m)): Vd ≤ Va dispensa o estribo pela conta
   const vd = m.num('Vd_cf');
   const va = m.num('Va_cf');
-  const dispensa = vd !== null && va !== null ? vd <= va : m.num('Asw_c') === 0;
+  // dobrado: o estribo é a ligação dos dois blocos — nunca dispensado, mesmo com Vd ≤ Va
+  const dispensa = !dob && (vd !== null && va !== null ? vd <= va : m.num('Asw_c') === 0);
   const nec = secao('Estribo necessário', dispensa
     ? [ps('Asw_c', '(A_{sw}/s)_{calc}', null, { casas: 2, unidade: 'cm²/m', origem: 'calculado' })]
     : [
         m.entrada('fyk_', 'f_{yk}'),
         m.entrada('gama_s', '\\gamma_s'),
         ps('fywd', 'f_{ywd}', div(fyk, gs), { casas: 1, unidade: 'MPa' }),
-        ps('Asw_n', '(A_{sw}/s)_{nec}', mul(div(sub(Vd, Va), mul(cte(0.75, 2), fywdK, d)), cte(100, 0)), {
+        ps('Asw_n', '(A_{sw}/s)_{nec}', dob
+          ? [mul(div(sub(Vd, Va), mul(cte(0.75, 2), fywdK, d)), cte(100, 0)), max(cte(0, 0), mul(div(sub(Vd, Va), mul(cte(0.75, 2), fywdK, d)), cte(100, 0)))]
+          : mul(div(sub(Vd, Va), mul(cte(0.75, 2), fywdK, d)), cte(100, 0)), {
           casas: 2, unidade: 'cm²/m', ref: NBR('11.4.3'),
         }),
         ps('rhow_cf', '\\rho_{w,cf}', [
@@ -664,9 +690,13 @@ function cardCisalhamento(r: Parameters<AutorDeCards>[0]): Card {
           ref: NBR('12.4'),
           verif: verifica(m, 'junta', { chave: 'contraforte.estriboJunta', rotulo: 'Estribo na junta Ø ≤ 6,3', limite: 6.3, relacao: '<=', casasLimite: 1 }),
         }),
-        m.entrada('ramos_est', 'n_{ram}'),
-        ...passosDosQuatroRamos(m, ps),
-        m.entrada('s_est', 's_{est}'),
+        // dobrado: um estribo abraçando os dois blocos em toda fiada (a conta: ram_ef e s_est_u); as Entradas não valem
+        ...(dob
+          ? [
+            ps('ram_ef', 'n_{ram,ef}', null, { casas: 0, origem: 'adotado', ref: ESTRIBO_DOBRADO }),
+            ps('s_est_u', 's_{est}', null, { casas: 0, unidade: 'cm', origem: 'adotado', ref: ESTRIBO_DOBRADO }),
+          ]
+          : [m.entrada('ramos_est', 'n_{ram}'), ...passosDosQuatroRamos(m, ps), m.entrada('s_est', 's_{est}')]),
         ps('Asw_e', '(A_{sw}/s)_{ef}', mul(div(mul(nram, pi(), pot(phiEstCm, 2)), mul(cte(4, 0), s)), cte(100, 0)), {
           casas: 2,
           unidade: 'cm²/m',

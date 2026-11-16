@@ -1192,6 +1192,35 @@ e dizer ao Jose o que mudou e por quê.
   · ACHADO (não é do 4 ramos, ficou): no bloco 14, o gancho do estribo de 2 ramos de hoje passa a ~3 mm do eixo da
     construtiva do canto (Ø10; alvo_arredcima15_estribos) — a ponta de 135° atravessa a barra no desenho. A
     conferir com o Jose (mover a construtiva para o canto do estribo, como na viga, ou o gancho para o outro canto). DECIDIDO (Jose, 15/11): "não precisa mexer nessa barra, tá de boa" — fica como está.
+- **CONTRAFORTE DOBRADO NO APP (16/11, ramo `contraforte-dobrado`; a planilha é o c903f0f; o Jose ainda NÃO viu na
+  tela):** "desenha um muro e coloca a distância de contrafortes igual à de juntas". MODELO: `modular.ts`
+  trechosComDobrados — cada vão é um PANO (L0 … L1, os gabaritos de ponta) a 1 cm do seguinte; o L1 de um pano e o
+  L0 do seguinte são as metades 'a'/'b' do MESMO contraforte (`No.metade`, ids "CF2a"/"CF2b"; peças e barras com o
+  mesmo `contraforte`); o trecho continua sendo o da junta de controle (sapata, dreno, terreno contínuos). Vão: o
+  eixo a eixo da planilha (2t + 2 cm + k·m) vira o do simples com o mesmo k (`l_pano`); comprimento e vão de
+  fechamento pela mesma escolherVaos, com cada pano = vão + t + 1 cm. Fiadas: `montarFiadasDoTrecho` monta pano a
+  pano e junta. Barras: por BLOCO n = n_cf/2 quando o calculado é o dobrado (os simples do muro ficam com a
+  metade), senão n_cf; ESTRIBO do dobrado (`estribosDoContraforte`): um só no eixo do par, largura 2t + 1 − 7 cm, em
+  toda fiada, sempre (mesmo com Asw_c = 0 no calculado de extremidade), ramos = ram_ef quando o calculado é ele (4 =
+  os dois de 2/3 cruzando a junta, já funciona — testado forçando), 2 quando é o outro; as barras do dobrado ficam
+  longe dos ramos (livreDoPar sem a faixa). U da canaleta e cinta: um U por vão, cada um ancorado na sua metade (como
+  na junta). Graute da canaleta do muro corre pela junta de 1 cm entre as metades. `dims.contrafortes[].dobrado`,
+  `larguraDoContraforte` (modelo/tipos.ts); vãos sem o "vão" de 1 cm (`vaosDoTrecho`: dreno, barbacã, solo da
+  frente); pilarete no eixo do par. "→" no n_cf_dir ímpar (ajuste 'n_cf'). TELA: `larg_cf` em Muro › Contrafortes
+  com desenho (um bloco × dois com o estribo), figura = Fig. 12; ramos_est e s_est TRAVADOS em 2 e 20 com o
+  dobrado calculado; Ø do estribo aceso com Dobrado. MEMÓRIA: eenr = 2t + 1, n par (2·⌈…/2⌉), As,máx de dois furos,
+  n 8% ×2, estribo adotado = ram_ef e s_est_u com NBR 16868-1 3.3 e 12.6 (sem verificação nova), Asw nunca
+  dispensado, MRd do outro tipo com As_cfo/bw_cfo, biela da sapata com eenr; seção desenhada com os dois blocos, a
+  junta, as barras metade em cada e o estribo. Desenhos: corte padrão do contraforte no eixo do bloco da direita;
+  quantitativo (impermeabilização da haste) e IFC (Pset Dobrado) pelo par. Prova: `modulacao/dobrado.test.ts`
+  (metade = gabarito de ponta: o mesmo muro com junta em cada vão dá as mesmas peças/barras), modulacao.test
+  (sólidos, graute, haste), estriboQuatroRamos, desenhoDaSecaoCf, esforços (colocado = As_cfo/Asw_eo do outro tipo),
+  conferência da memória. Muro simples: modelo, desenhos, memória, quantitativo, IFC e esforços IDÊNTICOS (hash, 91
+  cenários). ACHADOS DE ANTES (simples, não mexidos): a barra do pilarete que desce no contraforte cruza o ramo do
+  estribo do lado do muro (alvo_mc_cf_duas/_meia/_pilarete_largo); com muitas barras no bloco 14 aparente a fila do
+  furo do muro encosta no ramo do lado do muro, e no 19×79 aparente a ponta do gancho do estribo cai numa barra da
+  fila — no dobrado as barras se afastam dos ramos. A CONFERIR com o Jose: construtivas n_cc em CADA bloco (a
+  planilha conta n_cc no contraforte); o graute da canaleta do muro atravessando a junta do par.
 - **SAPATA "CURTA DEMAIS PARA ANCORAR NA FACE" (investigado 15/11, nada mudou):** a razão conhecida do teste
   desenho × conta da vista Esforços (`barrasAnaliticas.test.ts`). Todos os muros do gabarito que caem nela são
   `sap_transv` = Estribo (o sorteio não varia) e a envoltória JÁ trata a quina do estribo como ponta dobrada (ℓb,nec

@@ -605,7 +605,9 @@ const ATIVA_SE: Record<string, (ler: LerValor, conta?: LerConta) => boolean> = {
   // estribo do contraforte só quando a conta pede (Jose, 13/10; planilha 05 do Carini): com Asw/s de cálculo = 0 a
   // planilha zera Asw,ef e o nº de estribos e o muro sai sem estribo — Ø, ramos e s não mexem em nada. É a única
   // regra que lê a CONTA e não uma entrada; sem conta (ou com "—") o campo fica aceso, como antes.
-  phi_est: (_, conta) => conta?.('Asw_c') !== 0,
+  // O contraforte DOBRADO (16/11) leva estribo sempre (é a ligação dos dois blocos), mesmo quando o calculado é a
+  // extremidade e dispensa: o Ø vale para ele
+  phi_est: (l, conta) => conta?.('Asw_c') !== 0 || l('larg_cf') === 'Dobrado',
   ramos_est: (_, conta) => conta?.('Asw_c') !== 0,
   s_est: (_, conta) => conta?.('Asw_c') !== 0,
   // a tabela de Gerscovich não tem argila: com Argila a planilha escreve "—" na sugestão pela classe
@@ -640,7 +642,16 @@ export function entradaAtiva(nome: string, ler: LerValor, conta?: LerConta): boo
 */
 const TRAVADO_SE: Record<string, (ler: LerValor) => Valor | undefined> = {
   Classe_G: (l) => (l('Tipo_solo') === 'Argila' ? 'Não se aplica' : undefined),
+  // contraforte dobrado calculado (16/11; planilha, seção 18: dob_cf = Dobrado e intermediário): um estribo abraçando
+  // os dois blocos em toda fiada — a conta usa 2 ramos e 20 cm (ram_ef, s_est_u), o que estiver nas Entradas não vale
+  ramos_est: (l) => (dobradoCalculado(l) ? 2 : undefined),
+  s_est: (l) => (dobradoCalculado(l) ? 20 : undefined),
 };
+
+/** O contraforte calculado é o dobrado (a mesma regra do dob_cf da planilha, pelas entradas). */
+function dobradoCalculado(l: LerValor): boolean {
+  return l('Tipo_muro') === 'Contrafortes' && l('larg_cf') === 'Dobrado' && String(l('tipo_cf') ?? '').startsWith('Inter');
+}
 
 /*
   O "AUTO" COM NÚMERO (Jose, 12/10: o peso próprio deixou de ser digitado). A entrada opcional vazia mostrava só

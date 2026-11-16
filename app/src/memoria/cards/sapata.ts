@@ -490,14 +490,16 @@ function cardBiela(r: Parameters<AutorDeCards>[0]): Card {
   const secoes = [resistencia, muro];
   if (contrafortes) {
     const tenr = m.g('tenr_adot', 't_{enr}', 1, 'cm');
+    const eCf = m.num('dob_cf') === 1 ? m.g('eenr', 'e_{enr}', 1, 'cm') : tCm;
     const Fc = m.g('Fc_s', 'F_{Sd,cf}', 2, 'kN');
     const K = m.g('K_cc', 'K_{19}', 3);
-    secoes.push(secao('Junto ao contraforte (pilar tenr × t)', [
+    secoes.push(secao(m.num('dob_cf') === 1 ? 'Junto ao contraforte (pilar tenr × eenr)' : 'Junto ao contraforte (pilar tenr × t)', [
       temNumero(m, 'K_cc') && m.passo('K_cc', 'K_{19}', null, { casas: 3, origem: 'tabela', ref: NBR('Tab. 19.2') }),
       temNumero(m, 'Fc_s') && m.passo('Fc_s', 'F_{Sd,cf}', mul(cte(1.4, 1), nome(celulaDoRotulo('Contraforte'), 'N_{cf}', 3, 'kN')), { casas: 2, unidade: 'kN' }),
+      // C2 = a largura do contraforte (eenr: t no simples, 2t + 1 no dobrado — 16/11)
       temNumero(m, 'tc_s') && m.passo('tc_s', '\\tau_{Sd,cf}',
-        mul(par(soma(div(Fc, mul(cte(2, 0), par(soma(tenr, tCm)), f.d)),
-          div(mul(K, f.MdCf, cte(100, 0)), mul(par(soma(div(pot(tenr, 2), cte(2, 0)), mul(tenr, tCm))), f.d)))), cte(10, 0)), {
+        mul(par(soma(div(Fc, mul(cte(2, 0), par(soma(tenr, eCf)), f.d)),
+          div(mul(K, f.MdCf, cte(100, 0)), mul(par(soma(div(pot(tenr, 2), cte(2, 0)), mul(tenr, eCf))), f.d)))), cte(10, 0)), {
           casas: 3, unidade: 'MPa', ref: NBR('19.5.3.1'),
           verif: { chave: 'sapata.biela.contraforte', rotulo: 'Diagonal comprimida junto ao contraforte', limite: tRd2, relacao: '<=', celula: 'chk_bc' },
         }),

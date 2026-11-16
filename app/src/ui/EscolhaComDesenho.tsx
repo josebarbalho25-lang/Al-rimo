@@ -138,6 +138,26 @@ function estriboCf(ramos: 2 | 4): ReactNode {
   );
 }
 
+/**
+ * Largura do contraforte em planta (16/11): um bloco, ou dois lado a lado com a junta de argamassa entre eles e UM
+ * estribo abraçando os dois (a ligação do dobrado). O muro à esquerda, a haste para a direita, como o estriboCf.
+ */
+function larguraCf(dobrado: boolean): ReactNode {
+  const x0 = 22, x1 = 106;
+  const [y0, y1] = dobrado ? [12, 48] : [21, 39];
+  const meio = (y0 + y1) / 2;
+  return (
+    <g>
+      <rect x={8} y={8} width={14} height={44} fill={C.bloco} stroke={C.linha} strokeWidth={1.2} />
+      {(dobrado ? [[y0, meio - 0.8], [meio + 0.8, y1]] : [[y0, y1]]).map(([a, b]) => (
+        <rect key={a} x={x0} y={a} width={x1 - x0} height={b - a} fill={C.graute} stroke={C.linha} strokeWidth={1.2} />
+      ))}
+      <rect x={x0 + 5} y={y0 + 4} width={x1 - x0 - 10} height={y1 - y0 - 8} rx={2} fill="none" stroke={C.aco} strokeWidth={1.4} />
+      {(dobrado ? [(y0 + meio) / 2, (meio + y1) / 2] : [meio]).map((y) => <circle key={y} cx={x1 - 12} cy={y} r={2.6} fill={C.aco} />)}
+    </g>
+  );
+}
+
 /*
   O desenho de cada opção, pelo nome da entrada e pelo VALOR da opção (o mesmo valor que vai para a conta). Opção
   sem desenho aqui faz a entrada voltar ao controle de sempre — nada some por falta de figurinha.
@@ -205,6 +225,7 @@ const DESENHOS: Record<string, (v: Valor) => ReactNode | null> = {
     return s.startsWith('Centralizada') ? canaleta('centro') : s.startsWith('Encostada') ? canaleta('face') : s.startsWith('2 barras') ? canaleta('duas') : null;
   },
   ramos_est: (v) => (Number(v) === 2 ? estriboCf(2) : Number(v) === 4 ? estriboCf(4) : null),
+  larg_cf: (v) => (v === 'Simples' ? larguraCf(false) : v === 'Dobrado' ? larguraCf(true) : null),
 };
 
 /** A entrada tem desenho para TODAS as opções de agora? (senão fica o controle de sempre) */

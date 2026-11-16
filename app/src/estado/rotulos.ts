@@ -83,6 +83,7 @@ export const ROTULO_CURTO: Record<string, string> = {
   l_cf: 'Eixo a eixo l',
   tenr_: 'Comprimento tenr',
   pos_cf: 'Posição',
+  larg_cf: 'Largura',
   tipo_cf: 'Contraforte calculado',
   bal_cf: 'Balanço na ponta',
   phi_cf: 'Ø principal',

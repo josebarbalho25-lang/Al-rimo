@@ -34,8 +34,15 @@ describe('seção do contraforte desenhada e cotada', () => {
       expect(svg).toContain(`tenr = ${cota(r.num('tenr_adot')!)}`);
       expect(svg).toContain(`bw = ${cota(r.num('bw_cf')!)}`);
       if (r.num('cf_T') === 1) expect(svg).toContain(`bm = ${cota(r.num('bm_cf')!)}`);
-      // barras cheias: n na vista geral + n no detalhe + 1 na legenda
-      expect(svg.match(/<circle [^>]*fill="#1a1a1a"\/>/g)?.length).toBe(2 * n + 1);
+      // barras cheias: n na vista geral + n no detalhe + 1 na legenda; no dobrado o detalhe é o furo de um bloco (n/2)
+      const noDetalhe = r.num('dob_cf') === 1 ? n / 2 : n;
+      expect(svg.match(/<circle [^>]*fill="#1a1a1a"\/>/g)?.length).toBe(n + noDetalhe + 1);
+      // dobrado: bw = 2t + 1 e o estribo abraçando os dois blocos (o contorno dele, um por estribo da junta)
+      if (r.num('dob_cf') === 1) {
+        expect(r.num('bw_cf')).toBe(2 * r.num('t_bloco')! + 1);
+        expect(svg.match(/rx="2"\/>/g)?.length).toBe(r.num('ram_ef') === 4 ? 2 : 1);
+        expect(fig!.titulo).toContain('dobrado');
+      }
       // a mesma figura nos dois cards que usam a seção (flexão: d; ELS: A, yG, I)
       const cards = autorContraforte(r);
       expect(cards.find((k) => k.id === 'contraforte.flexao')?.desenho?.svg).toBe(svg);
