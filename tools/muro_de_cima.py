@@ -215,8 +215,10 @@ Lm('Ligação: montagem',
    'IF(AND(Tipo_muro<>"Contrafortes",t_bloco=14),"NÃO OK — balanço em bloco 14 não leva muro de cima: bloco 19 ou contrafortes",'
    'IF(AND(Tipo_muro<>"Contrafortes",b_pila<20),"NÃO OK — pilarete com menos de 20 cm de frente",'
    'IF(AND(' + CF + ',b_pila>t_bloco),"NÃO OK — pilarete mais largo que o contraforte: na ponta do muro ele passa do fim do muro",'
-   'IF(hs_pila>h_lig,IF(' + CF + ',"NÃO OK — pilarete passa da ponta do contraforte","NÃO OK — pilarete mais grosso que o muro: as barras não caem nos furos"),"OK")))))',
-   '', 'Balanço: bloco 19 e 20 cm de frente (Jose, 13/11). Contrafortes: largura até t (o da ponta não passa do fim do muro). Pilarete dentro da ligação.', 'key', None, 'chk_ligg')
+   'IF(AND(' + CF + ',larg_cf="Dobrado",n_pil<>2*INT(n_pil/2)),"NÃO OK — sobre o contraforte dobrado as barras de cada face vão metade em cada bloco: nº par",'
+   'IF(AND(' + CF + ',larg_cf="Dobrado",t_bloco=14),"NÃO OK — contraforte dobrado em bloco 14: as barras do pilarete do lado do muro caem na parede do bloco de junção, não descem no graute",'
+   'IF(hs_pila>h_lig,IF(' + CF + ',"NÃO OK — pilarete passa da ponta do contraforte","NÃO OK — pilarete mais grosso que o muro: as barras não caem nos furos"),"OK")))))))',
+   '', 'Balanço: bloco 19 e 20 cm de frente (Jose, 13/11). Contrafortes: largura até t (o da ponta não passa do fim do muro); sobre o dobrado, barras por face em nº par. Pilarete dentro da ligação.', 'key', None, 'chk_ligg')
 Lm('Ligação: resumo',
    '=IF(LEFT(chk_ligg,2)<>"OK",chk_ligg,'
    'IF(p_w<=0,"— (sem vento)",'
@@ -498,4 +500,14 @@ section(MC, r, '10. Resistências e mínimos para o diagrama do aço (vista Esfo
 Lm('Pilarete: As,mín usado', f'=IF({_concreto},Asm_pil,Asmb_pil)', 'cm²', 'Concreto: 0,15%·b·h; bloco: 0,15%·b·d (seção 5).', 'res', '0.00', 'Asmu_pil')
 Lm('Pilarete: VRd que o resumo compara', f'=IF({_concreto},VR2c_pil,fvd_pil/10*b_pila*d_pil)', 'kN', 'Concreto: VRd2 (biela); bloco: fvd·b·d (τvd ≤ fvd).', 'res', '0.00', 'VRd_pil')
 Lm('Ligação: VRd = fvd·b·d', '=fvd_lig/10*b_lig*d_lig', 'kN', 'τvd ≤ fvd da seção 5b, escrito como força.', 'res', '0.00', 'VRd_lig')
+r += 1
+# ---------- 11. pilarete sobre o contraforte dobrado (16/11) ----------
+# O pilarete da conta (b_pila) é o da ponta do muro, sobre o contraforte simples: o mais estreito, com o mesmo Md — a
+# favor da segurança. Sobre o contraforte DOBRADO (intermediário) o pilarete tem a largura do PAR (2t + 1): com a
+# largura t ele ficava centrado na junta entre os dois blocos e as barras caíam nas paredes dos blocos, sem descer no
+# graute (achado da revisão de 16/11, bloco 14). Com 2t + 1 as barras descem no furo de cada bloco. O digitado vale na
+# ponta (≤ t, a verificação "Ligação: montagem").
+section(MC, r, '11. Pilarete sobre o contraforte dobrado'); r += 1
+Lm('Pilarete sobre o dobrado: largura (ao longo do muro)', '=IF(AND(' + CF + ',larg_cf="Dobrado"),2*t_bloco+1,b_pila)', 'cm', 'A largura do par; sem dobrado, a do pilarete.', 'res', '0.0', 'b_pili')
+Lm('Ligação sobre o dobrado: largura', '=IF(AND(' + CF + ',larg_cf="Dobrado"),2*t_bloco+1,b_lig)', 'cm', 'A largura do par. A ligação da ponta (b_lig = t) é a que a seção 5b confere: a mais estreita.', 'res', '0.0', 'b_ligi')
 widths(MC, {'A': 46, 'B': 22, 'C': 9, 'D': 70, 'E': 18, 'H': 10, 'I': 8, 'J': 8, 'K': 8, 'L': 8})

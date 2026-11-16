@@ -17,7 +17,7 @@ import {
 import type { FiadaMontada } from './fiadas';
 import { arred } from './perfis';
 import { arrumarGrupo, type Arranjo } from './arranjo';
-import { cDaMontagem, faixaDosQuatroRamos, naFaixa } from './secaoDoContraforte';
+import { cDaMontagem, etaDaBarra, faixaDosQuatroRamos, folgaNoComum, naFaixa, type SecaoDoContraforte } from './secaoDoContraforte';
 
 export interface Vertical {
   barra: BarraNova;
@@ -263,8 +263,12 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
     // faixa); no dobrado, cada bloco fica num terço de fora — sem a faixa, só longe dos ramos
     // No DOBRADO, também com 2 ramos: o estribo abraça as barras dos dois blocos, e nenhuma barra pode ficar sobre um
     // ramo (com muitas barras, a fila no furo do muro chegaria no ramo do lado do muro)
+    // DOBRADO APARENTE: o lado do muro é a face TRACIONADA (as barras da conta ficam ali); os ganchos vão para o canto
+    // da ponta da haste, o lado comprimido — senão a ponta de 135° caía sobre o furo da conta e as barras fugiam
+    // para outro furo (revisão de 16/11: 14×34 desenhado a d 9,5 com a conta em 27)
+    const naPonta = !!no.metade && !enterrado;
     const par = e.tem && (ramos === 4 || no.metade)
-      ? estribosDaJunta(ramos, xPar, yDe, mod.tenr, larg, 0, p.phi_est).map((c, k) => estribo(`par${k}`, 'CF_ESTRIBO', p.phi_est, c, tr.indice, no.cf, passoNaJunta(p.phi_est)))
+      ? estribosDaJunta(ramos, xPar, yDe, mod.tenr, larg, 0, p.phi_est, naPonta).map((c, k) => estribo(`par${k}`, 'CF_ESTRIBO', p.phi_est, c, tr.indice, no.cf, passoNaJunta(p.phi_est)))
       : [];
     const livre = !par.length ? undefined : livreDoPar(no.xc, no.metade ? Infinity : faixa, par, p.phi_est);
     // principal: tracionada; o 1º alvo é o c da conta, os seguintes o centro dos furos
@@ -284,6 +288,14 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
       ctx.avisos.push({ codigo: 'BARRAS_NAO_CABEM', texto: `${nBloco} barras de Ø${br(p.phi_cf, 1)} não cabem no ${no.metade ? 'bloco do contraforte dobrado' : 'contraforte'}`, ids: idsP });
     } else {
       if (g.folga < COB_GRAUTE - 0.05) avisarFolga(ctx, g.folga, idsP);
+      if (no.metade && g.furos === 1) {
+        // dobrado: o grupo tem de ficar no furo da conta nas duas metades; se a arrumação o tirou, dizer
+        const yc = g.pares.reduce((s, q) => s + q.b[1], 0) / g.pares.length;
+        if (Math.abs(yc - yDe(alvoConta)) > 5) {
+          const dDes = enterrado ? yc : mod.tenr - (t - yc);
+          ctx.avisos.push({ codigo: 'BARRAS_FORA_DO_FURO', texto: `${nBloco} barras de Ø${br(p.phi_cf, 1)} fora do furo da conta no contraforte dobrado: d desenhado ${br(dDes / 10, 1)} cm × d da conta ${br((mod.tenr - cCf) / 10, 1)} cm`, ids: idsP });
+        }
+      }
       if (g.furos > 1) {
         const yc = g.pares.reduce((s, q) => s + q.b[1], 0) / g.pares.length;
         const dDes = enterrado ? yc : mod.tenr - (t - yc);
@@ -320,7 +332,7 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
     const passoJ = Math.max(1, Math.round(e.s / H_FIADA));
     for (let i = 0; e.tem && i < mod.n_fiadas; i += passoJ) {
       const z = i * H_FIADA + JUNTA / 2;
-      estribosDaJunta(ramos, xPar, yDe, mod.tenr, larg, z, p.phi_est).forEach((cantos, k) => {
+      estribosDaJunta(ramos, xPar, yDe, mod.tenr, larg, z, p.phi_est, naPonta).forEach((cantos, k) => {
         ctx.barras.push(estribo(`${baseE}.E${pad(i, 2)}${k ? 'b' : ''}`, 'CF_ESTRIBO', p.phi_est, cantos, tr.indice, no.cf, passoNaJunta(p.phi_est)));
       });
     }
@@ -338,6 +350,25 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
 }
 
 /**
+ * As barras de cada bloco do contraforte DOBRADO na seção (para a memória): a mesma regra do 3D — o furo do bloco
+ * (gabarito de ponta, a metade da esquerda espelhada), o estribo do par com os ganchos no canto comprimido e as barras
+ * longe dele (livreDoPar). Coordenadas da seção: x do eixo do par, η da face externa do muro. O desenho da memória
+ * sai daqui para mostrar as barras onde o 3D as põe (revisão de 16/11: o arranjo sem o estribo andava 12 a 25 mm).
+ */
+export function arranjoNoDobrado(sec: SecaoDoContraforte, c: number, nBloco: number, phi: number, ramos: number, phiEst: number): { ox: number; arranjo: Arranjo }[] {
+  const t = sec.t;
+  const par = estribosDaJunta(ramos, 0, (eta) => eta, sec.tenr, 2 * t + JUNTA, 0, phiEst, sec.posicao !== 'enterrado')
+    .map((cn, k) => estribo(`par${k}`, 'CF_ESTRIBO', phiEst, cn, 0, 0, passoNaJunta(phiEst)));
+  const livre = livreDoPar(0, Infinity, par, phiEst);
+  const base = folgaNoComum([sec]);
+  return [-1, 1].map((sx) => {
+    const ox = (sx * (t + JUNTA)) / 2;
+    const f = (x: number, y: number, raio: number): number => (livre(x, y, raio) ? base(sx * (x - ox), y, raio) : -1);
+    return { ox, arranjo: arrumarGrupo(f, f, ox, etaDaBarra(sec, c), nBloco, phi, 'Y') };
+  });
+}
+
+/**
  * Os estribos de cada tipo de contraforte: se há, ramos e espaçamento (mm). O SIMPLES leva o que a conta pede para o
  * calculado (Asw/s de cálculo > 0, ram_ef, s_est_u) — como sempre: a mesma armadura em todos os contrafortes. O
  * DOBRADO (16/11) leva estribo SEMPRE, em toda fiada (s = 20 cm): é a ligação dos dois blocos, mesmo quando a conta o
@@ -347,6 +378,20 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
  */
 export function estribosDoContraforte(ctx: Ctx): { simples: { tem: boolean; ramos: number; s: number }; dobrado: { tem: boolean; ramos: number; s: number } } {
   const { p, mod } = ctx;
+  // Com o dobrado, cada tipo leva o estribo que a planilha conta PARA ELE (seção 6 = o calculado; seção 19 = o outro):
+  // a ponta simples de um muro dobrado não herda os 4 ramos do dobrado, nem o dobrado os 2 do simples.
+  if (p.dobrado && p.dobCalc) {
+    return {
+      simples: { tem: p.estribos_o, ramos: p.ramos_o, s: p.s_o ?? mod.s_est },
+      dobrado: { tem: true, ramos: p.ramos_est, s: H_FIADA },
+    };
+  }
+  if (p.dobrado) {
+    return {
+      simples: { tem: p.estribos, ramos: p.ramos_est, s: mod.s_est },
+      dobrado: { tem: true, ramos: p.ramos_o, s: H_FIADA },
+    };
+  }
   return {
     simples: { tem: p.estribos, ramos: p.dobCalc ? 2 : p.ramos_est, s: mod.s_est },
     dobrado: { tem: true, ramos: p.dobCalc ? p.ramos_est : 2, s: H_FIADA },
@@ -368,16 +413,18 @@ export function estribosDoContraforte(ctx: Ctx): { simples: { tem: boolean; ramo
  * Onde um ramo cruza a perna do outro (dois pontos por junta) as barras passam uma sobre a outra, como já passam no
  * canto dos ganchos. Só com 4 na conta (`ram_ef`, que confere se cabem); a planilha diz por que não cabem.
  */
-export function estribosDaJunta(ramos: number, xc: number, yDe: (eta: number) => number, tenr: number, t: number, z: number, phi = 0): [Vec3, Vec3, Vec3, Vec3][] {
+export function estribosDaJunta(ramos: number, xc: number, yDe: (eta: number) => number, tenr: number, t: number, z: number, phi = 0, ganchosNaPonta = false): [Vec3, Vec3, Vec3, Vec3][] {
   const e = t - 2 * RECUO_ESTRIBO_LATERAL;
   const ya = yDe(RECUO_ESTRIBO);
   const yb = yDe(tenr - RECUO_ESTRIBO);
-  if (ramos !== 4) return [[[xc - e / 2, ya, z], [xc + e / 2, ya, z], [xc + e / 2, yb, z], [xc - e / 2, yb, z]]];
+  // ganchos na PONTA (o canto de fora do lado yb): começar a volta pelo 4º canto, a mesma volta girada
+  const gira = (c: [Vec3, Vec3, Vec3, Vec3]): [Vec3, Vec3, Vec3, Vec3] => (ganchosNaPonta ? [c[3], c[0], c[1], c[2]] : c);
+  if (ramos !== 4) return [gira([[xc - e / 2, ya, z], [xc + e / 2, ya, z], [xc + e / 2, yb, z], [xc - e / 2, yb, z]])];
   const sinal = Math.sign(yb - ya) || 1;
   const d = phi * sinal;
   return [
-    [[xc - e / 2, ya, z], [xc + e / 6, ya, z], [xc + e / 6, yb, z], [xc - e / 2, yb, z]],
-    [[xc + e / 2, ya + d, z], [xc - e / 6, ya + d, z], [xc - e / 6, yb + d, z], [xc + e / 2, yb + d, z]],
+    gira([[xc - e / 2, ya, z], [xc + e / 6, ya, z], [xc + e / 6, yb, z], [xc - e / 2, yb, z]]),
+    gira([[xc + e / 2, ya + d, z], [xc - e / 6, ya + d, z], [xc - e / 6, yb + d, z], [xc + e / 2, yb + d, z]]),
   ];
 }
 

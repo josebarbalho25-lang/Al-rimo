@@ -34,9 +34,9 @@ function juntas(m: Modelo): Map<string, Barra[]> {
 const contrafortesComEstribo = cenariosDoGabarito()
   .map((c) => ({ c, r: resultadoDoGabarito(c) }))
   .filter(({ r }) => r.v('Tipo_muro') === 'Contrafortes' && r.num('Asw_c') !== 0 && r.num('Asw_c') !== null)
-  // o contraforte dobrado calculado (16/11) tem a regra dele: um estribo abraçando os dois blocos, 2 ramos c/20
-  // (dobrado.test.ts)
-  .filter(({ r }) => r.num('dob_cf') !== 1);
+  // o muro com contraforte dobrado (16/11) tem a regra dele (dois tipos de contraforte, cada um com o seu estribo:
+  // ram_ef e ram_o; dobrado.test.ts)
+  .filter(({ r }) => r.v('larg_cf') !== 'Dobrado');
 
 /** O cenário do gabarito com entradas trocadas, refeito pelo motor (a conta muda: ram_ef, Asw_e…). */
 const refeito = (c: string, trocas: Record<string, Valor>): Resultado => calcular({ ...lerGabarito(c).alterado, ...trocas });

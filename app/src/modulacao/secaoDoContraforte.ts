@@ -197,7 +197,7 @@ export function cDaMontagem(familia: NomeFamilia, tenr: number, posicao: Posicao
 }
 
 /** Folga de uma barra no furo comum de todas as seções dadas (T e ponta): a pior delas. */
-function folgaNoComum(secoes: SecaoDoContraforte[]) {
+export function folgaNoComum(secoes: SecaoDoContraforte[]) {
   const furos = secoes.flatMap((s) => [s.furo.P, s.furo.I]);
   return (x: number, y: number, raio: number): number => {
     let f = Infinity;
@@ -244,6 +244,28 @@ export function naFaixa(f: (x: number, y: number, raio: number) => number, cx: n
  * do meio ficam a 1/6 da largura do estribo de 2 ramos (t − 2·35 no eixo; armaduras.ts estribosDaJunta).
  */
 export const faixaDosQuatroRamos = (t: number, phiEst: number): number => (t - 2 * RECUO_ESTRIBO_LATERAL) / 6 - phiEst / 2;
+
+/**
+ * DOBRADO com 4 ramos (Jose, 16/11: "dois estribos por fiada"): o par de estribos tem a largura do par (2t + 1 cm) e
+ * os ramos do meio caem a 1/6 dela do eixo do par — perto da junta entre os dois blocos. As barras de cada bloco ficam
+ * no furo DELE, do lado de fora do ramo do meio: medida do centro do bloco (a junta em +(t + 1 cm)/2), a superfície da
+ * barra (e da espera) não passa de `limiteDoRamoDoMeioNoDobrado`. É o que tira barra; o furo e os 15 mm de graute
+ * continuam valendo.
+ */
+export const limiteDoRamoDoMeioNoDobrado = (t: number, phiEst: number): number =>
+  (t + JUNTA) / 2 - (2 * t + JUNTA - 2 * RECUO_ESTRIBO_LATERAL) / 6 - phiEst / 2;
+
+/** Barras de Ø que cabem em CADA bloco do contraforte dobrado com 4 ramos (a tabela mont_n4dE/A da planilha). */
+export function barrasQueCabemNoDobrado(familia: NomeFamilia, tenr: number, posicao: Posicao, phi: number, phiEst: number): number {
+  const secoes = [secaoDoContraforte(familia, tenr, posicao, 'T'), secaoDoContraforte(familia, tenr, posicao, 'L')];
+  const base = folgaNoComum(secoes);
+  const lim = limiteDoRamoDoMeioNoDobrado(CATALOGO[familia].t, phiEst);
+  const f = (x: number, y: number, raio: number): number => (x + raio > lim + 1e-6 ? -1 : base(x, y, raio));
+  const eta = etaDaBarra(secoes[0], cDaMontagem(familia, tenr, posicao));
+  let n = 0;
+  while (n < 99 && arrumarGrupo(f, f, 0, eta, n + 1, phi, 'Y').folga >= COB_GRAUTE) n++;
+  return n;
+}
 
 /** Área (mm²) do furo comum à T e à ponta — a que a taxa de 8% com traspasse usa na memória. */
 export function areaDoFuroComum(familia: NomeFamilia, tenr: number, posicao: Posicao): number {

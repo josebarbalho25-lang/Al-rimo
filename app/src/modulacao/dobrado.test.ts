@@ -151,7 +151,8 @@ describe('contraforte dobrado (16/11)', () => {
       it('estribo: um só abraçando os dois blocos em toda fiada, na junta, sem cortar barra', () => {
         const fiadas = m.dims.n_fiadas;
         const e = W - 2 * RECUO_ESTRIBO_LATERAL;
-        const ramos = r.num('dob_cf') === 1 ? r.num('ram_ef')! : 2;
+        // os ramos do DOBRADO: os da conta quando o calculado é ele (ram_ef), senão os do outro tipo (ram_o, seção 19)
+        const ramos = r.num('dob_cf') === 1 ? r.num('ram_ef')! : r.num('ram_o')!;
         m.dims.contrafortes.forEach((q, k) => {
           if (!q.dobrado) return;
           const es = m.barras.filter((b) => b.papel === 'CF_ESTRIBO' && b.contraforte === k + 1);
@@ -181,7 +182,7 @@ describe('contraforte dobrado (16/11)', () => {
 
   it('4 ramos (decisão do Jose em aberto): dois estribos de 2/3 da largura do par, ±1/6, os dois cruzando a junta', () => {
     for (const c of ['alvo_dobrado_19x59_enterrado', 'alvo_dobrado_19x79_aparente', 'alvo_dobrado_14x54_enterrado']) {
-      const r = comEntradas(resultadoDoGabarito(c), { ram_ef: 4 });
+      const r = comEntradas(resultadoDoGabarito(c), { ram_ef: 4, ram_o: 2 });
       const m = modelo(r);
       const t = m.familia.t;
       const e = 2 * t + JUNTA - 2 * RECUO_ESTRIBO_LATERAL;

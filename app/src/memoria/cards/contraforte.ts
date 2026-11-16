@@ -109,6 +109,23 @@ export const SIMBOLOS_CONTRAFORTE: Readonly<Record<string, string>> = {
   '\\ell_{gancho}': 'ponta do gancho de 135° que cabe no estribo menor',
   '\\ell_{gancho,m\\acute{\\imath}n}': 'ponta do gancho de 135° exigida (5φ ≥ 5 cm)',
   'n_{cabe,4}': 'barras do Ø adotado que cabem entre os ramos do meio',  's_{est}': 'espaçamento dos estribos',
+  // contraforte dobrado (16/11): dois estribos por fiada e o outro tipo no veredito
+  '(A_{sw}/s)_{ef,2}': 'estribo de 2 ramos c/20 com o Ø adotado (um estribo por fiada)',
+  'n_{cabe,4d}': 'barras do Ø adotado por bloco do dobrado, fora dos ramos do meio',
+  'V_{d,cf,o}': 'cortante de cálculo na base do contraforte do outro tipo',
+  'A_{s,m\\acute{\\imath}n,o}': 'armadura mínima do contraforte do outro tipo',
+  'V_{a,o}': 'cortante resistido sem estribo, contraforte do outro tipo',
+  'V_{Rd2,o}': 'cortante das bielas, contraforte do outro tipo',
+  '(A_{sw}/s)_{calc,o}': 'estribo de cálculo do contraforte do outro tipo',
+  'n_{ram,o}': 'ramos do estribo do contraforte do outro tipo',
+  's_{est,o}': 'espaçamento dos estribos do contraforte do outro tipo',
+  '(A_{sw}/s)_{ef,o}': 'estribo efetivo do contraforte do outro tipo',
+  'V_{Rd3,o}': 'cortante resistido com os estribos, contraforte do outro tipo',
+  'V_{Rd,o}': 'cortante resistente do contraforte do outro tipo',
+  'b_{inf,o}': 'largura de influência do contraforte do outro tipo',
+  'M_{k,cf,o}': 'momento característico na base do contraforte do outro tipo',
+  'V_{k,cf,o}': 'cortante característico na base do contraforte do outro tipo',
+  'f_{vd,o}': 'resistência de cálculo ao cisalhamento, contraforte do outro tipo',
   '\\phi_{est,nec}': 'diâmetro de estribo necessário com os ramos e o s adotados',
   '(A_{sw}/s)_{ef}': 'estribo efetivo por metro',
   'V_{Rd3,cf}': 'cortante resistente com os estribos adotados',
@@ -461,7 +478,8 @@ function cardFlexao(r: Parameters<AutorDeCards>[0]): Card {
       ? ps('c_cf', 'c_{cf}', null, { casas: 1, unidade: 'cm', origem: 'entrada' })
       : ps('c_cf', 'c_{cf}', m.g('c_mont', 'c_{mont}', 1, 'cm'), { casas: 1, unidade: 'cm' }),
     ps('d_cf', 'd_{cf}', sub(hcf, c), { casas: 1, unidade: 'cm' }),
-    T && ps('bf_a', 'b_{f,1}', min(mul(cte(6, 0), t), div(sub(lenrCm, bw), cte(2, 0))), { casas: 1, unidade: 'cm', ref: NBR('10.1.3') }),
+    // vizinho dobrado (o calculado é a ponta, simples): metade do vão livre até o dobrado, de largura 2t + 1
+    T && ps('bf_a', 'b_{f,1}', min(mul(cte(6, 0), t), div(sub(lenrCm, m.num('dob_o') === 1 ? soma(mul(cte(2, 0), t), cte(1, 0)) : bw), cte(2, 0))), { casas: 1, unidade: 'cm', ref: NBR('10.1.3') }),
     T && ps('bf_b', 'b_{f,2}', intermediario ? bfa : min(mul(cte(6, 0), t), balCm), { casas: 1, unidade: 'cm', ref: NBR('10.1.3') }),
     ps('bm_cf', 'b_{m,cf}', T ? min(soma(bw, bfa, bfb), div(hCm, cte(3, 0))) : bw, { casas: 1, unidade: 'cm', ref: NBR('11.3.4') }),
     // hf ≤ 0,5d: o limite não tem célula própria — a folha é d_cf lida com fator 0,5 (o número sai da célula de d)
@@ -550,8 +568,9 @@ function cardFlexao(r: Parameters<AutorDeCards>[0]): Card {
       // dobrado: número PAR, metade no furo da ponta de cada bloco (o ímpar vai ao par de cima)
       dobrado(m)
         ? nDigitado
-          ? ps('n_cf', 'n_{b,cf}', mul(cte(2, 0), arredCima(div(m.ent('n_cf_dir', 'n_{b,dig}'), cte(2, 0)))), { casas: 0, ref: DOBRADO })
-          : ps('n_cf', 'n_{b,cf}', max(cte(2, 0), mul(cte(2, 0), arredCima(div(arredCima(sub(div(Ascalc, aPhi), cte(0.005, 3))), cte(2, 0))))), { casas: 0, ref: DOBRADO })
+          // dobrado: par, no mínimo 2 em cada bloco (4)
+          ? ps('n_cf', 'n_{b,cf}', max(cte(4, 0), mul(cte(2, 0), arredCima(div(m.ent('n_cf_dir', 'n_{b,dig}'), cte(2, 0))))), { casas: 0, ref: DOBRADO })
+          : ps('n_cf', 'n_{b,cf}', max(cte(4, 0), mul(cte(2, 0), arredCima(div(arredCima(sub(div(Ascalc, aPhi), cte(0.005, 3))), cte(2, 0))))), { casas: 0, ref: DOBRADO })
         : nDigitado
           ? ps('n_cf', 'n_{b,cf}', null, { casas: 0, origem: 'entrada' })
           : ps('n_cf', 'n_{b,cf}', max(cte(2, 0), arredCima(sub(div(Ascalc, aPhi), cte(0.005, 3)))), { casas: 0 }),
@@ -693,8 +712,8 @@ function cardCisalhamento(r: Parameters<AutorDeCards>[0]): Card {
         // dobrado: um estribo abraçando os dois blocos em toda fiada (a conta: ram_ef e s_est_u); as Entradas não valem
         ...(dob
           ? [
-            ps('ram_ef', 'n_{ram,ef}', null, { casas: 0, origem: 'adotado', ref: ESTRIBO_DOBRADO }),
             ps('s_est_u', 's_{est}', null, { casas: 0, unidade: 'cm', origem: 'adotado', ref: ESTRIBO_DOBRADO }),
+            ...passosDosRamosDoDobrado(m, ps),
           ]
           : [m.entrada('ramos_est', 'n_{ram}'), ...passosDosQuatroRamos(m, ps), m.entrada('s_est', 's_{est}')]),
         ps('Asw_e', '(A_{sw}/s)_{ef}', mul(div(mul(nram, pi(), pot(phiEstCm, 2)), mul(cte(4, 0), s)), cte(100, 0)), {
@@ -748,6 +767,124 @@ function passosDosQuatroRamos(m: Memoria, ps: Montador): (Passo | null)[] {
       verif: verifica(m, 'ramos', { chave: 'contraforte.ramos', rotulo: '4 ramos cabem no contraforte', limite: 4, relacao: '>=', casasLimite: 0 }),
     }),
   ];
+}
+
+/*
+  DOBRADO (Jose, 16/11: "dois estribos por fiada"): um estribo c/20 abraçando os dois blocos; se ele não alcança o
+  Asw/s de cálculo (ou com 4 nas Entradas), dois estribos sobrepostos de 2/3 da largura do par, os dois cruzando a
+  junta. Cabem se o gancho de 135° do menor chega a 5φ ≥ 5 cm e as barras de cada bloco ficam fora dos ramos do meio.
+*/
+function passosDosRamosDoDobrado(m: Memoria, ps: Montador): (Passo | null)[] {
+  const phiCm = m.ent('phi_est', '\\phi_{est}', { fator: 0.1, casas: 2, unidade: 'cm' });
+  const s = m.g('s_est_u', 's_{est}', 0, 'cm');
+  const quatro = m.num('pd4_est') === 1;
+  const eenr = m.g('eenr', 'e_{enr}', 1, 'cm');
+  const phiMm = m.ent('phi_est', '\\phi_{est}', { unidade: 'mm' });
+  const w4 = m.g('w4_est', 'w_{4}', 2, 'cm');
+  const r4 = m.g('rd4_est', 'r_{dobra}', 2, 'cm');
+  const s2 = div(raiz(cte(2, 0)), cte(2, 0));
+  const verifRamos = verifica(m, 'ramos', { chave: 'contraforte.ramos', rotulo: '4 ramos cabem no contraforte', limite: 4, relacao: '>=', casasLimite: 0 });
+  return [
+    m.entrada('ramos_est', 'n_{ram}'),
+    ps('Asw_e2d', '(A_{sw}/s)_{ef,2}', mul(div(mul(cte(2, 0), pi(), pot(phiCm, 2)), mul(cte(4, 0), s)), cte(100, 0)), { casas: 2, unidade: 'cm²/m', ref: ESTRIBO_DOBRADO }),
+    ...(quatro ? [
+      ps('w4_est', 'w_{4}', mul(div(cte(2, 0), cte(3, 0)), sub(eenr, cte(7, 0))), { casas: 2, unidade: 'cm', ref: CRITERIO }),
+      ps('rd4_est', 'r_{dobra}', div(soma(div(mul(cte(3, 0), phiMm), cte(2, 0)), div(phiMm, cte(2, 0))), cte(10, 0)), {
+        casas: 2, unidade: 'cm', ref: { fonte: 'NBR 6118', item: 'Tab. 9.2' },
+      }),
+      ps('pg4_est', '\\ell_{gancho}', div(sub(sub(w4, phiCm), mul(soma(cte(1, 0), s2), r4)), s2), { casas: 2, unidade: 'cm' }),
+      ps('pgn_est', '\\ell_{gancho,m\\acute{\\imath}n}', max(mul(cte(5, 0), phiCm), cte(5, 0)), {
+        casas: 2, unidade: 'cm', ref: { fonte: 'NBR 6118', item: '9.4.6.1' },
+      }),
+      ps('nb4d_cab', 'n_{cabe,4d}', null, { casas: 0, origem: 'tabela', ref: { fonte: 'Template do Revit' } }),
+    ] : []),
+    ps('ram_ef', 'n_{ram,ef}', null, { casas: 0, origem: 'calculado', ref: ESTRIBO_DOBRADO, verif: verifRamos }),
+  ];
+}
+
+/** Pedido de verificação preso a uma célula com NOME (as do outro tipo, seção 19); "—" = não verifica nada. */
+function verificaNome(m: Memoria, celula: string, p: Omit<PedidoDeVerificacao, 'celula'>): PedidoDeVerificacao | undefined {
+  const v = m.r.v(celula);
+  const temVeredito = typeof v === 'string' && v.trim() !== '' && !v.trim().startsWith('—');
+  return temVeredito ? { ...p, celula } : undefined;
+}
+
+// ─────────────────────── 4b · o outro tipo (com o dobrado) ───────────────────────
+
+/*
+  Com o contraforte DOBRADO o muro tem dois contrafortes diferentes: o da ponta (simples, l/2 + balanço) e o
+  intermediário (dobrado, 2t + 1). A aba calcula o escolhido em "Contraforte calculado"; o outro tem a sua seção e o
+  seu aço e é verificado na seção 19 (revisão de 16/11: antes só o calculado entrava no veredito). Contraforte
+  simples: o outro é igual ao calculado e o card não se aplica.
+*/
+function cardOutroTipo(r: Parameters<AutorDeCards>[0]): Card {
+  const m = memoriaDe(r);
+  const ps = montador(m);
+  const com = aplicavel(m) && m.texto('larg_cf') === 'Dobrado';
+  const qual = comeca(m.texto('tipo_cfo'), 'Inter') ? 'intermediário (dobrado)' : 'da ponta';
+  const gf = m.ent('gama_f', '\\gamma_f');
+  const Vd = m.g('Vd_cfo', 'V_{d,cf,o}', 2, 'kN');
+  const MRd = m.g('MRd_cfo', 'M_{Rd,o}', 2, 'kN·m');
+  const bw = m.g('bw_cfo', 'b_{w,o}', 1, 'cm');
+  const d = m.g('d_cf', 'd_{cf}', 1, 'cm');
+  const Va = m.g('Va_cfo', 'V_{a,o}', 2, 'kN');
+  const gm = m.ent('gama_m', '\\gamma_m');
+  const fpkc = m.g('fpk_chei', 'f_{pk}^{*}', 1, 'MPa');
+  const fywdK = m.g('fywd', 'f_{ywd}', 2, 'kN/cm²', { fator: 0.1 });
+  const phiCm = m.ent('phi_est', '\\phi_{est}', { fator: 0.1, casas: 2, unidade: 'cm' });
+  const Aswco = m.g('Asw_co', '(A_{sw}/s)_{calc,o}', 2, 'cm²/m');
+  const Asweo = m.g('Asw_eo', '(A_{sw}/s)_{ef,o}', 2, 'cm²/m');
+  const temEstribo = (m.num('Asw_co') ?? 1) !== 0;
+
+  const esforcos = secao('Esforços na base', [
+    ps('binf_o', 'b_{inf,o}', null, { casas: 2, unidade: 'm', origem: 'calculado', ref: CRITERIO }),
+    ps('Md_cfo', 'M_{d,cf,o}', mul(gf, m.g('Mk_cfo', 'M_{k,cf,o}', 2, 'kN·m')), {
+      casas: 2, unidade: 'kN·m',
+      verif: verificaNome(m, 'chk_fl_cfo', { chave: 'contraforte.outro.flexao', rotulo: `Contraforte ${qual}: Md ≤ MRd`, limite: MRd, relacao: '<=' }),
+    }),
+    ps('Vd_cfo', 'V_{d,cf,o}', mul(gf, m.g('Vk_cfo', 'V_{k,cf,o}', 2, 'kN')), { casas: 2, unidade: 'kN' }),
+  ], CRITERIO);
+  const flexao = secao('Flexão com o aço dele', [
+    ps('eenr_o', 'e_{enr,o}', null, { casas: 1, unidade: 'cm', origem: 'calculado', ref: DOBRADO }),
+    ps('n_cfo', 'n_{b,o}', null, { casas: 0, origem: 'calculado' }),
+    ps('Asm_cfo', 'A_{s,m\\acute{\\imath}n,o}', null, { casas: 2, unidade: 'cm²', origem: 'calculado', ref: NBR('12.2') }),
+    ps('As_cfo', 'A_{s,ef,o}', null, {
+      casas: 2, unidade: 'cm²', origem: 'calculado',
+      verif: verificaNome(m, 'chk_Asm_cfo', { chave: 'contraforte.outro.Asmin', rotulo: `Contraforte ${qual}: As,ef ≥ As,mín`, limite: m.g('Asm_cfo', 'A_{s,m\\acute{\\imath}n,o}', 2, 'cm²'), relacao: '>=' }),
+    }),
+    ps('MRd_cfo', 'M_{Rd,o}', null, { casas: 2, unidade: 'kN·m', origem: 'calculado', ref: NBR('11.3') }),
+  ], NBR('11.3'));
+  const cortante = secao('Cortante com o estribo dele', [
+    ps('Va_cfo', 'V_{a,o}', mul(m.g('fvd_cfo', 'f_{vd,o}', 4, 'kN/cm²', { fator: 0.1 }), bw, d), { casas: 2, unidade: 'kN', ref: NBR('11.4.3') }),
+    ps('Vrd2_cfo', 'V_{Rd2,o}', soma(Va, div(mul(cte(0.4, 1), bw, d, raiz(fpkc)), mul(cte(10, 0), gm))), {
+      casas: 2, unidade: 'kN', ref: NBR('11.4.3'),
+      verif: verificaNome(m, 'chk_bie_cfo', { chave: 'contraforte.outro.bielas', rotulo: `Contraforte ${qual}: bielas VRd2 ≥ Vd`, limite: Vd, relacao: '>=' }),
+    }),
+    ps('Asw_co', '(A_{sw}/s)_{calc,o}', null, { casas: 2, unidade: 'cm²/m', origem: 'calculado', ref: NBR('11.4.3') }),
+    temEstribo && ps('ram_o', 'n_{ram,o}', null, {
+      casas: 0, origem: 'calculado', ref: ESTRIBO_DOBRADO,
+      verif: verificaNome(m, 'chk_ram_cfo', { chave: 'contraforte.outro.ramos', rotulo: `Contraforte ${qual}: 4 ramos cabem`, limite: 4, relacao: '>=', casasLimite: 0 }),
+    }),
+    temEstribo && ps('s_o', 's_{est,o}', null, { casas: 0, unidade: 'cm', origem: 'adotado' }),
+    temEstribo && ps('Asw_eo', '(A_{sw}/s)_{ef,o}', mul(div(mul(m.g('ram_o', 'n_{ram,o}', 0), pi(), pot(phiCm, 2)), mul(cte(4, 0), m.g('s_o', 's_{est,o}', 0, 'cm'))), cte(100, 0)), {
+      casas: 2, unidade: 'cm²/m',
+      verif: verificaNome(m, 'chk_est_cfo', { chave: 'contraforte.outro.estribos', rotulo: `Contraforte ${qual}: Asw,ef ≥ Asw,calc`, limite: Aswco, relacao: '>=' }),
+    }),
+    ps('Vrd3_cfo', 'V_{Rd3,o}', soma(Va, div(mul(cte(0.75, 2), fywdK, d, Asweo), cte(100, 0))), { casas: 2, unidade: 'kN', ref: NBR('11.4.3') }),
+    ps('VRd_cfo', 'V_{Rd,o}', min(m.g('Vrd3_cfo', 'V_{Rd3,o}', 2, 'kN'), m.g('Vrd2_cfo', 'V_{Rd2,o}', 2, 'kN')), {
+      casas: 2, unidade: 'kN', ref: NBR('11.4.3'),
+      verif: verificaNome(m, 'chk_v_cfo', { chave: 'contraforte.outro.cortante', rotulo: `Contraforte ${qual}: VRd ≥ Vd`, limite: Vd, relacao: '>=' }),
+    }),
+  ], NBR('11.4'));
+  return {
+    id: 'contraforte.outroTipo',
+    titulo: `Contraforte ${qual}`,
+    ref: NBR('11.3 e 11.4'),
+    figura: 'Fig. 12',
+    secoes: com ? [esforcos, flexao, cortante] : [],
+    avisos: [],
+    aplicavel: com,
+  };
 }
 
 // ───────────────────────────── 5 · ELS ─────────────────────────────
@@ -888,5 +1025,5 @@ function cardEls(r: Parameters<AutorDeCards>[0]): Card {
 
 /** Contraforte: esforços, esbeltez, flexão, cisalhamento e ELS — só aparece com Tipo_muro = Contrafortes. */
 export const autorContraforte: AutorDeCards = (r) => [
-  cardEsforcos(r), cardEsbeltez(r), cardFlexao(r), cardCisalhamento(r), cardEls(r),
+  cardEsforcos(r), cardEsbeltez(r), cardFlexao(r), cardCisalhamento(r), cardOutroTipo(r), cardEls(r),
 ];

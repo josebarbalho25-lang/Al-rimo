@@ -27,7 +27,7 @@ import type { Resultado } from '@/motor/tipos';
 import type { Vec2 } from '@/modelo/tipos';
 import { arranjoNaSecao, etaDaBarra, secaoDoContraforte, type FuroEmPlanta, type SecaoDoContraforte } from '@/modulacao/secaoDoContraforte';
 import { retanguloArredondado } from '@/modulacao/perfis';
-import { estribosDaJunta } from '@/modulacao/armaduras';
+import { arranjoNoDobrado, estribosDaJunta } from '@/modulacao/armaduras';
 import { nbr } from './formato';
 import type { Desenho } from './tipos';
 
@@ -91,7 +91,7 @@ interface Dados {
   phi: number;        // mm
   T: boolean;         // seção T (enterrado)
   /** Dobrado: os ramos do estribo que abraça os dois blocos (a conta: ram_ef). Sem o campo: um bloco. */
-  dobrado?: { ramos: number };
+  dobrado?: { ramos: number; phiEst: number };
 }
 
 function lerDados(r: Resultado): Dados | null {
@@ -112,7 +112,7 @@ function lerDados(r: Resultado): Dados | null {
   try {
     const sec = secaoDoContraforte(familia, Math.round(tenr * 10), T ? 'enterrado' : 'aparente', no);
     const D: Dados = { sec, bm: bm * 10, c: c * 10, d: d * 10, n: Math.round(n), phi, T };
-    if (dobrado) D.dobrado = { ramos: Math.round(r.num('ram_ef') ?? 2) === 4 ? 4 : 2 };
+    if (dobrado) D.dobrado = { ramos: Math.round(r.num('ram_ef') ?? 2) === 4 ? 4 : 2, phiEst: r.num('phi_est') ?? 6.3 };
     return D;
   } catch {
     return null;
@@ -132,6 +132,11 @@ export function desenhoDaSecaoDoContraforte(r: Resultado): DesenhoDoCard | null 
   const W0 = dob ? 2 * t + 10 : t;               // largura do contraforte (eenr)
   const nBloco = dob ? Math.round(n / 2) : n;
   const arr = arranjoNaSecao(sec, c, nBloco, phi);
+  // dobrado: as barras de cada bloco pela mesma regra do 3D (com o estribo do par) — coordenadas do eixo do par
+  const doDobrado = dob ? arranjoNoDobrado(sec, c, nBloco, phi, dob.ramos, dob.phiEst) : null;
+  const gruposDeBarras: { barras: Vec2[]; esperas: Vec2[] }[] = doDobrado
+    ? doDobrado.map((m) => ({ barras: m.arranjo.barras as Vec2[], esperas: m.arranjo.esperas as Vec2[] }))
+    : metades.map(({ ox, sx }) => ({ barras: arr.barras.map(([X, e]) => [ox + sx * X, e] as Vec2), esperas: arr.esperas.map(([X, e]) => [ox + sx * X, e] as Vec2) }));
   const mx = (ox: number, sx: number) => (X: number) => ox + sx * X;
   const noBloco = (pts: Vec2[], ox: number, sx: number): Vec2[] => pts.map(([X, e]) => [mx(ox, sx)(X), e] as Vec2);
   const furo = sec.furo;
@@ -193,10 +198,9 @@ export function desenhoDaSecaoDoContraforte(r: Resultado): DesenhoDoCard | null 
   partes.push(`<line x1="${v1.x(-Wtot / 2).toFixed(2)}" y1="${v1.y(t).toFixed(2)}" x2="${v1.x(Wtot / 2).toFixed(2)}" y2="${v1.y(t).toFixed(2)}" ${linhaFina}/>`);
   // barras (pontos cheios) e esperas (vazados), mesmo pequenos: mostram onde o grupo está
   const rb1 = Math.max(1.3, (phi / 2) * s1);
-  for (const { ox, sx } of metades) {
-    const X1 = mx(ox, sx);
-    for (const [X, e] of arr.esperas) partes.push(`<circle cx="${v1.x(X1(X)).toFixed(2)}" cy="${v1.y(e).toFixed(2)}" r="${rb1.toFixed(2)}" fill="#ffffff" stroke="${TINTA}" stroke-width="0.4"/>`);
-    for (const [X, e] of arr.barras) partes.push(`<circle cx="${v1.x(X1(X)).toFixed(2)}" cy="${v1.y(e).toFixed(2)}" r="${rb1.toFixed(2)}" fill="${TINTA}"/>`);
+  for (const g of gruposDeBarras) {
+    for (const [X, e] of g.esperas) partes.push(`<circle cx="${v1.x(X).toFixed(2)}" cy="${v1.y(e).toFixed(2)}" r="${rb1.toFixed(2)}" fill="#ffffff" stroke="${TINTA}" stroke-width="0.4"/>`);
+    for (const [X, e] of g.barras) partes.push(`<circle cx="${v1.x(X).toFixed(2)}" cy="${v1.y(e).toFixed(2)}" r="${rb1.toFixed(2)}" fill="${TINTA}"/>`);
   }
   // chamada do detalhe A (no dobrado, o furo do bloco da direita)
   const oxA = metades[metades.length - 1].ox;
@@ -257,8 +261,12 @@ export function desenhoDaSecaoDoContraforte(r: Resultado): DesenhoDoCard | null 
   partes.push(`<line x1="${v2.x(xf0).toFixed(2)}" y1="${v2.y(faceTracionada).toFixed(2)}" x2="${v2.x(xf1).toFixed(2)}" y2="${v2.y(faceTracionada).toFixed(2)}" stroke="${TINTA}" stroke-width="1.3"/>`);
   // barras e esperas em escala
   const rb2 = (phi / 2) * s2;
-  for (const [X, e] of arr.esperas) partes.push(`<circle cx="${v2.x(X).toFixed(2)}" cy="${v2.y(e).toFixed(2)}" r="${rb2.toFixed(2)}" fill="#ffffff" stroke="${TINTA}" stroke-width="0.7"/>`);
-  for (const [X, e] of arr.barras) partes.push(`<circle cx="${v2.x(X).toFixed(2)}" cy="${v2.y(e).toFixed(2)}" r="${rb2.toFixed(2)}" fill="${TINTA}"/>`);
+  // dobrado: o bloco da direita, com as barras onde o 3D as põe (do eixo do bloco)
+  const arrA = doDobrado
+    ? { barras: doDobrado[1].arranjo.barras.map(([X, e]) => [X - doDobrado[1].ox, e] as Vec2), esperas: doDobrado[1].arranjo.esperas.map(([X, e]) => [X - doDobrado[1].ox, e] as Vec2) }
+    : arr;
+  for (const [X, e] of arrA.esperas) partes.push(`<circle cx="${v2.x(X).toFixed(2)}" cy="${v2.y(e).toFixed(2)}" r="${rb2.toFixed(2)}" fill="#ffffff" stroke="${TINTA}" stroke-width="0.7"/>`);
+  for (const [X, e] of arrA.barras) partes.push(`<circle cx="${v2.x(X).toFixed(2)}" cy="${v2.y(e).toFixed(2)}" r="${rb2.toFixed(2)}" fill="${TINTA}"/>`);
   // eixo das barras
   partes.push(`<line x1="${v2.x(-ax).toFixed(2)}" y1="${v2.y(etaBarra).toFixed(2)}" x2="${v2.x(ax).toFixed(2)}" y2="${v2.y(etaBarra).toFixed(2)}" stroke="${COTA}" stroke-width="0.5" stroke-dasharray="8 2 2 2"/>`);
   // cotas do c: face tracionada → começo do trecho comum (a) e o comprimento dele (ℓ); do outro lado, o c

@@ -659,6 +659,9 @@ function montar(r: Resultado, modelo: Modelo): BarraAnalitica[] {
     const faixaPil = faixaEm(modelo, 1, (p) => p.tipo === 'PILARETE');
     const yPil = faixaPil ? (faixaPil[0] + faixaPil[1]) / 2 : yMeio;
     const bPil = (n('b_pila') ?? 0) * CMmm;
+    // sobre o contraforte dobrado o pilarete tem a largura do par (b_pili): as barras ficam no furo de cada bloco
+    const bPar = (n('b_pili') ?? n('b_pila') ?? 0) * CMmm;
+    const larguraEm = (x: number): number => (modelo.dims.contrafortes.some((q) => q.dobrado && Math.abs(q.x - x) < 1) ? bPar : bPil);
     const concreto = t('pil_tipo').startsWith('Conc');
     const nomeAsPil = concreto ? 'Asc_pil' : 'Asb_pil';
     const ys = coluna(r, 'pt_y');
@@ -687,7 +690,7 @@ function montar(r: Resultado, modelo: Modelo): BarraAnalitica[] {
         // as barras de UMA face do pilarete (a do lado do solo), na seção inteira dele
         const col = acoColocado(barras.filter((b) => b.trecho === trecho), {
           de, u, L, papeis: ['PIL_LONG'], largura: null,
-          dentro: (p) => Math.abs(p[0] - x) <= Math.max(bPil, 1) / 2 + 1 && p[1] > yPil,
+          dentro: (p) => Math.abs(p[0] - x) <= Math.max(larguraEm(x), 1) / 2 + 1 && p[1] > yPil,
           ancoragem: anc,
         });
         const f1 = face(1, { necessario: nec.pontos, naoResiste: nec.naoResiste, colocado: col.pontos, familias: col.familias, minimo: n('Asmu_pil') });

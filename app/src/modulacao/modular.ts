@@ -234,6 +234,9 @@ export function modular(p: Parametros, avisos: Aviso[]): Modulo {
     ajuste('tenr_', p.tenr / 10, tenr / 10, 'cm');
     // dobrado calculado: barras em número par, metade em cada bloco — o ímpar digitado vai ao par de cima (planilha)
     if (p.dobCalc && p.n_cf_dir !== null) ajuste('n_cf', p.n_cf_dir, p.n_cf, '');
+    // dobrado (Jose, 16/11: "dois estribos por fiada"): com 2 nas Entradas a conta passa a 4 quando um estribo não
+    // basta — o "→ 4" mostra o adotado (o do dobrado: o calculado, ou o outro tipo quando o calculado é a ponta)
+    if (p.dobrado && p.ramos_dig !== null) ajuste('ramos_est', p.ramos_dig, p.dobCalc ? p.ramos_est : p.ramos_o, '');
     // espessura do contraforte = largura do bloco (brief Q5): eenr ≠ t não tem amarração simples. O dobrado (16/11)
     // é dois blocos com 1 cm de argamassa: 2t + 1 — a planilha publica o eenr do contraforte CALCULADO (dob_cf).
     ajuste('eenr', p.eenr / 10, (p.dobCalc ? 2 * cat.t + JUNTA : cat.t) / 10, 'cm');
@@ -276,6 +279,182 @@ function dividir(total: number, partes: number): number[] {
   return Array.from({ length: partes }, (_, k) => base + (k < extra ? 1 : 0));
 }
 
+/** Largura de um trecho com contrafortes: Σ peso(vão) + fixo (simples: vão, + t do nó da ponta; dobrado: vão + t + 1 cm
+ *  de cada pano, − a junta da ponta). Linear de propósito: as contas abaixo rodam a cada tecla e usam somas acumuladas. */
+interface LarguraDoTrecho { peso: (v: number) => number; fixo: number }
+
+/**
+ * Juntas de controle com contrafortes: QUANTOS trechos e QUANTOS vãos em cada um (revisão de 16/11, depois do vão de
+ * fechamento — a regra do cc7e17f repartia pela CONTAGEM e oscilava):
+ *  - os vãos se repartem pelo COMPRIMENTO (`repartirPorComprimento`): o trecho mais comprido o mais curto possível.
+ *    O trecho do fechamento (o mais curto) fica com o vão que sobra; pela contagem, o vão a mais ia para os primeiros,
+ *    de vão cheio, e o trecho passava do "a cada X" (L 9,3 com junta a cada 6: trecho de 6,79 m);
+ *  - os vãos de cada nº de trechos saem de escolherVaos SÓ entre as formas em que todo trecho cabe na junta, e o nº de
+ *    trechos vai do menor que serve até o de antes (pelo desenhado): entre eles, o que fecha mais perto do digitado
+ *    (empate: o mais comprido, como escolherVaos; depois o de antes; depois o de menos trechos). Se um vão cheio
+ *    sozinho já passa da junta, vale um vão por trecho no máximo;
+ *  - a seta tem de ser PONTO FIXO: só se devolve um muro que a própria regra devolve quando se digita o comprimento
+ *    dele. Sem isso o nº de trechos oscilava (5,85 com junta a cada 6 → 6,10; digitando 6,10 → 6,25).
+ * Sem junta de controle esta função não é chamada (o muro de um trecho só não mudou).
+ */
+function arranjarComJuntas(
+  L: number,
+  J: number,
+  vaosDe: (L: number, n: number, aceita?: (lista: number[]) => boolean) => number[],
+  modularDe: (lista: number[], n: number) => number,
+  largura: LarguraDoTrecho,
+  vaoCheio: number,
+): { lista: number[]; contagens: number[] } {
+  // Vão cheio sozinho maior que a junta: não há como caber; o teto vira o trecho de um vão cheio (um vão por trecho,
+  // no máximo). Sem isso nenhum nº de trechos servia e a busca do ponto fixo crescia o muro a cada volta (6 m com vão
+  // 0,80 e junta a cada 0,79 virava 27 m).
+  // O nº de partida também conta com esse teto: pela junta curta ele partiria de um trecho por metro, com vãos à força.
+  const Jef = Math.max(J, largura.peso(vaoCheio) + largura.fixo);
+  const teto = Jef + 0.5;
+  type Arranjo = { lista: number[]; contagens: number[] };
+  type Opcao = { lista: number[]; k: number; cabe: boolean; d: number; M: number };
+  const arranjo = (o: { lista: number[]; k: number }): Arranjo =>
+    ({ lista: o.lista, contagens: repartirPorComprimento(o.lista, Math.min(o.k, o.lista.length), largura) });
+  // escolha(Lx, folga): a regra para um digitado Lx; devolve a escolhida e as opções que servem (com `folga` trechos a
+  // mais depois do de partida, para a busca do ponto fixo abaixo).
+  const escolha = (Lx: number, folga = 0): { r: Arranjo; opcoes: Opcao[] } => {
+    // nº de partida: o de antes (pelo desenhado, repetindo até parar)
+    let n = quantosTrechos(Lx - JUNTA, Jef);
+    for (let i = 0; i < 4; i++) {
+      const outro = quantosTrechos(modularDe(vaosDe(Lx, n), n) - JUNTA, Jef);
+      if (outro === n) break;
+      n = outro;
+    }
+    // O vão mais perto do digitado podia não caber quando outro, à mesma distância, cabia (2,50 com junta a cada
+    // 2,50: um vão de 2,20 cabe, o par 1,20 + 1,20 da mesma distância não) — o filtro vai para dentro de escolherVaos.
+    const cabeEm = (k: number) => (v: number[]): boolean => { const g = menosTrechos(v, largura, teto); return g <= k && k <= v.length; };
+    const tenta = (k: number) => {
+      const lista = vaosDe(Lx, k, cabeEm(k));
+      const cabe = cabeEm(k)(lista);
+      return { lista, k, cabe };
+    };
+    // Junta de controle não é botão de ajustar comprimento: só se olham do MENOR nº de trechos que serve até o de
+    // partida (deixar o "mais perto" livre punha 10 trechos em 20 m com junta a cada 6, porque fechava exato). "Serve" =
+    // cabe e fecha a até meio vão cheio do digitado, a garantia do arredondamento de antes — com poucos trechos o filtro
+    // sempre acha ALGUMA forma que cabe, só que curta demais (7,50 com junta a cada 2,50 virava 5,45).
+    // Busca até um trecho por vão mínimo: com vão curto e junta curta o menor que serve pode ficar bem acima do de
+    // partida (vão 1,35 com junta a cada 2,50: um vão por trecho, 16 trechos em 25 m contra 10 de partida).
+    const meioVao = largura.peso(vaoCheio) / 2 + EPS;
+    const kMax = Math.max(n + 3, Math.ceil(Lx / VAO_MINIMO) + 2);
+    const ganha = (a: Opcao, b: Opcao | null): boolean => !b || a.d < b.d - EPS ||
+      (Math.abs(a.d - b.d) <= EPS && (a.M > b.M + EPS || (Math.abs(a.M - b.M) <= EPS && a.k === n && b.k !== n)));
+    let melhor: Opcao | null = null;        // entre os que servem
+    let qualquer: Opcao | null = null;      // entre os que só cabem (reserva)
+    const opcoes: Opcao[] = [];
+    let kMin = 0;
+    for (let k = 1; k <= kMax + folga; k++) {
+      if (kMin > 0 && k > Math.max(kMin, n) + folga) break;
+      const t = tenta(k);
+      if (!t.cabe) continue;
+      const M = modularDe(t.lista, k);
+      const o: Opcao = { ...t, M, d: Math.abs(M - Lx) };
+      if (ganha(o, qualquer)) qualquer = o;
+      if (o.d > meioVao) continue;
+      if (kMin === 0) kMin = k;
+      opcoes.push(o);
+      if (k <= Math.max(kMin, n) && ganha(o, melhor)) melhor = o;
+      // para a busca do ponto fixo, também o muro só de vãos cheios com k trechos (o da regra de antes): às vezes
+      // é o ponto fixo mais perto (4,10 com junta a cada 4 → 4,35, como antes, e não 3,80)
+      if (folga > 0) {
+        const iguais = vaosDe(Lx, k, (v) => v.every((x) => Math.abs(x - vaoCheio) <= EPS) && cabeEm(k)(v));
+        if (iguais.every((x) => Math.abs(x - vaoCheio) <= EPS) && cabeEm(k)(iguais)) {
+          const Mi = modularDe(iguais, k);
+          if (Math.abs(Mi - Lx) <= meioVao) opcoes.push({ lista: iguais, k, cabe: true, M: Mi, d: Math.abs(Mi - Lx) });
+        }
+      }
+    }
+    opcoes.sort((a, b) => (ganha(a, b) ? -1 : ganha(b, a) ? 1 : a.k - b.k));
+    return { r: arranjo(melhor ?? qualquer ?? tenta(n)), opcoes };
+  };
+  const igual = (a: { lista: number[]; contagens: number[] }, b: { lista: number[]; contagens: number[] }): boolean =>
+    a.lista.length === b.lista.length && a.contagens.length === b.contagens.length &&
+    a.lista.every((v, i) => Math.abs(v - b.lista[i]) <= EPS) && a.contagens.every((c, i) => c === b.contagens[i]);
+  // PONTO FIXO: só vale um muro que a regra devolve quando se digita o comprimento dele. Entre as opções que servem
+  // (um trecho a mais de folga), a mais perto do digitado que passa nessa prova. Repetir a regra sobre o próprio
+  // resultado também dá ponto fixo, mas pode andar para longe (4,10 com junta a cada 4: 3,95 → 3,80, onde 4,35, com
+  // dois trechos de vãos iguais — o de antes —, é ponto fixo e fica a 0,25).
+  const fixo = (a: Arranjo): boolean => igual(escolha(modularDe(a.lista, a.contagens.length)).r, a);
+  const { r: primeira, opcoes } = escolha(L, 1);
+  for (const o of opcoes) {
+    const a = arranjo(o);
+    if (fixo(a)) return a;
+  }
+  // nenhuma passou (não aconteceu na varredura do teste): repete a regra sobre o resultado até parar
+  let r = primeira;
+  for (let i = 0; i < 6; i++) {
+    const de_novo = escolha(modularDe(r.lista, r.contagens.length)).r;
+    if (igual(de_novo, r)) break;
+    r = de_novo;
+  }
+  return r;
+}
+
+/** Menor nº de trechos seguidos em que a lista cabe com todo trecho ≤ teto (guloso: enche cada trecho até onde dá). */
+function menosTrechos(lista: number[], largura: LarguraDoTrecho, teto: number): number {
+  let n = 0;
+  let acc = Infinity;
+  for (const v of lista) {
+    const w = largura.peso(v);
+    if (w + largura.fixo > teto) return Infinity;
+    if (acc + w + largura.fixo > teto) { n++; acc = w; } else acc += w;
+  }
+  return Math.max(1, n);
+}
+
+/**
+ * Reparte a lista de vãos (na ordem) em `n` trechos seguidos, nenhum vazio, com o trecho mais comprido o menor
+ * possível e, com esse maior, os trechos o mais iguais possível — com vãos iguais dá o mesmo que dividir() (os
+ * primeiros com um vão a mais), a regra de antes, e o muro que já cabia não muda.
+ */
+function repartirPorComprimento(lista: number[], n: number, largura: LarguraDoTrecho): number[] {
+  const N = lista.length;
+  const k0 = Math.max(1, Math.min(n, N));
+  const P = [0];
+  for (const v of lista) P.push(P[P.length - 1] + largura.peso(v));
+  const larg = (i: number, j: number): number => P[j] - P[i] + largura.fixo;
+  // melhor[k][i]: o menor "trecho mais comprido" repartindo lista[i..N) em k trechos
+  const melhor: number[][] = Array.from({ length: k0 + 1 }, () => Array<number>(N + 1).fill(Infinity));
+  for (let i = 0; i < N; i++) melhor[1][i] = larg(i, N);
+  for (let k = 2; k <= k0; k++) {
+    for (let i = 0; i <= N - k; i++) {
+      let b = Infinity;
+      for (let j = i + 1; j <= N - k + 1; j++) b = Math.min(b, Math.max(larg(i, j), melhor[k - 1][j]));
+      melhor[k][i] = b;
+    }
+  }
+  const alvo = melhor[k0][0];
+  // Com o maior trecho fixado, os trechos o mais iguais possível (menor soma dos quadrados): 10 vãos iguais em 3
+  // trechos ficam 4 + 3 + 3, como dividir(), e não 4 + 4 + 2, que tem o mesmo maior.
+  const cabe = (i: number, j: number): boolean => larg(i, j) <= alvo + EPS;
+  const quad: number[][] = Array.from({ length: k0 + 1 }, () => Array<number>(N + 1).fill(Infinity));
+  for (let i = 0; i < N; i++) if (cabe(i, N)) quad[1][i] = larg(i, N) ** 2;
+  for (let k = 2; k <= k0; k++) {
+    for (let i = 0; i <= N - k; i++) {
+      let b = Infinity;
+      for (let j = i + 1; j <= N - k + 1; j++) if (cabe(i, j)) b = Math.min(b, larg(i, j) ** 2 + quad[k - 1][j]);
+      quad[k][i] = b;
+    }
+  }
+  // reconstrução da frente para trás; empate (mesma soma): o trecho da frente o mais comprido — com vãos iguais os
+  // primeiros ficam com o vão a mais, como antes
+  const contagens: number[] = [];
+  let i = 0;
+  for (let k = k0; k > 1; k--) {
+    const meta = quad[k][i];
+    let j = N - k + 1;
+    while (j > i + 1 && !(cabe(i, j) && Math.abs(larg(i, j) ** 2 + quad[k - 1][j] - meta) <= 1e-3)) j--;
+    contagens.push(j - i);
+    i = j;
+  }
+  contagens.push(N - i);
+  return contagens;
+}
+
 function trechosEmBalanco(p: Parametros, m: number): { trechos: TrechoModulado[]; L_real: number } {
   const nCel = Math.max(2, Math.round((p.L_total + JUNTA) / m));
   const nT = Math.max(1, Math.min(quantosTrechos(nCel * m - JUNTA, p.junta_cada), Math.floor(nCel / 2)));
@@ -316,10 +495,11 @@ export function vaosDeFechamento(familia: NomeFamilia, l_cf: number): number[] {
  * Soma que já fecha com vãos iguais dá exatamente os vãos iguais de antes (distância zero e nenhuma outra forma
  * chega à mesma soma).
  */
-export function escolherVaos(alvo: number, l: number, validos: number[], nMin: number): number[] {
+export function escolherVaos(alvo: number, l: number, validos: number[], nMin: number, aceita?: (vaos: number[]) => boolean): number[] {
   const vmin = validos[0];
   let melhor: { soma: number; vaos: number[]; fech: number } | null = null;
   const considera = (vaos: number[], fech: number): void => {
+    if (aceita && !aceita(vaos)) return;
     const soma = vaos.reduce((s, v) => s + v, 0);
     const d = Math.abs(soma - alvo);
     const dm = melhor ? Math.abs(melhor.soma - alvo) : Infinity;
@@ -348,6 +528,7 @@ export function escolherVaos(alvo: number, l: number, validos: number[], nMin: n
     }
     for (const [a, b] of porSoma.values()) considera([...Array<number>(N - 2).fill(l), a, b], 2);
   }
+  if (!melhor && aceita) return escolherVaos(alvo, l, validos, nMin);   // nenhuma forma aceita: a regra sem o filtro
   return melhor ? (melhor as { vaos: number[] }).vaos : Array<number>(Math.max(1, nMin)).fill(l);
 }
 
@@ -358,23 +539,29 @@ function trechosComContrafortes(p: Parametros, Wn: number, l_cf: number, validos
   // pelo digitado fazia o modular mudar quando o usuário digitava o valor da seta (junta a cada 6 m: 5,90 → 6,20 e, ao
   // digitar 6,20, → 6,40). Partindo do digitado menos a junta e repetindo até o nº de trechos parar, o valor da seta
   // é ponto fixo: digitado de novo, dá o mesmo muro e nenhuma seta.
-  const vaos = (n: number): number[] => escolherVaos(p.L_total - n * Wn, l_cf, validos, n);
   const soma = (v: number[]): number => v.reduce((s, x) => s + x, 0);
-  let nT = quantosTrechos(p.L_total - JUNTA, p.junta_cada);
-  for (let i = 0; i < 4; i++) {
-    const outro = quantosTrechos(soma(vaos(nT)) + nT * Wn - JUNTA, p.junta_cada);
-    if (outro === nT) break;
-    nT = outro;
+  let lista: number[];
+  let contagens: number[];
+  if (p.junta_cada > 0) {
+    // Juntas de controle: vãos e trechos escolhidos juntos (arranjarComJuntas) — cada trecho ≤ "a cada X" e o valor
+    // da seta é ponto fixo. Largura do trecho = vãos dele + t (o nó da ponta).
+    ({ lista, contagens } = arranjarComJuntas(
+      p.L_total, p.junta_cada,
+      (L, n, aceita) => escolherVaos(L - n * Wn, l_cf, validos, n, aceita),
+      (v, n) => soma(v) + n * Wn,
+      { peso: (v) => v, fixo: b },
+      l_cf,
+    ));
+  } else {
+    // Sem junta de controle: um trecho só, exatamente como antes (cc7e17f).
+    lista = escolherVaos(p.L_total - Wn, l_cf, validos, 1);
+    contagens = [lista.length];
   }
-  // Juntas de controle: os trechos com o mesmo nº de vãos (± um, os primeiros com um a mais, como antes) e a lista
-  // de vãos repartida na ordem — o(s) de fechamento caem no fim do último trecho. DECISÃO (16/11): com o par de
-  // fechamento e um último trecho de um vão só, o primeiro do par fica no fim do trecho anterior.
-  const lista = vaos(nT);
   const trechos: TrechoModulado[] = [];
   let x = 0;
   let cf = 1;
   let iv = 0;
-  dividir(lista.length, nT).forEach((nv, k) => {
+  contagens.forEach((nv, k) => {
     const x0 = x;
     const nos: No[] = [];
     let xs = x0;
@@ -404,18 +591,28 @@ function trechosComDobrados(p: Parametros, Wn: number, l_pano: number, validos: 
   const b = Wn - JUNTA;
   const vaos = (n: number): number[] => escolherVaos(p.L_total, l_pano + Wn, validos.map((v) => v + Wn), n).map((v) => v - Wn);
   const modularDe = (v: number[]): number => v.reduce((s, x) => s + x + Wn, 0);
-  let nT = quantosTrechos(p.L_total - JUNTA, p.junta_cada);
-  for (let i = 0; i < 4; i++) {
-    const outro = quantosTrechos(modularDe(vaos(nT)) - JUNTA, p.junta_cada);
-    if (outro === nT) break;
-    nT = outro;
+  let lista: number[];
+  let contagens: number[];
+  if (p.junta_cada > 0) {
+    // Juntas de controle: a mesma regra do simples (arranjarComJuntas); aqui o trecho é a soma dos panos (vão + t +
+    // 1 cm cada) menos a junta da ponta, e o nº de trechos não muda o comprimento.
+    ({ lista, contagens } = arranjarComJuntas(
+      p.L_total, p.junta_cada,
+      (L, n, aceita) => escolherVaos(L, l_pano + Wn, validos.map((v) => v + Wn), n, aceita && ((w) => aceita(w.map((v) => v - Wn)))).map((v) => v - Wn),
+      (v) => modularDe(v),
+      { peso: (v) => v + Wn, fixo: -JUNTA },
+      l_pano,
+    ));
+  } else {
+    // Sem junta de controle: um trecho só, exatamente como antes.
+    lista = vaos(1);
+    contagens = [lista.length];
   }
-  const lista = vaos(nT);
   const trechos: TrechoModulado[] = [];
   let x = 0;
   let cf = 1;
   let iv = 0;
-  dividir(lista.length, nT).forEach((nv, k) => {
+  contagens.forEach((nv, k) => {
     const x0 = x;
     const nos: No[] = [];
     const panos: TrechoModulado[] = [];

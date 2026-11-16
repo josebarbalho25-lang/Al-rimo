@@ -608,7 +608,7 @@ const ATIVA_SE: Record<string, (ler: LerValor, conta?: LerConta) => boolean> = {
   // O contraforte DOBRADO (16/11) leva estribo sempre (é a ligação dos dois blocos), mesmo quando o calculado é a
   // extremidade e dispensa: o Ø vale para ele
   phi_est: (l, conta) => conta?.('Asw_c') !== 0 || l('larg_cf') === 'Dobrado',
-  ramos_est: (_, conta) => conta?.('Asw_c') !== 0,
+  ramos_est: (l, conta) => conta?.('Asw_c') !== 0 || l('larg_cf') === 'Dobrado',
   s_est: (_, conta) => conta?.('Asw_c') !== 0,
   // a tabela de Gerscovich não tem argila: com Argila a planilha escreve "—" na sugestão pela classe
   Classe_G: (l) => l('Tipo_solo') !== 'Argila',
@@ -642,9 +642,10 @@ export function entradaAtiva(nome: string, ler: LerValor, conta?: LerConta): boo
 */
 const TRAVADO_SE: Record<string, (ler: LerValor) => Valor | undefined> = {
   Classe_G: (l) => (l('Tipo_solo') === 'Argila' ? 'Não se aplica' : undefined),
-  // contraforte dobrado calculado (16/11; planilha, seção 18: dob_cf = Dobrado e intermediário): um estribo abraçando
-  // os dois blocos em toda fiada — a conta usa 2 ramos e 20 cm (ram_ef, s_est_u), o que estiver nas Entradas não vale
-  ramos_est: (l) => (dobradoCalculado(l) ? 2 : undefined),
+  // contraforte dobrado calculado (16/11; planilha, seção 18: dob_cf = Dobrado e intermediário): estribo em toda
+  // fiada — a conta usa 20 cm (s_est_u), o que estiver nas Entradas não vale
+  // ramos_est fica aceso (16/11, "dois estribos por fiada"): 2 = a conta sobe a 4 quando um estribo não basta (o "→"
+  // mostra o adotado); 4 = sempre dois estribos
   s_est: (l) => (dobradoCalculado(l) ? 20 : undefined),
 };
 

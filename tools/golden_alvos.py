@@ -246,6 +246,19 @@ ALVOS.update({
                                          'gama_solo': 18, 'B_sap': 1.4, 'a_ater': 0.9, 'h_sap': 0.3, 'phi_cf': 10},
     'alvo_dobrado_com_muro_de_cima': {**_DB, **_MC, 'H_muro': 2.6, 'H_solo': 2.6, 'cin_mc': 'No topo'},
 })
+# Revisão de 16/11 (2ª rodada): dois estribos por fiada no dobrado (Jose), o outro tipo no veredito, mínimo de 4
+# barras no dobrado (2 por bloco), pilarete sobre o par no bloco 14.
+ALVOS.update({
+    'alvo_dobrado_dois_estribos_minimo': {**_DB, 'tenr_': 79},
+    'alvo_dobrado_dois_estribos_carga': {**_DB, 'tenr_': 79, 'H_muro': 4.0, 'H_solo': 4.0, 'l_cf': 3.0, 'q_sobre': 10,
+                                         'B_sap': 3.2, 'a_ater': 2.0, 'h_sap': 0.6, 'phi_cf': 16},
+    'alvo_dobrado_4ramos_barras_demais': {**_DB, 'pos_cf': 'Aparente (lado de fora)', 'phi_cf': 10, 'n_cf_dir': 28, 'ramos_est': 4},
+    'alvo_dobrado_ponta_reprova': {**_DB, 'bal_cf': 0.5},
+    'alvo_dobrado_intermediario_reprova': {**_DB, 'tipo_cf': 'Extremidade', 'bal_cf': 0.3, 'l_cf': 3.0, 'H_muro': 3.6, 'H_solo': 3.6},
+    'alvo_dobrado_n_minimo_4': {**_DB, 'n_cf_dir': 2},
+    'alvo_dobrado_pilarete_14': {**_DB, **_MC, 't_bloco': 14, 'tenr_': 54, 'l_cf': 2.3, 'H_muro': 2.6, 'H_solo': 2.6,
+                                 'phi_cf': 10, 'cin_mc': 'No topo'},
+})
 
 
 # Cenários de ENTRADA EM BRANCO. O app deixa o usuário apagar qualquer campo numérico (o motor grava null, como o

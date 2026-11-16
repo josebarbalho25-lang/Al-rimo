@@ -291,7 +291,7 @@ line(E, r, 'Posição do contraforte', 'Enterrado (lado do solo)', '', 'Enterrad
 dv_pc = DataValidation(type='list', formula1='"Enterrado (lado do solo),Aparente (lado de fora)"'); E.add_data_validation(dv_pc); dv_pc.add(f'B{r-1}')
 line(E, r, 'Contraforte calculado', 'Intermediário', '', 'Intermediário: largura de influência = l. Extremidade: l/2 + balanço do muro além dele.', 'inp', None, 'tipo_cf'); r += 1
 dv_tc = DataValidation(type='list', formula1='"Intermediário,Extremidade"'); E.add_data_validation(dv_tc); dv_tc.add(f'B{r-1}')
-line(E, r, 'Balanço do muro além do contraforte de extremidade', 0, 'm', 'Só para "Extremidade".', 'inp', '0.00', 'bal_cf'); r += 1
+line(E, r, 'Balanço do muro além do contraforte de extremidade', 0, 'm', 'Entra na largura do contraforte da ponta (l/2 + balanço): o calculado com "Extremidade"; com "Intermediário", o outro tipo (aba Contrafortes, seções 16 e 19).', 'inp', '0.00', 'bal_cf'); r += 1
 line(E, r, 'Ø da armadura principal do contraforte', 10, 'mm', 'Na ponta do contraforte (furo da ponta). Lista: só os Ø cuja dobra da espera cabe na sapata (aba Fundação, seção 10).', 'inp', '0.0', 'phi_cf'); r += 1
 lista(LST['lst_phi_esp'], f'B{r-1}')
 line(E, r, 'Nº de barras do contraforte — opcional', None, '', 'Em branco = automático.', 'inp', '0', 'n_cf_dir'); r += 1
@@ -299,12 +299,12 @@ line(E, r, 'Cobrimento ao eixo das barras (da face tracionada) — opcional', No
 line(E, r, 'K do contraforte — opcional', 1.0, '', 'Em branco = NBR 16868-1 6.2.2.4 (1,5 sem graute; 2,0 grauteado). Padrão K = 1 (critério adotado, a favor da segurança).', 'inp', '0.00', 'K_cf'); r += 1
 line(E, r, 'Barras construtivas (lado comprimido): Ø', 10, 'mm', 'Lista: só os Ø cuja dobra da espera cabe na sapata (aba Fundação, seção 10).', 'inp', '0.0', 'phi_cc'); r += 1
 lista(LST['lst_phi_esp'], f'B{r-1}')
-line(E, r, 'Barras construtivas: quantidade', 2, '', '', 'inp', '0', 'n_cc'); r += 1
+line(E, r, 'Barras construtivas: quantidade', 2, '', 'Dobrado: em cada bloco.', 'inp', '0', 'n_cc'); r += 1
 line(E, r, 'Estribo: Ø', 6.3, 'mm', 'Vai na junta de assentamento: Ø ≤ 6,3 (NBR 16868-1 12.4; lista: 5 ou 6,3).', 'inp', '0.0', 'phi_est'); r += 1
 lista(LST['lst_phi_est'], f'B{r-1}')
 # 2 ou 4 (Jose, 15/11: "3 ramos não existe; 4 são 2 estribos menores"): 4 só conta se os dois estribos couberem
 # na largura do contraforte (aba Contrafortes, seção 6, ram_ef) — senão a conta fica com 2 e a verificação reprova.
-line(E, r, 'Estribo: nº de ramos', 2, '', '2 = um estribo fechado; 4 = dois estribos menores sobrepostos.', 'inp', '0', 'ramos_est'); r += 1
+line(E, r, 'Estribo: nº de ramos', 2, '', '2 = um estribo fechado; 4 = dois estribos menores sobrepostos. Dobrado: com 2, a conta passa a 4 quando um estribo não basta; com 4, sempre dois.', 'inp', '0', 'ramos_est'); r += 1
 lista(LST['lst_ram'], f'B{r-1}')
 line(E, r, 'Estribo: espaçamento', 20, 'cm', 'Múltiplo da altura da fiada (20 cm). Dobrado: 20 (toda fiada), este campo não vale.', 'inp', '0', 's_est'); r += 1
 # CONTRAFORTE DOBRADO (Jose, 16/11): dois blocos lado a lado, largura 2t + 1, todo grauteado; a mesma montagem de dois
@@ -429,7 +429,7 @@ dv_pt = DataValidation(type='list', formula1='"Concreto moldado,Bloco grauteado"
 line(E, r, 'Pilaretes: espaçamento (muro em balanço)', 2.4, 'm', 'Eixo a eixo. Só no balanço; com contrafortes o pilarete fica em cima do contraforte (linha de baixo).', 'inp', '0.00', 's_pil'); r += 1
 line(E, r, 'Pilaretes: a cada quantos contrafortes', 1, '', '1 = um pilarete em cada contraforte; 2 = em contraforte sim, contraforte não.', 'inp', '0', 'pil_ncf'); r += 1
 dv_pn = DataValidation(type='list', formula1='"1,2"'); E.add_data_validation(dv_pn); dv_pn.add(f'B{r-1}')
-line(E, r, 'Pilarete: largura (ao longo do muro) — opcional', None, 'cm', 'Em branco = balanço: 20 cm (o mínimo de frente para as barras caírem no furo do bloco — Jose, 13/11); contrafortes: a espessura do contraforte (t).', 'inp', '0.0', 'b_pil'); r += 1
+line(E, r, 'Pilarete: largura (ao longo do muro) — opcional', None, 'cm', 'Em branco = balanço: 20 cm (o mínimo de frente para as barras caírem no furo do bloco — Jose, 13/11); contrafortes: a espessura do contraforte (t). Dobrado: sobre o par, 2t + 1 sempre; o digitado vale na ponta (≤ t).', 'inp', '0.0', 'b_pil'); r += 1
 line(E, r, 'Pilarete: altura da seção (na direção do vento) — opcional', None, 'cm', 'Perpendicular ao muro: é a altura que resiste à flexão do vento. Em branco = balanço: a espessura do muro (t, as barras descem nos furos); contrafortes: 25 cm.', 'inp', '0.0', 'hs_pil'); r += 1
 line(E, r, 'Pilarete e cintas: concreto', 'C25', '', 'Pilarete moldado e cintas do muro de cima.', 'inp', None, 'fck_pil'); r += 1
 dv_fp = DataValidation(type='list', formula1='"C20,C25,C30"'); E.add_data_validation(dv_fp); dv_fp.add(f'B{r-1}')
@@ -614,7 +614,7 @@ _lst_col['AJ'] = [f'=IF({n * 20}<=IF(Tipo_muro="Contrafortes",400,300),{n * 20}/
 # eixo a eixo = t + 1 cm + n·m. 19×39: todo n amarra (0,80 a 4,00 m). 14×39: só n PAR amarra com o contraforte de
 # 34/54 (encaixes do Revit; a modulação do app prova montando as fiadas — modulacao/fiadas.ts vaoAmarra) — 0,95 a 3,75.
 # DOBRADO (16/11): contraforte de 2t + 1; o vão LIVRE é o do simples (mesmo mínimo e mesmo máximo), então o eixo a
-# eixo é 2t + 2 + n·m: 19×39 → 1,00 a 4,00 m (o vão livre de 0,81 a 3,81 do simples daria 4,20, mas o eixo a eixo para
+# eixo é 2t + 2 + n·m: 19×39 → 1,00 a 4,00 m (o vão livre de 0,61 a 3,81 do simples daria 4,20, mas o eixo a eixo para
 # em 4,00 pelo δ e pelo Libânio); 14×39 → só n par, 1,10 a 3,90 m (vão livre 0,81 a 3,61, o do simples).
 _lst_col['AK'] = ['=IF(larg_cf="Dobrado",' +
                   (f'IF(t_bloco=19,' + (f'(2*t_bloco+2+{k + 3}*m_mod)/100' if k < 16 else '""') + ',' +

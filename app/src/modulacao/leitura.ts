@@ -59,6 +59,10 @@ export interface Parametros {
   dobrado: boolean; dobCalc: boolean;
   n_cf_dir: number | null;              // nº de barras digitado (o dobrado vai ao par de cima: o "→" mostra)
   estribos: boolean;                   // o contraforte leva estribo? (a conta pediu: Asw/s de cálculo > 0)
+  // o OUTRO tipo do muro dobrado (aba Contrafortes, seção 19): os estribos dele — ramos, espaçamento (mm) e se leva
+  // (Asw_co > 0). Com contraforte simples a planilha devolve os deste tipo
+  estribos_o: boolean; ramos_o: number; s_o: number | null;
+  ramos_dig: number | null;            // o nº de ramos das Entradas (o dobrado sobe a 4 quando precisa: o "→" mostra)
   phi_pv: number; s_pv: number | null; duasBarrasPv: boolean; c_pv: number;
   phi_ph: number; s_ph: number | null; phCentralizada: boolean;
   phDuas: boolean;                     // 2 barras na canaleta, uma encostada em cada face (Jose, 13/11)
@@ -154,6 +158,10 @@ export function lerParametros(r: Resultado, extrasIn: Record<string, Valor>, avi
     // Conta sem número ("—": a seção não resiste e o cortante nem chega a ser decidido) continua desenhando o
     // estribo, como antes — sumir com ele ali esconderia a peça justo no muro que precisa de revisão.
     estribos: n('Asw_c') !== 0,
+    estribos_o: (n('Asw_co') ?? n('Asw_c')) !== 0,
+    ramos_dig: n('ramos_est'),
+    ramos_o: Math.round(n('ram_o') ?? n('ram_ef') ?? 2) === 4 ? 4 : 2,
+    s_o: cm(n('s_o') ?? n('s_est_u') ?? n('s_est')),
     phi_pv: ou('phi_pv', 10),
     s_pv: cm(n('s_pv')),
     duasBarrasPv: txt('pos_pv').trim().startsWith('2'),
