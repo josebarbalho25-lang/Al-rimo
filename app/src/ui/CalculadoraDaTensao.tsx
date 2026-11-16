@@ -9,7 +9,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { useId, useState } from 'react';
-import { tensaoPeloSpt, type RegraDeTensao } from '@/figuras/calculadoraDaTensao';
+import { atritoPeloSpt, tensaoPeloSpt, type RegraDeTensao } from '@/figuras/calculadoraDaTensao';
 import { escreverNumero, lerNumero } from '@/estado/numeros';
 import { leitorDoEstado, useApp } from '@/estado/store';
 
@@ -37,6 +37,8 @@ export function CalculadoraDaTensao() {
   const l = lerNumero(spt);
   const t = l.tipo === 'numero' ? tensaoPeloSpt(l.valor) : null;
   const errado = l.tipo !== 'vazio' && t === null;
+  // φ' do solo de apoio pelo mesmo SPT (16/11): só consulta, o campo continua digitado
+  const a = l.tipo === 'numero' ? atritoPeloSpt(l.valor) : null;
 
   return (
     <div className="calc-solo">
@@ -55,6 +57,22 @@ export function CalculadoraDaTensao() {
         <span className="unidade">golpes</span>
         <Resultado rotulo="σadm 20·N" r={t?.regra20N ?? null} />
         <Resultado rotulo="Mello" r={t?.mello ?? null} />
+      </div>
+      <div className="calc-linha">
+        <span className="calc-res">
+          <span className="calc-rot">φ' Godoy</span>
+          <output title={a?.godoy?.faixa}>{a?.godoy ? escreverNumero(a.godoy.phi, 1) : '—'}</output>
+          <span className="unidade">°</span>
+        </span>
+        <span className="calc-res">
+          <span className="calc-rot">φ' Teixeira</span>
+          <output title={a?.teixeira?.faixa}>{a?.teixeira ? escreverNumero(a.teixeira.phi, 1) : '—'}</output>
+          <span className="unidade">°</span>
+        </span>
+        <span className="calc-res">
+          <span className="calc-rot">Argila {a?.argila?.consistencia ?? ''}</span>
+          <output title={a?.argila?.faixa}>{a?.argila ? `φ' ${a.argila.phi}° · c' ${a.argila.c} kPa · su ${a.argila.su ?? '—'} kPa` : '—'}</output>
+        </span>
       </div>
     </div>
   );

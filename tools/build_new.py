@@ -1349,6 +1349,7 @@ REF3 = [
     ('Painel não armado com solo abaixo', 'Dedução, a favor da segurança', 'Painel de baixo mais alto que o solo: z = 0 e o trapézio σh,topo → σh,base do solo vale no painel inteiro.'),
 ] + ARG_REFS + [
     ('Empuxo na altura da sapata', 'Critério adotado (escolha do projetista)', 'Entrada "Empuxo na altura da sapata" (Jose, 16/11). Não (padrão): o empuxo ativo age até o topo da sapata — o solo do outro lado estabiliza a sapata; a força do muro continua levada até o fundo (o pé). Sim: o empuxo continua pela face da sapata até o fundo (tombamento e deslizamento).'),
+    ("φ' do solo de apoio pelo SPT (só consulta)", 'Godoy (1983): φ′ = 28° + 0,4·N; Teixeira (1996): φ′ = 15° + √(20·N). Originais não vistos; conferido em reprodução: Tito (dissertação PUC-Rio, 2014) p. 81, eq. 3.4 e 3.5.', f'Areia. A reprodução não dá a faixa de N. Divergência: a mesma reprodução traz, na eq. 3.7, φ′ = 15° + √(24·N) "de acordo com Teixeira (1996)". Argila: a tabela por consistência (Joppert, acima) lida pelo SPT da base. Só consulta: o φ′ da base é digitado (laudo). {_URL_TITO}'),
     ('Passivo no tombamento', 'NBR 6122 7.6.3; Bastos, Sapatas de Fundação 1.8', 'Só com a garantia do solo da frente (a mesma do deslizamento): Kp·γ·(h aterro + h sapata)²/2 ÷ 2,0, braço 1/3 da altura acima do fundo; o dente fica fora (abaixo do pé). Entra no FS e na excentricidade do tombamento; as tensões no solo seguem sem ele (o passivo só se mobiliza com deslocamento — dedução, a favor).'),
 ]
 R['A152'] = 'Duas alturas (solo e muro) e argila'; R['A152'].font = fB

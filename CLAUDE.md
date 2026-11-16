@@ -111,6 +111,14 @@ e dizer ao Jose o que mudou e por quê.
   44,5 → 42,6 kPa; VAL123 FS_t 4,26 → 4,39, FS_d 1,10 → 1,37, e 7,6 → 6,6 cm, σmáx 56,6 → 55,4 (referência
   regravada). Memória: cards de cargas/tombamento escrevem conforme a escolha; desenho do empuxo para no topo da
   sapata; seta do passivo numerada na face da frente com o braço do fundo.
+- **φ' DO SOLO DE APOIO — VALOR DE CONSULTA (Jose, 16/11, "Sim"):** o `phi_base` continua OBRIGATÓRIO e digitado
+  (decisão de 14/10); a aba Fundação (fim da seção 6) publica só consulta pelo SPT da base: areia `phib_god` = 28° +
+  0,4·N (Godoy 1983) e `phib_tei` = 15° + √(20·N) (Teixeira 1996), com `_fx`; argila `cons_b`, `phib_arg`, `cb_arg`,
+  `sub_arg` (a tabela por consistência da aba Solo e Empuxo, lida pelo SPT_b). Fontes: os originais NÃO vistos;
+  conferido em reprodução (Tito, PUC-Rio 2014, p. 81, eq. 3.4 e 3.5) — a reprodução NÃO dá faixa de N (a `_fx` diz
+  isso) e traz também 15° + √(24·N) "de Teixeira" (eq. 3.7, divergência anotada nas Referências). A biblioteca do
+  Jose (Berberian, scan) não permitiu conferir (OCR ilegível). App: segunda linha da calculadora da Fig. 15 / aba
+  Fundação (`atritoPeloSpt`, figuras/calculadoraDaTensao.ts), só rótulo + valor, faixa no título.
 - **Dente com posição e passivo (Jose, 13/10):** entrada `x_den` = eixo do dente a partir do CENTRO da sapata, + para o
   pé (|x| ≤ (B − b)/2, verificação "Dente dentro da sapata"). O peso do dente saiu da linha da sapata: linha própria
   "Dente" (24, no fim da tabela de cargas) em x = B/2 + x_den. Passivo: com o solo da frente garantido, a face toda

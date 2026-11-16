@@ -125,6 +125,20 @@ Lf('Mello: faixa de validade', '=IF(AND(SPT_b>=4,SPT_b<=16),"Dentro (4 ≤ N ≤
 # solo mole pede ensaio, e a verificação da tensão reprova até o σadm ser digitado. O digitado manda sempre.
 Lf('σadm usado', '=IF(ISNUMBER(sig_adm_dir),sig_adm_dir,IF(SPT_b>=5,20*MIN(SPT_b,20),"—"))', 'kPa',
    'Em branco: 20·mín(SPT; 20). Com SPT < 5 a regra não vale: digitar o σadm.', 'res', '0', 's_adm')
+# φ' DO SOLO DE APOIO — SÓ CONSULTA (Jose, 16/11, "Sim"): o φ' da base continua OBRIGATÓRIO e digitado (decisão de
+# 14/10); estas linhas são a referência pelo SPT da base, como as do σadm acima, cada uma com a faixa ao lado.
+# Areia: Godoy (1983) φ' = 28° + 0,4·N e Teixeira (1996) φ' = 15° + √(20·N) — conferidas em reprodução (Tito, PUC-Rio
+# 2014, p. 81, eq. 3.4 e 3.5); originais não vistos; a reprodução não dá a faixa de N. Argila: a tabela por consistência
+# da aba Solo e Empuxo (Joppert 2007; su = 10·N, Teixeira & Godoy 1996) lida pelo SPT da base.
+Lf("Consulta: φ' areia — Godoy, 28° + 0,4·N", '=28+0.4*SPT_b', '°', 'Só consulta: o φ′ da base é digitado (laudo de sondagem).', 'sug', '0.0', 'phib_god', 'Godoy (1983), conferido em reprodução; original não visto')
+Lf("Godoy: faixa de validade", '="Areia; faixa de N não informada na fonte consultada"', '', '', 'res', None, 'phib_god_fx')
+Lf("Consulta: φ' areia — Teixeira, 15° + √(20·N)", '=15+SQRT(20*SPT_b)', '°', 'Só consulta.', 'sug', '0.0', 'phib_tei', 'Teixeira (1996), conferido em reprodução; original não visto')
+Lf("Teixeira: faixa de validade", '="Areia; faixa de N não informada na fonte consultada"', '', '', 'res', None, 'phib_tei_fx')
+Lf("Consulta: argila — consistência pelo SPT da base", "=INDEX('Solo e Empuxo'!$O$25:$O$29,MATCH(SPT_b,'Solo e Empuxo'!$N$25:$N$29,1))", '', 'Tabela da aba Solo e Empuxo (NBR 7250 / NBR 6484).', 'sug', None, 'cons_b')
+Lf("Consulta: φ' argila (Joppert 2007)", "=INDEX('Solo e Empuxo'!$R$25:$R$29,MATCH(SPT_b,'Solo e Empuxo'!$N$25:$N$29,1))", '°', 'Faixa pela consistência.', 'sug', None, 'phib_arg', 'Joppert Jr. (2007), conferido em reprodução')
+Lf("Consulta: c' argila (Joppert 2007)", "=INDEX('Solo e Empuxo'!$Q$25:$Q$29,MATCH(SPT_b,'Solo e Empuxo'!$N$25:$N$29,1))", 'kPa', 'Faixa pela consistência.', 'sug', None, 'cb_arg', 'Joppert Jr. (2007), conferido em reprodução')
+Lf("Consulta: su argila = 10·N (não drenada)", '=10*SPT_b', 'kPa', 'Curto prazo: não é o c′ do atrito na base.', 'sug', '0', 'sub_arg', 'Teixeira & Godoy (1996), conferido em reprodução')
+Lf("Argila: faixa de validade", '="Argila; faixas de N da tabela por consistência"', '', '', 'res', None, 'phib_arg_fx')
 r += 1
 section(Fd, r, '7. Flexão e cortante transversais (por metro, NBR 6118)'); r += 1
 Lf('fck', '=VALUE(MID(fck_fund,2,2))', 'MPa', 'Concreto da fundação (Entradas).', 'res', '0', 'fck_s')

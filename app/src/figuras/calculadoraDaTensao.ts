@@ -36,3 +36,34 @@ export function tensaoPeloSpt(spt: number): TensaoPeloSpt | null {
   const b = regra(r.num('sadm_mel'), r.v('sadm_mel_fx'));
   return a && b ? { regra20N: a, mello: b } : null;
 }
+
+/*
+  φ' DO SOLO DE APOIO PELO SPT — SÓ CONSULTA (Jose, 16/11). O φ' da base continua digitado (laudo de sondagem); aqui a
+  referência que a planilha publica (aba Fundação, seção 6): areia por Godoy (28° + 0,4·N) e por Teixeira
+  (15° + √(20·N)), argila pela tabela por consistência (Joppert; su = 10·N). Cada uma com a faixa, como a planilha
+  escreve. Nada é calculado aqui.
+*/
+export interface AtritoPeloSpt {
+  godoy: { phi: number; faixa: string } | null;
+  teixeira: { phi: number; faixa: string } | null;
+  argila: { consistencia: string; phi: string; c: string; su: number | null; faixa: string } | null;
+}
+
+const texto = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
+
+export function atritoPeloSpt(spt: number): AtritoPeloSpt | null {
+  if (!Number.isFinite(spt) || spt < 0) return null;
+  const r = calcular({ SPT_b: spt });
+  const um = (nome: string, fx: string) => {
+    const v = r.num(nome);
+    return v === null || !Number.isFinite(v) ? null : { phi: v, faixa: texto(r.v(fx)) };
+  };
+  const cons = texto(r.v('cons_b'));
+  return {
+    godoy: um('phib_god', 'phib_god_fx'),
+    teixeira: um('phib_tei', 'phib_tei_fx'),
+    argila: cons && !cons.startsWith('—')
+      ? { consistencia: cons, phi: texto(r.v('phib_arg')), c: texto(r.v('cb_arg')), su: r.num('sub_arg'), faixa: texto(r.v('phib_arg_fx')) }
+      : null,
+  };
+}

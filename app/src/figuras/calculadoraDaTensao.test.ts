@@ -4,7 +4,7 @@
 */
 import { describe, expect, it } from 'vitest';
 import { cenariosDoGabarito, lerGabarito } from '@/motor/resultadoDoGabarito';
-import { tensaoPeloSpt } from './calculadoraDaTensao';
+import { atritoPeloSpt, tensaoPeloSpt } from './calculadoraDaTensao';
 
 const CENARIOS = cenariosDoGabarito().map(lerGabarito);
 
@@ -43,5 +43,28 @@ describe('calculadora da Fig. 15 × planilha', () => {
   it('SPT negativo ou NaN não calcula', () => {
     expect(tensaoPeloSpt(-1)).toBeNull();
     expect(tensaoPeloSpt(Number.NaN)).toBeNull();
+  });
+});
+
+describe("φ' do solo de apoio pelo SPT (16/11, só consulta) × planilha", () => {
+  it('Godoy, Teixeira e a argila pelo SPT = os da planilha', () => {
+    const vistos = new Set<number>();
+    for (const g of CENARIOS) {
+      const n = g.nomes.SPT_b;
+      if (typeof n !== 'number' || vistos.has(n) || !('phib_god' in g.nomes)) continue;
+      vistos.add(n);
+      const a = atritoPeloSpt(n)!;
+      expect(a.godoy?.phi, g.cenario).toBeCloseTo(g.nomes.phib_god as number, 9);
+      expect(a.teixeira?.phi, g.cenario).toBeCloseTo(g.nomes.phib_tei as number, 9);
+      expect(a.godoy?.faixa, g.cenario).toBe(g.nomes.phib_god_fx);
+      expect(a.argila?.phi, g.cenario).toBe(String(g.nomes.phib_arg));
+    }
+    expect(vistos.size).toBeGreaterThan(1);
+  });
+
+  it('SPT 10: Godoy 32°, Teixeira 15 + √200 ≈ 29,1°', () => {
+    const a = atritoPeloSpt(10)!;
+    expect(a.godoy!.phi).toBeCloseTo(32, 9);
+    expect(a.teixeira!.phi).toBeCloseTo(15 + Math.sqrt(200), 9);
   });
 });
