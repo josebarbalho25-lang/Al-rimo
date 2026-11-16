@@ -273,13 +273,14 @@ line(E, r, 'Somar σsg no momento de fissuração?', 'Sim', '', 'Padrão Sim: o 
 dv_sg = DataValidation(type='list', formula1='"Sim,Não"'); E.add_data_validation(dv_sg); dv_sg.add(f'B{r-1}')
 r += 1
 section(E, r, 'Contrafortes'); r += 1
-line(E, r, 'Espaçamento entre contrafortes (eixo a eixo)', 1.60, 'm', 'lenr. Também é o vão l do painel. Lista: os vãos que amarram com o bloco (19×39: t + 1 + n·20; 14×39: só n par), 0,80 a 4,00 m.', 'inp', '0.00', 'l_cf'); r += 1
+line(E, r, 'Espaçamento entre contrafortes (eixo a eixo)', 1.60, 'm', 'lenr. Também é o vão l do painel. Lista: os vãos que amarram com o bloco (19×39: t + 1 + n·20; 14×39: só n par), 0,80 a 4,00 m. Dobrado: o mesmo vão livre (19×39: 1,00 a 4,00; 14×39: 1,10 a 3,90).', 'inp', '0.00', 'l_cf'); r += 1
 lista(LST['lst_lcf'], f'B{r-1}')
 # Eixo a eixo que fecha na grade: t + 1 cm (o contraforte e uma junta) + n meios blocos — 19×39: 0,40/0,60…;
 # 14×39: 0,35/0,55… Para CIMA: o vão maior dá mais carga no contraforte e no painel (a favor da segurança). n ≥ 1:
 # com n = 0 os contrafortes se encostam. A lista já só oferece os vãos que amarram (14×39: n par); esta linha é a
 # garantia para valor digitado fora dela.
-line(E, r, 'Eixo a eixo adotado (módulo do bloco)', '=(t_bloco+1+MAX(1,ROUNDUP((l_cf*100-t_bloco-1)/m_mod,0))*m_mod)/100', 'm', 't + 1 cm + n·m, para cima. É o que a conta e o desenho usam; com o valor da lista, é o próprio.', 'sug', '0.00', 'l_cf_adot'); r += 1
+# Dobrado (16/11): o contraforte tem 2t + 1 — o vão livre é o mesmo do simples, então o eixo a eixo é 2t + 2 + n·m.
+line(E, r, 'Eixo a eixo adotado (módulo do bloco)', '=IF(larg_cf="Dobrado",(2*t_bloco+2+MAX(1,ROUNDUP((l_cf*100-2*t_bloco-2)/m_mod,0))*m_mod)/100,(t_bloco+1+MAX(1,ROUNDUP((l_cf*100-t_bloco-1)/m_mod,0))*m_mod)/100)', 'm', 't + 1 cm + n·m, para cima (dobrado: 2t + 2 cm + n·m). É o que a conta e o desenho usam; com o valor da lista, é o próprio.', 'sug', '0.00', 'l_cf_adot'); r += 1
 line(E, r, 'Comprimento do contraforte (tenr)', 59, 'cm', 'Da face externa do muro até a ponta, contando a espessura do muro. Lista (montagens do Revit): bloco 19 → 59 ou 79; bloco 14 → 34 ou 54.', 'inp', '0', 'tenr_'); r += 1
 lista(LST['lst_tenr'], f'B{r-1}')
 # Comprimento que fecha na grade: o muro (t) + n meios blocos deitados na haste. Para cima: o contraforte fica pelo
@@ -305,7 +306,13 @@ lista(LST['lst_phi_est'], f'B{r-1}')
 # na largura do contraforte (aba Contrafortes, seção 6, ram_ef) — senão a conta fica com 2 e a verificação reprova.
 line(E, r, 'Estribo: nº de ramos', 2, '', '2 = um estribo fechado; 4 = dois estribos menores sobrepostos.', 'inp', '0', 'ramos_est'); r += 1
 lista(LST['lst_ram'], f'B{r-1}')
-line(E, r, 'Estribo: espaçamento', 20, 'cm', 'Múltiplo da altura da fiada (20 cm).', 'inp', '0', 's_est'); r += 1
+line(E, r, 'Estribo: espaçamento', 20, 'cm', 'Múltiplo da altura da fiada (20 cm). Dobrado: 20 (toda fiada), este campo não vale.', 'inp', '0', 's_est'); r += 1
+# CONTRAFORTE DOBRADO (Jose, 16/11): dois blocos lado a lado, largura 2t + 1, todo grauteado; a mesma montagem de dois
+# contrafortes de ponta (template L) espelhados com 1 cm de argamassa entre eles. Os dois não se amarram por bloco: a
+# ligação é o ESTRIBO, um só abraçando os dois, em toda fiada. Só o INTERMEDIÁRIO é dobrado — nas pontas do muro e nas
+# juntas o contraforte é a "metade" (simples). No fim da seção: as entradas de cima ficam onde estavam.
+line(E, r, 'Contraforte: largura', 'Simples', '', 'Simples = 1 bloco; Dobrado = 2 blocos lado a lado (2t + 1), ligados pelo estribo em toda fiada. Dobrado só no intermediário; nas pontas e nas juntas, simples.', 'inp', None, 'larg_cf'); r += 1
+dv_lc = DataValidation(type='list', formula1='"Simples,Dobrado"', allow_blank=False); E.add_data_validation(dv_lc); dv_lc.add(f'B{r-1}')
 r += 1
 section(E, r, 'Painel entre contrafortes'); r += 1
 line(E, r, 'Bordas laterais do painel (nos contrafortes)', 'Apoiadas', '', 'Base sempre engastada na sapata corrida; topo livre. Apoiadas = Tipo 21; Engastadas = Tipo 22 (tabelas de Libânio).', 'inp', None, 'lat_pan'); r += 1
@@ -606,7 +613,13 @@ for col, h_ in _lst_cab.items():
 _lst_col['AJ'] = [f'=IF({n * 20}<=IF(Tipo_muro="Contrafortes",400,300),{n * 20}/100,"")' for n in range(3, 21)]
 # eixo a eixo = t + 1 cm + n·m. 19×39: todo n amarra (0,80 a 4,00 m). 14×39: só n PAR amarra com o contraforte de
 # 34/54 (encaixes do Revit; a modulação do app prova montando as fiadas — modulacao/fiadas.ts vaoAmarra) — 0,95 a 3,75.
-_lst_col['AK'] = [f'=IF(t_bloco=19,(t_bloco+1+{k + 3}*m_mod)/100,' + (f'(t_bloco+1+{2 * (k + 2)}*m_mod)/100' if k < 8 else '""') + ')'
+# DOBRADO (16/11): contraforte de 2t + 1; o vão LIVRE é o do simples (mesmo mínimo e mesmo máximo), então o eixo a
+# eixo é 2t + 2 + n·m: 19×39 → 1,00 a 4,00 m (o vão livre de 0,81 a 3,81 do simples daria 4,20, mas o eixo a eixo para
+# em 4,00 pelo δ e pelo Libânio); 14×39 → só n par, 1,10 a 3,90 m (vão livre 0,81 a 3,61, o do simples).
+_lst_col['AK'] = ['=IF(larg_cf="Dobrado",' +
+                  (f'IF(t_bloco=19,' + (f'(2*t_bloco+2+{k + 3}*m_mod)/100' if k < 16 else '""') + ',' +
+                   (f'(2*t_bloco+2+{2 * (k + 2)}*m_mod)/100' if k < 8 else '""') + ')') + ',' +
+                  f'IF(t_bloco=19,(t_bloco+1+{k + 3}*m_mod)/100,' + (f'(t_bloco+1+{2 * (k + 2)}*m_mod)/100' if k < 8 else '""') + '))'
                   for k in range(17)]
 # contraforte: as montagens que o Jose modelou no Revit (19 → 59/79; 14 → 34/54)
 _lst_col['AL'] = ['=IF(t_bloco=19,59,34)', '=IF(t_bloco=19,79,54)']
@@ -1260,22 +1273,28 @@ def passos_bal(Md):
     ]
 
 
-def passos_cf(Md, bm, Cf):
-    """Contrafortes, seção 5: retangular bm × d ou T além da mesa (abas Cf + alma)."""
+def passos_cf(Md, bm, Cf, bw='bw_cf'):
+    """Contrafortes, seção 5: retangular bm × d ou T além da mesa (abas Cf + alma). `bw` = a alma do contraforte
+    (o outro tipo, com o dobrado, tem outra largura: bw_cfo)."""
     return [
         ('Md', Md),
         ('arg', '{Md}*100/(0.5*' + bm + '*d_cf^2*Kfd_cf/10)'),
         ('xr', 'IF({arg}<1,1.25*d_cf*(1-SQRT(1-{arg})),"não resiste")'),
         ('TT', 'IF(AND(cf_T=1,ISNUMBER({xr})),IF(0.8*{xr}>hf_cf,1,0),0)'),
-        ('xw', 'IF(AND(cf_T=1,ISNUMBER({xr})),IF(0.8*{xr}>hf_cf,IFERROR(1.25*d_cf*(1-SQRT(1-({Md}*100-' + Cf + '*(d_cf-hf_cf/2))/(0.5*bw_cf*d_cf^2*Kfd_cf/10))),"não resiste"),"— (não precisa)"),"—")'),
+        ('xw', 'IF(AND(cf_T=1,ISNUMBER({xr})),IF(0.8*{xr}>hf_cf,IFERROR(1.25*d_cf*(1-SQRT(1-({Md}*100-' + Cf + '*(d_cf-hf_cf/2))/(0.5*' + bw + '*d_cf^2*Kfd_cf/10))),"não resiste"),"— (não precisa)"),"—")'),
         ('x', 'IF({TT}=1,{xw},{xr})'),
         ('z', 'MIN(d_cf-0.4*{x},0.95*d_cf)'),
-        ('As', 'IF({Md}<=0,0,IF({TT}=1,(' + Cf + '+Kfd_cf/10*bw_cf*0.8*{xw})/(fsd_cf/10),{Md}*100/(fsd_cf/10*{z})))'),
+        ('As', 'IF({Md}<=0,0,IF({TT}=1,(' + Cf + '+Kfd_cf/10*' + bw + '*0.8*{xw})/(fsd_cf/10),{Md}*100/(fsd_cf/10*{z})))'),
     ]
 
 
 # Asw/s do contraforte (seção 6): zero se Vd ≤ Va (dispensa pela conta); senão o maior entre o cálculo e o mínimo.
 PASSO_ASW = 'IF({Vd}<=Va_cf,0,MAX(MAX(0,({Vd}-Va_cf)/(0.75*fywd/10*d_cf)*100),Asw_m))'
+# Dobrado (16/11): estribo obrigatório (nunca zero) — o mínimo vale mesmo com Vd ≤ Va. O outro tipo tem a sua seção
+# (Va_cfo, Asw_mo); com o contraforte simples os nomes do outro dão o mesmo número dos deste, bit a bit.
+PASSO_ASW_ESTE = 'IF(dob_cf=1,MAX(MAX(0,({Vd}-Va_cf)/(0.75*fywd/10*d_cf)*100),Asw_m),' + PASSO_ASW + ')'
+PASSO_ASW_OUTRO = ('IF(dob_o=1,MAX(MAX(0,({Vd}-Va_cfo)/(0.75*fywd/10*d_cf)*100),Asw_mo),'
+                   'IF({Vd}<=Va_cfo,0,MAX(MAX(0,({Vd}-Va_cfo)/(0.75*fywd/10*d_cf)*100),Asw_mo)))')
 
 
 def cadeias_da_haste(ws, rr, col0, Md_bal, Md_cf, Md_cfo, Vd_cf, Vd_cfo):
@@ -1283,9 +1302,9 @@ def cadeias_da_haste(ws, rr, col0, Md_bal, Md_cf, Md_cfo, Vd_cf, Vd_cfo):
     colunas do As de cada uma, na ordem: balanço, este, outro, Asw este, Asw outro."""
     cb = cadeia(ws, rr, col0, passos_bal(Md_bal))
     cc = cadeia(ws, rr, col0 + 10, passos_cf(Md_cf, 'bm_cf', 'Cf_cf'))
-    co = cadeia(ws, rr, col0 + 18, passos_cf(Md_cfo, 'bm_cfo', 'Cf_cfo'))
-    w1 = cadeia(ws, rr, col0 + 26, [('Vd', Vd_cf), ('Asw', PASSO_ASW)])
-    w2 = cadeia(ws, rr, col0 + 28, [('Vd', Vd_cfo), ('Asw', PASSO_ASW)])
+    co = cadeia(ws, rr, col0 + 18, passos_cf(Md_cfo, 'bm_cfo', 'Cf_cfo', 'bw_cfo'))
+    w1 = cadeia(ws, rr, col0 + 26, [('Vd', Vd_cf), ('Asw', PASSO_ASW_ESTE)])
+    w2 = cadeia(ws, rr, col0 + 28, [('Vd', Vd_cfo), ('Asw', PASSO_ASW_OUTRO)])
     return cb['As'], cc['As'], co['As'], w1['Asw'], w2['Asw']
 
 

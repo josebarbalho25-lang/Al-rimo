@@ -148,12 +148,12 @@ Lf('Muro: FSd = 1,4·(peso do muro + carga no topo)/L', f"=1.4*(B{_iv['Muro (pes
 Lf('Muro: MSd = 1,4·Mk na base do muro', '=1.4*(Mk_+Mk_w)', 'kN·m/m', '', 'res', '0.00', 'Mw_s')
 Lf('Muro: τSd = FSd/(u0·d) + K·MSd/(Wp0·d); u0 = 200 cm, Wp0 = t²/2 + 100·t, K = 0,45', '=(Fw_s/(200*d_s)+0.45*Mw_s*100/((t_bloco^2/2+100*t_bloco)*d_s))*10', 'MPa',
    'Faixa de 1 m como pilar t × 100 cm (dedução).', 'key', '0.000', 'tw_s', 'NBR 6118 19.5.2.2 e 19.5.3.1')
-Lf('Contraforte: K da Tabela 19.2 por C1/C2 = tenr/t (interpolado)', '=IF(Tipo_muro="Contrafortes",' + _ktab('tenr_adot/t_bloco') + ',0)', '', 'Interpolar a tabela é dedução.', 'res', '0.000', 'K_cc', 'NBR 6118 Tab. 19.2')
+Lf('Contraforte: K da Tabela 19.2 por C1/C2 = tenr/t (interpolado)', '=IF(Tipo_muro="Contrafortes",' + _ktab('tenr_adot/eenr') + ',0)', '', 'Interpolar a tabela é dedução.', 'res', '0.000', 'K_cc', 'NBR 6118 Tab. 19.2')
 Lf('Contraforte: FSd = 1,4·peso do contraforte', f"=IF(Tipo_muro=\"Contrafortes\",1.4*B{_iv['Contraforte']},0)", 'kN', 'Sem descontar a reação do solo dentro do contorno (a favor).', 'res', '0.00', 'Fc_s')
 Lf('Contraforte: MSd = Md do contraforte', '=IF(Tipo_muro="Contrafortes",Md_cf,0)', 'kN·m', 'Aba Contrafortes.', 'res', '0.00', 'Mc_s')
 Lf('Contraforte: τSd = FSd/(u0·d) + K·MSd/(Wp0·d); u0 = 2(C1 + C2), Wp0 = C1²/2 + C1·C2',
-   '=IF(Tipo_muro="Contrafortes",(Fc_s/(2*(tenr_adot+t_bloco)*d_s)+K_cc*Mc_s*100/((tenr_adot^2/2+tenr_adot*t_bloco)*d_s))*10,0)', 'MPa',
-   'Pilar C1 = comprimento do contraforte (direção do momento) × C2 = t.', 'key', '0.000', 'tc_s', 'NBR 6118 19.5.3.1')
+   '=IF(Tipo_muro="Contrafortes",(Fc_s/(2*(tenr_adot+eenr)*d_s)+K_cc*Mc_s*100/((tenr_adot^2/2+tenr_adot*eenr)*d_s))*10,0)', 'MPa',
+   'Pilar C1 = comprimento do contraforte (direção do momento) × C2 = largura do contraforte (eenr; dobrado 2t + 1).', 'key', '0.000', 'tc_s', 'NBR 6118 19.5.3.1')
 r += 1
 section(Fd, r, '8. Torção longitudinal (só com contrafortes — modelo simplificado)'); r += 1
 Lf('Modelo', '="Sapata rígida: o Md do contraforte chega concentrado e o solo reage uniforme no módulo → torção de ±Md/2 junto a cada contraforte (dedução nossa, limite superior: Md do contraforte com 100% da área)."', '', '', 'txt')

@@ -23,7 +23,10 @@ REF2 = [
     ('Painel não armado entre armaduras', 'NBR 16868-1 Anexo E; carga média: critério adotado', 'Subpainel l = espaçamento das verticais × h = espaçamento das canaletas, caso 13; fd = 1,4·σh médio do subpainel de baixo.'),
     ('Reações por charneiras', 'NBR 6118 14.7.6.1 (critério de reações de laje)', '60° a partir do apoio engastado quando o vizinho é apoiado; 45° entre apoios do mesmo tipo; borda livre não recebe. Usado só para estimar a carga horizontal na sapata corrida (dedução nossa).'),
     ('Posição da barra principal do contraforte', 'Montagens modeladas no Revit (medido)', 'Centro do trecho comum aos furos das fiadas P e I (onde a barra passa reta). Enterrado, da ponta: 9,5 cm no bloco 14 (contrafortes de 34 e 54) e 10,0 cm no 19 (59 e 79) → d = 24,5 / 44,5 / 49,0 / 69,0. Aparente, da face do solo: 7,0 / 10,0 cm (espelho do template — dedução). Tabela nas colunas AT–BA.'),
+    ('Contraforte dobrado', 'NBR 16868-1 3.3 (amarração indireta) e 12.6 (estribos); critério adotado',
+     'Dois blocos lado a lado (2t + 1), todo grauteado, junta a prumo entre eles atravessada pelo estribo ancorado nos furos grauteados (amarração indireta). Critério adotado: os dois trabalham na flexão com a mesma linha neutra; estribo em toda fiada (c/20, 2 ramos) abraçando os dois, mesmo quando a conta o dispensaria; barras principais em número par, metade no furo da ponta de cada bloco (As,máx = 2 furos). Só o intermediário é dobrado; nas pontas e nas juntas, simples.'),
 ]
+assert len(REF2) <= 18, 'a tabela de fontes encostaria na de δ (linha 103)'
 R['A82'] = 'Muro com contrafortes'; R['A82'].font = fB
 header(R, 83, ['Item', 'Fonte', 'O que diz / como foi usado'])
 for i, (a, b, c_) in enumerate(REF2):
@@ -169,7 +172,7 @@ Lc('Md = γf·Mk', '=gama_f*Mk_cf', 'kN·m', '', 'key', '0.00', 'Md_cf')
 Lc('Vd = γf·Vk', '=gama_f*Vk_cf', 'kN', '', 'key', '0.00', 'Vd_cf')
 r += 1
 section(C, r, '2. Esbeltez da parede com enrijecedores'); r += 1
-Lc('eenr (espessura do contraforte)', '=t_bloco', 'cm', 'Contraforte da largura do bloco (montagem fechada).', 'res', '0.0', 'eenr')
+Lc('eenr (espessura do contraforte)', '=IF(dob_cf=1,2*t_bloco+1,t_bloco)', 'cm', 'Simples: a largura do bloco. Dobrado (intermediário): 2t + 1 (seção 18).', 'res', '0.0', 'eenr')
 Lc('lenr/eenr', '=l_cf_adot*100/eenr', '', '', 'res', '0.000', 'r_le')
 Lc('tenr/t', '=tenr_adot/t_bloco', '', '', 'res', '0.000', 'r_tt')
 Lc('lenr/eenr limitado (6 a 20)', '=MIN(20,MAX(6,r_le))', '', '', 'res', '0.000', 'xl_d')
@@ -223,15 +226,15 @@ Lc('As do momento', '=IF(Md_cf<=0,0,IF(cf_TT=1,(Cf_cf+Kfd_cf/10*bw_cf*0.8*x_cfw)
 Lc('As,mín', '=IF(LEFT(AsMin_crit,4)="Viga",0.0015*bw_cf*d_cf,0.001*bw_cf*h_cf)', 'cm²', 'Viga: 0,15%·bw·d; Parede: 0,10%·bw·h (Entradas).', 'res', '0.00', 'As_cfm', 'NBR 16868-1 12.2')
 Lc('As de cálculo', '=MAX(As_cfn,As_cfm)', 'cm²', '', 'key', '0.00', 'As_cfc')
 Lc('Área de uma barra (Ø das Entradas)', '=PI()*phi_cf^2/400', 'cm²', '', 'res', '0.000', 'a_cf')
-Lc('Nº de barras', '=IF(ISNUMBER(n_cf_dir),n_cf_dir,MAX(2,ROUNDUP(As_cfc/a_cf-0.005,0)))', '', 'Entradas ou automático (mínimo 2).', 'key', '0', 'n_cf')
+Lc('Nº de barras', '=IF(dob_cf=1,IF(ISNUMBER(n_cf_dir),2*ROUNDUP(n_cf_dir/2,0),MAX(2,2*ROUNDUP(ROUNDUP(As_cfc/a_cf-0.005,0)/2,0))),IF(ISNUMBER(n_cf_dir),n_cf_dir,MAX(2,ROUNDUP(As_cfc/a_cf-0.005,0))))', '', 'Entradas ou automático (mínimo 2). Dobrado: par, metade em cada bloco (ímpar digitado → o par de cima).', 'key', '0', 'n_cf')
 Lc('As efetiva', '=n_cf*a_cf', 'cm²', '', 'res', '0.00', 'As_cfe')
-Lc('As,máx no furo da ponta', '=pAs_max*Ag_furo', 'cm²', '8% da área de graute, contando o traspasse.', 'res', '0.00', 'As_cfx', 'NBR 16868-1 12.3')
+Lc('As,máx no furo da ponta', '=IF(dob_cf=1,2*pAs_max*Ag_furo,pAs_max*Ag_furo)', 'cm²', '8% da área de graute, contando o traspasse. Dobrado: dois furos na ponta.', 'res', '0.00', 'As_cfx', 'NBR 16868-1 12.3')
 Lc('As no furo para comparar (com traspasse no concreto)', '=As_cfe*f_trasp', 'cm²', '2× (região de traspasse).', 'res', '0.00', 'As_cfx2')
 # O furo REAL onde a barra passa (montagem do Revit): só INFORMA. A régua do As,máx continua a do curso (linha acima,
 # com o Ag da tabela da aula, e a verificação da seção 15) — decisão do Jose (09/10): nenhuma verificação nova.
 Lc('Furo comum da barra (fiadas P e I): área', '=IF(cf_T=1,INDEX(mont_AE,k_mont),INDEX(mont_AA,k_mont))', 'cm²', 'Montagem do Revit. Só informa.', 'res', '0.00', 'A_fcm', 'Montagens do Revit (medido)')
-Lc('Barras do Ø das Entradas que cabem no furo comum', '=IF(cf_T=1,INDEX(mont_nE,k_mont,MATCH(phi_cf,mont_phi,0)),INDEX(mont_nA,k_mont,MATCH(phi_cf,mont_phi,0)))', '', '15 mm de graute até o bloco, espera ao lado (emenda). Só informa.', 'res', '0', 'nb_cab', 'NBR 16868-1 12.1 (graute 15 mm)')
-Lc('Barras do Ø das Entradas pela taxa de 8% do furo comum, com traspasse', '=INT(pAs_max*A_fcm/(f_trasp*a_cf))', '', 'Só informa.', 'res', '0', 'nb_tx')
+Lc('Barras do Ø das Entradas que cabem no furo comum', '=IF(dob_cf=1,2,1)*IF(cf_T=1,INDEX(mont_nE,k_mont,MATCH(phi_cf,mont_phi,0)),INDEX(mont_nA,k_mont,MATCH(phi_cf,mont_phi,0)))', '', '15 mm de graute até o bloco, espera ao lado (emenda). Dobrado: os dois furos da ponta. Só informa.', 'res', '0', 'nb_cab', 'NBR 16868-1 12.1 (graute 15 mm)')
+Lc('Barras do Ø das Entradas pela taxa de 8% do furo comum, com traspasse', '=IF(dob_cf=1,2*INT(pAs_max*A_fcm/(f_trasp*a_cf)),INT(pAs_max*A_fcm/(f_trasp*a_cf)))', '', 'Dobrado: os dois furos da ponta. Só informa.', 'res', '0', 'nb_tx')
 r += 1
 _hyp_r = r
 C.cell(row=r, column=1, value='Hipóteses de bitola (nº de barras para o As de cálculo; o que cabe no furo comum só informa)').font = fB; r += 1
@@ -239,10 +242,10 @@ header(C, r, ['Ø (mm)', 'As nec. (cm²)', 'Nº barras', 'As efetiva (cm²)', 'C
 for ph in (10, 12.5, 16, 20):
     C.cell(row=r, column=1, value=ph)
     C.cell(row=r, column=2, value='=IFERROR(As_cfc,"—")')
-    C.cell(row=r, column=3, value=f'=IFERROR(MAX(2,ROUNDUP(B{r}/(PI()*A{r}^2/400)-0.005,0)),"—")')
+    C.cell(row=r, column=3, value=f'=IFERROR(IF(dob_cf=1,MAX(2,2*ROUNDUP(ROUNDUP(B{r}/(PI()*A{r}^2/400)-0.005,0)/2,0)),MAX(2,ROUNDUP(B{r}/(PI()*A{r}^2/400)-0.005,0))),"—")')
     C.cell(row=r, column=4, value=f'=IFERROR(C{r}*PI()*A{r}^2/400,"—")')
-    C.cell(row=r, column=5, value=f'=IFERROR(IF(cf_T=1,INDEX(mont_nE,k_mont,MATCH(A{r},mont_phi,0)),INDEX(mont_nA,k_mont,MATCH(A{r},mont_phi,0))),"—")')
-    C.cell(row=r, column=6, value=f'=IFERROR(INT(pAs_max*A_fcm/(f_trasp*PI()*A{r}^2/400)),"—")')
+    C.cell(row=r, column=5, value=f'=IFERROR(IF(dob_cf=1,2,1)*IF(cf_T=1,INDEX(mont_nE,k_mont,MATCH(A{r},mont_phi,0)),INDEX(mont_nA,k_mont,MATCH(A{r},mont_phi,0))),"—")')
+    C.cell(row=r, column=6, value=f'=IFERROR(IF(dob_cf=1,2*INT(pAs_max*A_fcm/(f_trasp*PI()*A{r}^2/400)),INT(pAs_max*A_fcm/(f_trasp*PI()*A{r}^2/400))),"—")')
     for cc, fm in zip('ABCDEF', ['0.0', '0.00', '0', '0.00', '0', '0']):
         c = C[f'{cc}{r}']; c.number_format = fm; c.font = fN; c.border = BOX; c.alignment = Alignment(horizontal='center'); c.fill = RES
     r += 1
@@ -259,16 +262,16 @@ Lc('Asw/s necessário = (Vd − Va)/(0,75·fywd·d)', '=MAX(0,(Vd_cf-Va_cf)/(0.7
 Lc('fgk do graute', '=fgk_', 'MPa', 'Entradas ou tabela pelo fbk.', 'res', '0.0')
 Lc('ρw,mín (0,07% em fgk 15 a 0,14% em fgk 40)', '=MIN(0.14,MAX(0.07,0.07+(fgk_-15)*0.07/25))', '%', '', 'res', '0.000', 'rhow_cf', 'NBR 16868-1 12.2')
 Lc('Asw,mín = ρw·bw', '=rhow_cf/100*bw_cf*100', 'cm²/m', '', 'res', '0.00', 'Asw_m')
-Lc('Asw/s de cálculo', '=IF(Vd_cf<=Va_cf,0,MAX(Asw_n,Asw_m))', 'cm²/m', 'Zero se Vd ≤ Va (dispensa estribo pela conta).', 'key', '0.00', 'Asw_c')
-Lc('Ø necessário com os ramos e o espaçamento das Entradas', '=SQRT(s_est*4*Asw_c/100/(ram_ef*PI()))*10', 'mm', 'Ramos que a conta usa (abaixo).', 'res', '0.0', 'phi_wn')
+Lc('Asw/s de cálculo', '=IF(dob_cf=1,MAX(Asw_n,Asw_m),IF(Vd_cf<=Va_cf,0,MAX(Asw_n,Asw_m)))', 'cm²/m', 'Zero se Vd ≤ Va (dispensa estribo pela conta). Dobrado: nunca zero (o estribo é a ligação dos dois blocos).', 'key', '0.00', 'Asw_c')
+Lc('Ø necessário com os ramos e o espaçamento das Entradas', '=SQRT(s_est_u*4*Asw_c/100/(ram_ef*PI()))*10', 'mm', 'Ramos que a conta usa (abaixo); espaçamento usado (dobrado: 20).', 'res', '0.0', 'phi_wn')
 # Estribo só quando a conta pede (Jose, 13/10; planilha 05 do Carini: "Dispensa Estribos" se fvd ≥ τvd, que é o
 # mesmo Vd ≤ Va daqui; o mínimo ρw·bw só vale do lado "com armadura"). Em alvenaria não se põe estribo sem
 # necessidade: com Asw_c = 0 o muro sai SEM estribo — Asw,ef, Vrd3 = Va, nº de estribos 0 — e o app não desenha nenhum.
-Lc('Asw/s efetivo', '=IF(Asw_c=0,0,ram_ef*PI()*phi_est^2/400/s_est*100)', 'cm²/m', 'Zero sem estribo (dispensa pela conta). Com os ramos que cabem (abaixo).', 'res', '0.00', 'Asw_e')
+Lc('Asw/s efetivo', '=IF(Asw_c=0,0,ram_ef*PI()*phi_est^2/400/s_est_u*100)', 'cm²/m', 'Zero sem estribo (dispensa pela conta). Com os ramos que cabem (abaixo).', 'res', '0.00', 'Asw_e')
 Lc('Vrd3 = Va + 0,75·fywd·d·Asw/s', '=Va_cf+0.75*fywd/10*d_cf*Asw_e/100', 'kN', '', 'res', '0.00', 'Vrd3_cf')
 Lc('Estribo fechado (sugestão): largura × altura', '=IF(Asw_c=0,"Sem estribo (dispensa pela conta)",FIXED(eenr-7,0)&" × "&FIXED(h_cf-9,0)&" cm")', '', 'Largura = eenr − 7; altura = tenr − 9.', 'res')
 Lc('Perímetro do estribo (sem ganchos)', '=IF(Asw_c=0,0,2*((eenr-7)+(h_cf-9)))', 'cm', 'Somar os ganchos do detalhe.', 'res', '0')
-Lc('Nº de estribos na altura', '=IF(Asw_c=0,0,ROUNDUP(H_muro*100/s_est,0))', '', 'Um por junta de assentamento a cada s, na altura do muro; zero sem estribo (dispensa pela conta).', 'res', '0', 'n_est')
+Lc('Nº de estribos na altura', '=IF(Asw_c=0,0,ROUNDUP(H_muro*100/s_est_u,0))', '', 'Um por junta de assentamento a cada s, na altura do muro; zero sem estribo (dispensa pela conta).', 'res', '0', 'n_est')
 # 4 RAMOS = DOIS ESTRIBOS MENORES SOBREPOSTOS (Jose, 15/11: "3 ramos não existe; 4 são 2 estribos menores — no
 # Pró-Viga tem um modelo quando a viga tem uma base grande"). A regra do Pró-Viga (viewer3d.js, estribo duplo): cada
 # estribo tem 2/3 da largura do de 2 ramos e fica deslocado ±1/6 dela — os quatro ramos a cada 1/3, os ganchos no
@@ -287,7 +290,7 @@ Lc('4 ramos: raio da dobra no eixo (pino 3φ)', '=(3*phi_est/2+phi_est/2)/10', '
 Lc('4 ramos: ponta do gancho de 135° que cabe no estribo menor', '=(w4_est-phi_est/10-(1+SQRT(2)/2)*rd4_est)/(SQRT(2)/2)', 'cm', 'Do canto, a 45°, até encostar no ramo do outro lado.', 'res', '0.00', 'pg4_est')
 Lc('Ponta do gancho de 135° exigida = 5φ ≥ 5 cm', '=MAX(5*phi_est/10,5)', 'cm', '', 'res', '0.00', 'pgn_est', 'NBR 6118 9.4.6.1')
 Lc('4 ramos: barras do Ø das Entradas que cabem entre os ramos do meio', '=IF(cf_T=1,INDEX(mont_n4E,k_mont,MATCH(phi_cf,mont_phi,0)),INDEX(mont_n4A,k_mont,MATCH(phi_cf,mont_phi,0)))', '', 'Furo comum, 15 mm de graute, espera ao lado; nenhuma barra sobre os ramos do meio. Montagens do Revit.', 'res', '0', 'nb4_cab', 'Montagens do Revit (medido)')
-Lc('Ramos que a conta usa', '=IF(ramos_est=4,IF(AND(pg4_est>=pgn_est-0.005,n_cf<=nb4_cab),4,2),IF(ramos_est>0,2,ramos_est))', '', '4 só se os dois estribos couberem; senão 2.', 'key', '0', 'ram_ef')
+Lc('Ramos que a conta usa', '=IF(dob_cf=1,2,IF(ramos_est=4,IF(AND(pg4_est>=pgn_est-0.005,n_cf<=nb4_cab),4,2),IF(ramos_est>0,2,ramos_est)))', '', '4 só se os dois estribos couberem; senão 2. Dobrado: 2 (um estribo abraçando os dois blocos).', 'key', '0', 'ram_ef')
 r += 1
 section(C, r, '7. ELS do contraforte'); r += 1
 Lc('Em = (Em/fpk)·fpk', '=Em_coef*fpk_cf', 'MPa', 'T: seção bruta ↔ fpk bruto.', 'res', '0', 'Em_cf', 'NBR 16868-1 6.2.1 (Tab. 1)')
@@ -540,7 +543,7 @@ Lc('Momento da base do painel (engaste na sapata)', '=Mdyei_p', 'kN·cm/m', 'De 
 Lc('Md e Vd na base do contraforte', '=FIXED(Md_cf,2)&" kN·m  /  "&FIXED(Vd_cf,2)&" kN"', '', '', 'res')
 r += 1
 section(C, r, '14. Detalhamento (resumo)'); r += 1
-Lc('Contraforte', '=n_cf&"Ø"&'+fphi('phi_cf')+'&" na ponta (d = "&FIXED(d_cf,1)&" cm) + "&n_cc&"Ø"&'+fphi('phi_cc')+'&" construtivas; "&IF(Asw_c=0,"sem estribos (dispensa pela conta)","estribos Ø"&'+fphi('phi_est')+'&" c/"&FIXED(s_est,0)&" ("&ram_ef&" ramos) nas juntas")', '', '', 'key')
+Lc('Contraforte', '=IF(dob_cf=1,"Dobrado (2 blocos, "&FIXED(eenr,0)&" cm): "&n_cf&"Ø"&'+fphi('phi_cf')+'&" na ponta ("&n_cf/2&" em cada bloco; d = "&FIXED(d_cf,1)&" cm) + "&n_cc&"Ø"&'+fphi('phi_cc')+'&" construtivas; estribo Ø"&'+fphi('phi_est')+'&" c/20 (2 ramos) abraçando os dois blocos, em toda fiada",n_cf&"Ø"&'+fphi('phi_cf')+'&" na ponta (d = "&FIXED(d_cf,1)&" cm) + "&n_cc&"Ø"&'+fphi('phi_cc')+'&" construtivas; "&IF(Asw_c=0,"sem estribos (dispensa pela conta)","estribos Ø"&'+fphi('phi_est')+'&" c/"&FIXED(s_est,0)&" ("&ram_ef&" ramos) nas juntas"))', '', '', 'key')
 Lc('Painel — vertical', '=IF(nb_pv=2,"Ø"&'+fphi('phi_pv')+'&" c/"&FIXED(s_pv,0)&" em CADA face (2 barras por furo, a "&'+fphi('c_pv')+'&" cm das faces)","Ø"&'+fphi('phi_pv')+'&" c/"&FIXED(s_pv,0)&" centralizada")', '', '', 'key')
 Lc('Painel — horizontal', '="Ø"&'+fphi('phi_ph')+'&" c/"&FIXED(s_ph,0)&" em canaleta grauteada, "&IF(LEFT(pos_ph,4)="Cent","centralizada",IF(nb_ph=2,"uma em cada face","encostada na face externa"))', '', '', 'key')
 r += 1
@@ -553,9 +556,9 @@ CHK = [
     ('Contraforte: As,ef ≥ As de cálculo', '=IF(As_cfe>=As_cfc-0.005,"OK ("&FIXED(As_cfe,2)&" ≥ "&FIXED(As_cfc,2)&")","NÃO OK")'),
     ('Contraforte: As ≤ As,máx do furo', '=IF(As_cfx2<=As_cfx,"OK ("&FIXED(As_cfx2,2)&" ≤ "&FIXED(As_cfx,2)&")","NÃO OK — distribuir em mais furos ou aumentar Ø/graute")'),
     ('Contraforte: bielas Vd ≤ Vrd2', '=IF(Vd_cf<=Vrd2_cf,"OK ("&FIXED(Vd_cf,1)&" ≤ "&FIXED(Vrd2_cf,1)&")","NÃO OK — aumentar a seção")'),
-    ('Contraforte: estribos', '=IF(Asw_c=0,"Dispensa pela conta (Vd ≤ Va)",IF(Asw_e>=Asw_c-0.005,"OK ("&FIXED(Asw_e,2)&" ≥ "&FIXED(Asw_c,2)&" cm²/m)","NÃO OK — aumentar Ø, ramos ou reduzir s"))'),
+    ('Contraforte: estribos', '=IF(dob_cf=1,IF(Asw_e>=Asw_c-0.005,"OK ("&FIXED(Asw_e,2)&" ≥ "&FIXED(Asw_c,2)&" cm²/m; dobrado: c/20, 2 ramos)","NÃO OK — dobrado: estribo c/20 com 2 ramos não basta ("&FIXED(Asw_e,2)&" < "&FIXED(Asw_c,2)&" cm²/m)"),IF(Asw_c=0,"Dispensa pela conta (Vd ≤ Va)",IF(Asw_e>=Asw_c-0.005,"OK ("&FIXED(Asw_e,2)&" ≥ "&FIXED(Asw_c,2)&" cm²/m)","NÃO OK — aumentar Ø, ramos ou reduzir s")))'),
     ('Estribo cabe na junta (Ø ≤ 6,3 mm)', '=IF(Asw_c=0,"— (sem estribo)",IF(phi_est<=6.3,"OK","NÃO OK — Ø > 6,3 não cabe na junta de assentamento"))'),
-    ('Estribo: 4 ramos cabem no contraforte', '=IF(Asw_c=0,"— (sem estribo)",IF(ramos_est<>4,"— (2 ramos)",IF(ram_ef=4,"OK (gancho "&FIXED(pg4_est,1)&" ≥ "&FIXED(pgn_est,1)&" cm; "&n_cf&" ≤ "&nb4_cab&" barras)","NÃO OK — 4 ramos não cabem na largura do contraforte ("&IF(pg4_est<pgn_est-0.005,"gancho de "&FIXED(pg4_est,1)&" < "&FIXED(pgn_est,1)&" cm",n_cf&" barras e só "&nb4_cab&" cabem entre os ramos do meio")&")")))'),
+    ('Estribo: 4 ramos cabem no contraforte', '=IF(AND(dob_cf=1,ramos_est=4),"— (dobrado: um estribo abraçando os dois blocos)",IF(Asw_c=0,"— (sem estribo)",IF(ramos_est<>4,"— (2 ramos)",IF(ram_ef=4,"OK (gancho "&FIXED(pg4_est,1)&" ≥ "&FIXED(pgn_est,1)&" cm; "&n_cf&" ≤ "&nb4_cab&" barras)","NÃO OK — 4 ramos não cabem na largura do contraforte ("&IF(pg4_est<pgn_est-0.005,"gancho de "&FIXED(pg4_est,1)&" < "&FIXED(pgn_est,1)&" cm",n_cf&" barras e só "&nb4_cab&" cabem entre os ramos do meio")&")"))))'),
     ('Contraforte: ELS δ∞ ≤ δadm', '=IF(dinf_cf<=dadm_cf,"OK ("&FIXED(dinf_cf,1)&" ≤ "&FIXED(dadm_cf,1)&" mm)","NÃO OK")'),
     ('Painel: γ dentro da tabela (0,30–2,00)', '=IF(AND(gam_p>=0.3,gam_p<=2),"OK","NÃO OK — fora da tabela: mudar espaçamento dos contrafortes")'),
     ('Painel vertical: barra do lado do solo', '=IF(ISNUMBER(As_pvs),IF(a_pv>=MAX(As_pvs,As_pvm)-0.0005,"OK","NÃO OK"),"NÃO OK — não resiste")'),
@@ -601,9 +604,12 @@ section(C, r, '16. Momentos resistentes com a armadura adotada (diagrama de mome
 # muda a aba do lado do balanço (bf_b), por isso o MRd dele sai com a bm dele.
 Lc('Contraforte do outro tipo', '=IF(LEFT(tipo_cf,5)="Inter","Extremidade","Intermediário")', '', '', 'res', None, 'tipo_cfo')
 Lc('Largura de influência do outro tipo', '=IF(LEFT(tipo_cf,5)="Inter",l_cf_adot/2+bal_cf,l_cf_adot)', 'm', 'Intermediário = l; extremidade = l/2 + balanço do muro.', 'res', '0.00', 'binf_o', 'Critério adotado (área de influência)')
-Lc('Aba do lado do balanço no outro tipo', '=IF(LEFT(tipo_cf,5)="Inter",MIN(6*t_bloco,bal_cf*100),bf_a)', 'cm', '', 'res', '0.0', 'bf_bo')
-Lc('bm do outro tipo', '=IF(cf_T=1,MIN(bw_cf+bf_a+bf_bo,H_muro*100/3),bw_cf)', 'cm', 'bm ≤ bw + abas e ≤ altura do muro/3.', 'res', '0.0', 'bm_cfo', 'NBR 16868-1 11.3.4 e 10.1.3')
-Lc('Abas da mesa do outro tipo = Kfd·(bm − bw)·hf', '=Kfd_cf/10*(bm_cfo-bw_cf)*hf_cf', 'kN', '', 'res', '0.00', 'Cf_cfo')
+# Dobrado (16/11): o outro tipo tem a SUA largura (eenr_o) e as suas barras (As_cfo) — seção 18. Com o contraforte
+# simples, bw_cfo = bw_cf e As_cfo = As_cfe: as fórmulas abaixo dão o mesmo número de antes, bit a bit. Os nomes novos
+# (bf_ao, bw_cfo, Fas_cfo…) ficam na seção 18, no fim: nenhuma linha desta seção muda de endereço.
+Lc('Aba do lado do balanço no outro tipo', '=IF(LEFT(tipo_cf,5)="Inter",MIN(6*t_bloco,bal_cf*100),bf_ao)', 'cm', '', 'res', '0.0', 'bf_bo')
+Lc('bm do outro tipo', '=IF(cf_T=1,MIN(bw_cfo+bf_ao+bf_bo,H_muro*100/3),bw_cfo)', 'cm', 'bm ≤ bw + abas e ≤ altura do muro/3.', 'res', '0.0', 'bm_cfo', 'NBR 16868-1 11.3.4 e 10.1.3')
+Lc('Abas da mesa do outro tipo = Kfd·(bm − bw)·hf', '=Kfd_cf/10*(bm_cfo-bw_cfo)*hf_cf', 'kN', '', 'res', '0.00', 'Cf_cfo')
 Lc('Outro tipo: vento do muro de cima', '=IF(Tipo_muro="Contrafortes",p_w*h_mce*pil_ncf*binf_o,0)', 'kN', 'Como o F_wpc (aba Muro de cima e vento) com a largura do outro tipo.', 'res', '0.00', 'Fpo_cf')
 Lc('Outro tipo: vento no arrimo acima do solo', '=IF(Tipo_muro="Contrafortes",p_w*h_exp*binf_o,0)', 'kN', '', 'res', '0.00', 'Feo_cf')
 Lc('Outro tipo: Vk do vento', '=Fpo_cf+Feo_cf', 'kN', '', 'res', '0.00', 'Vk_wcfo')
@@ -617,21 +623,22 @@ Lc('Outro tipo: Vd = γf·Vk', '=gama_f*Vk_cfo', 'kN', '', 'key', '0.00', 'Vd_cf
 # ou só a alma no aparente) com z ≤ 0,95d. Limite x/d = 0,45 (verificação "ductilidade").
 Lc('Força no aço F = As,ef·fsd', '=As_cfe*fsd_cf/10', 'kN', 'Barras principais do contraforte (Nº × Ø).', 'res', '0.00', 'Fas_cf')
 Lc('x limite = 0,45·d (contraforte)', '=0.45*d_cf', 'cm', 'Ductilidade (verificação x/d ≤ 0,45).', 'res', '0.00', 'xlim_cf')
-for _sx, _bm, _cfm, _rot in (('cf', 'bm_cf', 'Cf_cf', 'este tipo'), ('cfo', 'bm_cfo', 'Cf_cfo', 'outro tipo')):
-    _T = f'AND(cf_T=1,Fas_cf>Fb_{_sx})'          # seção T além da mesa
+for _sx, _bm, _cfm, _rot, _bw, _Fas in (('cf', 'bm_cf', 'Cf_cf', 'este tipo', 'bw_cf', 'Fas_cf'),
+                                         ('cfo', 'bm_cfo', 'Cf_cfo', 'outro tipo', 'bw_cfo', 'Fas_cfo')):
+    _T = f'AND(cf_T=1,{_Fas}>Fb_{_sx})'          # seção T além da mesa
     _TL = 'AND(cf_T=1,0.8*xlim_cf>hf_cf)'         # o limite de ductilidade cai na alma
     Lc(f'Mesa inteira comprimida Kfd·bm·hf ({_rot})', f'=Kfd_cf/10*{_bm}*hf_cf', 'kN', 'Zero na seção retangular.', 'res', '0.00', f'Fb_{_sx}')
-    Lc(f'x com As,ef ({_rot})', f'=IF({_T},(Fas_cf-{_cfm})/(0.8*Kfd_cf/10*bw_cf),Fas_cf/(0.8*Kfd_cf/10*{_bm}))', 'cm', 'T: F = abas + Kfd·bw·0,8x; retangular: F = Kfd·bm·0,8x.', 'res', '0.00', f'xas_{_sx}')
-    Lc(f'M com As,ef ({_rot})', f'=IF({_T},{_cfm}*(d_cf-hf_cf/2)+(Fas_cf-{_cfm})*(d_cf-0.4*xas_{_sx}),Fas_cf*IF(xas_{_sx}<=0.125*d_cf,0.95*d_cf,d_cf-0.4*xas_{_sx}))', 'kN·cm', 'T: abas·(d − hf/2) + alma·(d − 0,4x); retangular: F·z, z ≤ 0,95d.', 'res', '0.00', f'Mas_{_sx}')
-    Lc(f'Força no limite ({_rot})', f'=IF({_TL},{_cfm}+0.8*Kfd_cf/10*bw_cf*xlim_cf,0.8*Kfd_cf/10*{_bm}*xlim_cf)', 'kN', '', 'res', '0.00', f'Flim_{_sx}')
-    Lc(f'M no limite ({_rot})', f'=IF({_TL},{_cfm}*(d_cf-hf_cf/2)+0.8*Kfd_cf/10*bw_cf*xlim_cf*(d_cf-0.4*xlim_cf),0.8*Kfd_cf/10*{_bm}*xlim_cf*(d_cf-0.4*xlim_cf))', 'kN·cm', '', 'res', '0.00', f'Mlim_{_sx}')
-    Lc(f'MRd do contraforte ({_rot})', f'=IF(AND(ISNUMBER(Fas_cf),d_cf>0),IF(Fas_cf<=Flim_{_sx},Mas_{_sx},Mlim_{_sx})/100,"—")', 'kN·m', 'Compara com o Md ' + ('(seção 1).' if _sx == 'cf' else 'do outro tipo (acima).'), 'key', '0.00', f'MRd_{_sx}', 'NBR 16868-1 11.3 (conta da flexão invertida)')
-    Lc(f'x no MRd ({_rot})', f'=IF(Fas_cf<=Flim_{_sx},IF({_T},xas_{_sx},1.25*d_cf*(1-SQRT(1-MRd_{_sx}*100/(0.5*{_bm}*d_cf^2*Kfd_cf/10)))),xlim_cf)', 'cm', '', 'res', '0.00', f'xM_{_sx}')
+    Lc(f'x com As,ef ({_rot})', f'=IF({_T},({_Fas}-{_cfm})/(0.8*Kfd_cf/10*{_bw}),{_Fas}/(0.8*Kfd_cf/10*{_bm}))', 'cm', 'T: F = abas + Kfd·bw·0,8x; retangular: F = Kfd·bm·0,8x.', 'res', '0.00', f'xas_{_sx}')
+    Lc(f'M com As,ef ({_rot})', f'=IF({_T},{_cfm}*(d_cf-hf_cf/2)+({_Fas}-{_cfm})*(d_cf-0.4*xas_{_sx}),{_Fas}*IF(xas_{_sx}<=0.125*d_cf,0.95*d_cf,d_cf-0.4*xas_{_sx}))', 'kN·cm', 'T: abas·(d − hf/2) + alma·(d − 0,4x); retangular: F·z, z ≤ 0,95d.', 'res', '0.00', f'Mas_{_sx}')
+    Lc(f'Força no limite ({_rot})', f'=IF({_TL},{_cfm}+0.8*Kfd_cf/10*{_bw}*xlim_cf,0.8*Kfd_cf/10*{_bm}*xlim_cf)', 'kN', '', 'res', '0.00', f'Flim_{_sx}')
+    Lc(f'M no limite ({_rot})', f'=IF({_TL},{_cfm}*(d_cf-hf_cf/2)+0.8*Kfd_cf/10*{_bw}*xlim_cf*(d_cf-0.4*xlim_cf),0.8*Kfd_cf/10*{_bm}*xlim_cf*(d_cf-0.4*xlim_cf))', 'kN·cm', '', 'res', '0.00', f'Mlim_{_sx}')
+    Lc(f'MRd do contraforte ({_rot})', f'=IF(AND(ISNUMBER({_Fas}),d_cf>0),IF({_Fas}<=Flim_{_sx},Mas_{_sx},Mlim_{_sx})/100,"—")', 'kN·m', 'Compara com o Md ' + ('(seção 1).' if _sx == 'cf' else 'do outro tipo (acima).'), 'key', '0.00', f'MRd_{_sx}', 'NBR 16868-1 11.3 (conta da flexão invertida)')
+    Lc(f'x no MRd ({_rot})', f'=IF({_Fas}<=Flim_{_sx},IF({_T},xas_{_sx},1.25*d_cf*(1-SQRT(1-MRd_{_sx}*100/(0.5*{_bm}*d_cf^2*Kfd_cf/10)))),xlim_cf)', 'cm', '', 'res', '0.00', f'xM_{_sx}')
     Lc(f'MSd/MRd ({_rot})', f'=Md_{_sx}/MRd_{_sx}', '', '', 'key', '0.000', f'ap_{_sx}')
 # Cortante: a resistência que as verificações usam — Vrd3 (Va + estribos; = Va sem estribo) e as bielas Vrd2.
 Lc('VRd do contraforte = mín(Vrd3; Vrd2)', '=MIN(Vrd3_cf,Vrd2_cf)', 'kN', 'Sem estribo (dispensa pela conta), Vrd3 = Va. Vale para os dois tipos (mesma seção e mesmo aço).', 'key', '0.00', 'VRd_cf', 'NBR 16868-1 11.4.3')
 Lc('VSd/VRd (este tipo)', '=Vd_cf/VRd_cf', '', '', 'res', '0.000', 'apV_cf')
-Lc('VSd/VRd (outro tipo)', '=Vd_cfo/VRd_cf', '', 'Os estribos são os deste tipo: se o outro pedir estribo e este não, passa de 1.', 'res', '0.000', 'apV_cfo')
+Lc('VSd/VRd (outro tipo)', '=Vd_cfo/VRd_cfo', '', 'Os estribos são os deste tipo (dobrado: c/20 em toda fiada): se o outro pedir estribo e este não, passa de 1. VRd do outro tipo na seção 18.', 'res', '0.000', 'apV_cfo')
 # Painel: a conta das seções 9 e 10 é por FAIXA (b = espaçamento das barras) com o momento por metro × faixa; o MRd
 # sai na faixa e volta por metro (kN·cm/m, a unidade dos Mdy/Mdyei/Mdx de Libânio). As verificações do painel não
 # conferem a ductilidade: o limite é o fim da conta (x = 1,25d), como a aba faz.
@@ -663,6 +670,35 @@ Lc('Vertical: As colocado por metro, em cada face', '=a_pv*100/s_pv', 'cm²/m', 
 Lc('Horizontal: As necessário por metro', '=As_phc*100/s_ph', 'cm²/m', 'Seção 10 (o As do momento, sem o mínimo).', 'res', '0.00', 'Amh_n')
 Lc('Horizontal: As,mín por metro', '=As_phm*100/s_ph', 'cm²/m', '', 'res', '0.00', 'Amh_m')
 Lc('Horizontal: As colocado por metro, em cada face', '=a_ph*100/s_ph', 'cm²/m', 'Uma barra por canaleta (com 2 barras, uma em cada face).', 'res', '0.00', 'Amh_ef')
+r += 1
+# ---------- 18. contraforte dobrado (16/11) ----------
+# Jose, 16/11: dois blocos lado a lado (2t + 1), todo grauteado, a montagem de dois contrafortes de ponta espelhados
+# com 1 cm de argamassa; a ligação é o ESTRIBO, um só abraçando os dois, em toda fiada (c/20), mesmo quando a conta o
+# dispensaria. Só o intermediário é dobrado: na ponta do muro e na junta o contraforte é a "metade" do dobrado (simples,
+# com l/2 + balanço). Nas seções de cima: eenr (largura), n_cf par, As,máx de dois furos, Asw_c nunca zero, ram_ef 2 e
+# s_est_u 20. O c da montagem e o d são os do simples: o furo da ponta de cada bloco é o do template L. No FIM da aba:
+# nada de cima muda de lugar.
+section(C, r, '18. Contraforte dobrado (dois blocos lado a lado, ligados pelo estribo)'); r += 1
+Lc('Contraforte calculado é dobrado? (1 = sim)', '=IF(AND(larg_cf="Dobrado",LEFT(tipo_cf,5)="Inter"),1,0)', '', 'Dobrado nas Entradas e contraforte intermediário. Extremidade: simples.', 'res', '0', 'dob_cf', 'Critério adotado (contraforte dobrado)')
+Lc('O outro tipo é dobrado? (1 = sim)', '=IF(AND(larg_cf="Dobrado",LEFT(tipo_cf,5)<>"Inter"),1,0)', '', 'Calculado = extremidade (simples) → o intermediário é o dobrado.', 'res', '0', 'dob_o')
+Lc('Estribo: espaçamento usado', '=IF(dob_cf=1,20,s_est)', 'cm', 'Dobrado: toda fiada (20 cm); simples: o das Entradas.', 'res', '0', 's_est_u', 'NBR 16868-1 12.6')
+Lc('Largura do outro tipo', '=IF(dob_o=1,2*t_bloco+1,t_bloco)', 'cm', '', 'res', '0.0', 'eenr_o')
+Lc('bw do outro tipo', '=eenr_o', 'cm', '', 'res', '0.0', 'bw_cfo')
+Lc('Aba do lado do vão no outro tipo', '=MIN(6*t_bloco,(l_cf_adot*100-bw_cfo)/2)', 'cm', 'Como bf_a, com a largura do outro tipo.', 'res', '0.0', 'bf_ao')
+Lc('Barras do outro tipo ÷ barras deste', '=IF(dob_cf=1,0.5,IF(dob_o=1,2,1))', '', 'O dobrado leva o dobro do simples: metade em cada bloco.', 'res', '0.0', 'f_no')
+Lc('Nº de barras do outro tipo', '=n_cf*f_no', '', '', 'res', '0', 'n_cfo')
+Lc('As efetiva do outro tipo', '=As_cfe*f_no', 'cm²', '', 'res', '0.00', 'As_cfo')
+Lc('Outro tipo: força no aço F = As,ef·fsd', '=As_cfo*fsd_cf/10', 'kN', '', 'res', '0.00', 'Fas_cfo')
+Lc('Outro tipo: ρ = As,ef/(bw·d) ≤ 2%', '=MIN(As_cfo/(bw_cfo*d_cf),0.02)', '', '', 'res', '0.000000', 'rho_cfo')
+Lc('Outro tipo: fvk = 0,35 + 17,5ρ ≤ 0,7', '=MIN(0.35+17.5*rho_cfo,0.7)', 'MPa', '', 'res', '0.000', 'fvk_cfo', 'NBR 16868-1 6.2.2.6')
+Lc('Outro tipo: fvd = fvk/γm', '=fvk_cfo/gama_m', 'MPa', '', 'res', '0.000', 'fvd_cfo')
+Lc('Outro tipo: Va = fvd·bw·d', '=fvd_cfo/10*bw_cfo*d_cf', 'kN', '', 'res', '0.00', 'Va_cfo')
+Lc('Outro tipo: Vrd2 = Va + 0,4·bw·d·√fpk*/γm', '=Va_cfo+0.4*bw_cfo*d_cf*SQRT(fpk_chei)/gama_m/10', 'kN', '', 'res', '0.00', 'Vrd2_cfo', 'NBR 16868-1 11.4.3')
+Lc('Outro tipo: Asw,mín = ρw·bw', '=rhow_cf/100*bw_cfo*100', 'cm²/m', '', 'res', '0.00', 'Asw_mo')
+Lc('Outro tipo: Asw/s efetivo', '=IF(dob_o=1,2*PI()*phi_est^2/400/20*100,Asw_e)', 'cm²/m', 'Dobrado: Ø das Entradas c/20, 2 ramos (toda fiada). Senão, os estribos deste tipo.', 'res', '0.00', 'Asw_eo')
+Lc('Outro tipo: Vrd3 = Va + 0,75·fywd·d·Asw/s', '=Va_cfo+0.75*fywd/10*d_cf*Asw_eo/100', 'kN', '', 'res', '0.00', 'Vrd3_cfo')
+Lc('VRd do outro tipo = mín(Vrd3; Vrd2)', '=MIN(Vrd3_cfo,Vrd2_cfo)', 'kN', 'Simples: o mesmo VRd deste tipo.', 'key', '0.00', 'VRd_cfo', 'NBR 16868-1 11.4.3')
+Lc('Dobrado: estribo', '=IF(larg_cf<>"Dobrado","— (contraforte simples)",IF(dob_cf=1,"Ø"&'+fphi('phi_est')+'&" c/20, 2 ramos, um estribo abraçando os dois blocos ("&FIXED(eenr-7,0)&" × "&FIXED(h_cf-9,0)&" cm), em toda fiada","— (calculado = extremidade: simples; o intermediário é o dobrado)"))', '', 'Ligação dos dois blocos (amarração indireta).', 'res', None, 'est_dob', 'NBR 16868-1 3.3 e 12.6')
 widths(C, {'A': 46, 'B': 24, 'C': 10, 'D': 72, 'E': 22, 'G': 16})
 for _cc in 'LMNOPQ':
     C.column_dimensions[_cc].hidden = True

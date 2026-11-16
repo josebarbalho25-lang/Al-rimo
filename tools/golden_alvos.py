@@ -224,6 +224,29 @@ ALVOS.update({
     'alvo_estribo4_barras_demais': {**_E4, 'n_cf_dir': 8},
 })
 
+# Contraforte DOBRADO (16/11; aba Contrafortes, seção 18): dois blocos lado a lado, 2t + 1, estribo em toda fiada. Fora
+# do sorteio de propósito (sortear a entrada nova trocaria os muros que os testes do app conhecem pelo nome). Os dois
+# blocos e os dois comprimentos de cada, enterrado e aparente; a extremidade (seção simples, o outro tipo dobrado); nº
+# ímpar digitado (vai ao par de cima); 4 ramos pedidos (a conta usa 2); carga leve (Vd ≤ Va e o estribo fica); muro de
+# cima com pilarete sobre o contraforte.
+_DB = {'Tipo_muro': 'Contrafortes', 'larg_cf': 'Dobrado', 'tipo_cf': 'Intermediário', 't_bloco': 19, 'H_muro': 3.0,
+       'H_solo': 3.0, 'Ka_dir': 0.4, 'gama_solo': 19, 'q_sobre': 5, 'fbk_': 10, 'fgk_dir': 20, 'l_cf': 2.4, 'B_sap': 2.6,
+       'a_ater': 1.6, 'h_sap': 0.5, 'phi_cf': 12.5, 'lat_pan': 'Engastadas', 'n_cf_dir': None, 'tenr_': 59,
+       'pos_cf': 'Enterrado (lado do solo)'}
+ALVOS.update({
+    'alvo_dobrado_19x59_enterrado': dict(_DB),
+    'alvo_dobrado_19x79_aparente': {**_DB, 'tenr_': 79, 'pos_cf': 'Aparente (lado de fora)', 'H_muro': 3.6, 'H_solo': 3.6},
+    'alvo_dobrado_14x54_enterrado': {**_DB, 't_bloco': 14, 'tenr_': 54, 'l_cf': 2.3, 'H_muro': 2.6, 'H_solo': 2.6, 'phi_cf': 10},
+    'alvo_dobrado_14x34_aparente': {**_DB, 't_bloco': 14, 'tenr_': 34, 'l_cf': 1.5, 'H_muro': 2.0, 'H_solo': 2.0, 'phi_cf': 10,
+                                    'pos_cf': 'Aparente (lado de fora)'},
+    'alvo_dobrado_extremidade': {**_DB, 'tipo_cf': 'Extremidade', 'bal_cf': 0.3},
+    'alvo_dobrado_n_impar_digitado': {**_DB, 'n_cf_dir': 3},
+    'alvo_dobrado_ramos4': {**_DB, 'ramos_est': 4, 's_est': 40},
+    'alvo_dobrado_dispensaria_estribo': {**_DB, 'H_muro': 1.6, 'H_solo': 1.6, 'l_cf': 1.0, 'q_sobre': 0, 'Ka_dir': 0.3,
+                                         'gama_solo': 18, 'B_sap': 1.4, 'a_ater': 0.9, 'h_sap': 0.3, 'phi_cf': 10},
+    'alvo_dobrado_com_muro_de_cima': {**_DB, **_MC, 'H_muro': 2.6, 'H_solo': 2.6, 'cin_mc': 'No topo'},
+})
+
 
 # Cenários de ENTRADA EM BRANCO. O app deixa o usuário apagar qualquer campo numérico (o motor grava null, como o
 # Excel grava célula vazia), e a sonda do Excel mostrou que o vazio não se comporta igual em toda função: o
