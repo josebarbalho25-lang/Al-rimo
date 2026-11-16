@@ -20,7 +20,7 @@ import { ENCAIXES } from './encaixes';
 import { fiadasDeCanaleta, montarFiadas, tiposDasFiadas } from './fiadas';
 import { gerarModelo } from './gerar';
 import { lerParametros } from './leitura';
-import { modular, vaosDoContraforte } from './modular';
+import { escolherVaos, modular, vaosDeFechamento, vaosDoContraforte } from './modular';
 
 const L_CF = campoDe(entradas.find((e) => e.nome === 'l_cf')!, 'planilha');
 const TENR = campoDe(entradas.find((e) => e.nome === 'tenr_')!, 'planilha');
@@ -97,7 +97,131 @@ describe('trocar o vão refaz o muro', () => {
     const a = xs(1.35);
     const b = xs(2.15);
     const passos = (v: number[]) => v.slice(1).map((x, i) => x - v[i]);
-    expect(new Set(passos(a))).toEqual(new Set([1350]));
-    expect(new Set(passos(b))).toEqual(new Set([2150]));
+    // 6 m não fecha com vãos iguais: desde 16/11 o último vão é o de fechamento (menor), os outros são o escolhido
+    // (1,35: a sobra fica abaixo do mínimo e os dois últimos dividem — 0,95 + 0,95)
+    expect(new Set(passos(a).slice(0, -2))).toEqual(new Set([1350]));
+    expect(new Set(passos(b).slice(0, -1))).toEqual(new Set([2150]));
+    expect(Math.max(...passos(a))).toBe(1350);
+    expect(Math.max(...passos(b))).toBe(2150);
+  });
+});
+
+/*
+  O VÃO DE FECHAMENTO (Jose, 16/11: "o último painel aceitar ser menor a distância entre contrafortes pra fechar o
+  muro mais próximo da tolerância real"). O comprimento digitado manda; vãos cheios e um vão menor, o último, da
+  lista; sobra abaixo do mínimo → os dois últimos dividem; nunca maior que o vão da conta.
+*/
+describe('vão de fechamento: o muro fecha no comprimento digitado', () => {
+  const vaosDe = (a: Alteracoes, extras: Record<string, number>) => {
+    const { mod, avisos, achados } = juntasAPrumo(a, extras);
+    const porTrecho = mod.trechos.map((t) => t.nos.slice(1).map((n, i) => n.xs - t.nos[i].xs));
+    const ajusteL = mod.ajustes.find((x) => x.nome === 'L_total');
+    return { mod, avisos, achados, porTrecho, vaos: porTrecho.flat(), ajusteL };
+  };
+  const B19 = (l: number): Alteracoes => ({ Tipo_muro: 'Contrafortes', t_bloco: 19, tenr_: 59, l_cf: l, H_muro: 2.6, H_solo: 2.6 });
+  const B14 = (l: number): Alteracoes => ({ Tipo_muro: 'Contrafortes', t_bloco: 14, tenr_: 54, l_cf: l, H_muro: 2.6, H_solo: 2.6 });
+
+  it('bloco 19, vão 2,80, 13,00 m: quatro vãos cheios e um de 1,60, sem seta (antes: 14,20)', () => {
+    const { vaos, ajusteL, achados, mod } = vaosDe(B19(2.8), { L_total: 13 });
+    expect(vaos).toEqual([2800, 2800, 2800, 2800, 1600]);
+    expect(mod.L_real + JUNTA).toBe(13000);
+    expect(ajusteL).toBeUndefined();
+    expect(achados).toEqual([]);
+  });
+
+  it('bloco 19, de 20 em 20 cm: todo comprimento da grade fecha sem seta e sem junta a prumo', () => {
+    for (let L = 3.0; L <= 13.0 + 1e-9; L += 0.2) {
+      const Lr = Math.round(L * 100) / 100;
+      const { vaos, ajusteL, achados, mod } = vaosDe(B19(2.8), { L_total: Lr });
+      expect(mod.L_real + JUNTA, `${Lr}`).toBe(Math.round(Lr * 1000));
+      expect(ajusteL, `${Lr}`).toBeUndefined();
+      expect(achados, `${Lr}`).toEqual([]);
+      expect(Math.max(...vaos), `${Lr}`).toBeLessThanOrEqual(2800);
+      expect(Math.min(...vaos), `${Lr}`).toBeGreaterThanOrEqual(800);
+      // cheios primeiro; no máximo dois de fechamento, no fim, o menor por último
+      const fech = vaos.filter((v) => v !== 2800);
+      expect(fech.length, `${Lr}`).toBeLessThanOrEqual(2);
+      expect(vaos.slice(vaos.length - fech.length), `${Lr}`).toEqual(fech);
+      if (fech.length === 2) expect(fech[0], `${Lr}`).toBeGreaterThanOrEqual(fech[1]);
+    }
+  }, 120_000);
+
+  it('sobra menor que o vão mínimo: os dois últimos dividem (11,80 m com 2,80 → …, 1,60, 1,60)', () => {
+    const { vaos, ajusteL } = vaosDe(B19(2.8), { L_total: 11.8 });
+    expect(vaos).toEqual([2800, 2800, 2800, 1600, 1600]);
+    expect(ajusteL).toBeUndefined();
+    // sobra 0,60: os dois últimos somam 3,40, o mais iguais na grade e o menor por último
+    expect(vaosDe(B19(2.8), { L_total: 12.0 }).vaos).toEqual([2800, 2800, 2800, 1800, 1600]);
+  });
+
+  it('bloco 14 (só nº par de meios módulos): fecha de 40 em 40 cm e a seta vai ao mais perto', () => {
+    // 2,55: 12,50 = 4 × 2,55 + 2,15 + 0,15
+    expect(vaosDe(B14(2.55), { L_total: 12.5 }).vaos).toEqual([2550, 2550, 2550, 2550, 2150]);
+    // 12,30 fica entre 12,10 e 12,50 (empate): vai ao maior, como o arredondamento de antes
+    const r = vaosDe(B14(2.55), { L_total: 12.3 });
+    expect(r.ajusteL).toEqual({ nome: 'L_total', de: 12.3, para: 12.5, unidade: 'm' });
+    // o valor da seta é ponto fixo: digitado, a seta some e o muro é o mesmo
+    const de = vaosDe(B14(2.55), { L_total: 12.5 });
+    expect(de.ajusteL).toBeUndefined();
+    expect(de.vaos).toEqual(r.vaos);
+    // perto da troca do nº de vãos o passo não é 40 (13,00 → 13,05: os dois últimos 1,35 + 1,35)
+    const t = vaosDe(B14(2.55), { L_total: 13 });
+    expect(t.vaos).toEqual([2550, 2550, 2550, 2550, 1350, 1350]);
+    expect(t.ajusteL?.para).toBe(13.05);
+    expect(vaosDe(B14(2.55), { L_total: 13.05 }).ajusteL).toBeUndefined();
+    for (const L of [4.6, 7.3, 9.9, 12.3, 13, 15.7]) {
+      const x = vaosDe(B14(2.55), { L_total: L });
+      expect(x.achados, `${L}`).toEqual([]);
+      for (const v of x.vaos) expect(vaosDoContraforte('14x39', 2550).includes(v), `${L}: ${v}`).toBe(true);
+      expect(Math.min(...x.vaos), `${L}`).toBeGreaterThanOrEqual(950);
+      // ponto fixo da seta
+      const fixo = (x.mod.L_real + JUNTA) / 1000;
+      const y = vaosDe(B14(2.55), { L_total: fixo });
+      expect(y.ajusteL, `${L} → ${fixo}`).toBeUndefined();
+      expect(y.vaos, `${L} → ${fixo}`).toEqual(x.vaos);
+    }
+  }, 60_000);
+
+  it('juntas de controle: trechos com o mesmo nº de vãos, o de fechamento no fim do último', () => {
+    const { porTrecho, ajusteL, achados, mod } = vaosDe(B19(2.8), { L_total: 20, junta_cada: 6 });
+    expect(ajusteL).toBeUndefined();
+    expect(mod.L_real + JUNTA).toBe(20000);
+    expect(achados).toEqual([]);
+    const n = porTrecho.map((v) => v.length);
+    expect(Math.max(...n) - Math.min(...n)).toBeLessThanOrEqual(1);
+    porTrecho.slice(0, -1).forEach((v) => expect(new Set(v)).toEqual(new Set([2800])));
+    expect(porTrecho.at(-1)!.at(-1)).toBeLessThan(2800);
+    // ponto fixo com juntas, várias medidas
+    for (const L of [9.1, 13.3, 17.7, 25.5]) {
+      const x = vaosDe(B19(2.8), { L_total: L, junta_cada: 6 });
+      const fixo = (x.mod.L_real + JUNTA) / 1000;
+      const y = vaosDe(B19(2.8), { L_total: fixo, junta_cada: 6 });
+      expect(y.ajusteL, `${L} → ${fixo}`).toBeUndefined();
+      expect(y.porTrecho, `${L}`).toEqual(x.porTrecho);
+      expect(x.achados, `${L}`).toEqual([]);
+    }
+  }, 60_000);
+
+  it('comprimento que já fechava com vãos iguais: o muro é o de antes (vãos iguais, mesmos nós)', () => {
+    for (const [a, l] of [[B19(2.8), 2800], [B19(1.6), 1600], [B14(1.35), 1350], [B14(2.55), 2550]] as const) {
+      const Wn = (a.t_bloco === 19 ? 190 : 140) + JUNTA;
+      for (const N of [1, 2, 3, 5, 7]) {
+        const L = (N * l + Wn) / 1000;
+        const { vaos, ajusteL } = vaosDe(a, { L_total: L });
+        expect(vaos, `${l} × ${N}`).toEqual(Array(N).fill(l));
+        expect(ajusteL, `${l} × ${N}`).toBeUndefined();
+      }
+    }
+  });
+
+  it('a regra sozinha: nunca vão maior que o cheio, soma mais perto do alvo', () => {
+    const val = vaosDeFechamento('19x39', 2800);
+    expect(val[0]).toBe(800);
+    expect(val.at(-1)).toBe(2800);
+    expect(escolherVaos(12800, 2800, val, 1)).toEqual([2800, 2800, 2800, 2800, 1600]);
+    // muro curto: um vão só, menor que o cheio
+    expect(escolherVaos(1400, 2800, val, 1)).toEqual([1400]);
+    // abaixo do mínimo: o mínimo
+    expect(escolherVaos(300, 2800, val, 1)).toEqual([800]);
   });
 });

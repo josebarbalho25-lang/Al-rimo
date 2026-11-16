@@ -19,6 +19,8 @@ import {
   PONTA_DO_NO, esperaNoDeCachorro, estribo, ganchoEstribo, medidasDoEstribo, medidasDoNo, pontaDoNo, raioDoEstribo, type BarraNova,
 } from './barras';
 import antes from './__fixtures__/sapata_e_esperas_15-10.json';
+import { lerParametros } from './leitura';
+import { modular } from './modular';
 
 const sub = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const unit = (a: Vec3): Vec3 => {
@@ -264,9 +266,21 @@ describe('sapata em estribos (sap_transv = Estribo, o padrão)', () => {
 // ── o desenho de antes, barra por barra ──────────────────────────────────────
 
 const FIXTURE = antes as Record<string, string[]>;
+/**
+ * O comprimento que a regra de antes de 16/11 desenhava (N vãos iguais, N = digitado ÷ vão arredondado): a foto de
+ * 15/10 é desse muro. Digitado esse valor, o muro de hoje é o mesmo — com 6 m, o de hoje fecha com um vão menor.
+ */
+const comprimentoDeAntes = (c: string, extras: Record<string, Valor>): Record<string, Valor> => {
+  const r = resultadoDoGabarito(c);
+  const p = lerParametros(r, { ...padroesDoModelo(), ...extras }, []);
+  if (!p.contrafortes || p.junta_cada > 0) return extras;
+  const mod = modular(p, []);
+  const N = Math.max(1, Math.round((p.L_total - mod.Wn) / mod.l_cf));
+  return { ...extras, L_total: (N * mod.l_cf + mod.Wn) / 1000 };
+};
 const caso = (chave: string): [string, Record<string, Valor>] => {
   const [c, json] = chave.split(' ');
-  return [c, json ? (JSON.parse(json) as Record<string, Valor>) : {}];
+  return [c, comprimentoDeAntes(c, json ? (JSON.parse(json) as Record<string, Valor>) : {})];
 };
 const linha = (b: Barra | BarraNova): string => `${b.id}|${b.papel}|${b.diametro}|${b.comprimento}|${b.eixo.map((q) => q.join(',')).join(';')}`;
 

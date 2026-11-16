@@ -274,9 +274,13 @@ function barrasEmUDosVaos(m: Modelo, r: Resultado): string[] {
         const nec = lb !== null ? Math.max(0.7 * lb, 0.3 * lb, 10 * phi, 100) : null;
         const curta = nec !== null && perna < nec - 0.5;
         if (curta !== curtas.has(b.id)) out.push(`${b.id}: perna ${perna} × ℓb,nec ${nec} e o aviso ${curtas.has(b.id) ? 'dado' : 'faltando'}`);
-        const forma = `${phi}|${Math.round(b.comprimento)}`;
+        // a forma pelo Ø, pelo comprimento E pela abertura: com o vão de fechamento (16/11) um U de vão menor pode ter o
+        // mesmo comprimento que o da outra face num vão cheio (base mais curta, pernas mais compridas) e é outra barra
+        const forma = `${phi}|${Math.round(b.comprimento)}|${Math.round(fim[0] - ini[0])}`;
         (porFio.get(forma) ?? porFio.set(forma, new Set()).get(forma)!).add(b.posicao);
-        if (us.some((q) => q.posicao !== b.posicao)) out.push(`${b.id}: U diferentes na mesma fiada`);
+        // vãos do mesmo tamanho, o mesmo U (desde 16/11 o vão de fechamento é menor e tem o U dele)
+        const vao = (w: number) => cfs[w + 1].x - cfs[w].x;
+        if (us.some((q, w) => vao(w) === vao(v) && q.posicao !== b.posicao)) out.push(`${b.id}: U diferentes em vãos iguais da mesma fiada`);
       });
       }
     }
@@ -575,7 +579,9 @@ describe('regra modular', () => {
       expect(m.dims.contrafortes.length).toBe(vaos + 1);
       expect(m.dims.L_real).toBe(Math.round(L * 1000) - 10);
     }
-    expect(seta(gerarModelo(c14, { L_total: 6 }))).toEqual({ nome: 'L_total', de: 6, para: 5.55, unidade: 'm' });
+    // 6,00 não fecha: desde 16/11 vai ao mais perto com o vão de fechamento — 3 × 1,35 + 0,95 + 0,95 + 0,15 = 6,10
+    // (antes, 4 vãos iguais: 5,55)
+    expect(seta(gerarModelo(c14, { L_total: 6 }))).toEqual({ nome: 'L_total', de: 6, para: 6.1, unidade: 'm' });
 
     // contrafortes 19x39 (vão 1,60 = 20 + 7·20): 3 vãos + 20 = 5,00
     const c19 = trocar(c14, { t_bloco: 19, L_bloco: 39, eenr: 19, Ag_furo: 170, hf_bl: 3.5, l_cf: 1.6 });
@@ -587,8 +593,8 @@ describe('regra modular', () => {
 
     // com junta de controle, digitar o valor da seta faz a seta sumir (o nº de trechos não muda com ele)
     const c19j = trocar(c14, { t_bloco: 19, L_bloco: 39, eenr: 19, Ag_furo: 170, hf_bl: 3.5, l_cf: 2 });
-    const antes = seta(gerarModelo(c19j, { L_total: 5.9, junta_cada: 6 }))!;
-    expect(antes.para).toBe(6.4);                                   // 2 trechos: 3 vãos de 2,00 + 2 nós de 20
+    const antes = seta(gerarModelo(c19j, { L_total: 6.1, junta_cada: 6 }))!;
+    expect(antes.para).toBe(6.2);                                   // 2 trechos: 2,00 + 2,00 + 1,80 + 2 nós de 20
     const depois = gerarModelo(c19j, { L_total: antes.para, junta_cada: 6 });
     expect(seta(depois)).toBeUndefined();
     expect(depois.dims.trechos.length).toBe(2);
@@ -797,6 +803,26 @@ describe('canaleta como a obra deixa: fundo furado onde sobe a barra, T de graut
       }
     }, 60_000);
   }
+
+  // vão de fechamento (16/11): comprimentos que não fecham com vãos iguais — o último vão (ou os dois últimos) menor.
+  // As mesmas conferências valem nele: U da canaleta mais curto, barras do painel, dreno e barbacã do vão, pilaretes.
+  it('vão de fechamento: nenhuma barra atravessa peça sólida, graute fora da alvenaria, haste sem fresta', () => {
+    const casos: [string, Record<string, number>][] = [
+      ['aula123', { L_total: 6.0 }], ['aula123', { L_total: 13.0, junta_cada: 6 }],
+      ['sorteio17', { L_total: 13.0 }], ['sorteio17', { L_total: 11.8 }],
+      ['sorteio23', { L_total: 9.3 }],
+      ['alvo_mc_cf_pilarete_largo', { L_total: 12.7 }],
+    ];
+    for (const [c, l] of casos) {
+      const m = gerarModelo(resultadoDoGabarito(c), { ...padroesDoModelo(), ...l });
+      const xs = m.dims.contrafortes.map((q) => q.x);
+      const passos = new Set(xs.slice(1).map((x, i) => x - xs[i]).filter((d) => d > 50));
+      expect(passos.size, `${c} ${JSON.stringify(l)}: tem vão menor`).toBeGreaterThan(1);
+      expect(barrasEmPecaSolida(m), c).toEqual([]);
+      expect(grauteEmPecaSolida(m), c).toEqual([]);
+      expect(hasteSemFresta(m), c).toEqual([]);
+    }
+  }, 180_000);
 
   // estribo com a forma do Pró-Viga (ganchos de 135° e volta em espiral, 15/10) no contraforte e na sapata: Ø16 em
   // sapata de 20 e 30 cm com torção (sorteio01; sorteio31, torção a cada 5 cm), torção a cada 3 cm (sorteio14); e o
@@ -1034,7 +1060,8 @@ describe('barra em U da canaleta entre contrafortes (Jose, 21/10)', () => {
     }
   });
   it('um U por vão em cada fiada de canaleta, todos a mesma barra (uma posição só), pernas para o lado da haste', () => {
-    for (const [c, extras] of [['aula123', { L_total: 6 }], ['sorteio23', padroesDoModelo()]] as const) {
+    // 5,55 = 4 vãos iguais de 1,35 (com 6,00 o último par de vãos é de fechamento e tem o seu U, 16/11)
+    for (const [c, extras] of [['aula123', { L_total: 5.55 }], ['sorteio23', { ...padroesDoModelo(), L_total: 5.4 }]] as const) {
       const r = resultadoDoGabarito(c);
       const m = gerarModelo(r, extras);
       const us = m.barras.filter((b) => b.papel === 'HORIZ');
@@ -1090,10 +1117,16 @@ describe('comprimento do muro no módulo (Jose, 09/10)', () => {
           expect(alv.some((p) => p.tipo === 'CANALETA_CORTADA'), nome).toBe(false);
           for (const tr of m.dims.trechos) expect((tr.x1 - tr.x0 + 10) % m.familia.m, nome).toBe(0);
         } else {
-          // contrafortes: cada trecho é um nº inteiro de vãos (eixo a eixo) + a largura do contraforte
-          const xs = m.dims.contrafortes.map((k) => k.x);
-          const vao = xs[1] - xs[0];
-          m.dims.trechos.forEach((tr) => expect((tr.x1 - tr.x0 - m.familia.t) % vao, nome).toBe(0));
+          // contrafortes: cada vão é nó + n meios módulos, nenhum maior que o da conta (o de fechamento, 16/11, menor)
+          const vaos = m.dims.trechos.flatMap((_, k) => {
+            const xs = m.dims.contrafortes.filter((q) => q.trecho === k + 1).map((q) => q.x);
+            return xs.slice(1).map((x, i) => x - xs[i]);
+          });
+          const cheio = Math.round((r.num('l_cf_adot') ?? 0) * 1000);
+          for (const v of vaos) {
+            expect((v - m.familia.t - 10) % m.familia.m, nome).toBe(0);
+            expect(v, nome).toBeLessThanOrEqual(cheio);
+          }
         }
         // a seta compara com o MODULAR (desenhado + a junta da ponta) e mostra ele; digitado de volta, ela some
         const modular = m.dims.L_real + 10;

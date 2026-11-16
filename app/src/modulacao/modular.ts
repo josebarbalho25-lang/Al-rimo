@@ -184,7 +184,7 @@ export function modular(p: Parametros, avisos: Aviso[]): Modulo {
 
   // ── comprimento e trechos ──
   const { trechos, L_real } = p.contrafortes
-    ? trechosComContrafortes(p, Wn, l_cf)
+    ? trechosComContrafortes(p, Wn, l_cf, vaosDeFechamento(nomeFam, l_cf))
     : trechosEmBalanco(p, m);
   // O comprimento digitado é o MODULAR (Jose: "comprimento fixado em múltiplos dos blocos"): células de bloco + junta
   // contadas com a junta da ponta, como na planta de modulação. O desenhado (L_real, que o quantitativo e os desenhos
@@ -223,33 +223,102 @@ function trechosEmBalanco(p: Parametros, m: number): { trechos: TrechoModulado[]
   return { trechos, L_real: nCel * m - JUNTA };
 }
 
-function trechosComContrafortes(p: Parametros, Wn: number, l_cf: number): { trechos: TrechoModulado[]; L_real: number } {
+/**
+ * Menor vão que a lista das Entradas oferece (0,80 m; na 14x39 o primeiro que amarra acima dele é 0,95). Abaixo disso
+ * o vão também amarra (19: 0,40 e 0,60; 14: 0,55), mas fica fora pela decisão do vão mínimo (vaosDaLista.test.ts) — o
+ * vão de fechamento obedece à mesma lista.
+ */
+export const VAO_MINIMO = 800;
+
+/** Vãos que podem fechar o muro: os da lista (amarram, ≥ VAO_MINIMO) até o vão cheio, que entra sempre. */
+export function vaosDeFechamento(familia: NomeFamilia, l_cf: number): number[] {
+  const v = vaosDoContraforte(familia, l_cf + 0.5).filter((x) => x >= VAO_MINIMO - 0.5 && x < l_cf - 0.5);
+  return [...v, l_cf];
+}
+
+/**
+ * Os vãos do muro, em ordem (Jose, 16/11: "o último painel aceitar ser menor a distância entre contrafortes pra fechar
+ * o muro mais próximo da tolerância real"). Antes o muro só fechava em N vãos iguais (13 m com vão 2,80 virava 11,40
+ * ou 14,20). Regra combinada com ele:
+ *  - o comprimento digitado manda: soma dos vãos mais perto de `alvo` (empate: o mais comprido, como o arredondamento
+ *    de antes);
+ *  - vãos cheios (l_cf) e UM vão de fechamento menor, o último, tirado da lista (`validos`) — vão fora da lista
+ *    deixaria junta a prumo;
+ *  - sobra abaixo do vão mínimo: os DOIS últimos dividem vão cheio + sobra, os dois da lista, o mais iguais possível,
+ *    o menor por último;
+ *  - nunca vão maior que l_cf: a conta (painel, contraforte) é feita com o vão cheio, que é o pior caso — o vão
+ *    menor fica a favor, sem conta nova.
+ * Soma que já fecha com vãos iguais dá exatamente os vãos iguais de antes (distância zero e nenhuma outra forma
+ * chega à mesma soma).
+ */
+export function escolherVaos(alvo: number, l: number, validos: number[], nMin: number): number[] {
+  const vmin = validos[0];
+  let melhor: { soma: number; vaos: number[]; fech: number } | null = null;
+  const considera = (vaos: number[], fech: number): void => {
+    const soma = vaos.reduce((s, v) => s + v, 0);
+    const d = Math.abs(soma - alvo);
+    const dm = melhor ? Math.abs(melhor.soma - alvo) : Infinity;
+    if (!melhor || d < dm - EPS || (Math.abs(d - dm) <= EPS && (soma > melhor.soma + EPS || (Math.abs(soma - melhor.soma) <= EPS && fech < melhor.fech)))) {
+      melhor = { soma, vaos, fech };
+    }
+  };
+  const n0 = Math.max(nMin, Math.floor(alvo / l) - 1);
+  const n1 = Math.max(n0, Math.ceil(alvo / l) + 1);
+  for (let N = n0; N <= n1; N++) {
+    for (const v of validos) {
+      const vaos = [...Array<number>(N - 1).fill(l), v];
+      considera(vaos, v === l ? 0 : 1);
+    }
+    if (N < 2) continue;
+    // par de fechamento: só quando a sobra (soma − l) não chega ao vão mínimo — senão um vão só resolve
+    const porSoma = new Map<number, [number, number]>();
+    for (const a of validos) {
+      for (const b of validos) {
+        if (b > a) continue;
+        const r = a + b - l;
+        if (r <= EPS || r >= vmin - EPS) continue;
+        const ja = porSoma.get(a + b);
+        if (!ja || b > ja[1]) porSoma.set(a + b, [a, b]);     // o mais iguais: o menor dos dois é o maior possível
+      }
+    }
+    for (const [a, b] of porSoma.values()) considera([...Array<number>(N - 2).fill(l), a, b], 2);
+  }
+  return melhor ? (melhor as { vaos: number[] }).vaos : Array<number>(Math.max(1, nMin)).fill(l);
+}
+
+function trechosComContrafortes(p: Parametros, Wn: number, l_cf: number, validos: number[]): { trechos: TrechoModulado[]; L_real: number } {
   const b = Wn - JUNTA;           // largura do contraforte (t)
-  // Comprimento modular com nT trechos e N vãos: N·l_cf + nT·Wn (cada trecho fecha com o nó da ponta; o desenhado é
-  // esse menos a junta da ponta). N sai do digitado; nT, como no balanço, do DESENHADO — contar os trechos pelo
-  // digitado fazia o modular mudar quando o usuário digitava o valor da seta (junta a cada 6 m: 5,90 → 6,20 e, ao
+  // Comprimento modular com nT trechos: Σvãos + nT·Wn (cada trecho fecha com o nó da ponta; o desenhado é esse menos
+  // a junta da ponta). Os vãos saem do digitado (escolherVaos); nT, como no balanço, do DESENHADO — contar os trechos
+  // pelo digitado fazia o modular mudar quando o usuário digitava o valor da seta (junta a cada 6 m: 5,90 → 6,20 e, ao
   // digitar 6,20, → 6,40). Partindo do digitado menos a junta e repetindo até o nº de trechos parar, o valor da seta
   // é ponto fixo: digitado de novo, dá o mesmo muro e nenhuma seta.
-  const vaos = (n: number): number => Math.max(n, Math.round((p.L_total - n * Wn) / l_cf));
+  const vaos = (n: number): number[] => escolherVaos(p.L_total - n * Wn, l_cf, validos, n);
+  const soma = (v: number[]): number => v.reduce((s, x) => s + x, 0);
   let nT = quantosTrechos(p.L_total - JUNTA, p.junta_cada);
   for (let i = 0; i < 4; i++) {
-    const outro = quantosTrechos(vaos(nT) * l_cf + nT * Wn - JUNTA, p.junta_cada);
+    const outro = quantosTrechos(soma(vaos(nT)) + nT * Wn - JUNTA, p.junta_cada);
     if (outro === nT) break;
     nT = outro;
   }
-  const N = vaos(nT);
+  // Juntas de controle: os trechos com o mesmo nº de vãos (± um, os primeiros com um a mais, como antes) e a lista
+  // de vãos repartida na ordem — o(s) de fechamento caem no fim do último trecho. DECISÃO (16/11): com o par de
+  // fechamento e um último trecho de um vão só, o primeiro do par fica no fim do trecho anterior.
+  const lista = vaos(nT);
   const trechos: TrechoModulado[] = [];
   let x = 0;
   let cf = 1;
-  dividir(N, nT).forEach((nv, k) => {
+  let iv = 0;
+  dividir(lista.length, nT).forEach((nv, k) => {
     const x0 = x;
-    const x1 = x0 + nv * l_cf + b;
     const nos: No[] = [];
+    let xs = x0;
     for (let j = 0; j <= nv; j++) {
-      const xs = x0 + j * l_cf;
       const tipo: No['tipo'] = j === 0 ? 'L0' : j === nv ? 'L1' : 'T';
       nos.push({ tipo, xs, xe: xs + Wn, xc: xs + b / 2, cf: cf++ });
+      if (j < nv) xs += lista[iv++];
     }
+    const x1 = nos[nos.length - 1].xs + b;
     trechos.push({ indice: k + 1, x0, x1, nos });
     x = x1 + JUNTA;
   });
