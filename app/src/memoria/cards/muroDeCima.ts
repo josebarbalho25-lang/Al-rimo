@@ -274,6 +274,11 @@ function cardMuroDeCima(r: Parameters<AutorDeCards>[0]): Card {
   const comMc = ligado(m, 'mc_on');
   const faces = m.texto('reb_mc') === 'Nas duas faces' ? 2 : m.texto('reb_mc') === 'Só na frente' ? 1 : 0;
   const largo = m.texto('chk_ligg').includes('mais largo que o contraforte');
+  // contraforte dobrado (16/11): bloco 14 (a barra do lado do muro cai na parede do bloco de junção) e nº ímpar por face
+  // (uma barra cairia na junta do par) — a montagem se escreve no bloco ou no nº de barras
+  const dob14 = m.texto('chk_ligg').includes('dobrado em bloco 14');
+  const impar = m.texto('chk_ligg').includes('nº par');
+  const outraMontagem = largo || dob14 || impar;
   const hmc = m.ent('h_mc', 'h_{mc}');
   const tmc = m.ent('t_mc', 't_{mc}');
   const gmc = m.ent('g_mc', 'g_{mc}');
@@ -312,8 +317,10 @@ function cardMuroDeCima(r: Parameters<AutorDeCards>[0]): Card {
     }),
     m.passo('hs_pila', 'h_{pil}', null, {
       casas: 1, unidade: 'cm', origem: m.num('hs_pil') !== null ? 'entrada' : 'adotado',
-      ...(largo ? {} : { verif: { chave: 'murocima.pilarete.montagem', rotulo: 'Pilarete: montagem no arrimo', limite: m.g('h_lig', 'h_{lig}', 1, 'cm'), relacao: '<=' as const, celula: 'chk_ligg', aplicavel: comMc } }),
+      ...(outraMontagem ? {} : { verif: { chave: 'murocima.pilarete.montagem', rotulo: 'Pilarete: montagem no arrimo', limite: m.g('h_lig', 'h_{lig}', 1, 'cm'), relacao: '<=' as const, celula: 'chk_ligg', aplicavel: comMc } }),
     }),
+    dob14 && m.passo('t_bloco', 't', null, { casas: 0, unidade: 'cm', origem: 'entrada', verif: { chave: 'murocima.pilarete.montagem', rotulo: 'Pilarete sobre o dobrado: bloco', limite: 19, relacao: '>=' as const, celula: 'chk_ligg', aplicavel: comMc } }),
+    impar && m.passo('n_pil', 'n_{pil}', null, { casas: 0, origem: 'entrada', verif: { chave: 'murocima.pilarete.montagem', rotulo: 'Pilarete sobre o dobrado: nº par por face', limite: 2 * Math.floor((m.num('n_pil') ?? 0) / 2), relacao: '<=' as const, celula: 'chk_ligg', aplicavel: comMc } }),
     m.passo('P_mc', 'P_{mc}', soma(...[
       mul(gmct, hmc),
       ...((m.num('s_trib') ?? 0) > 0 ? [mul(par(sub(div(mul(gpil, bp, hp), cte(10000, 0)), div(mul(gmct, bp), cem))), div(hmc, s))] : []),

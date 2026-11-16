@@ -207,6 +207,23 @@ function desenhoDasCargasVerticais(r: Resultado, ref: 'pe' | 'centro'): DesenhoD
     partes.push(texto(xLeg + 28, yL + 5, `${q.nome}  ${m2(q.N)} kN · ${comSinal(dist(q.x))} m`, FS - 1, 'start'));
     yL += 28;
   });
+  // PASSIVO NO TOMBAMENTO (Jose, 16/11), só com a garantia do solo da frente: seta horizontal na face da frente (o pé),
+  // numerada depois das verticais, com o braço cotado do fundo da sapata
+  const Ep = r.num('Ep_tb'), yP = r.num('y_ptb'), MP = r.num('M_ptb');
+  if (doPe && String(r.v('pass_on') ?? '') === 'Sim' && ok(Ep) && Ep > 0 && ok(yP)) {
+    const n = ordenadas.length + 1;
+    const yy = c.yBase - yP * s;
+    partes.push(seta(xPe - 58, yy, xPe - 2, yy, AZUL, 2.2));
+    partes.push(etiqueta(xPe - 66, yy, n));
+    partes.push(cotaV(xPe - 30, yy, c.yBase, `${m2(yP)} m`, -1));
+    partes.push(etiqueta(xLeg + 10, yL, n));
+    partes.push(texto(xLeg + 28, yL + 5, `passivo da frente  ${m2(Ep)} kN · ${m2(yP)} m acima do fundo`, FS - 1, 'start'));
+    yL += 28;
+    if (ok(MP)) {
+      partes.push(texto(xLeg, yL + 4, `M passivo = ${m2(Ep)} × ${m2(yP)} = ${m2(MP)} kN·m`, FS - 1, 'start'));
+      yL += 22;
+    }
+  }
   if (ok(total)) {
     partes.push(texto(xLeg, yL + 10, doPe ? `M est = Σ N × braço = ${m2(total)} kN·m` : `M N = Σ N × d = ${comSinal(total)} kN·m`, FS, 'start', TINTA, 'bold'));
   }
@@ -248,20 +265,27 @@ export function desenhoDasForcasQueTombam(r: Resultado): DesenhoDoCard | null {
   const xPl = c.X(0);
   const kp = 140 / Math.max(Math.abs(sTopo), Math.abs(sBase), Math.abs(sSap), 1e-9);   // px por kPa
   const ySolo = yTopo - g.Hs * s;
-  partes.push(poli([[xPl, ySolo], [xPl + sTopo * kp, ySolo], [xPl + sBase * kp, yTopo], [xPl + sSap * kp, c.yBase], [xPl, c.yBase]], EMPUXO, LARANJA, 1));
-  partes.push(lin(xPl, ySolo, xPl, c.yBase, TINTA, 1, ' stroke-dasharray="6 4"'));
+  // Empuxo na altura da sapata (Jose, 16/11; padrão Não): com Não o diagrama para no topo da sapata
+  const naSapata = String(r.v('emp_sap') ?? '') === 'Sim';
+  const yFim = naSapata ? c.yBase : yTopo;
+  partes.push(poli(naSapata
+    ? [[xPl, ySolo], [xPl + sTopo * kp, ySolo], [xPl + sBase * kp, yTopo], [xPl + sSap * kp, c.yBase], [xPl, c.yBase]]
+    : [[xPl, ySolo], [xPl + sTopo * kp, ySolo], [xPl + sBase * kp, yTopo], [xPl, yTopo]], EMPUXO, LARANJA, 1));
+  partes.push(lin(xPl, ySolo, xPl, yFim, TINTA, 1, ' stroke-dasharray="6 4"'));
   for (let k = 1; k <= 4; k++) {
-    const yy = ySolo + (k / 5) * (c.yBase - ySolo);
+    const yy = ySolo + (k / 5) * (yFim - ySolo);
     const frac = (yy - ySolo) / (yTopo - ySolo);
     const w = yy <= yTopo ? sTopo + (sBase - sTopo) * frac : sBase + ((sSap - sBase) * (yy - yTopo)) / (c.yBase - yTopo);
     if (w * kp > 16) partes.push(seta(xPl + w * kp - 2, yy, xPl + 3, yy, LARANJA, 1));
   }
-  partes.push(texto(xPl + sSap * kp + 8, c.yBase + 4, `${m2(sSap)} kPa`, FS - 1, 'start'));
+  partes.push(naSapata
+    ? texto(xPl + sSap * kp + 8, c.yBase + 4, `${m2(sSap)} kPa`, FS - 1, 'start')
+    : texto(xPl + sBase * kp + 8, yTopo + 4, `${m2(sBase)} kPa`, FS - 1, 'start'));
   partes.push(texto(xPl + sTopo * kp + 8, ySolo + 12, `${m2(sTopo)} kPa`, FS - 1, 'start'));
   // a resultante: H na altura y = M de tombamento / H acima da base
   const yH = Mtb / H;
   const yy = c.yBase - yH * s;
-  const xFimSeta = xPl + Math.max(sBase, sSap) * kp + 120;
+  const xFimSeta = xPl + Math.max(sBase, naSapata ? sSap : sBase) * kp + 120;
   partes.push(seta(xFimSeta, yy, xPl + 2, yy, LARANJA, 3));
   partes.push(texto(xFimSeta - 4, yy - 9, `H = ${m2(H)} kN`, FS, 'end', LARANJA, 'bold'));
   partes.push(chamada(xPl, yy, xFimSeta + 34, yy), chamada(xPe, c.yBase, xFimSeta + 34, c.yBase));
@@ -269,7 +293,7 @@ export function desenhoDasForcasQueTombam(r: Resultado): DesenhoDoCard | null {
   partes.push(...giroNoPe(xPe, c.yBase));
   const yRodape = c.yFundo + 44;
   partes.push(texto(xPe, yRodape, `M de tombamento = H × y = ${m2(H)} × ${m2(yH)} = ${m2(Mtb)} kN·m (em torno do pé, na base da sapata)`, FS, 'start', TINTA, 'bold'));
-  return { svg: svgDe(partes, yRodape + 14), titulo: 'Forças que tombam (empuxo até a base da sapata)', largura: LARGURA };
+  return { svg: svgDe(partes, yRodape + 14), titulo: naSapata ? 'Forças que tombam (empuxo até a base da sapata)' : 'Forças que tombam (empuxo até o topo da sapata)', largura: LARGURA };
 }
 
 /** 3. As tensões no solo: o centro da base, a resultante a e dele, o núcleo central e o diagrama de pressão. */

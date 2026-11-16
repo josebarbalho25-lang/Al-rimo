@@ -92,7 +92,7 @@ export const ABAS: readonly Aba[] = [
   {
     id: 'fundacao', titulo: 'Fundação', grupos: [
       { titulo: 'Geometria', campos: ['B_sap', 'h_sap', 'a_ater', 'b_den', 'h_den', 'x_den'] },
-      { titulo: 'Cargas', campos: ['P_topo', 'q_est'] },
+      { titulo: 'Cargas', campos: ['P_topo', 'q_est', 'emp_sap'] },
       { titulo: 'Solo de apoio', campos: ['SPT_b', 'sig_adm_dir', 'phi_base', 'dphi', 'ades_b'] },
       { titulo: 'Espera', campos: ['arranque', 'zona_ad', 'gancho_', 'traspasse_dir'] },
       { titulo: 'Armadura da sapata', campos: ['sap_transv', 'cob_sap', 'phi_sap', 'phi_sap2', ['phi_tor', C]] },

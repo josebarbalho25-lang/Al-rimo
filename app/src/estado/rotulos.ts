@@ -161,6 +161,7 @@ export const ROTULO_CURTO: Record<string, string> = {
   dphi: "δ/φ'",
   ades_b: 'Adesão na base',
   pass_on: 'Frente garantida',
+  emp_sap: 'Empuxo na sapata',
   h_fr: 'Aterro sobre a ponta',
   SPT_b: 'SPT da base',
   sig_adm_dir: 'σadm',

@@ -112,6 +112,11 @@ export const SIMBOLOS_ESTABILIDADE: Readonly<Record<string, string>> = {
   c_a: 'adesão solo-base',
   'R_{ad}': 'resistência ao deslizamento por adesão na base',
   E_p: 'empuxo passivo na frente da sapata, no módulo',
+  // ── passivo no tombamento (Jose, 16/11) ──
+  'E_{p,tb}': 'empuxo passivo da frente no tombamento (sem o dente), no módulo',
+  'y_{p,tb}': 'braço do passivo acima do fundo da sapata',
+  'M_{p,tb}': 'momento do passivo em torno do pé',
+  'e_{tb}': 'excentricidade da verificação de tombamento (com o passivo)',
   'FS_{desl}': 'fator de segurança ao deslizamento',
   'FS_{desl,m\\acute{\\imath}n}': 'fator de segurança mínimo ao deslizamento',
   // ── tensões no solo (B_c, σmáx, σmín: SIMBOLOS_SAPATA) ──
@@ -304,14 +309,16 @@ function cardCargas(r: Resultado): Card {
   // a água só entra no trecho da sapata se o NA estiver acima da base dela: AND(Agua="Sim"; H_solo + h_sap > z_NA)
   // (o NA é medido do topo do solo)
   const aguaNaSapata = agua && (m.num('H_solo') ?? 0) + (m.num('h_sap') ?? 0) > (m.num('z_NA') ?? 0);
-  const empuxo = secao('Empuxo até a base da sapata', [
-    m.passo('sh_b2', '\\sigma_{h,s}', aguaNaSapata
+  // Empuxo na altura da sapata (Jose, 16/11; padrão Não): com Não o empuxo para no topo da sapata — sem a fatia dela
+  const naSapata = m.texto('emp_sap') === 'Sim';
+  const empuxo = secao(naSapata ? 'Empuxo até a base da sapata' : 'Empuxo até o topo da sapata', [
+    naSapata && m.passo('sh_b2', '\\sigma_{h,s}', aguaNaSapata
       ? soma(f.shBase, mul(f.hs, soma(mul(f.Ka, sub(f.gama, f.gw)), f.gw)))
       : soma(f.shBase, mul(f.hs, mul(f.Ka, f.gama))), { casas: 2, unidade: 'kPa' }),
     f.vento && m.passo('Vk_w', 'V_{k,w}', null, { casas: 2, unidade: 'kN/m', origem: 'calculado' }),
-    m.passo('H_k', 'H_k', mul(f.vento
-      ? soma(f.Vk, f.Vkw, mul(div(soma(f.shBase, f.shSap), DOIS), f.hs))
-      : soma(f.Vk, mul(div(soma(f.shBase, f.shSap), DOIS), f.hs)), f.L), { casas: 2, unidade: 'kN' }),
+    m.passo('H_k', 'H_k', mul(naSapata
+      ? (f.vento ? soma(f.Vk, f.Vkw, mul(div(soma(f.shBase, f.shSap), DOIS), f.hs)) : soma(f.Vk, mul(div(soma(f.shBase, f.shSap), DOIS), f.hs)))
+      : (f.vento ? par(soma(f.Vk, f.Vkw)) : f.Vk), f.L), { casas: 2, unidade: 'kN', ...(naSapata ? {} : { ref: CRITERIO }) }),
   ], RANKINE);
 
   return {
@@ -335,6 +342,11 @@ function cardTombamento(r: Resultado): Card {
 
 
   const momentoPositivo = (m.num('M_tb') ?? 0) > 0;          // IF(M_tb>0; M_est/M_tb; 99)
+  const naSapata = m.texto('emp_sap') === 'Sim';
+  const garantia = m.texto('pass_on') === 'Sim' && temNumero(m, 'Ep_tb');
+  const Eptb = m.g('Ep_tb', 'E_{p,tb}', 2, 'kN');
+  const yptb = m.g('y_ptb', 'y_{p,tb}', 3, 'm');
+  const Mptb = m.g('M_ptb', 'M_{p,tb}', 2, 'kN·m');
   const fsMin = m.ent('FS_tomb', 'FS_{tomb,m\\acute{\\imath}n}');
   const verifFS: PedidoDeVerificacao = {
     chave: 'fundacao.tombamento', rotulo: 'Tombamento FS ≥ FS mín', limite: fsMin, relacao: '>=', celula: 'chk_fs_t',
@@ -381,12 +393,19 @@ function cardTombamento(r: Resultado): Card {
     f.vento && m.passo('Mk_w', 'M_{k,w}', null, { casas: 2, unidade: 'kN·m/m', origem: 'calculado' }),
     m.passo('M_tb', 'M_{tomb}', mul(
       f.vento
-        ? soma(f.Mk, f.Mkw, mul(par(soma(f.Vk, f.Vkw)), f.hs), div(mul(pot(f.hs, 2), soma(mul(DOIS, f.shBase), f.shSap)), cte(6, 0)))
-        : soma(f.Mk, mul(f.Vk, f.hs), div(mul(pot(f.hs, 2), soma(mul(DOIS, f.shBase), f.shSap)), cte(6, 0))),
+        ? soma(f.Mk, f.Mkw, mul(par(soma(f.Vk, f.Vkw)), f.hs), ...(naSapata ? [div(mul(pot(f.hs, 2), soma(mul(DOIS, f.shBase), f.shSap)), cte(6, 0))] : []))
+        : soma(f.Mk, mul(f.Vk, f.hs), ...(naSapata ? [div(mul(pot(f.hs, 2), soma(mul(DOIS, f.shBase), f.shSap)), cte(6, 0))] : [])),
       f.L,
     ), { casas: 2, unidade: 'kN·m' }),
+    // PASSIVO NO TOMBAMENTO (Jose, 16/11), só com a garantia do solo da frente: a face da frente da sapata e o aterro
+    // da ponta (o dente fica fora, abaixo do pé), ÷ 2,0, braço 1/3 da altura acima do fundo
+    garantia && m.passo('Ep_tb', 'E_{p,tb}', mul(div(div(mul(m.g('Kp_b', 'K_{p,b}', 3), f.gama, pot(soma(f.hfr, f.hs), 2)), DOIS), DOIS), f.L), {
+      casas: 2, unidade: 'kN', ref: NBR_PASSIVO,
+    }),
+    garantia && m.passo('y_ptb', 'y_{p,tb}', div(soma(f.hfr, f.hs), cte(3, 0)), { casas: 3, unidade: 'm' }),
+    garantia && m.passo('M_ptb', 'M_{p,tb}', mul(Eptb, yptb), { casas: 2, unidade: 'kN·m' }),
     momentoPositivo
-      ? m.passo('FS_t', 'FS_{tomb}', div(f.Mest, f.Mtb), { casas: 2, ref: NBR_11682, verif: verifFS })
+      ? m.passo('FS_t', 'FS_{tomb}', garantia ? div(soma(f.Mest, Mptb), f.Mtb) : div(f.Mest, f.Mtb), { casas: 2, ref: NBR_11682, verif: verifFS })
       // sem momento de tombamento a planilha publica 99 (convenção: nada tomba)
       : m.passo('FS_t', 'FS_{tomb}', null, { casas: 2, origem: 'adotado', ref: NBR_11682, verif: verifFS }),
   ], NBR_11682);
@@ -396,15 +415,17 @@ function cardTombamento(r: Resultado): Card {
     e_lim (= B/4); com e < 0 a conta é e ≥ −e_lim, e o −e_lim é o da célula com o sinal trocado (a planilha não
     tem célula para ele). O veredito é o da célula da planilha (B99).
   */
-  const eNum = m.valor('e_f');
+  const eNum = m.valor(garantia ? 'e_tb' : 'e_f');
   const elimNum = m.valor('e_lim') ?? 0;
   const verifE: PedidoDeVerificacao = eNum !== null && eNum < 0
     ? { chave: 'fundacao.excentricidade', rotulo: 'Tombamento |e| ≤ B/4', limite: -elimNum, relacao: '>=', celula: 'chk_e_t' }
     : { chave: 'fundacao.excentricidade', rotulo: 'Tombamento |e| ≤ B/4', limite: f.elim, relacao: '<=', celula: 'chk_e_t' };
   const texE = eNum !== null && eNum < 0 ? `-e_{lim} = ${nt(-elimNum, 3)}\\,\\mathrm{m}` : undefined;
-  const passoE = eNum !== null && m.passo('e_f', 'e', div(f.Mcen, f.N), {
-    casas: 3, unidade: 'm', verif: verifE, ...(texE ? { limiteTex: texE } : {}),
-  });
+  const passoE = eNum !== null && (garantia
+    ? m.passo('e_tb', 'e_{tb}', div(sub(f.Mcen, Mptb), f.N), { casas: 3, unidade: 'm', verif: verifE, ...(texE ? { limiteTex: texE } : {}) })
+    : m.passo('e_f', 'e', div(f.Mcen, f.N), { casas: 3, unidade: 'm', verif: verifE, ...(texE ? { limiteTex: texE } : {}) }));
+  // com a garantia, a e das tensões no solo (sem o passivo, que só se mobiliza com deslocamento — dedução, a favor)
+  const passoEf = garantia && m.valor('e_f') !== null && m.passo('e_f', 'e', div(f.Mcen, f.N), { casas: 3, unidade: 'm' });
   // e ≥ −e_lim com os dois negativos: o "% de uso" do passo.ts (limite/valor) sairia invertido (43% num e que
   // passa do limite). O uso é |e|/e_lim, as mesmas duas células.
   if (passoE && passoE.verif && eNum !== null && eNum < 0) {
@@ -436,6 +457,7 @@ function cardTombamento(r: Resultado): Card {
   const exc = secao('Excentricidade da resultante', [
     mN && m.passo('M_vc', 'M_N', mN, { casas: 3, unidade: 'kN·m' }),
     m.passo('M_cen', 'M_{cen}', soma(f.Mtb, f.MN), { casas: 3, unidade: 'kN·m' }),
+    passoEf,
     eNum !== null && m.passo('e_lim', 'e_{lim}', div(f.B, cte(4, 0)), { casas: 3, unidade: 'm' }),
     passoE,
   ], CRITERIO);

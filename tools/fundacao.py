@@ -68,8 +68,10 @@ Fd.cell(row=r, column=1, value='Muro e contraforte na altura do muro; solo do ta
 section(Fd, r, '3. Empuxo até a base da sapata'); r += 1
 Lf('σh na base do muro', '=sh_base', 'kPa', '', 'res', '0.00')
 Lf('σh na base da sapata', '=sh_base+h_sap*(Ka_*(gama_solo-IF(AND(Agua="Sim",H_solo+h_sap>z_NA),gama_w,0))+IF(AND(Agua="Sim",H_solo+h_sap>z_NA),gama_w,0))', 'kPa', 'Continua o perfil por mais h da sapata.', 'res', '0.00', 'sh_b2')
-Lf('Hk — empuxo total no módulo', '=(Vk_+Vk_w+(sh_base+sh_b2)/2*h_sap)*Lm', 'kN', 'Empuxo + vento (aba Muro de cima e vento; zero sem vento).', 'key', '0.00', 'H_k')
-Lf('M de tombamento em relação à base da sapata', '=(Mk_+Mk_w+(Vk_+Vk_w)*h_sap+h_sap^2*(2*sh_base+sh_b2)/6)*Lm', 'kN·m', 'Mk na base do muro (empuxo + vento) + Vk·h sapata + fatia da sapata.', 'key', '0.00', 'M_tb')
+# Empuxo na altura da sapata (Jose, 16/11, entrada emp_sap; padrão Não): sem a fatia da face da sapata. O Vk·h sapata
+# FICA — é a força do muro levada até o fundo, onde está o pé (o giro). Com Sim, a conta de antes, bit a bit.
+Lf('Hk — empuxo total no módulo', '=(Vk_+Vk_w+IF(emp_sap="Sim",(sh_base+sh_b2)/2*h_sap,0))*Lm', 'kN', 'Empuxo + vento (aba Muro de cima e vento; zero sem vento). Fatia da sapata só com "Empuxo na altura da sapata" = Sim.', 'key', '0.00', 'H_k', 'Critério adotado (escolha do projetista)')
+Lf('M de tombamento em relação à base da sapata', '=(Mk_+Mk_w+(Vk_+Vk_w)*h_sap+IF(emp_sap="Sim",h_sap^2*(2*sh_base+sh_b2)/6,0))*Lm', 'kN·m', 'Mk na base do muro (empuxo + vento) + Vk·h sapata (+ fatia da sapata, com Sim).', 'key', '0.00', 'M_tb')
 # Passivo (Jose, 13/10): com o solo da frente garantido, a face toda da frente (aterro + sapata + dente). Sem a garantia,
 # só o dente do centro para trás: o solo na frente dele está debaixo da sapata e não é escavado; vale a altura do dente
 # abaixo da base, sem o peso da sapata por cima (a favor). Dente para a ponta, sem garantia: nada.
@@ -78,11 +80,21 @@ Lf('M de tombamento em relação à base da sapata', '=(Mk_+Mk_w+(Vk_+Vk_w)*h_sa
 Lf('Passivo (frente garantida: Kp·γ·(h aterro + h + dente)²/2; senão dente do centro para trás: Kp·γ·h dente²/2) ÷ 2,0', '=IF(pass_on="Sim",Kp_b*gama_solo*(h_fr+h_sap+h_den)^2/2/2*Lm,IF(AND(b_den>0,h_den>0,x_den<=0.0005),Kp_b*gama_solo*h_den^2/2/2*Lm,0))', 'kN', 'Kp do solo de apoio (seção 5). Solo da frente no nível do aterro sobre a ponta (0 = topo da sapata). Reduzido por 2,0 (NBR 6122 7.6.3).', 'res', '0.00', 'E_p')
 r += 1
 section(Fd, r, '4. Tombamento'); r += 1
-Lf('M estabilizante em relação ao pé', '=M_est', 'kN·m', 'Σ N·(B − x). Passivo não entra (a favor da segurança).', 'res', '0.00')
-Lf('FS = M estabilizante / M de tombamento', '=IF(M_tb>0,M_est/M_tb,99)', '', 'Mínimo nas Entradas.', 'key', '0.00', 'FS_t')
+Lf('M estabilizante em relação ao pé', '=M_est', 'kN·m', 'Σ N·(B − x). Com a garantia do solo da frente, soma o momento do passivo (fim da seção).', 'res', '0.00')
+Lf('FS = (M estabilizante + M do passivo) / M de tombamento', '=IF(M_tb>0,(M_est+M_ptb)/M_tb,99)', '', 'Mínimo nas Entradas. M do passivo só com a garantia (fim da seção).', 'key', '0.00', 'FS_t')
 Lf('M no centro da sapata (+ = para o pé)', '=M_tb+M_vc', 'kN·m', 'M de tombamento + Σ N·(x − B/2).', 'res', '0.000', 'M_cen')
 Lf('Excentricidade e = M/N', '=M_cen/N_tot', 'm', '+ = resultante para o pé; − = para o aterro.', 'key', '0.000', 'e_f')
 Lf('Limite: |e| ≤ B/4', '=B_sap/4', 'm', 'Critério adotado, nos dois lados.', 'res', '0.000', 'e_lim')
+# PASSIVO NO TOMBAMENTO (Jose, 16/11: "o negócio é fazer um negócio funcional e seguro"): só com a garantia do solo da
+# frente (pass_on = Sim, a mesma do deslizamento; Bastos, Sapatas de Fundação 1.8; NBR 6122 7.6.3: ÷ 2,0). Só a face da
+# frente da sapata e o aterro da ponta: o dente fica FORA, está abaixo do pé (o ponto de giro). Braço = 1/3 da altura
+# acima do fundo. A excentricidade da VERIFICAÇÃO de tombamento (|e| ≤ B/4) desconta o momento do passivo; as tensões
+# no solo e a armadura da sapata continuam com a e de cima, sem ele — o passivo só se mobiliza com deslocamento
+# (DEDUÇÃO, a favor da segurança). No FIM da seção: as linhas de cima não mudam de lugar.
+Lf('Passivo no tombamento (frente garantida): Kp·γ·(h aterro + h)²/2 ÷ 2,0', '=IF(pass_on="Sim",Kp_b*gama_solo*(h_fr+h_sap)^2/2/2*Lm,0)', 'kN', 'Sem o dente (abaixo do pé). Sem a garantia: zero.', 'res', '0.00', 'Ep_tb', 'NBR 6122 7.6.3; Bastos, Sapatas de Fundação 1.8')
+Lf('Braço do passivo acima do fundo = (h aterro + h)/3', '=(h_fr+h_sap)/3', 'm', '', 'res', '0.000', 'y_ptb')
+Lf('M do passivo em relação ao pé', '=IF(ISNUMBER(Ep_tb),Ep_tb*y_ptb,0)', 'kN·m', '', 'res', '0.00', 'M_ptb')
+Lf('Excentricidade do tombamento = (M − M do passivo)/N', '=(M_cen-M_ptb)/N_tot', 'm', 'Só para |e| ≤ B/4. As tensões usam a e de cima (sem o passivo).', 'res', '0.000', 'e_tb')
 r += 1
 section(Fd, r, '5. Deslizamento'); r += 1
 # φ' do solo de apoio OBRIGATÓRIO (Jose, 14/10: "o solo embaixo da sapata é o solo natural, é o do laudo de
@@ -183,8 +195,8 @@ CHKF = [
     ('Muro apoiado na sapata', '=IF(AND(a_ater>=t_m/2-0.001,a_ater<=B_sap-t_m/2+0.001),"OK","NÃO OK — o muro sai da sapata: distância da borda aterrada ao eixo deve ficar entre t/2 e B − t/2")'),
     ('Contraforte apoiado na sapata', '=cf_cabe'),
     ('Tombamento: FS ≥ mínimo', '=IF(FS_t>=FS_tomb,"OK (FS = "&FIXED(FS_t,2)&")","NÃO OK (FS = "&FIXED(FS_t,2)&" < "&FIXED(FS_tomb,1)&")")'),
-    ('Tombamento: |e| ≤ B/4', '=IF(ABS(e_f)<=B_sap/4,"OK (e = "&FIXED(e_f*100,1)&" cm)","NÃO OK (e = "&FIXED(e_f*100,1)&" cm > "&FIXED(B_sap*25,1)&")")'),
-    ('Tombamento: resultado (vale o pior)', '=IF(AND(FS_t>=FS_tomb,ABS(e_f)<=B_sap/4),"OK","NÃO OK")'),
+    ('Tombamento: |e| ≤ B/4', '=IF(ABS(e_tb)<=B_sap/4,"OK (e = "&FIXED(e_tb*100,1)&" cm)","NÃO OK (e = "&FIXED(e_tb*100,1)&" cm > "&FIXED(B_sap*25,1)&")")'),
+    ('Tombamento: resultado (vale o pior)', '=IF(AND(FS_t>=FS_tomb,ABS(e_tb)<=B_sap/4),"OK","NÃO OK")'),
     # FS_d em texto (sem φ'b; ou Hk = 0) daria VERDADEIRO no ≥ do Excel: o ÉNÚM vem antes
     ('Deslizamento: FS ≥ mínimo', '=IF(ISNUMBER(FS_d),IF(FS_d>=FS_desl,"OK (FS = "&FIXED(FS_d,2)&")","NÃO OK (FS = "&FIXED(FS_d,2)&" < "&FIXED(FS_desl,1)&") — aumentar B, dente ou peso"),IF(ISNUMBER(phi_b),"—","NÃO OK — digitar o φ\' do solo de apoio (sondagem)"))'),
     # σadm em texto (SPT < 5 sem valor digitado): número ≤ texto daria VERDADEIRO no Excel — por isso o ÉNÚM antes

@@ -97,6 +97,20 @@ e dizer ao Jose o que mudou e por quê.
   também sugere Mello 100·(√N − 1), cada regra com a faixa de N (`sadm_20N`, `sadm_mel` + `_fx`), e a calculadora de
   consulta embaixo da Fig. 15 lê esses nomes (Jose, 10/10). ⚠️ `estabilidade.ts` e `modulacao/leitura.ts` ainda leem
   algumas células da aba Fundação por ENDEREÇO (B101, B102, B104, B105, B96): linha nova acima delas exige ajustar.
+- **EMPUXO SÓ ATÉ O TOPO DA SAPATA e PASSIVO NO TOMBAMENTO (Jose, 16/11):** "desde o começo eu não gostei desse
+  negócio de pôr o empuxo até o pé da sapata"; "eu não acho que deveria entrar até o pé da sapata — o outro lado
+  estabiliza ela naturalmente". Entrada `emp_sap` ("Empuxo na altura da sapata", fim da seção Fundação das Entradas),
+  PADRÃO "Não": sai de `H_k` a fatia (sh_base + sh_b2)/2·h e de `M_tb` a h²·(2·sh_base + sh_b2)/6; o Vk·h (a força do
+  muro levada ao pé) fica. "Sim" = a conta de antes, bit a bit (prova: os 91 cenários de f1ebc4f com emp_sap = Sim).
+  Fonte: "Critério adotado (escolha do projetista)". Fica "Não" até o Jose dizer se inverte. E: "o negócio é fazer um
+  negócio funcional e seguro" — com `pass_on` = Sim (a mesma garantia do deslizamento) o passivo entra no
+  TOMBAMENTO: `Ep_tb` = Kp_b·γ·(h_fr + h)²/2 ÷ 2,0 (sem o dente, que está abaixo do pé), braço `y_ptb` = (h_fr + h)/3,
+  `M_ptb`; FS_t = (M_est + M_ptb)/M_tb; a excentricidade DA VERIFICAÇÃO `e_tb` = (M_cen − M_ptb)/N (chk_e_t, chk_tomb);
+  as tensões e a sapata seguem com a e_f sem o passivo (DEDUÇÃO: o passivo só se mobiliza com deslocamento).
+  Antes → depois (padrão Não, sem passivo): aula 12.2 FS_t 3,81 → 4,06, FS_d 1,10 → 1,53, e 8,2 → 6,9 cm, σmáx
+  44,5 → 42,6 kPa; VAL123 FS_t 4,26 → 4,39, FS_d 1,10 → 1,37, e 7,6 → 6,6 cm, σmáx 56,6 → 55,4 (referência
+  regravada). Memória: cards de cargas/tombamento escrevem conforme a escolha; desenho do empuxo para no topo da
+  sapata; seta do passivo numerada na face da frente com o braço do fundo.
 - **Dente com posição e passivo (Jose, 13/10):** entrada `x_den` = eixo do dente a partir do CENTRO da sapata, + para o
   pé (|x| ≤ (B − b)/2, verificação "Dente dentro da sapata"). O peso do dente saiu da linha da sapata: linha própria
   "Dente" (24, no fim da tabela de cargas) em x = B/2 + x_den. Passivo: com o solo da frente garantido, a face toda
@@ -1221,6 +1235,29 @@ e dizer ao Jose o que mudou e por quê.
   furo do muro encosta no ramo do lado do muro, e no 19×79 aparente a ponta do gancho do estribo cai numa barra da
   fila — no dobrado as barras se afastam dos ramos. A CONFERIR com o Jose: construtivas n_cc em CADA bloco (a
   planilha conta n_cc no contraforte); o graute da canaleta do muro atravessando a junta do par.
+  · REVISÃO DE 16/11 (2 revisores adversariais; commit 652b40f). DECISÃO DO JOSE (16/11): "DOIS ESTRIBOS POR FIADA"
+    — no dobrado, quando um estribo c/20 não basta, dois estribos sobrepostos (4 ramos, o estribo duplo: 2/3 da largura
+    do par, ±1/6, os dois cruzando a junta). Planilha: `pd4_est` (4 pedido ou Asw de 2 ramos c/20 < Asw_c), `ram_ef` =
+    4 se cabe (gancho de 135° do menor ≥ 5φ ≥ 5 cm e n/2 ≤ `nb4d_cab` — tabela por BLOCO `mont_n4dE/A`, Referências
+    AT31:BA40, calculada pelo app `barrasQueCabemNoDobrado` com estribo Ø6,3), senão NÃO OK com o motivo (`mot4_est`).
+    Todo dobrado de bloco 19 com fgk 20 passa a levar 4 ramos (6,23 cm²/m). O OUTRO TIPO entra no veredito (seção 19
+    da aba Contrafortes, no fim): `chk_fl_cfo`, `chk_Asm_cfo`, `chk_bie_cfo`, `chk_est_cfo`, `chk_v_cfo`,
+    `chk_ram_cfo`, `res_cfo`; o estribo dele `Asw_co`, `ram_o`, `s_o`, `Asw_eo` (o simples da ponta de um muro dobrado
+    tem o estribo DELE); com Simples dizem "— (mesma seção do calculado)". Efeito visível: muitos muros dobrados
+    reprovam agora pela PONTA (simples, l/2 + balanço, metade das barras) — ex. 19×79 aparente Md 121 > MRd 115;
+    `n_cf` ≥ 4 no dobrado (2 por bloco); `bf_a`/`bf_ao` vizinhos do dobrado pelo vão livre real; nota do `bal_cf`
+    (entra também como o outro tipo); `n_cc` "em cada bloco" no dobrado (só detalhamento). PILARETE SOBRE O PAR:
+    largura do par (`b_pili` = 2t + 1; o digitado vale na ponta, ≤ t), barras metade no furo de cada bloco;
+    `chk_ligg` reprova nº ímpar por face e o dobrado em BLOCO 14 (a barra do lado do muro cai na parede do bloco de
+    junção — o modelo não a desce e avisa PILARETE_LIGACAO). App: ganchos do estribo do dobrado APARENTE no canto da
+    ponta (comprimido) — as barras ficam no furo da conta nas duas metades (`dobradoNoFuroDaConta.test.ts`, aviso
+    BARRAS_FORA_DO_FURO); card "Contraforte da ponta / intermediário (dobrado)" (`contraforte.outroTipo`); seção da
+    memória pelo arranjo do 3D (`arranjoNoDobrado`; exceção anotada: 14 barras por bloco no aparente ficam a ~1 cm);
+    `ramos_est` aceso no dobrado com "→ 4"; JUNTAS DE CONTROLE com vão de fechamento: vãos repartidos pelo
+    comprimento e a seta ponto fixo (`arranjarComJuntas`, `juntasEFechamento.test.ts`; muda o muro simples com junta
+    e fechamento, de propósito). PENDÊNCIAS ANTIGAS (não mexidas): barra do pilarete atravessando bloco de junção /
+    canaleta no contraforte SIMPLES de bloco 14 com muro de cima; estribo simples encostando na construtiva do bloco 14
+    (aceito pelo Jose).
 - **SAPATA "CURTA DEMAIS PARA ANCORAR NA FACE" (investigado 15/11, nada mudou):** a razão conhecida do teste
   desenho × conta da vista Esforços (`barrasAnaliticas.test.ts`). Todos os muros do gabarito que caem nela são
   `sap_transv` = Estribo (o sorteio não varia) e a envoltória JÁ trata a quina do estribo como ponta dobrada (ℓb,nec
