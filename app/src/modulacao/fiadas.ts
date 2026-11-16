@@ -513,6 +513,27 @@ export function montarFiadas(trecho: TrechoModulado, base: BaseDaArrumacao, tipo
   });
 }
 
+/**
+ * As fiadas do trecho. Com contraforte dobrado (16/11), cada pano (um vão, L0 … L1) se monta sozinho — a montagem da
+ * junta de controle, os gabaritos de ponta validados no Revit — e as fiadas dos panos se juntam na ordem de `nos`
+ * (os panos estão em ordem e cada um traz os seus dois nós). Sem panos: a montagem de sempre.
+ */
+export function montarFiadasDoTrecho(trecho: TrechoModulado, base: BaseDaArrumacao, tipos: TipoFiada[]): FiadaMontada[] {
+  if (!trecho.panos?.length) return montarFiadas(trecho, base, tipos);
+  const porPano = trecho.panos.map((p) => montarFiadas(p, base, tipos));
+  return tipos.map((tipo, i) => {
+    const fs = porPano.map((f) => f[i]);
+    return {
+      i, tipo,
+      tiposDosNos: fs.flatMap((f) => f.tiposDosNos),
+      linha: fs.flatMap((f) => f.linha),
+      hastes: fs.flatMap((f) => f.hastes),
+      juntasLinha: fs.flatMap((f) => f.juntasLinha),
+      juntasHaste: fs.flatMap((f) => f.juntasHaste),
+    };
+  });
+}
+
 // ── o vão que amarra ─────────────────────────────────────────────────────────
 
 const cacheDoVao = new Map<string, boolean>();

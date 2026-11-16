@@ -9,7 +9,7 @@
 
   As peças de terreno (aterro, solo da frente) existem só para ver no 3D e ficam fora.
 */
-import type { ClassePeca, Modelo, Peca, TipoPeca, Geometria } from '@/modelo/tipos';
+import { larguraDoContraforte, type ClassePeca, type Modelo, type Peca, type TipoPeca, type Geometria } from '@/modelo/tipos';
 import type { Valor } from '@/motor/tipos';
 import { ENTRADAS_DO_MODELO } from '@/modelo/entradasDoModelo';
 import { areaDaFolha, areaDoLaco, areaLiquida, caixaDaPeca, eixoGlobal, limitesDoPerfil, recortarAcimaDe, type Caixa } from './geometria';
@@ -262,8 +262,10 @@ function areaDoTardoz(m: Modelo): number {
   const hastes: { x0: number; x1: number; y1: number }[] = [];
   for (const cf of m.dims.contrafortes) {
     let x0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    // a faixa do contraforte: o bloco, ou os dois blocos do dobrado (o eixo dele é a junta de argamassa entre eles)
+    const w = larguraDoContraforte(m.familia, cf);
     for (const c of caixas) {
-      if (c.x0 > cf.x || cf.x > c.x1 || c.y1 <= t + 1) continue;
+      if (c.x1 <= cf.x - w / 2 + 1 || c.x0 >= cf.x + w / 2 - 1 || c.y1 <= t + 1) continue;
       x0 = Math.min(x0, c.x0);
       x1 = Math.max(x1, c.x1);
       y1 = Math.max(y1, c.y1);

@@ -27,11 +27,64 @@ export interface No {
   tipo: 'T' | 'L0' | 'L1';
   xs: number;
   xe: number;
-  xc: number;          // eixo do contraforte
-  cf: number;          // nº do contraforte ao longo de X (1..)
+  xc: number;          // eixo do contraforte (no dobrado, o eixo DESTA metade — o bloco dela)
+  cf: number;          // nº do contraforte ao longo de X (1..); as duas metades do dobrado têm o MESMO número
+  /**
+   * Metade do contraforte DOBRADO (Jose, 16/11): 'a' = a da esquerda (o L1 do pano de antes), 'b' = a da direita (o
+   * L0 do pano seguinte). Cada metade é o contraforte de ponta do gabarito (template L), as duas encostadas com 1 cm de
+   * argamassa — a montagem que a junta de controle já desenha. Sem o campo: contraforte simples.
+   */
+  metade?: 'a' | 'b';
 }
 
-export interface TrechoModulado { indice: number; x0: number; x1: number; nos: No[] }
+/**
+ * Trecho = o pedaço do muro entre juntas de controle (sapata, dreno e terreno contínuos). Com contraforte dobrado, os
+ * `panos` são os pedaços de um vão só (L0 … L1) em que os blocos se montam: cada um é montado como um trecho com o
+ * gabarito de ponta nas duas pontas, e as fiadas se juntam na ordem de `nos` (fiadas.ts montarFiadasDoTrecho).
+ */
+export interface TrechoModulado { indice: number; x0: number; x1: number; nos: No[]; panos?: TrechoModulado[] }
+
+/** Nome do nó nos ids (peças, barras): o nº do contraforte e, no dobrado, a letra da metade ("2a", "2b"). */
+export const idDoNo = (no: No): string => `${no.cf}${no.metade ?? ''}`;
+
+/** As duas metades de um contraforte dobrado (a e b), ou o nó sozinho. */
+export function metadesDe(tr: TrechoModulado, no: No): No[] {
+  return no.metade ? tr.nos.filter((n) => n.cf === no.cf) : [no];
+}
+
+/**
+ * Os contrafortes do trecho como PEÇA (o dobrado é um só): eixo, faixa em X (o par inteiro no dobrado) e o tipo do
+ * nó (o dobrado conta como intermediário, 'T').
+ */
+export interface ContraforteDoTrecho { cf: number; xc: number; xs: number; xe: number; tipo: No['tipo']; dobrado: boolean }
+
+export function contrafortesDoTrecho(tr: TrechoModulado): ContraforteDoTrecho[] {
+  const out: ContraforteDoTrecho[] = [];
+  for (const no of tr.nos) {
+    if (no.metade === 'b') continue;
+    if (no.metade === 'a') {
+      const b = tr.nos.find((n) => n.cf === no.cf && n.metade === 'b')!;
+      out.push({ cf: no.cf, xc: (no.xc + b.xc) / 2, xs: no.xs, xe: b.xe, tipo: 'T', dobrado: true });
+    } else {
+      out.push({ cf: no.cf, xc: no.xc, xs: no.xs, xe: no.xe, tipo: no.tipo, dobrado: false });
+    }
+  }
+  return out;
+}
+
+/**
+ * Os vãos do trecho entre faces de contraforte, [x0, x1] (x0 = face do contraforte da esquerda, x1 = xs do da
+ * direita): entre as duas metades do dobrado não há vão (é a junta de argamassa).
+ */
+export function vaosDoTrecho(tr: TrechoModulado): [number, number][] {
+  const out: [number, number][] = [];
+  for (let v = 0; v + 1 < tr.nos.length; v++) {
+    const [a, b] = [tr.nos[v], tr.nos[v + 1]];
+    if (a.metade && a.cf === b.cf) continue;
+    out.push([a.xe - JUNTA, b.xs]);
+  }
+  return out;
+}
 
 export interface Modulo {
   cat: FamiliaDoCatalogo;
@@ -44,7 +97,9 @@ export interface Modulo {
   s_vert: number;        // barras do balanço (mm, múltiplo de m)
   s_pv: number;          // barras do painel (mm, múltiplo de m)
   s_can: number;         // canaletas intermediárias (mm, múltiplo de 200; 0 = só a cinta)
-  l_cf: number;          // eixo a eixo (mm)
+  l_cf: number;          // eixo a eixo (mm); no dobrado, de centro a centro do par
+  /** Dobrado: o eixo a eixo do simples com o mesmo vão livre (xs a xs dentro de um pano: t + 1 cm + k·m). */
+  l_pano?: number;
   tenr: number;          // comprimento do contraforte, da face externa (mm)
   n_haste: number;       // células da haste além do muro
   s_est: number;         // estribos do contraforte (mm, múltiplo de 200)
@@ -144,22 +199,25 @@ export function modular(p: Parametros, avisos: Aviso[]): Modulo {
     // n·m); a paridade do encaixe (a 14x39, com o 54 e o 34 do Jose, só amarra com n par) é da receita, que mora aqui. Desenhar com um
     // vão que não amarra deixaria junta a prumo — então, nesse caso, a regra abaixo escolhe o vão e o aviso diz que o
     // desenho difere da conta. Com a lista das Entradas (só vãos que amarram) não acontece; fica como garantia.
+    // Dobrado (16/11): o contraforte tem 2t + 1 cm, e o vão LIVRE é o do simples — o eixo a eixo é 2t + 2 cm + k·m
+    // (a planilha, l_cf_adot), o do simples com o mesmo k mais uma largura de nó. A amarração é a do simples com k.
+    const Wv = p.dobrado ? 2 * Wn : Wn;
     const plVao = p.pl.l_cf_adot;
-    const kPl = plVao === null ? null : Math.round((plVao - Wn) / m);
-    const vaoDaConta = plVao !== null && kPl !== null && Math.abs(Wn + kPl * m - plVao) <= 0.5 && kPl >= min.celulasNoVao && vaoAmarra(cat, kPl);
+    const kPl = plVao === null ? null : Math.round((plVao - Wv) / m);
+    const vaoDaConta = plVao !== null && kPl !== null && Math.abs(Wv + kPl * m - plVao) <= 0.5 && kPl >= min.celulasNoVao && vaoAmarra(cat, kPl);
     if (vaoDaConta) {
       l_cf = plVao as number;
     } else {
-      const k0 = Math.max(min.celulasNoVao, Math.ceil((p.l_cf - Wn) / m - EPS));
+      const k0 = Math.max(min.celulasNoVao, Math.ceil((p.l_cf - Wv) / m - EPS));
       let k = k0;
       while (k < k0 + 8 && !vaoAmarra(cat, k)) k++;
       if (!vaoAmarra(cat, k)) {
         k = k0;
-        avisos.push({ codigo: 'VAO_NAO_AMARRA', texto: `Vão de ${br((Wn + k * m) / 1000)} m não amarra com o encaixe da família ${nomeFam}` });
+        avisos.push({ codigo: 'VAO_NAO_AMARRA', texto: `Vão de ${br((Wv + k * m) / 1000)} m não amarra com o encaixe da família ${nomeFam}` });
       } else if (k !== k0) {
-        avisos.push({ codigo: 'VAO_AMARRACAO', texto: `Vão de ${br((Wn + k0 * m) / 1000)} m deixa junta a prumo no encaixe da família ${nomeFam}: ${br((Wn + k * m) / 1000)} m` });
+        avisos.push({ codigo: 'VAO_AMARRACAO', texto: `Vão de ${br((Wv + k0 * m) / 1000)} m deixa junta a prumo no encaixe da família ${nomeFam}: ${br((Wv + k * m) / 1000)} m` });
       }
-      l_cf = Wn + k * m;
+      l_cf = Wv + k * m;
       if (plVao !== null && Math.abs(plVao - l_cf) > 0.5) {
         avisos.push({ codigo: 'VAO_DIFERE_DA_CONTA', texto: `Vão da conta ${br(plVao / 1000)} m não amarra na família ${nomeFam}: desenhado com ${br(l_cf / 1000)} m` });
       }
@@ -174,18 +232,23 @@ export function modular(p: Parametros, avisos: Aviso[]): Modulo {
     }
     n_haste = Math.round((tenr - cat.t) / m);
     ajuste('tenr_', p.tenr / 10, tenr / 10, 'cm');
-    // espessura do contraforte = largura do bloco (brief Q5): eenr ≠ t não tem amarração simples. (O contraforte de
-    // duas fileiras que o Jose modelou ficou fora do app — decisão dele, 09/10.)
-    ajuste('eenr', p.eenr / 10, cat.t / 10, 'cm');
+    // dobrado calculado: barras em número par, metade em cada bloco — o ímpar digitado vai ao par de cima (planilha)
+    if (p.dobCalc && p.n_cf_dir !== null) ajuste('n_cf', p.n_cf_dir, p.n_cf, '');
+    // espessura do contraforte = largura do bloco (brief Q5): eenr ≠ t não tem amarração simples. O dobrado (16/11)
+    // é dois blocos com 1 cm de argamassa: 2t + 1 — a planilha publica o eenr do contraforte CALCULADO (dob_cf).
+    ajuste('eenr', p.eenr / 10, (p.dobCalc ? 2 * cat.t + JUNTA : cat.t) / 10, 'cm');
     if (p.bal_cf > 0) {
       avisos.push({ codigo: 'BALANCO_ALEM_DO_CF', texto: 'Balanço além do contraforte de ponta não desenhado (contraforte rente à ponta)' });
     }
   }
 
   // ── comprimento e trechos ──
-  const { trechos, L_real } = p.contrafortes
-    ? trechosComContrafortes(p, Wn, l_cf, vaosDeFechamento(nomeFam, l_cf))
-    : trechosEmBalanco(p, m);
+  const l_pano = p.contrafortes && p.dobrado ? l_cf - Wn : undefined;
+  const { trechos, L_real } = !p.contrafortes
+    ? trechosEmBalanco(p, m)
+    : l_pano !== undefined
+      ? trechosComDobrados(p, Wn, l_pano, vaosDeFechamento(nomeFam, l_pano))
+      : trechosComContrafortes(p, Wn, l_cf, vaosDeFechamento(nomeFam, l_cf));
   // O comprimento digitado é o MODULAR (Jose: "comprimento fixado em múltiplos dos blocos"): células de bloco + junta
   // contadas com a junta da ponta, como na planta de modulação. O desenhado (L_real, que o quantitativo e os desenhos
   // usam) é 1 cm menor — a junta da ponta não tem bloco do outro lado. Comparar o digitado com o desenhado punha
@@ -193,7 +256,9 @@ export function modular(p: Parametros, avisos: Aviso[]): Modulo {
   // A seta mostra o modular, e não o desenhado, para que digitar o valor dela a faça sumir.
   ajuste('L_total', p.L_total / 1000, (L_real + JUNTA) / 1000, 'm');
 
-  return { cat, familia, furo, m, Wn, n_fiadas, H_des, s_vert, s_pv, s_can, l_cf, tenr, n_haste, s_est, trechos, L_real, ajustes };
+  const mod: Modulo = { cat, familia, furo, m, Wn, n_fiadas, H_des, s_vert, s_pv, s_can, l_cf, tenr, n_haste, s_est, trechos, L_real, ajustes };
+  if (l_pano !== undefined) mod.l_pano = l_pano;
+  return mod;
 }
 
 /**
@@ -320,6 +385,53 @@ function trechosComContrafortes(p: Parametros, Wn: number, l_cf: number, validos
     }
     const x1 = nos[nos.length - 1].xs + b;
     trechos.push({ indice: k + 1, x0, x1, nos });
+    x = x1 + JUNTA;
+  });
+  return { trechos, L_real: x - JUNTA };
+}
+
+/**
+ * Muro com contraforte DOBRADO (Jose, 16/11: "desenha um muro e coloca a distância de contrafortes igual à de juntas,
+ * voilà, gabarito pronto"): cada vão é um PANO montado como um trecho de um vão só — L0 numa ponta, L1 na outra, os
+ * gabaritos de ponta do Revit — e os panos ficam a 1 cm um do outro (a argamassa do dobrado). O L1 de um pano e o L0
+ * do seguinte são as duas metades do mesmo contraforte (mesmo nº). Só a junta de controle separa trechos: dentro do
+ * trecho a sapata, o dreno e o terreno são contínuos.
+ * Comprimento: cada pano soma o vão (xs a xs, `l_pano`) + t + 1 cm (a metade e a junta) — a mesma conta de cada vão
+ * do simples com uma largura de nó a mais. Os vãos saem do digitado pela mesma regra (escolherVaos) nessa unidade, e o
+ * vão de fechamento continua valendo (o último pano, menor).
+ */
+function trechosComDobrados(p: Parametros, Wn: number, l_pano: number, validos: number[]): { trechos: TrechoModulado[]; L_real: number } {
+  const b = Wn - JUNTA;
+  const vaos = (n: number): number[] => escolherVaos(p.L_total, l_pano + Wn, validos.map((v) => v + Wn), n).map((v) => v - Wn);
+  const modularDe = (v: number[]): number => v.reduce((s, x) => s + x + Wn, 0);
+  let nT = quantosTrechos(p.L_total - JUNTA, p.junta_cada);
+  for (let i = 0; i < 4; i++) {
+    const outro = quantosTrechos(modularDe(vaos(nT)) - JUNTA, p.junta_cada);
+    if (outro === nT) break;
+    nT = outro;
+  }
+  const lista = vaos(nT);
+  const trechos: TrechoModulado[] = [];
+  let x = 0;
+  let cf = 1;
+  let iv = 0;
+  dividir(lista.length, nT).forEach((nv, k) => {
+    const x0 = x;
+    const nos: No[] = [];
+    const panos: TrechoModulado[] = [];
+    for (let j = 0; j < nv; j++) {
+      const v = lista[iv++];
+      const L0: No = { tipo: 'L0', xs: x, xe: x + Wn, xc: x + b / 2, cf: j === 0 ? cf++ : cf - 1 };
+      if (j > 0) L0.metade = 'b';
+      const L1: No = { tipo: 'L1', xs: x + v, xe: x + v + Wn, xc: x + v + b / 2, cf: cf++ };
+      if (j < nv - 1) L1.metade = 'a';
+      panos.push({ indice: k + 1, x0: x, x1: x + v + b, nos: [L0, L1] });
+      nos.push(L0, L1);
+      x += v + Wn;
+    }
+    // o último L1 do pano de dentro levou um nº que a metade 'b' do pano seguinte repete (cf − 1 acima)
+    const x1 = x - JUNTA;
+    trechos.push({ indice: k + 1, x0, x1, nos, panos });
     x = x1 + JUNTA;
   });
   return { trechos, L_real: x - JUNTA };

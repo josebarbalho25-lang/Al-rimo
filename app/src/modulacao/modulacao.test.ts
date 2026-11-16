@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { cenariosDoGabarito, comEntradas, resultadoDoGabarito } from '@/motor/resultadoDoGabarito';
 import type { Resultado, Valor } from '@/motor/tipos';
-import type { Modelo, Peca, TipoPeca, Vec2, Vec3 } from '@/modelo/tipos';
+import { larguraDoContraforte, type Modelo, type Peca, type TipoPeca, type Vec2, type Vec3 } from '@/modelo/tipos';
 import { caixaGlobal, gerarModelo, paraGlobal, padroesDoModelo } from './index';
 import { areaPoligono, calibrarFuro, distanciaAoFuro, profundidadeNaPeca, retanguloArredondado } from './perfis';
 import { CATALOGO, conferirCatalogo } from './catalogo';
@@ -107,14 +107,19 @@ function juntasAPrumo(m: Modelo): string[] {
       (porTrechoFiada.get(k) ?? porTrechoFiada.set(k, []).get(k)!).push(c);
     }
     if (p.grupo === 'contraforte') {
-      const k = `${p.contraforte}|${p.fiada}`;
+      // a haste de cada metade do dobrado à parte (mesmo nº de contraforte, faixas em X diferentes)
+      const k = `${p.contraforte}@${Math.round(c.min[0])}|${p.fiada}`;
       (porCfFiada.get(k) ?? porCfFiada.set(k, []).get(k)!).push(c);
     }
   }
   m.dims.trechos.forEach((tr, kk) => {
     const k = kk + 1;
     const nos = m.dims.contrafortes.filter((c) => c.trecho === k);
-    const naFace = (x: number) => nos.some((n) => Math.abs(x - (n.x - t / 2 - 10)) < 0.5 || Math.abs(x - (n.x + t / 2)) < 0.5);
+    // no dobrado, também o meio do par: a junta de argamassa entre as duas metades é a prumo por construção
+    const naFace = (x: number) => nos.some((n) => {
+      const w = larguraDoContraforte(m.familia, n);
+      return Math.abs(x - (n.x - w / 2 - 10)) < 0.5 || Math.abs(x - (n.x + w / 2)) < 0.5 || (!!n.dobrado && Math.abs(x - (n.x - 5)) < 0.5);
+    });
     const juntas: Set<number>[] = [];
     for (let i = 0; i < m.dims.n_fiadas; i++) {
       const s = new Set<number>();
@@ -125,7 +130,7 @@ function juntasAPrumo(m: Modelo): string[] {
       for (const x of juntas[i]) if (juntas[i + 1].has(x)) out.push(`T${k} fiadas ${i}/${i + 1} x=${x}`);
     }
   });
-  const cfs = new Set(m.pecas.filter((p) => p.grupo === 'contraforte').map((p) => p.contraforte!));
+  const cfs = new Set(m.pecas.filter((p) => p.grupo === 'contraforte').map((p) => `${p.contraforte}@${Math.round(caixa(m, p).min[0])}`));
   for (const cf of cfs) {
     const hj: Set<number>[] = [];
     let ponta = 0;
@@ -247,8 +252,10 @@ function barrasEmUDosVaos(m: Modelo, r: Resultado): string[] {
         if (us.some((q) => q.diametro !== phi)) out.push(`${b.id}: Ø diferente na mesma fiada`);
         if (e.some((q) => Math.abs(q[2] - ini[2]) > 1e-6)) out.push(`${b.id}: não é plana`);
         // as pernas: na ponta dos dois contrafortes do vão, φ/2 para dentro do vão
-        if (Math.abs(ini[0] - (cfs[v].x + phi / 2 + j * phi)) > 0.05 || Math.abs(ini[1] - yPonta) > 0.05) out.push(`${b.id}: 1ª perna fora da ponta de C(${cfs[v].x})`);
-        if (Math.abs(fim[0] - (cfs[v + 1].x - phi / 2 - j * phi)) > 0.05 || Math.abs(fim[1] - yPonta) > 0.05) out.push(`${b.id}: 2ª perna fora da ponta de C(${cfs[v + 1].x})`);
+        // (no dobrado, na metade do lado do vão: o eixo dela fica a (t + 1 cm)/2 do eixo do par)
+        const meia = (c: { dobrado?: true }) => (c.dobrado ? (t + 10) / 2 : 0);
+        if (Math.abs(ini[0] - (cfs[v].x + meia(cfs[v]) + phi / 2 + j * phi)) > 0.05 || Math.abs(ini[1] - yPonta) > 0.05) out.push(`${b.id}: 1ª perna fora da ponta de C(${cfs[v].x})`);
+        if (Math.abs(fim[0] - (cfs[v + 1].x - meia(cfs[v + 1]) - phi / 2 - j * phi)) > 0.05 || Math.abs(fim[1] - yPonta) > 0.05) out.push(`${b.id}: 2ª perna fora da ponta de C(${cfs[v + 1].x})`);
         // a base: o trecho reto ao longo de X, entre as duas dobras (no y da barra da canaleta da conta: centralizada ou
         // encostada a c_p da face — o lugar é o da planilha, como era o da corrida)
         let base: [Vec3, Vec3] | null = null;
@@ -752,8 +759,12 @@ function grauteEmPecaSolida(m: Modelo): string[] {
 function hasteSemFresta(m: Modelo): string[] {
   const out: string[] = [];
   const t = m.familia.t;
-  m.dims.contrafortes.forEach((cf, k) => {
-    const pecasCf = m.pecas.filter((p) => p.contraforte === k + 1);
+  m.dims.contrafortes.forEach((cf0, k) => {
+    // o dobrado: cada metade com a haste dela, no eixo do bloco dela
+    const eixos = cf0.dobrado ? [cf0.x - (t + 10) / 2, cf0.x + (t + 10) / 2] : [cf0.x];
+    for (const x of eixos) {
+    const cf = { x };
+    const pecasCf = m.pecas.filter((p) => p.contraforte === k + 1 && (!cf0.dobrado || Math.abs((caixa(m, p).min[0] + caixa(m, p).max[0]) / 2 - x) < t / 2 + 5));
     const fiadas = [...new Set(pecasCf.filter((p) => CANALETAS.has(p.tipo)).map((p) => p.fiada!))];
     for (const i of fiadas) {
       const can = pecasCf.filter((p) => CANALETAS.has(p.tipo) && p.fiada === i).map((p) => caixa(m, p));
@@ -772,6 +783,7 @@ function hasteSemFresta(m: Modelo): string[] {
       const ini = enterrado ? t - 25 : -25;
       if (g[0][0] > ini) out.push(`C${k + 1} fiada ${i}: o graute começa em ${g[0][0]} (o T não chega no miolo do muro)`);
       if (Math.abs(g[g.length - 1][1] - (enterrado ? ponta : -ponta)) > 1e-6) out.push(`C${k + 1} fiada ${i}: o graute não chega na ponta`);
+    }
     }
   });
   return out;
@@ -823,6 +835,30 @@ describe('canaleta como a obra deixa: fundo furado onde sobe a barra, T de graut
       expect(hasteSemFresta(m), c).toEqual([]);
     }
   }, 180_000);
+
+  // contraforte dobrado (16/11): dois gabaritos de ponta encostados, um estribo abraçando os dois em toda fiada — o
+  // estribo mora na junta e não pode entrar em bloco; com vão de fechamento e com junta de controle no meio
+  it('contraforte dobrado: nenhuma barra atravessa peça sólida, graute fora da alvenaria, haste sem fresta', () => {
+    // todos os alvos do dobrado no comprimento padrão; a junta de controle no meio, o vão de fechamento, o nó de
+    // cachorro e os 4 ramos (forçados: a planilha hoje dá 2) em dois deles — a conferência é cara (amostra a cada 5 mm)
+    const casos: [string, Record<string, Valor>, boolean][] = cenariosDoGabarito().filter((x) => x.startsWith('alvo_dobrado')).map((c) => [c, {}, false]);
+    casos.push(
+      ['alvo_dobrado_19x59_enterrado', { L_total: 13.1, junta_cada: 6 }, true],
+      ['alvo_dobrado_14x54_enterrado', { L_total: 9.3, arranque: 'Nó de cachorro' }, true],
+      ['alvo_dobrado_19x79_aparente', {}, true],
+    );
+    for (const [c, l, quatro] of casos) {
+      const r = resultadoDoGabarito(c);
+      for (const rr of quatro ? [r, comEntradas(r, { ram_ef: 4 })] : [r]) {
+        const m = gerarModelo(rr, { ...padroesDoModelo(), ...l });
+        expect(m.dims.contrafortes.some((q) => q.dobrado), c).toBe(true);
+        expect(barrasEmPecaSolida(m), `${c} ${JSON.stringify(l)}`).toEqual([]);
+        expect(grauteEmPecaSolida(m), c).toEqual([]);
+        expect(hasteSemFresta(m), c).toEqual([]);
+        conferirTudo(m, rr, `${c} ${JSON.stringify(l)}`);
+      }
+    }
+  }, 240_000);
 
   // estribo com a forma do Pró-Viga (ganchos de 135° e volta em espiral, 15/10) no contraforte e na sapata: Ø16 em
   // sapata de 20 e 30 cm com torção (sorteio01; sorteio31, torção a cada 5 cm), torção a cada 3 cm (sorteio14); e o

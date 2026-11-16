@@ -236,16 +236,24 @@ describe('barras analíticas — o aço necessário e o colocado', () => {
         const f = d.faces[0];
         if (!f) continue;
         n++;
-        const dispensa = (c.r.num('Asw_c') ?? 0) === 0;
+        // contraforte dobrado (16/11): estribo sempre, c/20 (s_est_u) — o colocado é o Asw/s do tipo DELE: deste tipo
+        // Asw_e; do outro tipo, quando um dos dois é o dobrado, Asw_eo (seção 18)
+        const inter = String(c.r.v('tipo_cf')).startsWith('Inter');
+        const desteTipo = b.nome.includes('extremidade') !== inter;
+        const outroDiferente = c.r.num('dob_cf') === 1 || c.r.num('dob_o') === 1;
+        const asw = desteTipo || !outroDiferente ? 'Asw_e' : 'Asw_eo';
+        const ehDobrado = (desteTipo && c.r.num('dob_cf') === 1) || (!desteTipo && c.r.num('dob_o') === 1);
+        const dispensa = !ehDobrado && (c.r.num(asw) ?? 0) === 0;
         if (dispensa && f.colocado.some((p) => p.v > 0)) difs.push(`${c.cenario} ${b.id}: estribo desenhado com a conta dispensando`);
+        if (ehDobrado && !f.colocado.some((p) => p.v > 0)) difs.push(`${c.cenario} ${b.id}: dobrado sem estribo`);
         // com estribo: entre o 1º e o último, o colocado é o Asw/s da planilha quando o modelo segue o s da conta
         // 2 ramos = um estribo; 4 = dois estribos menores na mesma junta (só quando cabem: a planilha conta os ramos
         // que cabem, ram_ef, e o modelo desenha esses) — o colocado bate com o Asw,ef nos dois casos
         if (!dispensa && f.colocado.length) {
           if (c.r.num('ram_ef') === 4) n4++;
           const meio = valorEm(f.colocado, (f.colocado[1]!.s + f.colocado[2]!.s) / 2);
-          const sEst = c.r.num('s_est')!;
-          if (Math.abs(sEst / 20 - Math.round(sEst / 20)) < 1e-9 && Math.abs(meio - c.r.num('Asw_e')!) > 0.01) difs.push(`${c.cenario} ${b.id}: Asw/s ${meio} × Asw_e ${c.r.num('Asw_e')}`);
+          const sEst = ehDobrado ? 20 : (c.r.num('s_est_u') ?? c.r.num('s_est'))!;
+          if (Math.abs(sEst / 20 - Math.round(sEst / 20)) < 1e-9 && Math.abs(meio - c.r.num(asw)!) > 0.01) difs.push(`${c.cenario} ${b.id}: Asw/s ${meio} × ${asw} ${c.r.num(asw)}`);
         }
       }
     }

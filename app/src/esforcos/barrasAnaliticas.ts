@@ -20,7 +20,7 @@
 */
 import dados from '@/motor/planilha.gerada.json';
 import type { Resultado, Valor } from '@/motor/tipos';
-import type { Barra, Modelo, Peca, PapelBarra, Vec3 } from '@/modelo/tipos';
+import { larguraDoContraforte, type Barra, type Modelo, type Peca, type PapelBarra, type Vec3 } from '@/modelo/tipos';
 import { caixaGlobal } from '@/modulacao/perfis';
 import { acoColocado, areaDaBarra, estribosAoLongo, valorEm, type Ancoragens, type PontoDoDiagrama, type Recorte } from './acoColocado';
 import {
@@ -377,17 +377,22 @@ function montar(r: Resultado, modelo: Modelo): BarraAnalitica[] {
   // ── contrafortes, painel entre eles, canaletas e cinta ──
   if (contrafortes) {
     const interEhEste = t('tipo_cf').toLowerCase().startsWith('inter');
+    // contraforte dobrado (16/11): o outro tipo tem outra largura e outro aço — o colocado dele se compara com o As e o
+    // Asw/s DELE (seção 18); sem o dobrado os dois tipos têm o mesmo aço (As_cfo = As_cfe), e fica o de sempre
+    const outroDiferente = n('dob_cf') === 1 || n('dob_o') === 1;
     const conjuntoDe = (ponta: boolean) => {
       const este = ponta !== interEhEste; // ponta = extremidade
       return este
-        ? { as: 'perf_Asc', asv: 'vt_Asc', asw: 'perf_Aswc', aswv: 'vt_Aswc', md: 'Md_cf', mrd: 'MRd_cf', ap: ['ap_cf'], nomeAs: 'As_cfn', nomeAsw: 'Asw_c' }
-        : { as: 'perf_Aso', asv: 'vt_Aso', asw: 'perf_Aswo', aswv: 'vt_Aswo', md: 'Md_cfo', mrd: 'MRd_cfo', ap: ['ap_cfo'], nomeAs: '', nomeAsw: '' };
+        ? { as: 'perf_Asc', asv: 'vt_Asc', asw: 'perf_Aswc', aswv: 'vt_Aswc', md: 'Md_cf', mrd: 'MRd_cf', ap: ['ap_cf'], nomeAs: 'As_cfn', nomeAsw: 'Asw_c', asEf: 'As_cfe', aswEf: 'Asw_e' }
+        : { as: 'perf_Aso', asv: 'vt_Aso', asw: 'perf_Aswo', aswv: 'vt_Aswo', md: 'Md_cfo', mrd: 'MRd_cfo', ap: ['ap_cfo'], nomeAs: '', nomeAsw: '', asEf: outroDiferente ? 'As_cfo' : 'As_cfe', aswEf: outroDiferente ? 'Asw_eo' : 'Asw_e' };
     };
     const faixaCf = faixaEm(modelo, 1, (p) => p.grupo === 'contraforte');
     const yCf = faixaCf ? (faixaCf[0] + faixaCf[1]) / 2 : yMeio;
     const anc = ancoragens(r, 'lbn_cf', 'lbg_cf', 'l0t_cf');
     cfs.forEach((c, i) => {
       const k = conjuntoDe(c.ponta);
+      // a faixa do contraforte em X: o bloco, ou os dois blocos do dobrado
+      const w = larguraDoContraforte(modelo.familia, c);
       const de: Vec3 = [c.x, yCf, 0];
       const ate: Vec3 = [c.x, yCf, H];
       const { u, L } = unit(de, ate);
@@ -397,23 +402,23 @@ function montar(r: Resultado, modelo: Modelo): BarraAnalitica[] {
       const doCf = (b: Barra) => b.trecho === c.trecho;
       // a seção do contraforte: as principais (o As da conta) e as esperas DELAS — a espera mais perto de uma
       // principal que de uma construtiva (as das construtivas, do lado comprimido, não entram no As da aba)
-      const noCf = (b: Barra) => doCf(b) && Math.abs(b.eixo[0]![0] - c.x) <= tb / 2 + 1;
+      const noCf = (b: Barra) => doCf(b) && Math.abs(b.eixo[0]![0] - c.x) <= w / 2 + 1;
       const pts = (papel: PapelBarra) => barras.filter((b) => b.papel === papel && noCf(b)).map((b) => b.eixo[0]!);
       const princ = pts('CF_PRINCIPAL');
       const constr = pts('CF_CONSTRUTIVA');
       const dist = (p: Vec3, qs: Vec3[]) => qs.reduce((m, q) => Math.min(m, Math.hypot(p[0] - q[0], p[1] - q[1])), Infinity);
       const rec: Recorte = {
         de, u, L, papeis: ['CF_PRINCIPAL', 'ESPERA'], largura: null,
-        dentro: (p, b) => Math.abs(p[0] - c.x) <= tb / 2 + 1 && (b.papel === 'CF_PRINCIPAL' || dist(p, princ) < dist(p, constr)),
+        dentro: (p, b) => Math.abs(p[0] - c.x) <= w / 2 + 1 && (b.papel === 'CF_PRINCIPAL' || dist(p, princ) < dist(p, constr)),
         ancoragem: anc,
       };
       const { pontos: colocado, familias } = acoColocado(barras.filter(doCf), rec);
       const f1 = face(1, { necessario: nec.pontos, naoResiste: nec.naoResiste, colocado, familias, minimo: n('As_cfm') });
-      const picos = picosNaSecao(nos[0], f1, k.nomeAs, 'As_cfe');
+      const picos = picosNaSecao(nos[0], f1, k.nomeAs, k.asEf);
       // cortante: Asw/s necessário (planilha) × os estribos do modelo (a distância entre dois seguidos)
       const wnos = nosDaHaste(r, k.asw, k.aswv);
       const wn = necessarioDe(wnos, L);
-      const ests = barras.filter((b) => b.papel === 'CF_ESTRIBO' && doCf(b) && Math.abs(b.eixo.reduce((a, p) => a + p[0], 0) / b.eixo.length - c.x) <= tb);
+      const ests = barras.filter((b) => b.papel === 'CF_ESTRIBO' && doCf(b) && Math.abs(b.eixo.reduce((a, p) => a + p[0], 0) / b.eixo.length - c.x) <= Math.max(tb, w / 2));
       const zs = ests.map((b) => Math.min(...b.eixo.map((p) => p[2])));
       const phiE = ests[0]?.diametro ?? 0;
       const wc = estribosAoLongo(zs, areaDaBarra(phiE), 2, L);
@@ -424,7 +429,7 @@ function montar(r: Resultado, modelo: Modelo): BarraAnalitica[] {
         de, ate, lado: [0, 1, 0],
         flexao: diagrama('cm²', [f1], picos, false, FIM_DA_HASTE),
         cortante: diagrama('cm²/m', [c1], w0 && w0.v !== null ? [{ s: w0.s, valor: w0.v, qual: 'nec', face: 1, ...(k.nomeAsw ? { nome: k.nomeAsw } : {}), ...(w0.celula ? { celula: w0.celula } : {}), fator: 1 }, // o colocado no 1º estribo (abaixo dele, na junta da sapata, ainda não há estribo)
-          ...(wc.length > 2 ? [{ s: wc[1]!.s, valor: wc[1]!.v, qual: 'col' as const, face: 1 as const, planilha: 'Asw_e', fator: 1 }] : [])] : [], false),
+          ...(wc.length > 2 ? [{ s: wc[1]!.s, valor: wc[1]!.v, qual: 'col' as const, face: 1 as const, planilha: k.aswEf, fator: 1 }] : [])] : [], false),
         momento: { msd: k.md, mrd: k.mrd, fator: 1, unidade: 'kN·m' }, aps: k.ap,
       });
     });

@@ -16,8 +16,8 @@ import type { Aviso, Modelo, Peca, TipoPeca } from '@/modelo/tipos';
 import { H_FIADA, JUNTA, pecaDoCatalogo } from './catalogo';
 import { ENCAIXES } from './encaixes';
 import { lerParametros } from './leitura';
-import { br, modular, type TrechoModulado } from './modular';
-import { fiadasDeCanaleta, montarFiadas, tiposDasFiadas, type FiadaMontada } from './fiadas';
+import { br, contrafortesDoTrecho, idDoNo, modular, type TrechoModulado } from './modular';
+import { fiadasDeCanaleta, montarFiadasDoTrecho, tiposDasFiadas, type FiadaMontada } from './fiadas';
 import { MapaDeCavidades, type Cavidade } from './cavidades';
 import { arred, caixaGlobal, prisma, retanguloArredondado } from './perfis';
 import { numerarPosicoes } from './barras';
@@ -55,7 +55,7 @@ export function gerarModelo(r: Resultado, extras: Record<string, Valor> = {}): M
   const pilaretes: number[] = [];
 
   for (const tr of mod.trechos) {
-    const fiadas = montarFiadas(tr, { ...mod, aparente: !p.enterrado }, tipos);
+    const fiadas = montarFiadasDoTrecho(tr, { ...mod, aparente: !p.enterrado }, tipos);
     const mapa = new MapaDeCavidades(mod.n_fiadas);
     const inicioAlvenaria = ctx.pecas.length;
     alvenaria(ctx, tr, fiadas, mapa);
@@ -92,7 +92,10 @@ export function gerarModelo(r: Resultado, extras: Record<string, Valor> = {}): M
     H_muro: mod.H_des,
     n_fiadas: mod.n_fiadas,
     trechos: mod.trechos.map((t) => ({ x0: t.x0, x1: t.x1 })),
-    contrafortes: mod.trechos.flatMap((t) => t.nos.map((n) => ({ x: n.xc, trecho: t.indice, ponta: n.tipo !== 'T' }))),
+    // um por contraforte: o dobrado (as duas metades) é UM, no eixo do par, marcado
+    contrafortes: mod.trechos.flatMap((t) => contrafortesDoTrecho(t).map((c) => (c.dobrado
+      ? { x: c.xc, trecho: t.indice, ponta: false, dobrado: true as const }
+      : { x: c.xc, trecho: t.indice, ponta: c.tipo !== 'T' }))),
     sapata: { y0: arred(Ype), y1: arred(YbA), z0: -(p.h_sap + (temDente(p) ? p.h_den : 0)), z1: 0 },
   };
   if (mc) {
@@ -195,7 +198,7 @@ function alvenaria(ctx: Ctx, tr: TrechoModulado, fiadas: FiadaMontada[], mapa: M
         const pc = pecaDoCatalogo(cat, h.chave);
         const canal = pc.forma === 'canaleta';
         const y0 = enterrado ? h.eta : t - h.eta - h.comp;
-        const id = `${T}.CF${no.cf}.f${pad(f.i, 2)}.p${pad(++q, 2)}`;
+        const id = `${T}.CF${idDoNo(no)}.f${pad(f.i, 2)}.p${pad(++q, 2)}`;
         const peca: Peca = {
           id, tipo: pc.tipo, grupo: 'contraforte', geometria: canal ? geoCanaleta(ctx, pc) : geoBloco(ctx, pc),
           // 90°: o comprimento da peça vai para +Y, com a ponta local x = 0 na face do muro (η = 0) — é o que põe o
@@ -290,7 +293,8 @@ function graute(ctx: Ctx, tr: TrechoModulado, fiadas: FiadaMontada[], mapa: Mapa
     const host = pecas[ip];
     // canaleta deitada na haste (fiada de canaleta): o graute vai por corrida, logo abaixo
     if (host.grupo === 'contraforte' && ctx.geos[host.geometria]?.eixo === 'X') {
-      const k = `${host.contraforte}|${host.fiada}`;
+      // por haste: as duas metades do dobrado têm o mesmo nº de contraforte e ficam lado a lado (x do canto da peça)
+      const k = `${host.contraforte}@${host.origem[0]}|${host.fiada}`;
       (daHaste.get(k) ?? daHaste.set(k, []).get(k)!).push(host);
       continue;
     }

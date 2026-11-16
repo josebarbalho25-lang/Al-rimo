@@ -53,6 +53,11 @@ export interface Parametros {
   l_cf: number; tenr: number; eenr: number; enterrado: boolean; bal_cf: number;
   phi_cf: number; n_cf: number; c_cf: number | null; phi_cc: number; n_cc: number;
   phi_est: number; s_est: number | null; ramos_est: number;
+  // contraforte DOBRADO (Jose, 16/11; aba Contrafortes, seção 18): dois blocos lado a lado, só nos intermediários.
+  // `dobrado` = os intermediários do muro são dobrados (larg_cf); `dobCalc` = o contraforte CALCULADO é o dobrado
+  // (dob_cf: Dobrado e tipo Intermediário) — aí n_cf, ram_ef e eenr são os do dobrado; senão, os do simples
+  dobrado: boolean; dobCalc: boolean;
+  n_cf_dir: number | null;              // nº de barras digitado (o dobrado vai ao par de cima: o "→" mostra)
   estribos: boolean;                   // o contraforte leva estribo? (a conta pediu: Asw/s de cálculo > 0)
   phi_pv: number; s_pv: number | null; duasBarrasPv: boolean; c_pv: number;
   phi_ph: number; s_ph: number | null; phCentralizada: boolean;
@@ -136,7 +141,12 @@ export function lerParametros(r: Resultado, extrasIn: Record<string, Valor>, avi
     phi_cc: ou('phi_cc', 10),
     n_cc: Math.max(0, Math.round(n('n_cc') ?? 2)),
     phi_est: ou('phi_est', 6.3),
-    s_est: cm(n('s_est')),
+    // o espaçamento que a conta usa (s_est_u: 20 quando o calculado é o dobrado — toda fiada); Resultado de antes
+    // de 16/11 sem o nome: o das Entradas
+    s_est: cm(n('s_est_u') ?? n('s_est')),
+    dobrado: txt('Tipo_muro').trim().toLowerCase().startsWith('contra') && txt('larg_cf').trim() === 'Dobrado',
+    dobCalc: n('dob_cf') === 1,
+    n_cf_dir: n('n_cf_dir'),
     // os ramos que a CONTA usa (Contrafortes, seção 6): 4 só quando os dois estribos menores cabem; senão 2 — o
     // desenho tem o aço que a conta conta, nem mais nem menos (Jose, 15/11: "coloca 2 ou 4, 3 ramos não existe")
     ramos_est: Math.round(n('ram_ef') ?? 2) === 4 ? 4 : 2,

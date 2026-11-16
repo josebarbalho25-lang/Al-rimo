@@ -10,7 +10,7 @@
   - o contraforte seguinte, além do corte, tracejado (está enterrado no aterro, escondido);
   - aterro e solo da frente hachurados (derivados das medidas do modelo: o terreno do 3D é só para ver).
 */
-import type { Barra, Modelo, Vec2, Vec3 } from '@/modelo/tipos';
+import { larguraDoContraforte, type Barra, type Modelo, type Vec2, type Vec3 } from '@/modelo/tipos';
 import { cm, metros } from './formato';
 import { CAMADA_DA_SOMBRA, T, escreverMedidas, grossa, medidasDasPernas } from './sombras';
 import { formaDaBarra, trechosNoModelo } from '@/pranchas/formaDaBarra';
@@ -46,7 +46,10 @@ export function cortesPadrao(m: Modelo): CortePadrao[] {
   if (cfs.length) {
     const k = cfs.findIndex((c) => !c.ponta);
     const i = k >= 0 ? k : 0;
-    out.push({ rotulo: `Contraforte C${i + 1}`, x: cfs[i].x });
+    // dobrado (16/11): o eixo do par é a junta de argamassa entre os blocos — o corte passa no eixo do bloco da
+    // direita, onde estão as barras dele
+    const x = cfs[i].dobrado ? cfs[i].x + (m.familia.t + m.familia.junta) / 2 : cfs[i].x;
+    out.push({ rotulo: `Contraforte C${i + 1}`, x });
   }
   // muro de cima (15/11): um corte num pilarete — numa barra dele, para o corte mostrar as longitudinais descendo o
   // traspasse no arrimo. O de dentro do 1º trecho (o da ponta tem o gancho da cinta, mas o do meio é o comum); com
@@ -68,8 +71,7 @@ export interface BarrasNoCorte {
 
 /** Armadura que aparece num corte X = x0 (regras no cabeçalho). Usado também pelo isométrico cortado. */
 export function barrasNoCorte(m: Modelo, x0: number): BarrasNoCorte {
-  const t = m.familia.t;
-  const cfCortado = m.dims.contrafortes.findIndex((c) => Math.abs(c.x - x0) <= t / 2) + 1;   // 0 = nenhum
+  const cfCortado = m.dims.contrafortes.findIndex((c) => Math.abs(c.x - x0) <= larguraDoContraforte(m.familia, c) / 2) + 1;   // 0 = nenhum
   const linhas: BarrasNoCorte['linhas'] = [];
   const pontos: BarrasNoCorte['pontos'] = [];
   const planas = new Map<string, Barra[]>();
@@ -164,7 +166,7 @@ function corteNaVista(m: Modelo, xCorte: number | undefined, o: OpcoesDaVista): 
   const { H_muro, H_solo, sapata } = m.dims;
   const x0 = xCorte ?? cortesPadrao(m)[0]?.x ?? m.dims.L_real / 2;
   const cfs = contrafortesDoModelo(m, sol);
-  const cfCortado = cfs.find((c) => Math.abs(c.x - x0) <= t / 2);
+  const cfCortado = cfs.find((c) => Math.abs(c.x - x0) <= (c.max[0] - c.min[0]) / 2 + 1e-6 && x0 >= c.min[0] - 1e-6 && x0 <= c.max[0] + 1e-6);
 
   const yMin = Math.min(sapata.y0, 0, ...sol.map((s) => s.min[1]));
   const yMax = Math.max(sapata.y1, t, ...sol.map((s) => s.max[1]));

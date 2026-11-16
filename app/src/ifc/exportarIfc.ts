@@ -462,6 +462,8 @@ export function gerarIfc(modelo: Modelo, info: InfoIfc): RelatorioIfc {
       ligarPset('pset/' + g.chave + '/alrimo', 'AlRimo_Contraforte', [muro], [
         prop('Numero', 'IFCINTEGER', I(g.contraforte)),
         cf ? prop('Ponta', 'IFCBOOLEAN', cf.ponta) : null,
+        // dobrado (16/11): os dois blocos são UM contraforte (esta parede), ligados pelo estribo
+        cf?.dobrado ? prop('Dobrado', 'IFCBOOLEAN', true) : null,
         R.txt('pos_cf') ? prop('Posicao', 'IFCLABEL', R.txt('pos_cf')) : null,
         // o fpk da FLEXÃO do contraforte (vazado na seção T enterrada, prisma cheio na aparente), não o do muro
         seNum(R.num('fpk_cf'), (v) => prop('fpk', 'IFCPRESSUREMEASURE', v)),

@@ -29,7 +29,7 @@
 import type { Valor } from '@/motor/tipos';
 import type { Geometria, Peca, Vec2, Vec3 } from '@/modelo/tipos';
 import type { Ctx } from './contexto';
-import type { TrechoModulado } from './modular';
+import { contrafortesDoTrecho, type TrechoModulado } from './modular';
 import type { MapaDeCavidades } from './cavidades';
 import { H_FIADA, JUNTA } from './catalogo';
 import { arred, prisma, retangulo } from './perfis';
@@ -140,8 +140,10 @@ export function zDasBarrasDaCinta(mc: MuroDeCimaLido, Z0: number, f: number): nu
 /** Eixo dos pilaretes do trecho (mm), da esquerda para a direita. */
 export function pilaretesDoTrecho(tr: TrechoModulado, contrafortes: boolean, mc: MuroDeCimaLido): number[] {
   if (contrafortes && tr.nos.length) {
-    const xs = tr.nos.filter((_, k) => k % mc.nCf === 0).map((n) => n.xc);
-    const ultimo = tr.nos[tr.nos.length - 1].xc;
+    // um a cada nCf CONTRAFORTES (o dobrado é um só: o pilarete fica no eixo do par)
+    const cfs = contrafortesDoTrecho(tr);
+    const xs = cfs.filter((_, k) => k % mc.nCf === 0).map((n) => n.xc);
+    const ultimo = cfs[cfs.length - 1].xc;
     if (xs[xs.length - 1] !== ultimo) xs.push(ultimo);
     // pilarete mais largo que o contraforte (15/11): no da ponta ele passaria do fim do muro (ou entraria na junta,
     // no vizinho). A planilha reprova (chk_ligg); o desenho não põe peça fora do muro — ela chega para dentro, rente à
@@ -249,8 +251,11 @@ export function barrasDosPilaretes(ctx: Ctx, tr: TrechoModulado, mc: MuroDeCimaL
     // grauteada, na largura dele); no balanço, dentro dos furos do bloco o traspasse inteiro (fiada a fiada)
     const hf = mod.cat.hf;
     // o eixo do CONTRAFORTE embaixo (o pilarete da ponta pode ter chegado para dentro, pilaretesDoTrecho)
-    const xCf = tr.nos.length ? tr.nos.map((n) => n.xc).reduce((m, q) => (Math.abs(q - xc) < Math.abs(m - xc) ? q : m)) : xc;
-    const naHaste = (x: number, y: number) => Math.abs(x - xCf) + mc.phi / 2 <= tA / 2 - hf
+    // (no dobrado, o par: a barra desce na haste de uma das duas metades, cada uma da largura do bloco)
+    const cfs = contrafortesDoTrecho(tr);
+    const cf = cfs.length ? cfs.reduce((m, q) => (Math.abs(q.xc - xc) < Math.abs(m.xc - xc) ? q : m)) : null;
+    const xsHaste = !cf ? [xc] : tr.nos.filter((n) => n.cf === cf.cf).map((n) => n.xc);
+    const naHaste = (x: number, y: number) => xsHaste.some((xh) => Math.abs(x - xh) + mc.phi / 2 <= tA / 2 - hf)
       && (ctx.p.enterrado ? y - mc.phi / 2 >= hf && y + mc.phi / 2 <= mod.tenr - hf : y - mc.phi / 2 >= tA - mod.tenr + hf && y + mc.phi / 2 <= tA - hf);
     const dentro = ctx.p.contrafortes
       ? barras.every(([x, y]) => naHaste(x, y))

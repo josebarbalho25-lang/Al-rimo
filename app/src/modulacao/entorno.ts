@@ -6,7 +6,7 @@ import type { Vec2, Vec3 } from '@/modelo/tipos';
 import { H_BLOCO, H_FIADA, JUNTA } from './catalogo';
 import type { Cavidade, MapaDeCavidades } from './cavidades';
 import type { Parametros } from './leitura';
-import { br, type TrechoModulado } from './modular';
+import { br, vaosDoTrecho, type TrechoModulado } from './modular';
 import { arred, circulo, prisma, retangulo, retanguloArredondado } from './perfis';
 import { corrida, distribuir, estribo, ganchoEstribo, medidasDoEstribo, pinoEstribo, reta } from './barras';
 import { ESPESSURA_MANTA, SOBRA_TERRENO, fmt, geoPrismaReto, pad, type Ctx } from './contexto';
@@ -532,7 +532,8 @@ export function drenagem(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidades): v
   if (pac.retangulos.length) {
     const vaos: [number, number][] = [];
     if (p.contrafortes && p.enterrado) {
-      for (let v = 0; v + 1 < tr.nos.length; v++) vaos.push([tr.nos[v].xe - JUNTA, tr.nos[v + 1].xs]);
+      // entre as metades do contraforte dobrado não há vão (vaosDoTrecho): o dreno contorna o par
+      vaos.push(...vaosDoTrecho(tr));
     } else {
       vaos.push([tr.x0, tr.x1]);
     }
@@ -676,7 +677,7 @@ export function drenagem(ctx: Ctx, tr: TrechoModulado, mapa: MapaDeCavidades): v
     // mínimo um em cada. Sem isso, vão de 1,35 com barbacã a cada 1,50 deixava vão com o dreno sem saída.
     const faixas: [number, number][] = [];
     if (p.contrafortes && p.enterrado && tr.nos.length > 1) {
-      for (let v = 0; v + 1 < tr.nos.length; v++) faixas.push([tr.nos[v].xe - JUNTA, tr.nos[v + 1].xs]);
+      faixas.push(...vaosDoTrecho(tr));
     } else {
       faixas.push([tr.x0, tr.x1]);
     }
@@ -752,8 +753,7 @@ export function terreno(ctx: Ctx, tr: TrechoModulado, Ype: number, YbA: number):
   const gF = geoPrismaReto(ctx, `solo da frente ${T}`, 'X', frente, L);
   ctx.pecas.push({ id: `${T}.SOLO`, tipo: 'SOLO_FRENTE', grupo: 'terreno', geometria: gF, origem: [arred(xa), arred(yNear), arred(zb)], giro: 0, trecho: tr.indice });
   if (hf > 0 && aparente && yC < 0) {
-    for (let v = 0; v + 1 < tr.nos.length; v++) {
-      const [x0, x1] = [tr.nos[v].xe - JUNTA, tr.nos[v + 1].xs];
+    for (const [v, [x0, x1]] of vaosDoTrecho(tr).entries()) {
       if (x1 <= x0) continue;
       const g = geoPrismaReto(ctx, `solo sobre a ponta ${fmt(-yC)}x${fmt(hf)} L${fmt(x1 - x0)}`, 'X', retangulo(-yC, hf), x1 - x0);
       ctx.pecas.push({ id: `${T}.SOLO.v${v + 1}`, tipo: 'SOLO_FRENTE', grupo: 'terreno', geometria: g, origem: [arred(x0), arred(yC), 0], giro: 0, trecho: tr.indice });

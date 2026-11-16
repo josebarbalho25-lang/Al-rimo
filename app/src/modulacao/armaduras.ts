@@ -8,7 +8,7 @@
 import type { Aviso, Vec3 } from '@/modelo/tipos';
 import { H_FIADA, JUNTA, pecaDoCatalogo, secaoDaPecaCanaleta } from './catalogo';
 import type { MapaDeCavidades } from './cavidades';
-import { br, type TrechoModulado } from './modular';
+import { br, idDoNo, metadesDe, type TrechoModulado } from './modular';
 import { COB_GRAUTE, COB_PONTA, RECUO_ESTRIBO, RECUO_ESTRIBO_LATERAL, pad, zTopoBarra, type Ctx } from './contexto';
 import {
   corrida, dobrada, espera, esperaNoDeCachorro, estribo, ganchoEstribo, medidasDoEstribo, medidasDoNo, pontaDoNo, pontaGancho90, raioDoEixo,
@@ -244,20 +244,34 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
   const furosCompressao = [...furosTracao].reverse();
   const l0P = traspasse(ctx, p.phi_cf, 'cf');
   const l0C = traspasse(ctx, p.phi_cc, 'cc');
+  const est = estribosDoContraforte(ctx);
   // 4 ramos: as barras e as esperas ficam entre os ramos do meio do par de estribos
-  const faixa = p.estribos && p.ramos_est === 4 ? faixaDosQuatroRamos(t, p.phi_est) : Infinity;
+  const faixa = est.simples.tem && est.simples.ramos === 4 ? faixaDosQuatroRamos(t, p.phi_est) : Infinity;
+  // Barras por BLOCO: o dobrado leva o dobro do simples, metade no furo da ponta de cada bloco (planilha: n_cf par
+  // quando o calculado é o dobrado; senão o dobrado é o "outro tipo", n_cfo = 2·n_cf). Os simples do muro dobrado
+  // (pontas e juntas) são a metade.
+  const nBloco = p.dobCalc ? Math.max(1, Math.round(p.n_cf / 2)) : p.n_cf;
 
   for (const no of tr.nos) {
-    const base = `T${tr.indice}.CF${no.cf}`;
-    const par = Number.isFinite(faixa)
-      ? estribosDaJunta(4, no.xc, yDe, mod.tenr, t, 0, p.phi_est).map((c, k) => estribo(`par${k}`, 'CF_ESTRIBO', p.phi_est, c, tr.indice, no.cf, passoNaJunta(p.phi_est)))
+    const base = `T${tr.indice}.CF${idDoNo(no)}`;
+    const metades = metadesDe(tr, no);
+    const xPar = metades.reduce((s, q) => s + q.xc, 0) / metades.length;
+    const larg = no.metade ? 2 * t + JUNTA : t;
+    const e = no.metade ? est.dobrado : est.simples;
+    const ramos = e.ramos;
+    // o par de 4 ramos tira o lugar dos ramos e dos ganchos. No simples, as barras ficam ENTRE os ramos do meio (a
+    // faixa); no dobrado, cada bloco fica num terço de fora — sem a faixa, só longe dos ramos
+    // No DOBRADO, também com 2 ramos: o estribo abraça as barras dos dois blocos, e nenhuma barra pode ficar sobre um
+    // ramo (com muitas barras, a fila no furo do muro chegaria no ramo do lado do muro)
+    const par = e.tem && (ramos === 4 || no.metade)
+      ? estribosDaJunta(ramos, xPar, yDe, mod.tenr, larg, 0, p.phi_est).map((c, k) => estribo(`par${k}`, 'CF_ESTRIBO', p.phi_est, c, tr.indice, no.cf, passoNaJunta(p.phi_est)))
       : [];
-    const livre = Number.isFinite(faixa) ? livreDoPar(no.xc, faixa, par, p.phi_est) : undefined;
+    const livre = !par.length ? undefined : livreDoPar(no.xc, no.metade ? Infinity : faixa, par, p.phi_est);
     // principal: tracionada; o 1º alvo é o c da conta, os seguintes o centro dos furos
     const alvoConta = enterrado ? mod.tenr - cCf : cCf;
-    let g = distribuir(ctx, mapa, no.xc, [yDe(alvoConta), ...furosTracao.slice(1).map(yDe)], p.n_cf, p.phi_cf, 'Y', l0P, livre);
+    let g = distribuir(ctx, mapa, no.xc, [yDe(alvoConta), ...furosTracao.slice(1).map(yDe)], nBloco, p.phi_cf, 'Y', l0P, livre);
     if (g.folga < 0 || g.furos > 1) {
-      const g2 = distribuir(ctx, mapa, no.xc, furosTracao.map(yDe), p.n_cf, p.phi_cf, 'Y', l0P, livre);
+      const g2 = distribuir(ctx, mapa, no.xc, furosTracao.map(yDe), nBloco, p.phi_cf, 'Y', l0P, livre);
       if (g2.furos < g.furos || (g2.furos === g.furos && g2.folga > g.folga)) g = g2;
     }
     const idsP: string[] = [];
@@ -267,14 +281,14 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
       idsP.push(id);
     });
     if (g.folga < 0) {
-      ctx.avisos.push({ codigo: 'BARRAS_NAO_CABEM', texto: `${p.n_cf} barras de Ø${br(p.phi_cf, 1)} não cabem no contraforte`, ids: idsP });
+      ctx.avisos.push({ codigo: 'BARRAS_NAO_CABEM', texto: `${nBloco} barras de Ø${br(p.phi_cf, 1)} não cabem no ${no.metade ? 'bloco do contraforte dobrado' : 'contraforte'}`, ids: idsP });
     } else {
       if (g.folga < COB_GRAUTE - 0.05) avisarFolga(ctx, g.folga, idsP);
       if (g.furos > 1) {
         const yc = g.pares.reduce((s, q) => s + q.b[1], 0) / g.pares.length;
         const dDes = enterrado ? yc : mod.tenr - (t - yc);
         const dConta = mod.tenr - cCf;
-        ctx.avisos.push({ codigo: 'BARRAS_EM_MAIS_FUROS', texto: `${p.n_cf} barras de Ø${br(p.phi_cf, 1)} em ${g.furos} furos do contraforte: d desenhado ${br(dDes / 10, 1)} cm × d da conta ${br(dConta / 10, 1)} cm`, ids: idsP });
+        ctx.avisos.push({ codigo: 'BARRAS_EM_MAIS_FUROS', texto: `${nBloco} barras de Ø${br(p.phi_cf, 1)} em ${g.furos} furos do contraforte: d desenhado ${br(dDes / 10, 1)} cm × d da conta ${br(dConta / 10, 1)} cm`, ids: idsP });
       }
     }
 
@@ -282,7 +296,7 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
     // ramos o estribo de dentro passa uma bitola mais para dentro nessa ponta (os dois lado a lado, abaixo): a
     // construtiva anda junto, encostada nele.
     if (p.n_cc > 0) {
-      const dC = RECUO_ESTRIBO + (p.ramos_est === 4 ? 2 : 1) * p.phi_est + p.phi_cc / 2;
+      const dC = RECUO_ESTRIBO + (ramos === 4 ? 2 : 1) * p.phi_est + p.phi_cc / 2;
       const etaC = enterrado ? dC : mod.tenr - dC;
       const gc = distribuir(ctx, mapa, no.xc, [yDe(etaC), ...furosCompressao.slice(1).map(yDe)], p.n_cc, p.phi_cc, 'X', l0C, livre);
       const idsC: string[] = [];
@@ -299,18 +313,44 @@ export function barrasDosContrafortes(ctx: Ctx, tr: TrechoModulado, mapa: MapaDe
     // conta pede (leitura.ts, `estribos`): estribo sem necessidade não é usual em alvenaria (Jose, 13/10).
     // Os ganchos ficam no canto do lado do MURO (ya): é a ponta comprimida do contraforte, a das construtivas — o
     // gancho fora da zona tracionada, como na viga do Pró-Viga (ganchos em cima)
-    const passoJ = Math.max(1, Math.round(mod.s_est / H_FIADA));
-    for (let i = 0; p.estribos && i < mod.n_fiadas; i += passoJ) {
+    // DOBRADO: um estribo só abraçando os dois blocos (a ligação entre eles — NBR 16868-1 3.3, amarração indireta),
+    // posto uma vez, na metade 'a', no eixo do par e com a largura do par (eenr − 7 cm entre os eixos dos ramos)
+    if (no.metade === 'b') continue;
+    const baseE = `T${tr.indice}.CF${no.cf}`;
+    const passoJ = Math.max(1, Math.round(e.s / H_FIADA));
+    for (let i = 0; e.tem && i < mod.n_fiadas; i += passoJ) {
       const z = i * H_FIADA + JUNTA / 2;
-      estribosDaJunta(p.ramos_est, no.xc, yDe, mod.tenr, t, z, p.phi_est).forEach((cantos, k) => {
-        ctx.barras.push(estribo(`${base}.E${pad(i, 2)}${k ? 'b' : ''}`, 'CF_ESTRIBO', p.phi_est, cantos, tr.indice, no.cf, passoNaJunta(p.phi_est)));
+      estribosDaJunta(ramos, xPar, yDe, mod.tenr, larg, z, p.phi_est).forEach((cantos, k) => {
+        ctx.barras.push(estribo(`${baseE}.E${pad(i, 2)}${k ? 'b' : ''}`, 'CF_ESTRIBO', p.phi_est, cantos, tr.indice, no.cf, passoNaJunta(p.phi_est)));
       });
     }
   }
-  if (!p.estribos) return;
+  const comDobrado = tr.nos.some((n) => n.metade);
+  const comSimples = est.simples.tem && tr.nos.some((n) => !n.metade);
+  if (!comSimples && !comDobrado) return;
   if (p.phi_est > 6.3) ctx.avisos.push({ codigo: 'ESTRIBO_NA_JUNTA', texto: `Estribo Ø${br(p.phi_est, 1)} na junta de 10 mm` });
-  const [a0, a1, , a3] = estribosDaJunta(p.ramos_est, 0, (eta) => eta, mod.tenr, t, 0, p.phi_est)[0];
-  avisarMedidasDoEstribo(ctx, 'Estribo do contraforte', p.phi_est, Math.abs(a1[0] - a0[0]), Math.abs(a3[1] - a0[1]), 'ESTRIBO');
+  const medidas = (ramos: number, larg: number, quem: string): void => {
+    const [a0, a1, , a3] = estribosDaJunta(ramos, 0, (eta) => eta, mod.tenr, larg, 0, p.phi_est)[0];
+    avisarMedidasDoEstribo(ctx, quem, p.phi_est, Math.abs(a1[0] - a0[0]), Math.abs(a3[1] - a0[1]), 'ESTRIBO');
+  };
+  if (comSimples) medidas(est.simples.ramos, t, 'Estribo do contraforte');
+  if (comDobrado) medidas(est.dobrado.ramos, 2 * t + JUNTA, 'Estribo do contraforte dobrado');
+}
+
+/**
+ * Os estribos de cada tipo de contraforte: se há, ramos e espaçamento (mm). O SIMPLES leva o que a conta pede para o
+ * calculado (Asw/s de cálculo > 0, ram_ef, s_est_u) — como sempre: a mesma armadura em todos os contrafortes. O
+ * DOBRADO (16/11) leva estribo SEMPRE, em toda fiada (s = 20 cm): é a ligação dos dois blocos, mesmo quando a conta o
+ * dispensaria. Ramos do dobrado: os da conta quando o calculado é ele (ram_ef; 4 = dois estribos de 2/3 da largura do
+ * par, ±1/6, os dois cruzando a junta entre os blocos); quando o calculado é a extremidade, 2 (a planilha, Asw_eo).
+ * No muro em que o calculado é o dobrado, os simples (pontas e juntas) ficam com 2 ramos: o 4 da conta é o do dobrado.
+ */
+export function estribosDoContraforte(ctx: Ctx): { simples: { tem: boolean; ramos: number; s: number }; dobrado: { tem: boolean; ramos: number; s: number } } {
+  const { p, mod } = ctx;
+  return {
+    simples: { tem: p.estribos, ramos: p.dobCalc ? 2 : p.ramos_est, s: mod.s_est },
+    dobrado: { tem: true, ramos: p.dobCalc ? p.ramos_est : 2, s: H_FIADA },
+  };
 }
 
 /**
@@ -610,6 +650,8 @@ function barrasEmU(ctx: Ctx, tr: TrechoModulado, fiadas: FiadaMontada[], canalet
     ys.forEach((y, j) => {
       const perna = Math.abs(yPonta - y) - raioDoEixo(phi);
       for (let k = 0; k + 1 < nos.length; k++) {
+        // as duas metades do dobrado não têm vão entre elas: cada vão ancora o seu U na sua metade
+        if (nos[k].metade && nos[k].cf === nos[k + 1].cf) continue;
         const xa = nos[k].xc + phi / 2 + j * phi;
         const xb = nos[k + 1].xc - phi / 2 - j * phi;
         const id = `T${tr.indice}.H.f${pad(f.i, 2)}.U${pad(k + 1, 2)}${j ? 'b' : ''}`;

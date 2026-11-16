@@ -26,7 +26,7 @@
 import type { Geometria, Peca, TipoPeca, Vec2, Vec3 } from '@/modelo/tipos';
 import { H_BLOCO, H_FIADA, JUNTA, pecaDoCatalogo } from './catalogo';
 import type { MapaDeCavidades } from './cavidades';
-import type { TrechoModulado } from './modular';
+import { idDoNo, type TrechoModulado } from './modular';
 import { arred, caixaGlobal, cantosDoFundo, paraLocalDe, prisma, retangulo } from './perfis';
 import { COB_GRAUTE, fmt, geoCanaletaRecortada, pad, secaoCanaleta, type Ctx, type RecortesDaCanaleta, type SecaoCanaleta } from './contexto';
 
@@ -82,13 +82,19 @@ export function furarEQuebrarCanaletas(ctx: Ctx, tr: TrechoModulado, canaleta: b
 
   // ── 1) as canaletas do trecho, por fiada e por linha (o muro corre em X; cada haste, em Y) ──
   const linhas = new Map<string, Can[]>();
+  const chaveDaHaste = (x0: number, x1: number, cf: number | undefined): string => {
+    const xm = (x0 + x1) / 2;
+    const no = tr.nos.find((n) => n.cf === cf && xm >= n.xs - 0.5 && xm <= n.xs + t + 0.5);
+    return no ? idDoNo(no) : String(cf);
+  };
   for (let ip = ini; ip < pecas.length; ip++) {
     const pc = pecas[ip];
     if (!TIPOS_CANALETA.has(pc.tipo) || pc.trecho !== tr.indice || pc.fiada === undefined) continue;
     const g = ctx.geos[pc.geometria];
     const c = caixaGlobal(pc, g);
     const ao: 0 | 1 = pc.grupo === 'muro' ? 0 : 1;
-    const k = `${pc.fiada}|${pc.grupo === 'muro' ? 'M' : `CF${pc.contraforte}`}`;
+    // a linha de cada haste: no dobrado as duas metades têm o mesmo nº — a haste é a do nó em cuja faixa a peça está
+    const k = `${pc.fiada}|${pc.grupo === 'muro' ? 'M' : `CF${chaveDaHaste(c.min[0], c.max[0], pc.contraforte)}`}`;
     (linhas.get(k) ?? linhas.set(k, []).get(k)!).push({ p: pc, g, min: c.min, max: c.max, ao, s: secaoCanaleta(mod, pc), aLocal: paraLocalDe(pc, g), estendida: [c.min[ao], c.max[ao]] });
   }
   // a junta vai com a canaleta de antes: no muro, a da esquerda; na haste, a mais perto do muro
@@ -257,7 +263,7 @@ export function furarEQuebrarCanaletas(ctx: Ctx, tr: TrechoModulado, canaleta: b
     for (let i = 0; i < nF; i++) {
       if (!canaleta[i]) continue;
       const muro = linhas.get(`${i}|M`) ?? [];
-      const haste = linhas.get(`${i}|CF${no.cf}`) ?? [];
+      const haste = linhas.get(`${i}|CF${idDoNo(no)}`) ?? [];
       if (!muro.length || !haste.length) continue;
       // o canal do contraforte: o miolo da canaleta da haste (mesma família, mesmas paredes)
       const pc = cat.canaleta.parede;
@@ -280,7 +286,7 @@ export function furarEQuebrarCanaletas(ctx: Ctx, tr: TrechoModulado, canaleta: b
         const yMiolo = p.enterrado ? t - parede - r : parede + r;   // onde termina o miolo do muro (o canto arredondado sai junto)
         const chave = geoGrauteDoT(ctx, c.s, Math.abs(yH - yMiolo), e1 - e0);
         novas.push({
-          id: `${T}.CF${no.cf}.f${pad(i, 2)}.gT${++k}`, tipo: 'GRAUTE_CANALETA', grupo: 'contraforte', geometria: chave,
+          id: `${T}.CF${idDoNo(no)}.f${pad(i, 2)}.gT${++k}`, tipo: 'GRAUTE_CANALETA', grupo: 'contraforte', geometria: chave,
           // enterrado: o canto arredondado do lado de −Y (junto ao miolo do muro); aparente: a mesma peça girada 180°
           origem: [arred(e0), arred(Math.min(yH, yMiolo)), arred(i * H_FIADA + JUNTA + fundo)], giro: p.enterrado ? 0 : 180,
           trecho: tr.indice, fiada: i, contraforte: no.cf,

@@ -170,7 +170,11 @@ export interface Modelo {
     H_muro: number;              // altura do muro desenhado (fiadas × 200), mm
     n_fiadas: number;
     trechos: { x0: number; x1: number }[];
-    contrafortes: { x: number; trecho: number; ponta: boolean }[];   // x do eixo, mm
+    /**
+     * x do eixo, mm. `dobrado` (16/11): dois blocos lado a lado (2t + 1 cm), o eixo é o do par (a junta de argamassa
+     * entre eles); as peças e barras das duas metades têm o mesmo `contraforte`. Sem o campo: um bloco (largura t).
+     */
+    contrafortes: { x: number; trecho: number; ponta: boolean; dobrado?: true }[];
     sapata: { y0: number; y1: number; z0: number; z1: number };      // envoltória da seção, mm
     /** Muro de cima (13/11), quando há: do topo do arrimo (z0) ao topo dele (z1) e o eixo de cada pilarete. */
     muroDeCima?: {
@@ -185,4 +189,12 @@ export interface Modelo {
    * exemplo, lê `imper_on` (impermeabilização só entra na quantidade, não vira peça).
    */
   extras?: Record<string, import('@/motor/tipos').Valor>;
+}
+
+/**
+ * Largura do contraforte em X (mm): o bloco (t) ou, no dobrado (16/11), os dois blocos com a junta de argamassa
+ * (2t + 1 cm). Quem desenha ou corta o contraforte pela faixa dele usa esta, e não t.
+ */
+export function larguraDoContraforte(familia: Familia, c: { dobrado?: true }): number {
+  return c.dobrado ? 2 * familia.t + familia.junta : familia.t;
 }
