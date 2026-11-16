@@ -917,8 +917,8 @@ e dizer ao Jose o que mudou e por quê.
   S2 0,88, γm 2,0, C = 1: com cinta no topo Mr/Md 116/108/102 %; topo livre 60/52/45 %; só meia altura ≈ o mesmo
   que só topo; topo + meia ≈ 2×. Em aberto: combinação empuxo × vento (ψ0), coeficiente do muro solto.
   Pilarete: ESCOLHA concreto moldado OU bloco grauteado (Jose, 13/11). Casos de conferência = os dois clientes dele
-  (ele manda laudos de sondagem e alturas): Rodrigo — terreno natural, compactado depois com compactador manual;
-  Joames — aterro de ARGILA compactada, não é o terreno natural. Muro de contrafortes: o pilarete COINCIDE com o
+  (ele manda laudos de sondagem e alturas): casa R — terreno natural, compactado depois com compactador manual;
+  casa J — aterro de ARGILA compactada, não é o terreno natural. Muro de contrafortes: o pilarete COINCIDE com o
   contraforte — um por contraforte OU um a cada 2 contrafortes (escolha).
   PLANILHA FEITA 13/11 (branch `muro-de-cima`): entradas na seção "Muro de cima e vento" das Entradas (mc_on,
   h_mc, t_mc, mat_mc, g_mc — peso da alvenaria de vedação DIGITADO, NBR 6120 Tab. 2 —, reb_mc, arg_mc, cin_mc,
@@ -1191,7 +1191,7 @@ e dizer ao Jose o que mudou e por quê.
     `esforcos/acoColocado.test.ts`, `barrasAnaliticas.test.ts`, `estado/projeto.test.ts`.
   · ACHADO (não é do 4 ramos, ficou): no bloco 14, o gancho do estribo de 2 ramos de hoje passa a ~3 mm do eixo da
     construtiva do canto (Ø10; alvo_arredcima15_estribos) — a ponta de 135° atravessa a barra no desenho. A
-    conferir com o Jose (mover a construtiva para o canto do estribo, como na viga, ou o gancho para o outro canto).
+    conferir com o Jose (mover a construtiva para o canto do estribo, como na viga, ou o gancho para o outro canto). DECIDIDO (Jose, 15/11): "não precisa mexer nessa barra, tá de boa" — fica como está.
 - **SAPATA "CURTA DEMAIS PARA ANCORAR NA FACE" (investigado 15/11, nada mudou):** a razão conhecida do teste
   desenho × conta da vista Esforços (`barrasAnaliticas.test.ts`). Todos os muros do gabarito que caem nela são
   `sap_transv` = Estribo (o sorteio não varia) e a envoltória JÁ trata a quina do estribo como ponta dobrada (ℓb,nec
@@ -1202,7 +1202,7 @@ e dizer ao Jose o que mudou e por quê.
   ℓb,mín (máx(0,3ℓb; 10φ; 10 cm)) manda, porque As,calc/As,ef é quase zero. A planilha NÃO confere a ancoragem da
   transversal da sapata (só a dobra da espera, o dente e a perna do U). Para o Jose: com `Reta` a barra termina no
   cobrimento sem gancho — a NBR 6118 22.6.4.1.1 (de memória, conferir) pede a armadura de flexão da sapata de face a
-  face terminando em gancho nas duas pontas; o `Estribo` atende pela forma. Decisão dele se a Reta fica.
+  face terminando em gancho nas duas pontas; o `Estribo` atende pela forma. DECIDIDO (Jose, 15/11): a Reta FICA ("continua sim"); não reabrir.
 - **CONTRAFORTE SUBINDO NO LUGAR DO PILARETE (Jose, 15/11, testando o instalado: "depois a gente ataca"):**
   ele notou que há a opção de o contraforte subir pelo muro de cima no lugar do pilarete, "não sei como o cálculo
   trata isso", e que as figuras e o 3D NÃO diferenciam os dois casos. A LEVANTAR antes de mexer: qual entrada é

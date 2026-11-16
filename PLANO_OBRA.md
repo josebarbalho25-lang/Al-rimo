@@ -474,7 +474,7 @@ Em duas metades, a geometria antes da conta.
 - **Memória:** card da quina com a seção desenhada, barras, linha neutra inclinada, fator; e a linha de
   conferência "em uma direção" contra a célula da planilha.
 - **Prova:** gabarito do Revit; flexão reta All Sec × planilha; casos da quina nos dois sentidos da terra; os dois
-  muros dos clientes (Rodrigo e Joames) como casos de conferência assim que os dados chegarem.
+  muros dos clientes (casa R e casa J) como casos de conferência assim que os dados chegarem.
 
 ### Etapa 5 — Níveis: degraus e perfil ao longo do muro (ainda sem DXF)
 - Terreno mínimo: pontos cotados digitados/colados (tabela X, Y, Z) ou **cota do terreno por estaca ao longo do
