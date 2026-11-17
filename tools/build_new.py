@@ -387,11 +387,11 @@ lista(LST['lst_phi_sap2'], f'B{r-1}')
 # 15/10. Lista de texto sem vírgula: pode ir na própria validação, como a do Sim/Não.
 line(E, r, 'Transversal da sapata', 'Estribo', '', 'Estribo fechado em volta da seção; Reta = barra reta embaixo (e em cima só quando o talão pede).', 'inp', None, 'sap_transv'); r += 1
 dv_st = DataValidation(type='list', formula1='"Estribo,Reta"', allow_blank=False); E.add_data_validation(dv_st); dv_st.add(f'B{r-1}')
-# EMPUXO NA ALTURA DA SAPATA (Jose, 16/11: "desde o começo eu não gostei desse negócio de pôr o empuxo até o pé da
-# sapata"; "o outro lado estabiliza ela naturalmente"). Não (padrão) = o empuxo ativo age até o TOPO da sapata; a força
-# do muro continua levada até o fundo (o giro é no pé). Sim = a conta de antes, com a fatia da face da sapata. No FIM da
-# seção: as entradas de cima não mudam de linha.
-line(E, r, 'Empuxo na altura da sapata', 'Não', '', 'Não = o empuxo (solo, sobrecarga, água) age até o topo da sapata. Sim = continua pela face da sapata até o fundo (tombamento e deslizamento).', 'inp', None, 'emp_sap'); r += 1
+# EMPUXO NA ALTURA DA SAPATA. Sim (padrão) = o empuxo continua pela face da sapata até o fundo, a conta dos livros
+# (Jose, 16/11, noite: "agora eu entendo que temos de trabalhar dentro da norma, vamos manter até a base sim"). Não =
+# escolha do projetista: o empuxo ativo para no TOPO da sapata ("o outro lado estabiliza ela naturalmente"); a força do
+# muro continua levada até o fundo (o giro é no pé). No FIM da seção: as entradas de cima não mudam de linha.
+line(E, r, 'Empuxo na altura da sapata', 'Sim', '', 'Sim = o empuxo (solo, sobrecarga, água) continua pela face da sapata até o fundo (tombamento e deslizamento). Não = para no topo da sapata.', 'inp', None, 'emp_sap'); r += 1
 dv_es = DataValidation(type='list', formula1='"Sim,Não"', allow_blank=False); E.add_data_validation(dv_es); dv_es.add(f'B{r-1}')
 r += 1
 # MURO DE CIMA E VENTO (Jose, 13/11): o arrimo dos clientes dele "não pode ser só arrimo" — tem muro de vedação por
@@ -1348,7 +1348,7 @@ REF3 = [
     ('Painel (Libânio) com solo abaixo do topo', 'Dedução, a favor da segurança', 'Placa com h = h muro (topo livre no topo do muro); triângulo de 0 no topo do muro a σh,base − σh,topo na base + uniforme σh,topo na altura toda. Em todo ponto ≥ a pressão real (acima do solo a real é zero).'),
     ('Painel não armado com solo abaixo', 'Dedução, a favor da segurança', 'Painel de baixo mais alto que o solo: z = 0 e o trapézio σh,topo → σh,base do solo vale no painel inteiro.'),
 ] + ARG_REFS + [
-    ('Empuxo na altura da sapata', 'Critério adotado (escolha do projetista)', 'Entrada "Empuxo na altura da sapata" (Jose, 16/11). Não (padrão): o empuxo ativo age até o topo da sapata — o solo do outro lado estabiliza a sapata; a força do muro continua levada até o fundo (o pé). Sim: o empuxo continua pela face da sapata até o fundo (tombamento e deslizamento).'),
+    ('Empuxo na altura da sapata', 'Critério adotado (escolha do projetista)', 'Entrada "Empuxo na altura da sapata" (Jose, 16/11). Sim (padrão): o empuxo continua pela face da sapata até o fundo (tombamento e deslizamento), como nos livros. Não: o empuxo ativo age só até o topo da sapata — o solo do outro lado estabiliza a sapata; a força do muro continua levada até o fundo (o pé).'),
     ("φ' do solo de apoio pelo SPT (só consulta)", 'Godoy (1983): φ′ = 28° + 0,4·N; Teixeira (1996): φ′ = 15° + √(20·N). Originais não vistos; conferido em reprodução: Tito (dissertação PUC-Rio, 2014) p. 81, eq. 3.4 e 3.5.', f'Areia. A reprodução não dá a faixa de N. Divergência: a mesma reprodução traz, na eq. 3.7, φ′ = 15° + √(24·N) "de acordo com Teixeira (1996)". Argila: a tabela por consistência (Joppert, acima) lida pelo SPT da base. Só consulta: o φ′ da base é digitado (laudo). {_URL_TITO}'),
     ('Passivo no tombamento', 'NBR 6122 7.6.3; Bastos, Sapatas de Fundação 1.8', 'Só com a garantia do solo da frente (a mesma do deslizamento): Kp·γ·(h aterro + h sapata)²/2 ÷ 2,0, braço 1/3 da altura acima do fundo; o dente fica fora (abaixo do pé). Entra no FS e na excentricidade do tombamento; as tensões no solo seguem sem ele (o passivo só se mobiliza com deslocamento — dedução, a favor).'),
 ]

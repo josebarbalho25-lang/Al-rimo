@@ -259,7 +259,7 @@ ALVOS.update({
     'alvo_dobrado_pilarete_14': {**_DB, **_MC, 't_bloco': 14, 'tenr_': 54, 'l_cf': 2.3, 'H_muro': 2.6, 'H_solo': 2.6,
                                  'phi_cf': 10, 'cin_mc': 'No topo'},
 })
-# Empuxo na altura da sapata (Jose, 16/11; padrão Não) e passivo no tombamento (só com a garantia do solo da frente).
+# Empuxo na altura da sapata (Jose, 16/11; padrão Sim desde a noite de 16/11 — o "Não" é a escolha a provar) e passivo no tombamento (só com a garantia do solo da frente).
 ALVOS.update({
     'alvo_emp_sap_nao': {'emp_sap': 'Não', 'h_sap': 0.6},
     'alvo_emp_sap_sim': {'emp_sap': 'Sim', 'h_sap': 0.6},

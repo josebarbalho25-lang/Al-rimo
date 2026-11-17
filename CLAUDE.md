@@ -97,20 +97,24 @@ e dizer ao Jose o que mudou e por quê.
   também sugere Mello 100·(√N − 1), cada regra com a faixa de N (`sadm_20N`, `sadm_mel` + `_fx`), e a calculadora de
   consulta embaixo da Fig. 15 lê esses nomes (Jose, 10/10). ⚠️ `estabilidade.ts` e `modulacao/leitura.ts` ainda leem
   algumas células da aba Fundação por ENDEREÇO (B101, B102, B104, B105, B96): linha nova acima delas exige ajustar.
-- **EMPUXO SÓ ATÉ O TOPO DA SAPATA e PASSIVO NO TOMBAMENTO (Jose, 16/11):** "desde o começo eu não gostei desse
-  negócio de pôr o empuxo até o pé da sapata"; "eu não acho que deveria entrar até o pé da sapata — o outro lado
-  estabiliza ela naturalmente". Entrada `emp_sap` ("Empuxo na altura da sapata", fim da seção Fundação das Entradas),
-  PADRÃO "Não": sai de `H_k` a fatia (sh_base + sh_b2)/2·h e de `M_tb` a h²·(2·sh_base + sh_b2)/6; o Vk·h (a força do
-  muro levada ao pé) fica. "Sim" = a conta de antes, bit a bit (prova: os 91 cenários de f1ebc4f com emp_sap = Sim).
-  Fonte: "Critério adotado (escolha do projetista)". Fica "Não" até o Jose dizer se inverte. E: "o negócio é fazer um
+- **EMPUXO NA ALTURA DA SAPATA e PASSIVO NO TOMBAMENTO (Jose, 16/11):** à tarde: "desde o começo eu não gostei desse
+  negócio de pôr o empuxo até o pé da sapata"; "o outro lado estabiliza ela naturalmente" — nasceu a entrada `emp_sap`
+  ("Empuxo na altura da sapata", fim da seção Fundação das Entradas) com padrão "Não". **DECISÃO FINAL (Jose, 16/11,
+  noite): PADRÃO "Sim"** — "agora eu entendo que temos de trabalhar dentro da norma, vamos manter até a base sim". Sim
+  = o empuxo até a BASE da sapata, a conta dos livros (a de antes de 16/11, bit a bit). "Não" fica como escolha do
+  projetista (fonte "Critério adotado (escolha do projetista)"): sai de `H_k` a fatia (sh_base + sh_b2)/2·h e de
+  `M_tb` a h²·(2·sh_base + sh_b2)/6; o Vk·h (a força do muro levada ao pé) fica. Arquivo .alrimo abre com o padrão
+  (sem migração). Não reabrir. E: "o negócio é fazer um
   negócio funcional e seguro" — com `pass_on` = Sim (a mesma garantia do deslizamento) o passivo entra no
   TOMBAMENTO: `Ep_tb` = Kp_b·γ·(h_fr + h)²/2 ÷ 2,0 (sem o dente, que está abaixo do pé), braço `y_ptb` = (h_fr + h)/3,
   `M_ptb`; FS_t = (M_est + M_ptb)/M_tb; a excentricidade DA VERIFICAÇÃO `e_tb` = (M_cen − M_ptb)/N (chk_e_t, chk_tomb);
   as tensões e a sapata seguem com a e_f sem o passivo (DEDUÇÃO: o passivo só se mobiliza com deslocamento).
-  Antes → depois (padrão Não, sem passivo): aula 12.2 FS_t 3,81 → 4,06, FS_d 1,10 → 1,53, e 8,2 → 6,9 cm, σmáx
-  44,5 → 42,6 kPa; VAL123 FS_t 4,26 → 4,39, FS_d 1,10 → 1,37, e 7,6 → 6,6 cm, σmáx 56,6 → 55,4 (referência
-  regravada). Memória: cards de cargas/tombamento escrevem conforme a escolha; desenho do empuxo para no topo da
-  sapata; seta do passivo numerada na face da frente com o braço do fundo.
+  Com "Não" (sem passivo), para comparar: aula 12.2 FS_t 3,81 → 4,06, FS_d 1,10 → 1,53, e 8,2 → 6,9 cm, σmáx
+  44,5 → 42,6 kPa; VAL123 FS_t 4,26 → 4,39, FS_d 1,10 → 1,37, e 7,6 → 6,6 cm, σmáx 56,6 → 55,4. Com o padrão Sim a
+  referência da regressão voltou aos valores de f1ebc4f e a aula 12.2 volta a reprovar o deslizamento (FS 1,10).
+  Golden: `alvo_emp_sap_nao` / `_nao_passivo` são os que exercitam a escolha. Memória: cards de cargas/tombamento
+  escrevem conforme a escolha; com Não o desenho do empuxo para no topo da sapata; seta do passivo numerada na face
+  da frente com o braço do fundo.
 - **φ' DO SOLO DE APOIO — VALOR DE CONSULTA (Jose, 16/11, "Sim"):** o `phi_base` continua OBRIGATÓRIO e digitado
   (decisão de 14/10); a aba Fundação (fim da seção 6) publica só consulta pelo SPT da base: areia `phib_god` = 28° +
   0,4·N (Godoy 1983) e `phib_tei` = 15° + √(20·N) (Teixeira 1996), com `_fx`; argila `cons_b`, `phib_arg`, `cb_arg`,

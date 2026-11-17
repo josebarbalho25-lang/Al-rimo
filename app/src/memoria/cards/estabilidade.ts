@@ -309,7 +309,7 @@ function cardCargas(r: Resultado): Card {
   // a água só entra no trecho da sapata se o NA estiver acima da base dela: AND(Agua="Sim"; H_solo + h_sap > z_NA)
   // (o NA é medido do topo do solo)
   const aguaNaSapata = agua && (m.num('H_solo') ?? 0) + (m.num('h_sap') ?? 0) > (m.num('z_NA') ?? 0);
-  // Empuxo na altura da sapata (Jose, 16/11; padrão Não): com Não o empuxo para no topo da sapata — sem a fatia dela
+  // Empuxo na altura da sapata (Jose, 16/11; padrão Sim, até a base): com Não o empuxo para no topo da sapata — sem a fatia dela
   const naSapata = m.texto('emp_sap') === 'Sim';
   const empuxo = secao(naSapata ? 'Empuxo até a base da sapata' : 'Empuxo até o topo da sapata', [
     naSapata && m.passo('sh_b2', '\\sigma_{h,s}', aguaNaSapata

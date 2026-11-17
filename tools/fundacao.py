@@ -68,8 +68,8 @@ Fd.cell(row=r, column=1, value='Muro e contraforte na altura do muro; solo do ta
 section(Fd, r, '3. Empuxo até a base da sapata'); r += 1
 Lf('σh na base do muro', '=sh_base', 'kPa', '', 'res', '0.00')
 Lf('σh na base da sapata', '=sh_base+h_sap*(Ka_*(gama_solo-IF(AND(Agua="Sim",H_solo+h_sap>z_NA),gama_w,0))+IF(AND(Agua="Sim",H_solo+h_sap>z_NA),gama_w,0))', 'kPa', 'Continua o perfil por mais h da sapata.', 'res', '0.00', 'sh_b2')
-# Empuxo na altura da sapata (Jose, 16/11, entrada emp_sap; padrão Não): sem a fatia da face da sapata. O Vk·h sapata
-# FICA — é a força do muro levada até o fundo, onde está o pé (o giro). Com Sim, a conta de antes, bit a bit.
+# Empuxo na altura da sapata (Jose, 16/11, entrada emp_sap; padrão Sim = a conta dos livros, com a fatia da face da
+# sapata). Com Não, sai a fatia; o Vk·h sapata FICA — é a força do muro levada até o fundo, onde está o pé (o giro).
 Lf('Hk — empuxo total no módulo', '=(Vk_+Vk_w+IF(emp_sap="Sim",(sh_base+sh_b2)/2*h_sap,0))*Lm', 'kN', 'Empuxo + vento (aba Muro de cima e vento; zero sem vento). Fatia da sapata só com "Empuxo na altura da sapata" = Sim.', 'key', '0.00', 'H_k', 'Critério adotado (escolha do projetista)')
 Lf('M de tombamento em relação à base da sapata', '=(Mk_+Mk_w+(Vk_+Vk_w)*h_sap+IF(emp_sap="Sim",h_sap^2*(2*sh_base+sh_b2)/6,0))*Lm', 'kN·m', 'Mk na base do muro (empuxo + vento) + Vk·h sapata (+ fatia da sapata, com Sim).', 'key', '0.00', 'M_tb')
 # Passivo (Jose, 13/10): com o solo da frente garantido, a face toda da frente (aterro + sapata + dente). Sem a garantia,

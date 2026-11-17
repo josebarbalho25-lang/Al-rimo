@@ -265,7 +265,7 @@ export function desenhoDasForcasQueTombam(r: Resultado): DesenhoDoCard | null {
   const xPl = c.X(0);
   const kp = 140 / Math.max(Math.abs(sTopo), Math.abs(sBase), Math.abs(sSap), 1e-9);   // px por kPa
   const ySolo = yTopo - g.Hs * s;
-  // Empuxo na altura da sapata (Jose, 16/11; padrão Não): com Não o diagrama para no topo da sapata
+  // Empuxo na altura da sapata (Jose, 16/11; padrão Sim, até a base): com Não o diagrama para no topo da sapata
   const naSapata = String(r.v('emp_sap') ?? '') === 'Sim';
   const yFim = naSapata ? c.yBase : yTopo;
   partes.push(poli(naSapata

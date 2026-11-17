@@ -204,10 +204,10 @@ describe('régua única entre cenários', () => {
     // Desde 10/10 (Jose): passivo desligado por padrão (NBR 6122 7.6.3) → a sapata do exemplo não passa ao deslizamento.
     // Desde 14/10 (Jose): a 1ª conta da sapata é a NBR 6118 22.6.1 — a de 0,30 m do exemplo (B 1,40, t 19) é
     // flexível, pede h ≥ (1,40 − 0,19)/3 = 0,40 ("a gente sobe 5 cm na altura").
-    // Desde 16/11 (Jose): o empuxo para no topo da sapata (emp_sap = Não, padrão) → FS ao deslizamento 1,10 → 1,53 e o
-    // exemplo passa nele.
-    expect(falhas122).toEqual(['balanco.flexao.As', 'fundacao.rigidez']);
-    expect(vereditoDaMemoria(r122)).toEqual({ passa: false, falhas: 2 });
+    // 16/11 (Jose, noite): o empuxo vai até a base da sapata por padrão (emp_sap = Sim, "dentro da norma") → FS ao
+    // deslizamento 1,10 e o exemplo volta a reprovar nele (com Não ia a 1,53).
+    expect(falhas122).toEqual(['balanco.flexao.As', 'fundacao.rigidez', 'fundacao.deslizamento']);
+    expect(vereditoDaMemoria(r122)).toEqual({ passa: false, falhas: 3 });
     expect(vereditoDaMemoria(resultadoDoGabarito('aula123'))).not.toBeNull();
     for (const c of CENARIOS) {
       const r = resultadoDoGabarito(c);
