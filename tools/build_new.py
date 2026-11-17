@@ -393,6 +393,16 @@ dv_st = DataValidation(type='list', formula1='"Estribo,Reta"', allow_blank=False
 # muro continua levada até o fundo (o giro é no pé). No FIM da seção: as entradas de cima não mudam de linha.
 line(E, r, 'Empuxo na altura da sapata', 'Sim', '', 'Sim = o empuxo (solo, sobrecarga, água) continua pela face da sapata até o fundo (tombamento e deslizamento). Não = para no topo da sapata.', 'inp', None, 'emp_sap'); r += 1
 dv_es = DataValidation(type='list', formula1='"Sim,Não"', allow_blank=False); E.add_data_validation(dv_es); dv_es.add(f'B{r-1}')
+# ARRANQUE (Jose, 15/10): era entrada só do modelo (a forma da espera). Veio para a planilha em 16/11 porque a conta
+# passou a conferir a ancoragem da espera na sapata (aba Fundação, seção 14): a espera Padrão ancora pelo
+# comprimento reto (ou com gancho) dentro da altura da sapata; o nó de cachorro corre por baixo até a ponta e o
+# Jose o usa justamente para ancorar em sapata baixa — a conta não o contabiliza (decisão dele, 15/10).
+line(E, r, 'Arranque (espera)', 'Padrão', '', 'Padrão = espera reta (com gancho, conforme acima) ancorada na altura da sapata; Nó de cachorro = desce, corre por baixo até a ponta e sobe.', 'inp', None, 'arranque'); r += 1
+dv_arr = DataValidation(type='list', formula1='"Padrão,Nó de cachorro"', allow_blank=False); E.add_data_validation(dv_arr); dv_arr.add(f'B{r-1}')
+# Coeficiente de reação do solo (16/11, sapata flexível calculada): só para o fator de concentração junto ao
+# contraforte e o indicador λ·B (aba Fundação, seção 14). Em branco = 120·σadm (Bowles), a sugestão do ramo
+# sapata-molas (13/10). Não muda a distribuição de tensões (plana, critério adotado).
+line(E, r, 'Coeficiente de reação do solo ks — opcional', None, 'kN/m³', 'Em branco = 120·σadm (Bowles). Tabela de consulta na aba Fundação, seção 14. Preferir prova de carga em placa (NBR 6489).', 'inp', '0', 'ks_dir'); r += 1
 r += 1
 # MURO DE CIMA E VENTO (Jose, 13/11): o arrimo dos clientes dele "não pode ser só arrimo" — tem muro de vedação por
 # cima, e o vento nesse muro desce no arrimo. Tudo no mesmo programa ("é mais fácil integrar do que fazer separado e
@@ -1350,7 +1360,19 @@ REF3 = [
 ] + ARG_REFS + [
     ('Empuxo na altura da sapata', 'Critério adotado (escolha do projetista)', 'Entrada "Empuxo na altura da sapata" (Jose, 16/11). Sim (padrão): o empuxo continua pela face da sapata até o fundo (tombamento e deslizamento), como nos livros. Não: o empuxo ativo age só até o topo da sapata — o solo do outro lado estabiliza a sapata; a força do muro continua levada até o fundo (o pé).'),
     ("φ' do solo de apoio pelo SPT (só consulta)", 'Godoy (1983): φ′ = 28° + 0,4·N; Teixeira (1996): φ′ = 15° + √(20·N). Originais não vistos; conferido em reprodução: Tito (dissertação PUC-Rio, 2014) p. 81, eq. 3.4 e 3.5.', f'Areia. A reprodução não dá a faixa de N. Divergência: a mesma reprodução traz, na eq. 3.7, φ′ = 15° + √(24·N) "de acordo com Teixeira (1996)". Argila: a tabela por consistência (Joppert, acima) lida pelo SPT da base. Só consulta: o φ′ da base é digitado (laudo). {_URL_TITO}'),
-    ('Passivo no tombamento', 'NBR 6122 7.6.3; Bastos, Sapatas de Fundação 1.8', 'Só com a garantia do solo da frente (a mesma do deslizamento): Kp·γ·(h aterro + h sapata)²/2 ÷ 2,0, braço 1/3 da altura acima do fundo; o dente fica fora (abaixo do pé). Entra no FS e na excentricidade do tombamento; as tensões no solo seguem sem ele (o passivo só se mobiliza com deslocamento — dedução, a favor).'),
+    # Sapata flexível calculada (Jose, 16/11). Lido no texto: NBR 6118:2023 (PDF), NBR 6122:2019 (páginas), Bastos
+    # (UNESP, out/2023) — estudo _trabalho/sapata_flexivel_16-11/ESTUDO.md, com as páginas.
+    ('Classe da sapata (rígida × flexível)', 'NBR 6118 22.6.1; dedução para o muro fora do centro', 'Rígida se h ≥ (a − ap)/3 (pilar centrado: 2/3 do balanço). Muro fora do centro: 2/3 do MAIOR balanço (ponta ou talão) — dedução. Com o muro centrado dá (B − t)/3. A classe só informa: as duas são calculadas.'),
+    ('Sapata rígida e flexível — comportamento', 'NBR 6118 22.6.2.2 e 22.6.2.3', 'Rígida: tração uniforme na largura; cisalhamento por compressão diagonal, sem punção. Flexível: flexão não uniforme, concentração junto ao pilar a avaliar; cisalhamento pela punção (19.5); "a distribuição plana de tensões no contato sapata-solo deve ser verificada".'),
+    ('Modelo de cálculo da sapata', 'NBR 6118 22.6.3', 'Modelos lineares ou biela-tirante, "podendo, quando for o caso, ser utilizados modelos de flexão"; avaliar a necessidade de interação solo-estrutura. Aqui: flexão por metro (balanço na face do muro) nas duas classes.'),
+    ('Ancoragem da espera na sapata', 'NBR 6118 22.6.4.1.2; 9.4.2.5', 'A sapata deve ter altura suficiente para a ancoragem da armadura de arranque. ℓb,nec de cada espera (tabela de ℓb, com gancho conforme as Entradas, × As,calc/As,ef, ≥ ℓb,mín) ≤ h − c − Ø principal − Ø secundária (o pé apoiado na malha: dedução). Nó de cachorro: não contabilizado (decisão do projeto, 15/10).'),
+    ('Sapata flexível: requisitos de laje', 'NBR 6118 22.6.4.1.3; 19.4.1; Tab. 19.1; 20.1', 'Flexível atende os requisitos de lajes e punção. VRd1 a d da face (19.4.1); secundária ≥ 20% da principal e ≥ 0,9 cm²/m (Tab. 19.1); Ø ≤ h/8, s ≤ 2h e ≤ 20 cm (20.1).'),
+    ('Punção', 'NBR 6118 19.5.1, 19.5.2.2, 19.5.2.3, 19.5.3.1, 19.5.3.2', 'Contorno C (compressão diagonal, τRd2 = 0,27·αv·fcd) e C′ a 2d (τRd1 = 0,13·ke·(100ρfck)^⅓, ke = 1 + √(20/d) ≤ 2, ρ = √(ρx·ρy) ≤ 0,02). Sob o muro contínuo o C′ são duas retas: cortante por metro a 2d da face com o τRd1 (dedução). Junto ao contraforte: pilar tenr × eenr, interno ou de borda; cortado nos dois lados, vale a torção.'),
+    ('Concentração junto ao contraforte', 'Critério adotado (dedução: torção sobre base elástica)', 'Flexível com contrafortes: a sapata espalha o momento do contraforte torcendo, com o solo como molas de giro kθ = ks·B³/12; fator (βL/2)/th(βL/2), β = √(kθ/GJ), GJ = 0,15·G·J. Multiplica o momento e a cortante do balanço solto junto ao contraforte (a favor).'),
+    ('Coeficiente de reação ks', 'Bowles, Foundation Analysis and Design, 5ª ed., 9-6 e Tab. 9-1; Terzaghi (1955) — conferidos em reproduções', 'Em branco: 120·σadm. Só no fator de concentração e no indicador λ·B; não muda a distribuição de tensões.'),
+    ('Distribuição de tensões no solo', 'Critério adotado; NBR 6122 7.6.1, 7.6.2 e 7.8.1; Bastos, Sapatas de Fundação 1.5', 'Plana (trapézio ou triângulo) nas duas classes. NBR 6122: tensões uniformes (carga centrada) e diagrama linear com a área comprimida mínima; diagramas representativos do terreno. Bastos: a não uniformidade "comumente ignorada" por influir pouco nos esforços. Interação solo-estrutura não obrigatória para muro (NBR 6122 5.5).'),
+    ('Punção em sapata corrida flexível', 'Bastos, Sapatas de Fundação 1.7', '"Nas sapatas corridas flexíveis… a ruptura por punção deve ser obrigatoriamente verificada"; h ≥ 15 cm.'),
+    ('Passivo no tombamento', 'NBR 6122 7.6.3; Bastos, Sapatas de Fundação 1.8','Só com a garantia do solo da frente (a mesma do deslizamento): Kp·γ·(h aterro + h sapata)²/2 ÷ 2,0, braço 1/3 da altura acima do fundo; o dente fica fora (abaixo do pé). Entra no FS e na excentricidade do tombamento; as tensões no solo seguem sem ele (o passivo só se mobiliza com deslocamento — dedução, a favor).'),
 ]
 R['A152'] = 'Duas alturas (solo e muro) e argila'; R['A152'].font = fB
 header(R, 153, ['Item', 'Fonte', 'O que diz / como foi usado'])

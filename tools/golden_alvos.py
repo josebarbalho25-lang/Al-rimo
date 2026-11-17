@@ -324,6 +324,30 @@ ALVOS_DENTE = {
 }
 ALVOS.update(ALVOS_DENTE)
 
+# Sapata flexível calculada e ancoragem da espera (16/11; aba Fundação, seção 14). Fora do sorteio pela mesma razão do
+# dente. Contrafortes = VAL123 (a aula 12.3 em 14×39, sapata de 0,30) com o que cada alvo muda.
+from cenarios import VAL123 as _V123
+ALVOS_FLEX = {
+    # flexíveis que passam: balanço (aula 12.2) e contrafortes (VAL123 com a construtiva Ø8, que ancora em 24,4 cm)
+    'alvo_flex_balanco_h30': {'h_sap': 0.30},
+    'alvo_flex_balanco_h40': {'h_sap': 0.40},
+    'alvo_flex_cf_h30': dict(_V123, phi_cc=8),
+    'alvo_flex_cf_h40': dict(_V123, h_sap=0.40),
+    # punção que reprova (sob o muro e junto ao contraforte): muro de 4 m, vão 3,75, sapata de 0,25, C20
+    'alvo_flex_puncao_reprova': dict(_V123, h_sap=0.25, B_sap=3.0, a_ater=2.2, H_muro=4.0, H_solo=4.0, l_cf=3.75, fck_fund='C20', q_sobre=10),
+    # Ø25 numa sapata de 0,15 (h/8 = 18,75 mm)
+    'alvo_flex_phi_h8': {'h_sap': 0.15, 'phi_sap': 25},
+    # espera reta Ø12,5 numa sapata de 0,25: ℓb,nec 24 > 19,4 cm; e a mesma com o nó de cachorro
+    'alvo_espera_nao_ancora': {'h_sap': 0.25, 'phi_v': 12.5, 'gancho_': 'Não'},
+    'alvo_espera_no_de_cachorro': {'h_sap': 0.25, 'phi_v': 12.5, 'gancho_': 'Não', 'arranque': 'Nó de cachorro'},
+    # ks digitado (o fator de concentração muda com ele)
+    'alvo_flex_ks_digitado': dict(_V123, h_sap=0.40, ks_dir=50000),
+    # muro centrado: (B − t)/3 = 2/3 do balanço — a classe é a de antes (0,41 rígida; 0,40 flexível)
+    'alvo_classe_centrado_rigida': {'a_ater': 0.70, 'h_sap': 0.41},
+    'alvo_classe_centrado_flexivel': {'a_ater': 0.70, 'h_sap': 0.40},
+}
+ALVOS.update(ALVOS_FLEX)
+
 # solo no topo do muro em todo alvo que mexe na altura do muro e não diz a do solo (ver ALVOS_SOLO)
 for _sc in ALVOS.values():
     if isinstance(_sc, dict) and 'H_muro' in _sc:

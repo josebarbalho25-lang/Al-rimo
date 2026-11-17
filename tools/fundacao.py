@@ -12,12 +12,13 @@ def Lf(label, f, unit='', note='', kind='res', fmt=None, nm=None, src=None):
     line(Fd, r, label, f, unit, note, kind, fmt, nm, src); r += 1
 
 Lf('Tipo de muro', '=IF(Tipo_muro="Contrafortes","Contrafortes — módulo entre contrafortes","Balanço — faixa de 1 m")', '', '', 'key')
-# A PRIMEIRA CONTA da sapata (Jose, 14/10): rígida ou flexível. Toda a aba supõe sapata RÍGIDA (pressão linear,
-# tombamento, deslizamento, fatias); flexível não é calculada aqui — acusa NÃO OK e manda reavaliar (Jose: "a planilha
-# não vai fazer sapata flexível, vai verificar"; elementos finitos ficam para o software). A conta está nas
-# Verificações (h_rig, chk_rig); esta linha repete o veredito no topo. Ocupa a linha que era em branco.
-Lf('Sapata rígida: h ≥ (B − t)/3 (NBR 6118 22.6.1) — a primeira conta', '=chk_rig', '',
-   'Sapata corrida: a = B, ap = espessura do muro (Bastos, Sapatas de Fundação, 1.7).', 'key', None, 'cls_fund', 'NBR 6118 22.6.1')
+# A PRIMEIRA CONTA da sapata: rígida ou flexível. Até 16/11 a flexível reprovava (Jose, 14/10: "a planilha não vai
+# fazer sapata flexível, vai verificar"). DECIDIDO 16/11 (Jose, "pode sim", com o estudo _trabalho/sapata_flexivel_16-11):
+# a flexível é CALCULADA — a flexão por metro e a cortante VRd1 a d que a aba já faz são as de laje (NBR 6118
+# 22.6.4.1.3); a flexível ganha a punção, o Ø ≤ h/8 e, com contrafortes, a concentração junto ao contraforte (seção
+# 14). A classe só informa. A conta está nas Verificações (h_rig, chk_rig); esta linha repete a classe no topo.
+Lf('Classe da sapata: rígida se h ≥ 2/3 do maior balanço (NBR 6118 22.6.1)', '=chk_rig', '',
+   'Rígida: pressão plana permitida (22.6.2.2). Flexível: laje e punção (22.6.2.3, 22.6.4.1.3), seção 14.', 'key', None, 'cls_fund', 'NBR 6118 22.6.1')
 section(Fd, r, '1. Geometria'); r += 1
 # Módulo e contraforte pelos valores ADOTADOS (na grade do bloco, Entradas): a sapata carrega o muro que a
 # memória calcula e o 3D desenha.
@@ -203,9 +204,13 @@ Lf('Mínimo de estribo: ρsw = 0,2·fctm/fywk (bw = 2·he)', '=IF(T_sd>0,0.2*0.3
 Lf('Ø do estribo de torção: espaçamento', '=IF(T_sd>0,MIN(20,ROUNDDOWN(PI()*phi_tor^2/400/MAX(A90_s,A90_m,0.0001)*100,0)),"—")', 'cm', 'Pelo maior entre o cálculo e o mínimo; até 20 cm.', 'res', '0', 's_tor_f')
 r += 1
 section(Fd, r, '9. Verificações'); r += 1
-Lf('h mínimo para sapata rígida = (B − t)/3', '=(B_sap-t_bloco/100)/3', 'm', 'NBR 6118 22.6.1: h ≥ (a − ap)/3; sapata corrida: a = B, ap = t (Bastos, 1.7).', 'res', '0.000', 'h_rig', 'NBR 6118 22.6.1')
+# Muro fora do centro (16/11): a fórmula da norma, h ≥ (a − ap)/3, é a do pilar CENTRADO — (a − ap)/3 = 2/3 do balanço.
+# Com a ponta e o talão diferentes ela vale para o balanço MAIOR: 2/3·máx(ponta; talão). Com o muro centrado dá o mesmo
+# (B − t)/3 de antes; com o muro fora do centro a classe fica mais exigente (DEDUÇÃO, aprovada pelo Jose em 16/11).
+Lf('h mínimo para sapata rígida = 2/3 do maior balanço', '=2/3*MAX(heel,toe)', 'm', 'NBR 6118 22.6.1: h ≥ (a − ap)/3 = 2/3 do balanço do pilar centrado; aqui com o maior entre ponta e talão (dedução).', 'res', '0.000', 'h_rig', 'NBR 6118 22.6.1')
 CHKF = [
-    ('Sapata rígida: h ≥ (B − t)/3', '=IF(h_sap>=h_rig-0.0005,"OK — rígida (h = "&FIXED(h_sap,2)&" ≥ "&FIXED(h_rig,2)&" m)","NÃO OK — sapata flexível (h = "&FIXED(h_sap,2)&" < "&FIXED(h_rig,2)&" m): reavaliar as condições de contorno (altura, largura, posição do muro)")'),
+    # Só informa (16/11): nenhuma das duas classes reprova. A flexível leva as verificações da seção 14.
+    ('Classe da sapata (h ≥ 2/3 do maior balanço)', '=IF(h_sap>=h_rig-0.0005,"Rígida (h = "&FIXED(h_sap,2)&" ≥ "&FIXED(h_rig,2)&" m)","Flexível (h = "&FIXED(h_sap,2)&" < "&FIXED(h_rig,2)&" m) — calculada como laje, com punção")'),
     ('Muro apoiado na sapata', '=IF(AND(a_ater>=t_m/2-0.001,a_ater<=B_sap-t_m/2+0.001),"OK","NÃO OK — o muro sai da sapata: distância da borda aterrada ao eixo deve ficar entre t/2 e B − t/2")'),
     ('Contraforte apoiado na sapata', '=cf_cabe'),
     ('Tombamento: FS ≥ mínimo', '=IF(FS_t>=FS_tomb,"OK (FS = "&FIXED(FS_t,2)&")","NÃO OK (FS = "&FIXED(FS_t,2)&" < "&FIXED(FS_tomb,1)&")")'),
@@ -231,7 +236,7 @@ CHKF = [
 # Nome nas linhas que o app lê (antes por endereço: B101, B102, B104, B105 — uma linha nova acima as mudava de lugar).
 NOME_CHK = {'Tombamento: FS ≥ mínimo': 'chk_fs_t', 'Tombamento: |e| ≤ B/4': 'chk_e_t',
             'Deslizamento: FS ≥ mínimo': 'chk_fs_d', 'Tensão: σ máx ≤ σadm': 'chk_sig',
-            'Sapata rígida: h ≥ (B − t)/3': 'chk_rig', 'Compressão diagonal na face do muro': 'chk_bw',
+            'Classe da sapata (h ≥ 2/3 do maior balanço)': 'chk_rig', 'Compressão diagonal na face do muro': 'chk_bw',
             'Compressão diagonal junto ao contraforte': 'chk_bc',
             # nomes de 15/11 (diagrama de esforços): as demais verificações, que só tinham rótulo
             'Muro apoiado na sapata': 'chk_apoio_s', 'Contraforte apoiado na sapata': 'chk_cf_s',
@@ -351,11 +356,15 @@ for tag, lab in (('T', 'Ponta'), ('H', 'Talão')):
             Fd[f'{cM}{r}'] = _ie(f'1.4*MAX(0,{sinal}I{r})')
             Fd[f'{cX}{r}'] = _ie(f'IFERROR(1.25*d_s*(1-SQRT(1-{cM}{r}*100/(0.425*100*d_s^2*fcd_s/10))),"não resiste")')
             Fd[f'{cA}{r}'] = _ie(f'{cM}{r}*100/(fyk_/gama_s/10*(d_s-0.4*{cX}{r}))')
-        for cc in 'ABCDEFGHIJKLMNOPQR':
+        # Coluna S (16/11, sapata flexível): a carga das fatias além de 2d da face — a "punção" sob o muro contínuo é a
+        # cortante por metro no contorno C' a 2d (seção 14). A mesma regra da coluna G (que é a de d).
+        Fd[f'S{r}'] = f'=IF(E{r}>2*d_s/100,D{r}*{_L}/20,0)'
+        for cc in 'ABCDEFGHIJKLMNOPQRS':
             c = Fd[f'{cc}{r}']; c.border = BOX; c.font = fN
             if cc != 'A': c.number_format = '0.000'
         r += 1
-    header(Fd, r0 - 1, ['Md = 1,4·máx(0; M)', 'x (cm)', 'As (cm²/m)', 'Md face oposta', 'x (cm)', 'As face oposta (cm²/m)'], start=13)
+    header(Fd, r0 - 1, ['Md = 1,4·máx(0; M)', 'x (cm)', 'As (cm²/m)', 'Md face oposta', 'x (cm)', 'As face oposta (cm²/m)', 'dV além de 2d (kN/m)'], start=13)
+    wb.defined_names[f'{tag}_dV2'] = DefinedName(f'{tag}_dV2', attr_text=f"'Fundação'!$S${r0}:$S${r-1}")
     for _sf, _cc in (('As', 'O'), ('Aso', 'R')):
         wb.defined_names[f'{tag}_{_sf}'] = DefinedName(f'{tag}_{_sf}', attr_text=f"'Fundação'!${_cc}${r0}:${_cc}${r-1}")
     for _sf, _cc in (('e', 'H'), ('Mk', 'I'), ('Vk', 'J'), ('Md', 'K'), ('Vd', 'L')):
@@ -569,5 +578,168 @@ for _lab, _sx, _lbphi, _ph, _rz in _LBS:
     _mn = f'MAX(0.3*{_lb},{_ph},10)'
     Lf(f'{_lab}: ℓb,nec ponta reta = ℓb·As,calc/As,ef ≥ ℓb,mín', f'=MAX({_lb}*{_rz},{_mn})', 'cm', 'ℓb,mín = máx(0,3·ℓb; 10Ø; 10 cm).', 'res', '0.0', f'lbn_{_sx}', 'NBR 6118 9.4.2.5')
     Lf(f'{_lab}: ℓb,nec ponta dobrada = 0,7·ℓb·As,calc/As,ef ≥ ℓb,mín', f'=MAX(0.7*{_lb}*{_rz},{_mn})', 'cm', 'α = 0,7 (gancho ou dobra).', 'res', '0.0', f'lbg_{_sx}', 'NBR 6118 9.4.2.5')
+r += 1
+# ---------- 14. sapata flexível e ancoragem da espera (16/11) ----------
+# DECISÃO DO JOSE (16/11, "pode sim", estudo _trabalho/sapata_flexivel_16-11/ESTUDO.md): a sapata flexível é CALCULADA,
+# não barrada. A flexão por metro (balanço na face do muro) e a cortante VRd1 a d das seções 7 e 9 já são as de laje,
+# que a 22.6.4.1.3 pede; a flexível ganha aqui o que a laje e a punção acrescentam: a punção (19.5), o Ø ≤ h/8 (20.1)
+# e, com contrafortes, a concentração da flexão junto ao contraforte (22.6.2.3 a). Não há molas nem interação
+# solo-estrutura: a distribuição de tensões no solo continua plana (critério adotado; a 22.6.2.3 manda verificar, e o
+# estudo mostrou a linear a favor no talão, que governa). O coeficiente de reação ks só entra no fator de concentração
+# e no indicador λ·B. No FIM da aba, como as seções 11 a 13: nada de cima muda de endereço.
+# A ancoragem da espera na sapata (22.6.4.1.2) vale para QUALQUER classe: na sapata fina é ela que manda.
+section(Fd, r, '14. Sapata flexível (punção, Ø ≤ h/8, concentração junto ao contraforte) e ancoragem da espera'); r += 1
+Lf('Sapata flexível?', '=IF(h_sap>=h_rig-0.0005,"Não","Sim")', '', 'A classe da seção 9 (chk_rig).', 'res', None, 'flex_s', 'NBR 6118 22.6.1')
+_FX = 'flex_s="Sim"'
+_CF = 'Tipo_muro="Contrafortes"'
+Fd.cell(row=r, column=1, value='Distribuição de tensões no solo e rigidez relativa (indicador)').font = fB; r += 1
+Lf('Distribuição de tensões no solo', '="Plana (trapézio ou triângulo, seção 6) nas duas classes — critério adotado"', '',
+   'NBR 6118 22.6.2.3 manda verificar a distribuição plana na flexível; NBR 6122 7.6 e 7.8.1 (diagrama linear, compatível com o terreno); Bastos 1.5 (a não uniformidade influi pouco nos esforços).',
+   'txt', None, 'dist_s', 'Critério adotado; NBR 6122 7.6 e 7.8.1; Bastos, Sapatas de Fundação 1.5')
+Lf('Eci = 5600·√fck', '=5600*SQRT(fck_s)', 'MPa', 'αE = 1,0 (granito, gnaisse).', 'res', '0', 'Eci_s', 'NBR 6118 8.2.8')
+Lf('Ecs = αi·Eci, αi = 0,8 + 0,2·fck/80 ≤ 1', '=MIN(1,0.8+0.2*fck_s/80)*Eci_s', 'MPa', '', 'res', '0', 'Ecs_s', 'NBR 6118 8.2.8')
+Lf('EI da faixa de 1 m = Ecs·h³/12', '=Ecs_s*1000*h_sap^3/12', 'kN·m²/m', 'Seção bruta (dedução).', 'res', '0', 'EI_s')
+# Sugestão do ramo sapata-molas (13/10): Bowles, k ≈ 40·FS·σadm com FS = 3 (σ de ruptura sobre recalque de 25 mm).
+# Ordem de grandeza: as fontes divergem até 6 vezes para o mesmo solo (tabela de consulta abaixo).
+Lf('Sugestão de ks = 120·σadm', '=IFERROR(120*s_adm,"—")', 'kN/m³', 'Bowles: 40·FS·σadm, FS = 3. Sem σadm (SPT < 5), digitar o ks.', 'sug', '0', 'k_sug', 'Bowles, Foundation Analysis and Design, 5ª ed., 9-6')
+Lf('ks usado', '=IF(ISNUMBER(ks_dir),ks_dir,k_sug)', 'kN/m³', 'Digitado nas Entradas manda.', 'res', '0', 'ks_us')
+Lf('λ = (ks/(4·EI))^¼', '=(ks_us/(4*EI_s))^0.25', '1/m', 'Faixa de 1 m.', 'res', '0.0000', 'lam_s', 'Hetényi (1946)')
+Lf('λ·B', '=lam_s*B_sap', '', 'Só informa: rígida ≤ π/4 < intermediária < π ≤ flexível.', 'res', '0.000', 'lamB_s', 'Hetényi (1946)')
+Lf('Pela rigidez relativa (viga sobre base elástica)', '=IF(lamB_s<=PI()/4,"Rígida (λB ≤ π/4)",IF(lamB_s<PI(),"Intermediária (π/4 < λB < π)","Flexível (λB ≥ π)"))', '',
+   'Indicador; quem classifica é a NBR (seção 9). Não muda a conta.', 'res', None, 'lamB_cls', 'Hetényi (1946)')
+# Tabela de consulta do ks (a do ramo sapata-molas): valores conferidos em reproduções (Strand7, Bentley RAM, LUSAS,
+# GeoStru, tese UENF no padrão Velloso & Lopes, manual TQS "K30 Terzaghi"); os originais de Bowles e Terzaghi não
+# foram vistos. Só consulta: nenhuma conta lê esta tabela.
+header(Fd, r, ['ks — referências (consulta)', 'ks (kN/m³)', 'Nesta largura B', 'Observação', 'Fonte']); Fd.row_dimensions[r].height = 30; r += 1
+KREF = [
+    ('Areia fofa', '4.800 – 16.000', None, '', 'Bowles, Tab. 9-1'),
+    ('Areia média', '9.600 – 80.000', None, '', 'Bowles, Tab. 9-1'),
+    ('Areia compacta', '64.000 – 128.000', None, '', 'Bowles, Tab. 9-1'),
+    ('Areia argilosa, média', '32.000 – 80.000', None, '', 'Bowles, Tab. 9-1'),
+    ('Areia siltosa, média', '24.000 – 48.000', None, '', 'Bowles, Tab. 9-1'),
+    ('Argila, σadm ≤ 200 kPa', '12.000 – 24.000', None, '', 'Bowles, Tab. 9-1'),
+    ('Argila, 200 < σadm ≤ 800 kPa', '24.000 – 48.000', None, '', 'Bowles, Tab. 9-1'),
+    ('Argila, σadm > 800 kPa', '> 48.000', None, 'Ordem de grandeza; não usar a média da faixa.', 'Bowles, Tab. 9-1'),
+    ('Argila rija (qu 96 a 192 kPa)', 23600, '=23600*0.305/(1.5*B_sap)', 'k1 da placa de 0,30 m. Argila: k = k1·0,305/(1,5·B).', 'Terzaghi (1955)'),
+    ('Argila muito rija (qu 192 a 383 kPa)', 47100, '=47100*0.305/(1.5*B_sap)', 'qu ≈ 2·su = 20·NSPT (su = 10·N).', 'Terzaghi (1955)'),
+    ('Argila dura (qu > 383 kPa)', 94300, '=94300*0.305/(1.5*B_sap)', '', 'Terzaghi (1955)'),
+    ('Areia fofa — seca ou úmida (submersa 7.900)', 12600, '=12600*((B_sap+0.305)/(2*B_sap))^2', 'Areia: k = k1·[(B + 0,305)/(2B)]².', 'Terzaghi (1955)'),
+    ('Areia média — seca ou úmida (submersa 25.100)', 40800, '=40800*((B_sap+0.305)/(2*B_sap))^2', '', 'Terzaghi (1955)'),
+    ('Areia compacta — seca ou úmida (submersa 94.300)', 157000, '=157000*((B_sap+0.305)/(2*B_sap))^2', '', 'Terzaghi (1955)'),
+]
+for lab, kv, kb, ob, fo in KREF:
+    for col, v in zip('ABCDE', (lab, kv, kb, ob, fo)):
+        c = Fd[f'{col}{r}']; c.value = v; c.font = fN; c.border = BOX
+        if col in 'BC': c.number_format = '#,##0'; c.alignment = Alignment(horizontal='center')
+    r += 1
+# FATOR DE CONCENTRAÇÃO JUNTO AO CONTRAFORTE (22.6.2.3 a: "a concentração de flexão junto ao pilar deve ser, em
+# princípio, avaliada"). Do ramo sapata-molas (13/10): o momento do muro chega no contraforte e a sapata o espalha ao
+# longo do módulo TORCENDO, com o solo como molas de giro kθ = ks·B³/12 por metro; entre dois contrafortes iguais
+# GJ·φ″ = kθ·φ → φ = A·ch(β(x − L/2)), β = √(kθ/GJ), e o momento por metro junto ao contraforte é (βL/2)/th(βL/2)
+# vezes a média. GJ fissurado = 0,15·G·J (menor GJ concentra mais: a favor). Só na flexível com contrafortes.
+# APLICAÇÃO (DEDUÇÃO, a favor): o fator multiplica o momento e a cortante INTEIROS do balanço que trabalha solto na
+# faixa junto ao contraforte — a ponta com o contraforte enterrado (o talão ali é o próprio contraforte), o talão com
+# o aparente. O fator vale sobre a parcela do momento do muro; aplicá-lo também à parcela uniforme superestima.
+Fd.cell(row=r, column=1, value='Concentração junto ao contraforte (flexível com contrafortes)').font = fB; r += 1
+Lf('kθ = ks·B³/12', '=ks_us*B_sap^3/12', 'kN·m/rad por m', 'Base inteira comprimida (dedução).', 'res', '0.0', 'kt_s')
+Lf('G = Ecs/2,4', '=Ecs_s/2.4', 'MPa', '', 'res', '0', 'Gc_s', 'NBR 6118 8.2.9')
+Lf('J = a·b³·[1/3 − 0,21·(b/a)·(1 − (b/a)⁴/12)]', '=MAX(B_sap,h_sap)*MIN(B_sap,h_sap)^3*(1/3-0.21*MIN(B_sap,h_sap)/MAX(B_sap,h_sap)*(1-(MIN(B_sap,h_sap)/MAX(B_sap,h_sap))^4/12))', 'm⁴',
+   'Retângulo maciço a × b (a ≥ b).', 'res', '0.000000', 'J_s', 'Roark, Formulas for Stress and Strain')
+Lf('GJ = 0,15·G·J', '=0.15*Gc_s*1000*J_s', 'kN·m²', 'Rigidez à torção fissurada (menor GJ concentra mais: a favor).', 'res', '0', 'GJ_s', 'NBR 6118 14.6.7.2')
+Lf('β·L/2 = √(kθ/GJ)·L/2', '=SQRT(kt_s/GJ_s)*Lm/2', '', '', 'res', '0.000', 'bL2_s')
+Lf('Fator de concentração = (βL/2)/th(βL/2)', f'=IF(AND({_FX},{_CF}),IF(bL2_s>0,bL2_s/TANH(bL2_s),1),1)', '',
+   '1 na rígida e no balanço (espalha por igual no módulo).', 'key', '0.000', 'fcc_s', 'Dedução (ramo sapata-molas, 13/10)')
+Lf('Balanço que recebe o fator', f'=IF(fcc_s=1,"— (fator 1)",IF(LEFT(pos_cf,4)="Ente","Ponta (o talão é o contraforte enterrado)","Talão (a ponta é o contraforte aparente)"))', '', '', 'res', None, 'lado_fc')
+Lf('Fator na ponta', '=IF(LEFT(lado_fc,5)="Ponta",fcc_s,1)', '', '', 'res', '0.000', 'ft_s')
+Lf('Fator no talão', '=IF(LEFT(lado_fc,5)="Talão",fcc_s,1)', '', '', 'res', '0.000', 'fh_s')
+Lf('Md da ponta na faixa = fator·Md', '=ft_s*Md_ts', 'kN·m/m', '', 'res', '0.00', 'Md_tf')
+Lf('Md do talão na faixa = fator·Md', '=fh_s*Md_hs', 'kN·m/m', '', 'res', '0.00', 'Md_hf')
+Lf('VSd da ponta na faixa (a d) = fator·VSd', '=ft_s*Vsd_t', 'kN/m', '', 'res', '0.00', 'Vsd_tf')
+Lf('VSd do talão na faixa (a d) = fator·VSd', '=fh_s*Vsd_h', 'kN/m', '', 'res', '0.00', 'Vsd_hf')
+# PUNÇÃO SOB O MURO CONTÍNUO (DEDUÇÃO, aprovada pelo Jose em 16/11): o contorno C' a 2d de uma carga em linha são duas
+# retas paralelas à face do muro — vira a cortante por metro a 2d da face (fatias, coluna S) contra o τRd1 da punção
+# (19.5.3.2), mais exigente que o VRd1 de laje a d (usa o ρ geométrico das duas armaduras). Com o fator acima.
+Fd.cell(row=r, column=1, value='Punção sob o muro contínuo: contorno C′ a 2d da face, por metro').font = fB; r += 1
+Lf('As,ef secundária = Ø secundário no espaçamento adotado', '=PI()*phi_sap2^2/400/s_ss*100', 'cm²/m', 'Seção 7.', 'res', '0.00', 'Ass_ef')
+Lf('ρ = √(ρx·ρy) ≤ 0,02', '=MIN(0.02,SQRT(Ase_s/(100*d_s)*Ass_ef/(100*d_s)))', '', 'As,ef principal (seção 12) e secundária, com o d da principal (dedução).', 'res', '0.00000', 'rho_p', 'NBR 6118 19.5.3.2')
+Lf('ke = 1 + √(20/d) ≤ 2', '=MIN(2,1+SQRT(20/d_s))', '', 'd em cm.', 'res', '0.000', 'ke_p', 'NBR 6118 19.5.3.2')
+Lf('τRd1 = 0,13·ke·(100·ρ·fck)^⅓', '=0.13*ke_p*(100*rho_p*fck_s)^(1/3)', 'MPa', 'Sem armadura de punção; σcp = 0.', 'key', '0.000', 'tRd1_s', 'NBR 6118 19.5.3.2')
+Lf('VSd da ponta a 2d = fator·1,4·Σ (fatias além de 2d)', '=ft_s*1.4*MAX(0,SUM(T_dV2))', 'kN/m', '', 'res', '0.00', 'Vp2_t')
+Lf('VSd do talão a 2d = fator·1,4·Σ (fatias além de 2d)', '=fh_s*1.4*MAX(0,SUM(H_dV2))', 'kN/m', '', 'res', '0.00', 'Vp2_h')
+Lf('τSd da ponta = VSd/(b·d)', '=Vp2_t/(100*d_s)*10', 'MPa', 'b = 100 cm.', 'res', '0.000', 'tp2_t')
+Lf('τSd do talão = VSd/(b·d)', '=Vp2_h/(100*d_s)*10', 'MPa', '', 'res', '0.000', 'tp2_h')
+# PUNÇÃO JUNTO AO CONTRAFORTE (ramo sapata-molas, 13/10, conferida com a NBR 6118 19.5.2.2 e 19.5.2.3): o contraforte é
+# um pilar C1 = tenr (direção do momento, perpendicular às bordas da sapata) × C2 = eenr sobre a sapata. Contorno C' a
+# 2d: interno se as duas bordas estão a ≥ 2d; de borda se só uma; cortado nos dois lados → o contraforte cruza a
+# sapata e o momento vai por torção (seção 8). Borda: u* = 2·mín(1,5d; 0,5C1) + C2 + 2πd; Wp1 = ∫|e|dℓ no perímetro u
+# a partir da borda, eixo pelo centro do pilar (com e0 = 0 é a fórmula da norma; e0 > 0, dedução); MSd* = FSd·e*
+# desprezado (a favor). FSd = 1,4·peso do contraforte e MSd = Md do contraforte, os da compressão diagonal (seção 7).
+Fd.cell(row=r, column=1, value='Punção junto ao contraforte (pilar tenr × eenr)').font = fB; r += 1
+_PC = f'AND({_FX},{_CF})'
+Lf('Distância da ponta do contraforte à borda', f'=IF({_CF},IF(LEFT(pos_cf,4)="Ente",heel,toe)*100-(tenr_adot-t_bloco),0)', 'cm', '', 'res', '0.0', 'e1_pun')
+Lf('Distância da face do muro à borda do outro lado', f'=IF({_CF},IF(LEFT(pos_cf,4)="Ente",toe,heel)*100,0)', 'cm', '', 'res', '0.0', 'e2_pun')
+Lf("Contorno C' a 2d", f'=IF({_PC}=FALSE,IF({_CF},"— (sapata rígida)","— (muro em balanço)"),IF(AND(e1_pun>=2*d_s,e2_pun>=2*d_s),"Interno",IF(OR(e1_pun>=2*d_s,e2_pun>=2*d_s),"De borda","Cortado nos dois lados")))', '',
+   'Cortado nos dois lados: o contraforte cruza a sapata de borda a borda; o momento vai por torção (seção 8).', 'key', None, 'cas_pun', 'NBR 6118 19.5.2')
+Lf('e0 = distância à borda (de borda)', '=IF(cas_pun="De borda",MIN(e1_pun,e2_pun),0)', 'cm', '', 'res', '0.0', 'e0_pun')
+Lf('u (interno: 2C1 + 2C2 + 4πd) · u* (borda: 2·mín(1,5d; 0,5C1) + C2 + 2πd)',
+   '=IF(cas_pun="Interno",2*tenr_adot+2*eenr+4*PI()*d_s,IF(cas_pun="De borda",2*MIN(1.5*d_s,0.5*tenr_adot)+eenr+2*PI()*d_s,"—"))', 'cm', '', 'res', '0.0', 'u_pun', 'NBR 6118 19.5.2.2 e 19.5.2.3')
+Lf('Wp (interno: C1²/2 + C1C2 + 4C2d + 16d² + 2πdC1) · Wp1 (borda: (e0 + C1/2)² + C1²/4 + C1C2/2 + 2C2d + πdC1 + 8d²)',
+   '=IF(cas_pun="Interno",tenr_adot^2/2+tenr_adot*eenr+4*eenr*d_s+16*d_s^2+2*PI()*d_s*tenr_adot,IF(cas_pun="De borda",(e0_pun+tenr_adot/2)^2+tenr_adot^2/4+tenr_adot*eenr/2+2*eenr*d_s+PI()*d_s*tenr_adot+8*d_s^2,"—"))',
+   'cm²', 'Borda: ∫|e|dℓ no perímetro u desde a borda (com e0 = 0 é a da norma; e0 > 0: dedução).', 'res', '0', 'Wp_pun', 'NBR 6118 19.5.2.2 e 19.5.2.3')
+Lf("τSd no contorno C' = FSd/(u·d) + K·MSd/(Wp·d)", '=IF(OR(cas_pun="Interno",cas_pun="De borda"),(Fc_s/(u_pun*d_s)+K_cc*Mc_s*100/(Wp_pun*d_s))*10,"—")', 'MPa',
+   'K da Tab. 19.2 por C1/C2 (seção 7). Borda: MSd1 = MSd (MSd* desprezado, a favor).', 'key', '0.000', 'tp_cf', 'NBR 6118 19.5.2.2 e 19.5.2.3')
+# ANCORAGEM DA ESPERA NA SAPATA (NBR 6118 22.6.4.1.2: "altura suficiente para permitir a ancoragem da armadura de
+# arranque"), em QUALQUER sapata. ℓb,nec de cada espera com a tabela da aba Referências (reta ou com gancho, pela
+# entrada do gancho; concreto e zona da fundação), × As,calc/As,ef (as mesmas relações do traspasse, seção 10), ≥
+# ℓb,mín, arredondado ao cm — a conta do "Comprimento de ancoragem na fundação" da aba Muro em balanço (lb_adot), que
+# é a da espera do balanço; as outras três eram calculadas só no traspasse. Altura disponível = h − c − Ø principal −
+# Ø secundária: o pé da espera apoia nas duas camadas da malha (a mesma dedução da dobra, h_dobra). NÓ DE CACHORRO: a
+# espera desce, corre por baixo até a ponta e sobe; o Jose o usa para ancorar em sapata baixa e decidiu (15/10) não
+# contabilizá-lo na conta — a verificação não o julga.
+# Ø ≤ h/8 (20.1, requisito de laje da flexível): a maior barra da malha (principal ou secundária)
+Fd.cell(row=r, column=1, value='Detalhamento de laje (flexível)').font = fB; r += 1
+Lf('Maior Ø da malha da sapata', '=MAX(phi_sap,phi_sap2)', 'mm', 'Principal e secundária.', 'res', '0.0', 'phim_s')
+Lf('Limite h/8', '=h_sap*1000/8', 'mm', '', 'res', '0.0', 'phi8_s', 'NBR 6118 20.1')
+Fd.cell(row=r, column=1, value='Ancoragem da espera na sapata (qualquer classe)').font = fB; r += 1
+Lf('Altura disponível = h − c − Ø principal − Ø secundária', '=h_sap*100-cob_sap-(phi_sap+phi_sap2)/10', 'cm', 'Do topo da sapata ao pé da espera, apoiado na malha (dedução, como a dobra).', 'res', '0.0', 'lbd_esp', 'NBR 6118 22.6.4.1.2 + dedução')
+def _lbx(tab, ph): return f"INDEX('Referências'!${tab[0]}$5:${tab[1]}$12,MATCH({ph},'Referências'!${tab[0]}$5:${tab[0]}$12,0),{_lbidx})"
+ANC = [('Balanço: espera do Ø vertical', 'phi_v', 'r_anc', 'la_v', 'Tipo_muro<>"Contrafortes"'),
+       ('Contrafortes: espera do Ø vertical do painel', 'phi_pv', 'r_pv', 'la_pv', 'Tipo_muro="Contrafortes"'),
+       ('Contrafortes: espera do Ø principal do contraforte', 'phi_cf', 'r_cf', 'la_cf', 'Tipo_muro="Contrafortes"'),
+       ('Contrafortes: espera das construtivas', 'phi_cc', '1', 'la_cc', 'AND(Tipo_muro="Contrafortes",n_cc>0)')]
+for i, (lab, ph, rr, nm_, cnd) in enumerate(ANC):
+    if nm_ == 'la_v':   # a do balanço já existe (aba Muro em balanço): a mesma célula, sem conta repetida
+        Lf(f'{lab}: ℓb,nec = ℓb·As,calc/As,ef ≥ ℓb,mín', f'=IF({cnd},lb_adot,"—")', 'cm',
+           'O comprimento de ancoragem na fundação da aba Muro em balanço.', 'res', '0', nm_, 'NBR 6118 9.4.2.5')
+        continue
+    _sx = nm_[3:]
+    # ℓb da tabela (reta ou com gancho, pela entrada do gancho) e o reto (para o ℓb,mín), publicados para a memória
+    Lf(f'{lab}: ℓb da tabela (gancho conforme as Entradas)', f'=IF({cnd},IFERROR(IF(gancho_="Sim",{_lbx(("W", "AC"), ph)},{_lbx(("O", "U"), ph)}),"—"),"—")', 'cm',
+       'Pelo Ø, concreto e zona da fundação (aba Referências).', 'res', '0.0', f'lbt_{_sx}', 'Araújo (2014) / NBR 6118 9.4.2')
+    Lf(f'{lab}: ℓb reto da tabela', f'=IF({cnd},IFERROR({_lbx(("O", "U"), ph)},"—"),"—")', 'cm', '', 'res', '0.0', f'lbr_{_sx}', 'Araújo (2014) / NBR 6118 9.4.2')
+    Lf(f'{lab}: ℓb,mín = máx(0,3·ℓb reto; 10Ø; 10 cm)', f'=IF({cnd},IFERROR(MAX(0.3*lbr_{_sx},{ph},10),"—"),"—")', 'cm', '10Ø em cm = Ø em mm.', 'res', '0.0', f'lbm_{_sx}', 'NBR 6118 9.4.2.5')
+    Lf(f'{lab}: ℓb,nec = ℓb·As,calc/As,ef ≥ ℓb,mín', f'=IF({cnd},IFERROR(CEILING(MAX(lbt_{_sx}*{rr},lbm_{_sx}),1),"—"),"—")', 'cm',
+       'Arredondado ao cm.', 'res', '0', nm_, 'NBR 6118 9.4.2.5')
+_lamax = 'MAX(' + ','.join(f'IF(ISNUMBER({nm_}),{nm_},0)' for _, _, _, nm_, _ in ANC) + ')'
+Lf('Maior ℓb,nec das esperas do muro', '=' + _lamax, 'cm', '', 'res', '0', 'la_max')
+r += 1
+# ---------- verificações da seção 14 ----------
+_fs = lambda n: f'FIXED({n},3)'
+CHK14 = [
+    ('Punção sob o muro (contorno C′ a 2d)', 'chk_pun_m',
+     f'=IF({_FX}=FALSE,"— (sapata rígida: sem punção)",IF(AND(ISNUMBER(tp2_t),ISNUMBER(tp2_h),ISNUMBER(tRd1_s)),IF(MAX(tp2_t,tp2_h)<=tRd1_s,"OK ("&{_fs("MAX(tp2_t,tp2_h)")}&" ≤ "&{_fs("tRd1_s")}&" MPa)","NÃO OK ("&{_fs("MAX(tp2_t,tp2_h)")}&" > "&{_fs("tRd1_s")}&" MPa) — aumentar a altura da sapata"),"NÃO OK — conta da punção sem número"))'),
+    ('Punção junto ao contraforte', 'chk_pun_c',
+     f'=IF({_PC}=FALSE,IF({_CF},"— (sapata rígida: sem punção)","— (muro em balanço)"),IF(cas_pun="Cortado nos dois lados","— (contorno cortado nas duas bordas: vale a torção, seção 8)",IF(AND(ISNUMBER(tp_cf),ISNUMBER(tRd1_s)),IF(tp_cf<=tRd1_s,"OK ("&{_fs("tp_cf")}&" ≤ "&{_fs("tRd1_s")}&" MPa, "&IF(cas_pun="Interno","interno","de borda")&")","NÃO OK ("&{_fs("tp_cf")}&" > "&{_fs("tRd1_s")}&" MPa) — aumentar a altura da sapata"),"NÃO OK — conta da punção sem número")))'),
+    ('Ø da armadura da sapata ≤ h/8', 'chk_phi8',
+     f'=IF({_FX}=FALSE,"— (sapata rígida)",IF(phim_s<=phi8_s+0.00005,"OK (Ø"&{fphi("phim_s")}&" ≤ h/8 = "&FIXED(phi8_s,1)&" mm)","NÃO OK (Ø"&{fphi("phim_s")}&" > h/8 = "&FIXED(phi8_s,1)&" mm) — baixar o Ø ou aumentar a altura"))'),
+    ('Flexão na faixa junto ao contraforte', 'chk_fc_fl',
+     '=IF(fcc_s=1,"— (fator 1)",IF(ISNUMBER(IF(LEFT(lado_fc,5)="Ponta",MRd_toe,MRd_heel)),IF(IF(LEFT(lado_fc,5)="Ponta",Md_tf,Md_hf)<=IF(LEFT(lado_fc,5)="Ponta",MRd_toe,MRd_heel),"OK ("&FIXED(IF(LEFT(lado_fc,5)="Ponta",Md_tf,Md_hf),2)&" ≤ "&FIXED(IF(LEFT(lado_fc,5)="Ponta",MRd_toe,MRd_heel),2)&" kN·m/m, fator "&FIXED(fcc_s,2)&")","NÃO OK ("&FIXED(IF(LEFT(lado_fc,5)="Ponta",Md_tf,Md_hf),2)&" > "&FIXED(IF(LEFT(lado_fc,5)="Ponta",MRd_toe,MRd_heel),2)&" kN·m/m, fator "&FIXED(fcc_s,2)&") — diminuir o espaçamento ou aumentar a altura"),"NÃO OK — a armadura adotada não resiste"))'),
+    ('Cortante na faixa junto ao contraforte', 'chk_fc_v',
+     '=IF(fcc_s=1,"— (fator 1)",IF(IF(LEFT(lado_fc,5)="Ponta",Vsd_tf,Vsd_hf)<=VRd1_s,"OK ("&FIXED(IF(LEFT(lado_fc,5)="Ponta",Vsd_tf,Vsd_hf),1)&" ≤ "&FIXED(VRd1_s,1)&" kN/m)","NÃO OK ("&FIXED(IF(LEFT(lado_fc,5)="Ponta",Vsd_tf,Vsd_hf),1)&" > "&FIXED(VRd1_s,1)&" kN/m) — aumentar a altura da sapata"))'),
+    ('Ancoragem da espera na sapata', 'chk_anc_esp',
+     '=IF(LEFT(arranque,1)="N","— (nó de cachorro: ancoragem pela dobra por baixo)",IF(la_max<=0,"— (sem espera com conta)",IF(la_max<=lbd_esp+0.00005,"OK (ℓb,nec "&FIXED(la_max,0)&" ≤ "&FIXED(lbd_esp,1)&" cm)","NÃO OK (ℓb,nec "&FIXED(la_max,0)&" > "&FIXED(lbd_esp,1)&" cm, faltam "&FIXED(la_max-lbd_esp,1)&" cm) — aumentar a altura da sapata, baixar o Ø ou usar o nó de cachorro")))'),
+]
+for _lab, _nm, _f in CHK14:
+    Lf(_lab, _f, '', '', 'key', None, _nm)
 widths(Fd, {'A': 46, 'B': 24, 'C': 12, 'D': 66, 'E': 18, 'F': 14, 'G': 16, 'H': 14, 'I': 14, 'J': 14, 'K': 14, 'L': 14})
 Fd.freeze_panes = 'A4'
