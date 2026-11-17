@@ -1,4 +1,4 @@
-﻿Al-rimo 0.1.0 — componentes de terceiros
+﻿Al-rimo 1.1.0 — componentes de terceiros
 ==============================================================================
 
 Componentes de código aberto incorporados ao Al-rimo (Termo de Uso, item 10.3).
