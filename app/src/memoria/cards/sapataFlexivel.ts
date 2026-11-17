@@ -17,7 +17,7 @@
 
   Cada `if` espelha um IF da planilha (flex_s, Tipo_muro, pos_cf, ks_dir, cas_pun, arranque, gancho_).
 */
-import type { AutorDeCards, Card, Expr, Ref } from '../tipos';
+import type { AutorDeCards, Card, Expr, Passo, Ref } from '../tipos';
 import { arredCima, avaliar, cte, div, max, min, mul, nome, par, pi, pot, raiz, soma, sub, tanh } from '../expr';
 import { intervalo } from './sapata';
 import { memoriaDe, secao, type Memoria } from '../passo';
@@ -275,7 +275,7 @@ function cardAncoragem(r: Parameters<AutorDeCards>[0]): Card {
   }
   const emCm = { fator: 0.1, casas: 2, unidade: 'cm' };
   const verif = (sx: string, rot: string) => ({ chave: `sapata.ancoragemEspera.${sx}`, rotulo: `Ancoragem da espera ${rot} ℓb,nec ≤ ℓb,disp`, limite: disp, relacao: '<=' as const });
-  const passos = [dispPasso];
+  const passos: (Passo | false)[] = [dispPasso];
   if (temNumero(m, 'la_v')) {
     passos.push(m.passo('la_v', '\\ell_{b,nec,m}', m.g('lb_adot', '\\ell_{b,adot}', 0, 'cm'), { casas: 0, unidade: 'cm', ref: NBR('9.4.2.5'), verif: verif('muro', 'do muro') }));
   }
@@ -287,16 +287,18 @@ function cardAncoragem(r: Parameters<AutorDeCards>[0]): Card {
   for (const e of ESP) {
     if (!temNumero(m, `la_${e.sx}`)) continue;
     const sLbt = `\\ell_{b,tab,${e.i}}`, sLbr = `\\ell_{b,r,${e.i}}`, sLbm = `\\ell_{b,m\\acute{\\imath}n,${e.i}}`;
-    const lbt = m.g(`lbt_${e.sx}`, sLbt, 1, 'cm');
     const lbr = m.g(`lbr_${e.sx}`, sLbr, 1, 'cm');
     const lbm = m.g(`lbm_${e.sx}`, sLbm, 1, 'cm');
     const phiCm = m.ent(e.phi, e.phiTex, emCm);
+    // construtiva (sem esforço de cálculo, 16/11): a ancoragem é o ℓb,mín — sem a tabela de ℓb nem a relação de áreas
+    const construtiva = e.r === null;
     passos.push(
-      m.passo(`lbt_${e.sx}`, sLbt, null, { casas: 1, unidade: 'cm', origem: 'tabela', ref: ARAUJO }),
+      !construtiva && m.passo(`lbt_${e.sx}`, sLbt, null, { casas: 1, unidade: 'cm', origem: 'tabela', ref: ARAUJO }),
       m.passo(`lbr_${e.sx}`, sLbr, null, { casas: 1, unidade: 'cm', origem: 'tabela', ref: ARAUJO }),
       m.passo(`lbm_${e.sx}`, sLbm, max(mul(cte(0.3, 1), lbr), mul(cte(10, 0), phiCm), cte(10, 0)), { casas: 1, unidade: 'cm', ref: NBR('9.4.2.5') }),
-      m.passo(`la_${e.sx}`, `\\ell_{b,nec,${e.i}}`, arredCima(max(e.r ? mul(lbt, e.r) : lbt, lbm)),
-        { casas: 0, unidade: 'cm', ref: NBR('9.4.2.5'), verif: verif(e.sx, e.rot) }),
+      m.passo(`la_${e.sx}`, `\\ell_{b,nec,${e.i}}`,
+        construtiva ? arredCima(lbm) : arredCima(max(mul(m.g(`lbt_${e.sx}`, sLbt, 1, 'cm'), e.r as Expr), lbm)),
+        { casas: 0, unidade: 'cm', ref: NBR('9.4.2.5'), verif: verif(e.sx, construtiva ? 'das construtivas (ℓb,mín)' : e.rot) }),
     );
   }
   const sec = secao('Altura disponível × ancoragem necessária', passos, NBR('22.6.4.1.2'));

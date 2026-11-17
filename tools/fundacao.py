@@ -713,6 +713,13 @@ for i, (lab, ph, rr, nm_, cnd) in enumerate(ANC):
            'O comprimento de ancoragem na fundação da aba Muro em balanço.', 'res', '0', nm_, 'NBR 6118 9.4.2.5')
         continue
     _sx = nm_[3:]
+    # A CONSTRUTIVA não tem esforço de cálculo: a ancoragem dela na sapata é o ℓb,mín (NBR 6118 9.4.2.5), não o ℓb com
+    # As,calc/As,ef = 1 (decisão de 16/11, depois da 1ª rodada: com relação 1 a sapata de 0,30 reprovava por 2,6 cm).
+    if _sx == 'cc':
+        Lf(f'{lab}: ℓb reto da tabela', f'=IF({cnd},IFERROR({_lbx(("O", "U"), ph)},"—"),"—")', 'cm', '', 'res', '0.0', f'lbr_{_sx}', 'Araújo (2014) / NBR 6118 9.4.2')
+        Lf(f'{lab}: ℓb,mín = máx(0,3·ℓb reto; 10Ø; 10 cm)', f'=IF({cnd},IFERROR(MAX(0.3*lbr_{_sx},{ph},10),"—"),"—")', 'cm', 'Sem esforço de cálculo: a ancoragem é o mínimo.', 'res', '0.0', f'lbm_{_sx}', 'NBR 6118 9.4.2.5')
+        Lf(f'{lab}: ℓb,nec = ℓb,mín (construtiva, sem esforço)', f'=IF({cnd},IFERROR(CEILING(lbm_{_sx},1),"—"),"—")', 'cm', 'Arredondado ao cm.', 'res', '0', nm_, 'NBR 6118 9.4.2.5')
+        continue
     # ℓb da tabela (reta ou com gancho, pela entrada do gancho) e o reto (para o ℓb,mín), publicados para a memória
     Lf(f'{lab}: ℓb da tabela (gancho conforme as Entradas)', f'=IF({cnd},IFERROR(IF(gancho_="Sim",{_lbx(("W", "AC"), ph)},{_lbx(("O", "U"), ph)}),"—"),"—")', 'cm',
        'Pelo Ø, concreto e zona da fundação (aba Referências).', 'res', '0.0', f'lbt_{_sx}', 'Araújo (2014) / NBR 6118 9.4.2')

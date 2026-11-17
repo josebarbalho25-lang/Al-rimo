@@ -845,6 +845,16 @@ e dizer ao Jose o que mudou e por quê.
   12.3, sorteio06), `testar.py` TUDO OK, golden refeito (65 cenários). Memória: um termo por linha (B, C, x, I_alv,
   I_abas, I_s, I_II = soma); seção cheia (bw = bm) mostra a forma da mesa (na alma dá o mesmo número, abas de
   largura zero); faixa sem barra (x "—") não mostra B e C.
+- **VERSÃO 1.1.0 (Jose, 16/11: "coloca 1.1"):** `app/package.json` (a única; o montar.js, o splash e o memorial leem
+  dela) e o `package-lock.json` do app. Instalador montado: `instalador/dist/Al-rimo-Setup-1.1.0.exe` (não instalado).
+- **PARA DEPOIS (Jose, 16/11 — só anotado, nada feito):**
+  (a) MELHORAR A MEMÓRIA DE CÁLCULO — "tá muito ruim de ler". Modelo: a memória do All Sec (referência dele:
+  `C:\Users\JBarb\OneDrive\Desktop\Pilar 15 × 40 cm.pdf`); ele diz que o defeito foi herdado do Pró-Viga.
+  (b) VER DE FORMA DINÂMICA ONDE CADA ENTRADA ALTERA CADA VERIFICAÇÃO — hoje só com a tabela de verificações aberta ao
+  lado das entradas. Sugestões já levadas a ele: coluna fixa de verificações com barra de uso ao lado das entradas;
+  destacar o que mudou (valor de antes → agora) ao mexer numa entrada; acender as entradas que entram numa verificação
+  e vice-versa (o grafo de dependências da planilha); resumo por peça com o pior em cima; separar as entradas do dia a
+  dia das de critério.
 - **REGRA DO CADERNO (Jose, 21/10):** todo pendente que muda de estado (feito, pela metade, adiado) se anota AQUI na
   hora, conferido no código, e o caderno sobe no GitHub (main) junto — a sessão seguinte (outra máquina, nuvem) só
   sabe o que estiver aqui.
@@ -1522,22 +1532,22 @@ e dizer ao Jose o que mudou e por quê.
     multiplicar o balanço INTEIRO é DEDUÇÃO a favor (o fator é sobre a parcela do momento do muro).
   · ANCORAGEM DA ESPERA (qualquer classe, 22.6.4.1.2): `lbd_esp` = h − c − Ø principal − Ø secundária (dedução, como
     a dobra); `la_v` = `lb_adot`; painel/contraforte/construtiva `lbt_*` (tabela de ℓb, gancho conforme as
-    Entradas), `lbr_*`, `lbm_*`, `la_*` = ⌈máx(ℓb·As,calc/As,ef; ℓb,mín)⌉ (construtiva com relação 1, a favor, como
-    no traspasse); `la_max` → `chk_anc_esp` "faltam X cm". NÓ DE CACHORRO: "— (nó de cachorro: ancoragem pela dobra
+    Entradas), `lbr_*`, `lbm_*`, `la_*` = ⌈máx(ℓb·As,calc/As,ef; ℓb,mín)⌉; a CONSTRUTIVA (sem esforço de cálculo) ancora com
+    o ℓb,MÍN (9.4.2.5: máx(0,3·ℓb; 10φ; 10 cm)) — decisão da coordenação, 16/11 (a 1ª rodada usava relação 1 e
+    reprovava a sapata de 0,30 por 2,6 cm); `la_max` → `chk_anc_esp` "faltam X cm". NÓ DE CACHORRO: "— (nó de cachorro: ancoragem pela dobra
     por baixo)" (não julgado; a dúvida fica para o Jose). `arranque` VEIO PARA A PLANILHA (Entradas, fim da seção
     Fundação; `MUDOU_PARA_A_PLANILHA`; o modelo lê do Resultado, `extras.arranque` só por teste). Entrada nova
     `ks_dir` (opcional, kN/m³, "auto" = `ks_us`, Fig. 15).
-  · RESULTADO NO GOLDEN (123 cenários): 60 reprovam a ancoragem da espera — a maioria por 2,6 cm na sapata de 0,30
-    com Ø10 com gancho (27 > 24,4: a CONSTRUTIVA do contraforte, relação 1), inclusive a aula 12.3/VAL123 (que
-    "passava em tudo") e quase todos os alvos de contrafortes; punção sob o muro reprova em 5, junto ao contraforte em
-    3, concentração (flexão 2, cortante 4), Ø > h/8 em 1 (alvo). Alvos novos `alvo_flex_*`, `alvo_espera_*`,
-    `alvo_classe_centrado_*` (golden_alvos.py, ALVOS_FLEX).
+  · RESULTADO NO GOLDEN (123 cenários, com a construtiva no ℓb,mín): 53 reprovam a ancoragem da espera — por barra:
+    vertical do balanço 21, painel 30, principal do contraforte 26, construtiva 4 (só em sapata muito baixa); a aula
+    12.3/VAL123 passa (21 ≤ 24,4 cm). Punção sob o muro reprova em 5, junto ao contraforte em 3, concentração (flexão
+    2, cortante 4), Ø > h/8 em 1 (alvo). Alvos novos `alvo_flex_*`, `alvo_espera_*`, `alvo_classe_centrado_*`
+    (golden_alvos.py, ALVOS_FLEX).
   · APP: card `fundacao.rigidez` = "classe da sapata" informativo (desenho dos balanços com as retas 1 : 1,5 e o
     indicador λ·B); `cards/sapataFlexivel.ts`: `sapata.puncao` (resistência, sob o muro com desenho a 2d, junto ao
     contraforte com desenho em planta, Ø ≤ h/8), `sapata.concentracao`, `sapata.ancoragemEspera` (desenho da altura
     disponível × ℓb,nec); desenhos em `memoria/desenhoDaSapataFlexivel.ts`; `tanh` na memória (expr.ts).
-  · PARA O JOSE DECIDIR: (1) construtiva do contraforte com As,calc/As,ef = 1 na ancoragem (reprova a sapata de 0,30
-    com Ø10 de gancho) — usar a relação da principal, ou aceitar; (2) o nó de cachorro: contar o comprimento
+  · PARA O JOSE CONFIRMAR: (1) a construtiva ancorada com o ℓb,mín (decidido pela coordenação; dizer a ele); (2) o nó de cachorro: contar o comprimento
     desenvolvido como ancoragem (hoje não julgado); (3) o fator de concentração sobre o balanço INTEIRO (a favor; com
     h 0,20 e vão 3,75 dá ~3,1) ou só sobre a parcela do momento do muro; (4) ks padrão 120·σadm; (5) a altura disponível
     desconta as duas camadas da malha (dedução); (6) punção sob o muro com o ρ das duas armaduras (d da principal).
