@@ -66,6 +66,8 @@ export const max = (...xs: Expr[]): Expr => fn('max', ...xs);
 export const abs = (a: Expr): Expr => fn('abs', a);
 export const tan = (a: Expr): Expr => fn('tan', a);
 export const cos = (a: Expr): Expr => fn('cos', a);
+// tangente hiperbólica: o fator de concentração junto ao contraforte (aba Fundação, seção 14)
+export const tanh = (a: Expr): Expr => fn('tanh', a);
 export const sin = (a: Expr): Expr => fn('sin', a);
 /** Graus → radianos. No desenho é invisível; as constantes somadas dentro dele ganham "°". */
 export const rad = (a: Expr): Expr => fn('rad', a);
@@ -166,6 +168,7 @@ export function avaliar(e: Expr, r: Resultado): number {
         case 'abs': return Math.abs(v[0]);
         case 'tan': return Math.tan(v[0]);
         case 'cos': return Math.cos(v[0]);
+        case 'tanh': return Math.tanh(v[0]);
         case 'sin': return Math.sin(v[0]);
         case 'rad': return (v[0] * Math.PI) / 180;
       }
@@ -267,7 +270,7 @@ function desenhaOp(e: Extract<Expr, { k: 'op' }>, c: Contexto): Pedaco {
   }
 }
 
-const NOME_FN = { tan: '\\operatorname{tg}', sin: '\\operatorname{sen}', cos: '\\cos' } as const;
+const NOME_FN = { tan: '\\operatorname{tg}', sin: '\\operatorname{sen}', cos: '\\cos', tanh: '\\operatorname{th}' } as const;
 
 const argumento = (a: Pedaco) => (a.s.startsWith('\\left(') && a.p === ATOMO ? a.s : `\\left(${a.s}\\right)`);
 
@@ -289,6 +292,7 @@ function desenhaFn(e: Extract<Expr, { k: 'fn' }>, c: Contexto): Pedaco {
     case 'tan':
     case 'sin':
     case 'cos':
+    case 'tanh':
       return { s: `${NOME_FN[e.fn]}${argumento(args[0])}`, p: ATOMO };
   }
 }

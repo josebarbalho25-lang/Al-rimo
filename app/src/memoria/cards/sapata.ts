@@ -144,7 +144,7 @@ function faixa(nomeDoIntervalo: string): { aba: string; col: string; l0: number;
   return { aba: m[1], col: m[2], l0: Number(m[3]), l1: Number(m[4]) };
 }
 
-const intervalo = (n: string) => {
+export const intervalo = (n: string) => {
   const f = faixa(n);
   return `${f.aba}!${f.col}${f.l0}:${f.col}${f.l1}`;
 };

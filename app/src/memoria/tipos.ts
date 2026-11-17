@@ -24,7 +24,9 @@ export interface Ref {
     | 'Libânio' | 'Rankine' | 'Cintra, Aoki e Albiero' | 'Critério adotado' | 'Dedução'
     // medida tirada dos templates de montagem que o Jose modelou no Revit (dados/encaixes_revit/)
     | 'Template do Revit'
-    | 'NBR 6123';
+    | 'NBR 6123'
+    // sapata flexível (16/11): ks sugerido (Bowles), viga sobre base elástica (Hetényi), tabela de ℓb (Araújo)
+    | 'Bowles' | 'Hetényi' | 'Araújo (2014)';
   item?: string;
 }
 
@@ -37,7 +39,7 @@ export type Expr =
   // de mão escreve t em m (λ = he/t = 3,20/0,19). Sem ele a linha numérica sairia "3,20/(19/100)".
   | { k: 'op'; op: '+' | '-' | '*' | '/' | '^'; a: Expr; b: Expr }
   | { k: 'neg'; a: Expr }
-  | { k: 'fn'; fn: 'sqrt' | 'min' | 'max' | 'abs' | 'tan' | 'cos' | 'sin' | 'rad' | 'cbrt'; args: Expr[] }
+  | { k: 'fn'; fn: 'sqrt' | 'min' | 'max' | 'abs' | 'tan' | 'cos' | 'sin' | 'rad' | 'cbrt' | 'tanh'; args: Expr[] }
   | { k: 'par'; a: Expr; arred?: 'cima' | 'baixo' | 'int' };                // parênteses explícitos
   // `arred` (opcional, frente MEM): o grupo é ARREDONDADO a inteiro como a planilha faz — 'cima' = ROUNDUP(x;0) e
   // CEILING(x;1), 'baixo' = ROUNDDOWN(x;0), 'int' = INT(x). Desenha ⌈ ⌉ / ⌊ ⌋. Sem isso, "3Ø10" (ROUNDUP de 2,93)

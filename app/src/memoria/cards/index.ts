@@ -39,11 +39,12 @@ import { autorPainelCf } from './painelCf';
 import { autorEstabilidade } from './estabilidade';
 import { autorSapata } from './sapata';
 import { autorDente } from './dente';
+import { autorSapataFlexivel } from './sapataFlexivel';
 import { autorMuroDeCima } from './muroDeCima';
 
 /** Na ordem do documento (a mesma das abas da planilha). */
 export const AUTORES: readonly AutorDeCards[] = [
-  autorSolo, autorBalanco, autorPainelEls, autorContraforte, autorPainelCf, autorEstabilidade, autorSapata, autorDente, autorMuroDeCima,
+  autorSolo, autorBalanco, autorPainelEls, autorContraforte, autorPainelCf, autorEstabilidade, autorSapata, autorSapataFlexivel, autorDente, autorMuroDeCima,
 ];
 
 /**

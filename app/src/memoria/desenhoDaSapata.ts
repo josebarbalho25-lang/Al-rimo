@@ -442,7 +442,7 @@ export function desenhoDaFlexaoDaSapata(r: Resultado, lado: 'ponta' | 'talao'): 
   const yR = yC + 34;
   const sentido = ponta ? 'traciona embaixo' : 'traciona em cima';
   partes.push(texto(80, yR, `Mk na face do muro = Σ q × Δx × braço = ${m2(Mk)} kN·m/m (${sentido})`, FS, 'start', TINTA, 'bold'));
-  partes.push(texto(80, yR + 20, 'sapata rígida: pressão do solo em reta', FS - 2, 'start', COTA));
+  partes.push(texto(80, yR + 20, 'pressão do solo em reta (critério adotado)', FS - 2, 'start', COTA));
   return { svg: svgDe(partes, yR + 30), titulo: `Flexão ${ponta ? 'da ponta' : 'do talão'}: balanço engastado na face do muro`, largura: LARGURA };
 }
 
@@ -451,6 +451,15 @@ export function desenhoDaFlexaoDaSapata(r: Resultado, lado: 'ponta' | 'talao'): 
   direto para o apoio). As fatias além de d, em destaque, somam o VSd/1,4 de cada lado.
 */
 export function desenhoDoCortanteDaSapata(r: Resultado): DesenhoDoCard | null {
+  return desenhoDaSecaoAFace(r, 1);
+}
+
+/**
+  A seção de cálculo a d (cortante de laje, 19.4.1) ou a 2d (punção sob o muro contínuo, 16/11: o contorno C′ de uma
+  carga em linha são duas retas) das faces do muro, nos dois balanços, com as fatias além dela em destaque. O VSd a 2d
+  já vem com o fator de concentração junto ao contraforte (aba Fundação, seção 14; 1 fora da flexível com contrafortes).
+*/
+export function desenhoDaSecaoAFace(r: Resultado, vezes: 1 | 2): DesenhoDoCard | null {
   const g = geometria(r);
   const d = r.num('d_s');
   const T = fatias(r, 'T_dM'), H = fatias(r, 'H_dM');
@@ -461,36 +470,42 @@ export function desenhoDoCortanteDaSapata(r: Resultado): DesenhoDoCard | null {
   const hPx = Math.min(Math.max(g.h * s, 26), 56);
   const c = sapataComoLaje(g, xPe, yTopo, s, hPx);
   const partes = [...c.partes];
-  const dPx = (d / 100) * s;
+  const dist = (vezes * d) / 100;
+  const dPx = dist * s;
+  const rot = vezes === 1 ? 'd' : '2d';
   const lados: Array<{ nome: string; fs: Fatia[]; face: number; dir: -1 | 1; Vsd: number | null; b: number | null }> = [
-    { nome: 'ponta', fs: T, face: c.xFaceFora, dir: -1, Vsd: r.num('Vsd_t'), b: r.num('toe') },
-    { nome: 'talão', fs: H, face: c.xFaceSolo, dir: 1, Vsd: r.num('Vsd_h'), b: r.num('heel') },
+    { nome: 'ponta', fs: T, face: c.xFaceFora, dir: -1, Vsd: r.num(vezes === 1 ? 'Vsd_t' : 'Vp2_t'), b: r.num('toe') },
+    { nome: 'talão', fs: H, face: c.xFaceSolo, dir: 1, Vsd: r.num(vezes === 1 ? 'Vsd_h' : 'Vp2_h'), b: r.num('heel') },
   ];
   let yTxt = c.yBase + 80;
   for (const L of lados) {
     if (!ok(L.b) || !(L.b > 0.005)) continue;
     const xd = L.face + L.dir * dPx;
     const dx = (L.b / 20) * s;
-    // as fatias além de d (as que entram no VSd), em destaque
+    // as fatias além da seção (as que entram no VSd), em destaque
     for (const f of L.fs) {
-      if (f.braco <= d / 100) continue;
+      if (f.braco <= dist) continue;
       const xx = c.X(f.x);
       partes.push(rect(xx - dx / 2, yTopo, dx, hPx, '#fbe5d6', 'none', 0, ' fill-opacity="0.9"'));
     }
-    partes.push(lin(xd, yTopo - 30, xd, c.yBase + 26, LARANJA, 1.6, ' stroke-dasharray="7 4"'));
-    partes.push(texto(xd, yTopo - 36, 'a d da face', FS - 2, 'middle', LARANJA));
-    partes.push(chamada(L.face, c.yBase, L.face, c.yBase + 34));
-    partes.push(cotaH(Math.min(L.face, xd), Math.max(L.face, xd), c.yBase + 30, `d = ${nbr(d, 1)} cm`));
+    if (vezes === 1 || dist <= L.b) {
+      partes.push(lin(xd, yTopo - 30, xd, c.yBase + 26, LARANJA, 1.6, ' stroke-dasharray="7 4"'));
+      partes.push(texto(xd, yTopo - 36, `a ${rot} da face`, FS - 2, 'middle', LARANJA));
+      partes.push(chamada(L.face, c.yBase, L.face, c.yBase + 34));
+      partes.push(cotaH(Math.min(L.face, xd), Math.max(L.face, xd), c.yBase + 30, `${rot} = ${nbr(vezes * d, 1)} cm`));
+    }
     if (ok(L.Vsd)) {
-      partes.push(texto(xPe, yTxt, `${L.nome}: VSd = 1,4 × Σ (fatias além de d) = ${m2(L.Vsd)} kN/m`, FS - 1, 'start', TINTA, 'bold'));
+      const conta = vezes === 1 ? '1,4 × Σ (fatias além de d)' : 'fator × 1,4 × Σ (fatias além de 2d)';
+      partes.push(texto(xPe, yTxt, `${L.nome}: VSd = ${conta} = ${m2(L.Vsd)} kN/m`, FS - 1, 'start', TINTA, 'bold'));
       yTxt += 22;
     }
   }
   // a face do muro (o apoio dos dois balanços)
   partes.push(lin(c.xFaceFora, yTopo - 6, c.xFaceFora, c.yBase + 6, TINTA, 2.4));
   partes.push(lin(c.xFaceSolo, yTopo - 6, c.xFaceSolo, c.yBase + 6, TINTA, 2.4));
-  partes.push(texto(xPe, yTxt + 4, 'em destaque: o trecho cuja carga passa pela seção a d da face', FS - 2, 'start', COTA));
-  return { svg: svgDe(partes, yTxt + 16), titulo: 'Cortante: a seção a d da face do muro, nos dois balanços', largura: LARGURA };
+  partes.push(texto(xPe, yTxt + 4, `em destaque: o trecho cuja carga passa pela seção a ${rot} da face`, FS - 2, 'start', COTA));
+  const titulo = vezes === 1 ? 'Cortante: a seção a d da face do muro, nos dois balanços' : 'Punção sob o muro: o contorno C′ a 2d das faces, nos dois balanços';
+  return { svg: svgDe(partes, yTxt + 16), titulo, largura: LARGURA };
 }
 
 // ───────────────────────────── o dente armado ─────────────────────────────

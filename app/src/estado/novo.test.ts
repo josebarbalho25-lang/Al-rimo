@@ -1,6 +1,6 @@
 /*
   O MURO NOVO e o EXEMPLO (Jose, 13/10: "Branco + exemplo à parte"). O exemplo tem de ser a aula 12.2 — os números
-  que a regressão confere — com a sapata rígida; o novo tem de pedir exatamente os dados do terreno e do projeto.
+  que a regressão confere — com a sapata de 0,45 (flexível desde 16/11, calculada); o novo tem de pedir exatamente os dados do terreno e do projeto.
 */
 import { describe, expect, it } from 'vitest';
 import { calcular, entradas } from '@/motor';
@@ -11,7 +11,7 @@ import { alteracoesDoExemplo, alteracoesDoNovo, dadosFaltando, EM_BRANCO_NO_NOVO
 const METAS = new Map([...entradas, ...ENTRADAS_DO_MODELO].map((m) => [m.nome, m] as const));
 const CAMPOS = montarSecoes(entradas, ENTRADAS_DO_MODELO).flatMap((s) => s.campos);
 
-describe('o exemplo é a aula 12.2, com a sapata rígida', () => {
+describe('o exemplo é a aula 12.2, com a sapata de 0,45', () => {
   const r = calcular(alteracoesDoExemplo());
   it('os números da aula (testar.py): Mr 42,45; heq 9,3; δadm 12,8; βf 0,118', () => {
     expect(r.num('Mr_')).toBeCloseTo(42.45, 1);
@@ -19,10 +19,11 @@ describe('o exemplo é a aula 12.2, com a sapata rígida', () => {
     expect(r.num('dadm_')).toBeCloseTo(12.8, 1);
     expect(r.num('beta_f')).toBeCloseTo(0.118, 3);
   });
-  it('sapata de 0,45: rígida pela NBR 6118 22.6.1, (1,40 − 0,19)/3 = 0,403', () => {
-    expect(r.num('h_rig')).toBeCloseTo((1.4 - 0.19) / 3, 9);
+  it('sapata de 0,45: flexível pela NBR 6118 22.6.1 com o maior balanço (2/3 × 0,855 = 0,57), calculada', () => {
+    expect(r.num('h_rig')).toBeCloseTo((2 / 3) * (0.95 - 0.19 / 2), 9);
     expect(r.num('h_sap')).toBe(0.45);
-    expect(String(r.v('chk_rig'))).toMatch(/^OK/);
+    expect(String(r.v('chk_rig'))).toMatch(/^Flexível/);
+    for (const n of ['chk_pun_m', 'chk_phi8', 'chk_anc_esp']) expect(String(r.v(n)), n).toMatch(/^OK/);
   });
   it('nada falta no exemplo', () => {
     expect(dadosFaltando(CAMPOS, leitorDeValores(METAS, alteracoesDoExemplo(), {}))).toEqual([]);

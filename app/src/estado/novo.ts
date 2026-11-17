@@ -51,8 +51,9 @@ export function extrasDoNovo(): Record<string, Valor> {
 /*
   O EXEMPLO = a aula 12.2 (os padrões da planilha) com o que a regressão aplica para reproduzir a aula
   (tools/cenarios.py, AULA_122_ENTRADAS: σsg desligado e peso 3,0 como na aula) e a sapata a 0,45 m — a da aula,
-  0,30, é flexível pela NBR 6118 22.6.1: (1,40 − 0,19)/3 = 0,403, e 0,40 fica 3 mm abaixo (Jose, 14/10: "a gente
-  sobe 5 cm na altura" — de 5 em 5 cm, a primeira que passa é 0,45).
+  0,30, era flexível pela NBR 6118 22.6.1 com (1,40 − 0,19)/3 = 0,403 (Jose, 14/10: "a gente sobe 5 cm na altura" —
+  a primeira que passava era 0,45). Desde 16/11 a flexível é calculada e a classe usa o maior balanço (talão 0,855 →
+  h ≥ 0,57): o exemplo de 0,45 é flexível e passa como laje, com punção. A sapata ficou 0,45 (os números conhecidos).
 */
 export const TITULO_DO_EXEMPLO = 'Exemplo — muro em balanço';
 export function alteracoesDoExemplo(): Alteracoes {

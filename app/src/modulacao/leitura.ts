@@ -215,7 +215,9 @@ export function lerParametros(r: Resultado, extrasIn: Record<string, Valor>, avi
     traspasse: comoNumero(extras.traspasse_dir) === null ? null : (comoNumero(extras.traspasse_dir) as number) * 10,
     // da planilha desde 15/11 (a conta do dente depende dela): o modelo desenha o que a conta conferiu
     sapTransv: txt('sap_transv').trim().toLowerCase().startsWith('r') ? 'reta' : 'estribo',
-    arranque: comoTexto(extras.arranque).trim().toLowerCase().startsWith('n') ? 'no' : 'padrao',
+    // da planilha desde 16/11 (a ancoragem da espera depende dela). O extras.arranque de antes só chega por teste: o
+    // arquivo antigo muda de lugar ao abrir (estado/projeto.ts, MUDOU_PARA_A_PLANILHA).
+    arranque: (extras.arranque !== undefined ? comoTexto(extras.arranque) : txt('arranque')).trim().toLowerCase().startsWith('n') ? 'no' : 'padrao',
     barbaca: sim('barbaca_on'),
     barbaca_phi: xn('barbaca_phi', 50),
     barbaca_s: xn('barbaca_s', 1.5) * 1000,

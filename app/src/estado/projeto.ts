@@ -97,7 +97,7 @@ export function projetoNovo(): Projeto {
   return { id: novoIdDeProjeto(), titulo: 'Sem título', alteracoes: alteracoesDoNovo(), extras: extrasDoNovo() };
 }
 
-/** O muro de exemplo: a aula 12.2, com a sapata rígida (estado/novo.ts). Identidade própria a cada abertura. */
+/** O muro de exemplo: a aula 12.2, com a sapata de 0,45 (estado/novo.ts). Identidade própria a cada abertura. */
 export function projetoExemplo(): Projeto {
   return { id: novoIdDeProjeto(), titulo: TITULO_DO_EXEMPLO, alteracoes: alteracoesDoExemplo(), extras: {} };
 }
@@ -209,10 +209,11 @@ function ajusteDeLista(campo: Campo, v: unknown): { valor: Valor; nota: string }
     · sap_transv (15/11): a conta do dente do lado da ponta depende dela (sem barra em cima, a sapata não leva o
       momento do dente).
     · phi_cin_mc (15/11): as cintas do muro de cima passaram a ser verificadas (aba Muro de cima e vento, seção 9).
+    · arranque (16/11): a ancoragem da espera na sapata não julga o nó de cachorro (aba Fundação, seção 14).
   O valor que já estiver nas alterações manda (arquivo salvo pelo app de depois); o de extras, então, sai calado.
   Só muda de lugar se o catálogo de HOJE disser que o campo é da planilha: o app de antes abre como sempre abriu.
 */
-const MUDOU_PARA_A_PLANILHA: readonly string[] = ['sap_transv', 'phi_cin_mc'];
+const MUDOU_PARA_A_PLANILHA: readonly string[] = ['sap_transv', 'phi_cin_mc', 'arranque'];
 
 function mudarDeOrigem(alt: unknown, ext: unknown, campos: ReadonlyMap<string, Campo>): [unknown, unknown] {
   const objeto = (o: unknown): o is Record<string, unknown> => !!o && typeof o === 'object' && !Array.isArray(o);

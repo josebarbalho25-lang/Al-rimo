@@ -206,8 +206,10 @@ describe('régua única entre cenários', () => {
     // flexível, pede h ≥ (1,40 − 0,19)/3 = 0,40 ("a gente sobe 5 cm na altura").
     // 16/11 (Jose, noite): o empuxo vai até a base da sapata por padrão (emp_sap = Sim, "dentro da norma") → FS ao
     // deslizamento 1,10 e o exemplo volta a reprovar nele (com Não ia a 1,53).
-    expect(falhas122).toEqual(['balanco.flexao.As', 'fundacao.rigidez', 'fundacao.deslizamento']);
-    expect(vereditoDaMemoria(r122)).toEqual({ passa: false, falhas: 3 });
+    // 16/11 (Jose): a flexível é calculada — a classe só informa; a de 0,30 passa como laje (punção, Ø ≤ h/8) e a
+    // espera Ø10 com gancho ancora (21 ≤ 24,4 cm).
+    expect(falhas122).toEqual(['balanco.flexao.As', 'fundacao.deslizamento']);
+    expect(vereditoDaMemoria(r122)).toEqual({ passa: false, falhas: 2 });
     expect(vereditoDaMemoria(resultadoDoGabarito('aula123'))).not.toBeNull();
     for (const c of CENARIOS) {
       const r = resultadoDoGabarito(c);

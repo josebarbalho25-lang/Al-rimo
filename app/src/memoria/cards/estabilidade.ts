@@ -23,11 +23,12 @@
 */
 import type { Resultado } from '@/motor/tipos';
 import type { AutorDeCards, Card, Expr, Passo, Ref } from '../tipos';
-import { abs, cte, div, max, min, mul, neg, nome, par, pot, rad, soma, sub, tan } from '../expr';
+import { abs, cte, div, max, min, mul, neg, nome, par, pot, rad, raiz, soma, sub, tan } from '../expr';
 import { memoriaDe, secao, type Memoria, type PedidoDeVerificacao } from '../passo';
 import { nt } from '../formato';
 import { passoDoGamaCf, passosDoPeso } from './pesoProprio';
 import { desenhoDasDistanciasAoCentro, desenhoDasForcasQueEstabilizam, desenhoDasForcasQueTombam, desenhoDasTensoes } from '../desenhoDaSapata';
+import { desenhoDaClasseDaSapata } from '../desenhoDaSapataFlexivel';
 
 const ABA = 'Fundação';
 const cel = (endereco: string) => `${ABA}!${endereco}`;
@@ -50,7 +51,7 @@ const NBR_PASSIVO: Ref = { fonte: 'NBR 6122', item: '7.6.3' };
 
 export const SIMBOLOS_ESTABILIDADE: Readonly<Record<string, string>> = {
   // ── rígida ou flexível (NBR 6118 22.6.1) ──
-  'h_{r\\acute{\\imath}g}': 'altura mínima para a sapata ser rígida, (B − t)/3',
+  'h_{r\\acute{\\imath}g}': 'altura mínima para a sapata ser rígida, 2/3 do maior balanço',
   // ── geometria (B, h_s, a, b_t, b_p: SIMBOLOS_SAPATA) ──
   'b_{den}': 'largura média do dente',
   'h_{den}': 'altura do dente',
@@ -591,32 +592,43 @@ function cardTensoes(r: Resultado): Card {
 }
 
 /** Estabilidade da sapata corrida (os dois tipos de muro): cargas, tombamento, deslizamento e tensões no solo. */
-// ───────────────────────────── 0 · rígida ou flexível ─────────────────────────────
+// ───────────────────────────── 0 · classe da sapata (rígida ou flexível) ─────────────────────────────
 
 /*
-  A PRIMEIRA CONTA da sapata (Jose, 14/10: "antes de calcular a sapata essa vai ser a primeira conta"). NBR 6118
-  22.6.1, h ≥ (a − ap)/3; na sapata corrida a = B e ap = espessura do muro (Bastos, Sapatas de Fundação, 1.7). Toda a
-  conta seguinte supõe sapata rígida (pressão linear): flexível não é calculada — reprova e manda reavaliar as
-  condições de contorno (Jose: "a planilha não vai fazer sapata flexível, vai verificar").
+  A PRIMEIRA CONTA da sapata, agora SÓ INFORMA (Jose, 16/11: a flexível é calculada, não barrada — substitui o
+  "flexível não é calculada" de 14/10). NBR 6118 22.6.1, h ≥ (a − ap)/3 é a fórmula do pilar centrado = 2/3 do balanço;
+  com a ponta e o talão diferentes, vale o balanço MAIOR (DEDUÇÃO aprovada em 16/11; com o muro centrado dá o (B − t)/3
+  de antes). A flexível leva a punção, o Ø ≤ h/8 e a concentração junto ao contraforte (cards/sapataFlexivel.ts). O
+  indicador λ·B (viga sobre base elástica) fica aqui, nas duas classes: só informa.
 */
 function cardRigidez(r: Resultado): Card {
   const m = memoriaDe(r);
-  const f = folhas(m);
   const temConta = temNumero(m, 'h_rig');
-  const hRig = m.g('h_rig', 'h_{r\\acute{\\imath}g}', 3, 'm');
-  const sec = secao('Sapata corrida: a = B e ap = t', [
-    temConta && m.passo('h_rig', 'h_{r\\acute{\\imath}g}', div(sub(f.B, f.t), cte(3, 0)), { casas: 3, unidade: 'm' }),
-    temConta && m.passo('h_sap', 'h_s', null, {
-      casas: 2, unidade: 'm', origem: 'entrada',
-      verif: { chave: 'fundacao.rigidez', rotulo: 'Sapata rígida: h ≥ (B − t)/3', limite: hRig, relacao: '>=', celula: 'chk_rig' },
-    }),
+  const bt = m.g('heel', 'b_t', 3, 'm');
+  const bp = m.g('toe', 'b_p', 3, 'm');
+  const sec = secao('Balanço maior medido da face do muro', [
+    temConta && m.passo('h_rig', 'h_{r\\acute{\\imath}g}', mul(div(cte(2, 0), cte(3, 0)), max(bt, bp)), { casas: 3, unidade: 'm', ref: { fonte: 'Dedução' } }),
+    temConta && m.passo('h_sap', 'h_s', null, { casas: 2, unidade: 'm', origem: 'entrada' }),
   ], { fonte: 'NBR 6118', item: '22.6.1' });
+  const des = desenhoDaClasseDaSapata(r);
+  if (des) sec.desenho = des;
+  const fck = m.g('fck_s', 'f_{ck}', 0, 'MPa');
+  const ksDig = m.num('ks_dir') !== null;
+  const indicador = secao('Rigidez relativa sapata × solo (indicador)', [
+    temNumero(m, 'Eci_s') && m.passo('Eci_s', 'E_{ci}', mul(cte(5600, 0), raiz(fck)), { casas: 0, unidade: 'MPa', ref: { fonte: 'NBR 6118', item: '8.2.8' } }),
+    temNumero(m, 'Ecs_s') && m.passo('Ecs_s', 'E_{cs}', mul(min(cte(1, 0), soma(cte(0.8, 1), div(mul(cte(0.2, 1), fck), cte(80, 0)))), m.g('Eci_s', 'E_{ci}', 0, 'MPa')), { casas: 0, unidade: 'MPa', ref: { fonte: 'NBR 6118', item: '8.2.8' } }),
+    temNumero(m, 'EI_s') && m.passo('EI_s', 'EI_s', div(mul(m.g('Ecs_s', 'E_{cs}', 0, 'MPa'), cte(1000, 0), pot(m.ent('h_sap', 'h_s'), 3)), cte(12, 0)), { casas: 0, unidade: 'kN·m²/m', ref: { fonte: 'Dedução' } }),
+    !ksDig && temNumero(m, 'k_sug') && m.passo('k_sug', 'k_{s,sug}', mul(cte(120, 0), m.g('s_adm', '\\sigma_{adm}', 0, 'kPa')), { casas: 0, unidade: 'kN/m³', ref: { fonte: 'Bowles' } }),
+    temNumero(m, 'ks_us') && m.passo('ks_us', 'k_s', ksDig ? null : m.g('k_sug', 'k_{s,sug}', 0, 'kN/m³'), { casas: 0, unidade: 'kN/m³', origem: ksDig ? 'entrada' : 'calculado' }),
+    temNumero(m, 'lam_s') && m.passo('lam_s', '\\lambda_s', pot(par(div(m.g('ks_us', 'k_s', 0, 'kN/m³'), mul(cte(4, 0), m.g('EI_s', 'EI_s', 0, 'kN·m²/m')))), cte(0.25, 2)), { casas: 4, unidade: '1/m', ref: { fonte: 'Hetényi' } }),
+    temNumero(m, 'lamB_s') && m.passo('lamB_s', '\\lambda B', mul(m.g('lam_s', '\\lambda_s', 4, '1/m'), m.ent('B_sap', 'B')), { casas: 3, ref: { fonte: 'Hetényi' } }),
+  ], { fonte: 'Hetényi' });
   return {
     id: 'fundacao.rigidez',
-    titulo: 'Fundação · sapata rígida',
+    titulo: 'Fundação · classe da sapata',
     ref: { fonte: 'NBR 6118', item: '22.6.1' },
     avisos: [],
-    secoes: sec.passos.length ? [sec] : [],
+    secoes: [sec, indicador].filter((s) => s.passos.length > 0),
     aplicavel: temConta,
   };
 }

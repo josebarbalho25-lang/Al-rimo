@@ -22,8 +22,8 @@ export const ENTRADAS_DO_MODELO: EntradaMeta[] = [
   { nome: 'traspasse_dir', rotulo: 'Traspasse espera × barra — opcional', padrao: null, unidade: 'cm', nota: 'Em branco = 2,0 × ℓb no graute (NBR 6118), por barra. Emendas defasadas: digitar menos.', figura: 'Fig. 9', opcoes: null, formato: '0', secao: MODELO, ref: 'modelo!traspasse_dir' },
   // A transversal da sapata (sap_transv, Estribo/Reta, Jose 15/10) era daqui; foi para a planilha em 15/11, quando
   // a conta do dente passou a depender dela (ENTRADA_QUE_MUDOU_DE_ORIGEM em estado/projeto.ts abre o arquivo antigo).
-  // Jose, 15/10: o arranque em nó de cachorro — a forma ele desenha no Revit (até lá, sai a Padrão com aviso)
-  { nome: 'arranque', rotulo: 'Arranque (espera)', padrao: 'Padrão', unidade: '', nota: '', figura: 'Fig. 9', opcoes: ['Padrão', 'Nó de cachorro'], formato: 'General', secao: MODELO, ref: 'modelo!arranque' },
+  // O arranque (Padrão/Nó de cachorro, Jose 15/10) também era daqui; foi para a planilha em 16/11, quando a conta
+  // passou a conferir a ancoragem da espera na sapata (aba Fundação, seção 14).
 
   // muro de cima (13/11): o que a conta não pede e o detalhamento precisa — o estribo do pilarete. O Ø da cinta
   // (phi_cin_mc) era daqui; foi para a planilha em 15/11, quando a cinta passou a ser verificada (projeto.ts abre o

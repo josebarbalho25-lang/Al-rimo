@@ -169,6 +169,7 @@ export const ROTULO_CURTO: Record<string, string> = {
   FS_desl: 'FS deslizamento',
   cob_sap: 'Cobrimento',
   sap_transv: 'Transversal',
+  ks_dir: 'Coef. de reação ks',
   phi_sap: 'Ø transversal',
   phi_sap2: 'Ø longitudinal',
   phi_tor: 'Ø estribo de torção',

@@ -20,6 +20,7 @@ import { SIMBOLOS_PAINELCF } from './cards/painelCf';
 import { SIMBOLOS_ESTABILIDADE } from './cards/estabilidade';
 import { SIMBOLOS_SAPATA } from './cards/sapata';
 import { SIMBOLOS_DENTE } from './cards/dente';
+import { SIMBOLOS_SAPATA_FLEXIVEL } from './cards/sapataFlexivel';
 import { SIMBOLOS_MURODECIMA } from './cards/muroDeCima';
 import { SIMBOLOS_MRD } from './cards/momentoResistente';
 
@@ -93,6 +94,7 @@ const GRUPOS: ReadonlyArray<readonly [string, Readonly<Record<string, string>>]>
   ['estabilidade', SIMBOLOS_ESTABILIDADE],
   ['sapata', SIMBOLOS_SAPATA],
   ['dente', SIMBOLOS_DENTE],
+  ['sapataFlexivel', SIMBOLOS_SAPATA_FLEXIVEL],
   ['murocima', SIMBOLOS_MURODECIMA],
   ['mrd', SIMBOLOS_MRD],
 ];
